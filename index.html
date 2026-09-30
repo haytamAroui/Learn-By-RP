@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <script>
+      (function() {
+        try {
+          // If window.fetch already has only a getter, add a no-op setter so assignments do not throw
+          var desc = Object.getOwnPropertyDescriptor(window, 'fetch');
+          if (desc && desc.get && !desc.set) {
+            try {
+              Object.defineProperty(window, 'fetch', {
+                get: desc.get,
+                set: function() {},
+                configurable: true,
+                enumerable: desc.enumerable
+              });
+            } catch (_) {}
+          }
+
+          // Intercept future Object.defineProperty calls on window.fetch (e.g. iframe runners)
+          // ensuring any getter-only definition includes a setter to prevent "Cannot set property fetch of #<Window> which has only a getter"
+          var origDefine = Object.defineProperty;
+          Object.defineProperty = function(obj, prop, descriptor) {
+            if ((obj === window || obj === globalThis) && prop === 'fetch') {
+              if (descriptor && descriptor.get && !descriptor.set) {
+                descriptor.set = function() {};
+                descriptor.configurable = true;
+              }
+            }
+            return origDefine.call(Object, obj, prop, descriptor);
+          };
+        } catch (e) {}
+      })();
+    </script>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, maximum-scale=5.0" />
+    <title>Mission Coach</title>
+    <meta name="description" content="Voice-first language practice in real-life situations with grounded progress and an honest evidence ledger." />
+    <meta property="og:title" content="Mission Coach" />
+    <meta property="og:description" content="Voice-first language practice in real-life situations with grounded progress and an honest evidence ledger." />
+    <meta property="og:type" content="website" />
+    <meta name="twitter:card" content="summary_large_image" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,600;1,6..72,400&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet" />
+    <script>
+      (function() {
+        try {
+          var saved = localStorage.getItem('theme');
+          if (saved === 'dark' || (!saved && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+            document.documentElement.classList.add('dark');
+          } else {
+            document.documentElement.classList.remove('dark');
+          }
+        } catch (_) {}
+      })();
+    </script>
+  </head>
+  <body class="bg-canvas text-heading antialiased">
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
+

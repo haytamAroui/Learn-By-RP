@@ -1,0 +1,6 @@
+{
+  "name": "Mission Coach",
+  "description": "Voice-first language practice in real-life situations with grounded progress and an honest evidence ledger.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
