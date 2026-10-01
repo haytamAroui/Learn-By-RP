@@ -144,6 +144,12 @@ export interface Translations {
     listening: string;
     characterSpeaking: string;
     tapToSpeak: string;
+    /** R3: a retry is in flight. Must not read as a failure. */
+    reconnecting: string;
+    /** R3: voice has failed, typed input still works. */
+    voiceFailed: string;
+    /** R3: recover the connection without losing the transcript. */
+    retryConnection: string;
     finishButton: string;
     coachDrawerTitle: string;
     coachStepIntent: string;
@@ -416,6 +422,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Send",
       listening: "Listening to your speech...",
       characterSpeaking: "Character is speaking...",
+      reconnecting: "Reconnecting...",
+      voiceFailed: "Voice unavailable",
+      retryConnection: "Retry connection",
       tapToSpeak: "Tap to speak",
       finishButton: "Finish & View Receipt",
       coachDrawerTitle: "Language Coach Assistance",
@@ -692,6 +701,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Envoyer",
       listening: "Écoute de votre voix...",
       characterSpeaking: "Le personnage parle...",
+      reconnecting: "Reconnexion...",
+      voiceFailed: "Voix indisponible",
+      retryConnection: "Réessayer",
       tapToSpeak: "Appuyez pour parler",
       finishButton: "Terminer et voir le reçu",
       coachDrawerTitle: "Aide du coach linguistique",
@@ -967,6 +979,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Enviar",
       listening: "Escuchando tu voz...",
       characterSpeaking: "El personaje está hablando...",
+      reconnecting: "Reconectando...",
+      voiceFailed: "Voz no disponible",
+      retryConnection: "Reintentar",
       tapToSpeak: "Toca para hablar",
       finishButton: "Finalizar y ver recibo",
       coachDrawerTitle: "Asistencia del Coach Lingüístico",
@@ -1242,6 +1257,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Verzenden",
       listening: "Luisteren naar je stem...",
       characterSpeaking: "Personage spreekt...",
+      reconnecting: "Opnieuw verbinden...",
+      voiceFailed: "Stem niet beschikbaar",
+      retryConnection: "Opnieuw proberen",
       tapToSpeak: "Tik om te spreken",
       finishButton: "Afronden & Bewijs bekijken",
       coachDrawerTitle: "Hulp van de taalcoach",

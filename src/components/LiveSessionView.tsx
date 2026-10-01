@@ -58,6 +58,14 @@ interface LiveSessionViewProps {
   onCancel: () => void;
 }
 
+/**
+ * The session's voice state, aligned with ConversationConnectionState.
+ *
+ * `reconnecting` and `error` are the two this list was missing. Without
+ * `reconnecting`, a dropped socket has nowhere to go but `error`, so a brief network
+ * blip is presented as a terminal failure. Without `error`, a genuine failure is
+ * presented as silence - the learner waits for a reply that is never coming.
+ */
 type VoiceState =
   | 'connecting'
   | 'listening'
@@ -65,7 +73,11 @@ type VoiceState =
   | 'muted'
   | 'paused'
   | 'idle'
-  | 'ending';
+  | 'ending'
+  /** A retry is in flight. Not a failure, and must not read as one. */
+  | 'reconnecting'
+  /** Sustained failure. The typed route is still open. */
+  | 'error';
 
 const VOICE_DOT: Record<VoiceState, string> = {
   connecting: 'bg-muted',
@@ -75,7 +87,19 @@ const VOICE_DOT: Record<VoiceState, string> = {
   paused: 'bg-warning',
   idle: 'bg-muted',
   ending: 'bg-muted',
+  // Amber rather than red: the user can still see the difference between "trying
+  // again" and "failed", which is the whole reason these are separate states.
+  reconnecting: 'bg-warning',
+  error: 'bg-danger',
 };
+
+/** States in which the voice input control should not invite a tap. */
+const VOICE_BLOCKED: ReadonlySet<VoiceState> = new Set<VoiceState>([
+  'connecting',
+  'reconnecting',
+  'error',
+  'ending',
+]);
 
 const EXPLANATION_LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
@@ -728,9 +752,22 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         case 'interrupted':
           break;
         case 'error':
+          /*
+            A refused microphone is not a connection failure. It routes to typed
+            input and reports `idle`, because the voice path is still available -
+            the learner can grant permission and carry on.
+
+            Anything else is a real failure, and it previously had no state to move
+            to: the dot stayed on whatever it last showed while the session silently
+            stopped responding. It now surfaces as `error` with the typed route open,
+            so the learner can see the difference and keep working.
+          */
           if (event.payload === 'mic_denied') {
             setShowTypedInput(true);
             setVoiceState('idle');
+          } else {
+            setShowTypedInput(true);
+            setVoiceState('error');
           }
           break;
       }
@@ -1287,6 +1324,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               <View className="flex-1">
                 <Pressable
                   onPress={() => {
+                    // Guarded: tapping while reconnecting or after a failure used to
+                    // call into a transport that could not accept it, which surfaced
+                    // as an unhandled rejection rather than a visible reason.
+                    if (VOICE_BLOCKED.has(voiceState)) return;
+
                     if (voiceState === 'listening') {
                       voiceTransportRef.current?.stopListening();
                     } else {
@@ -1294,10 +1336,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                     }
                   }}
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: VOICE_BLOCKED.has(voiceState) }}
                   accessibilityLabel={
-                    voiceState === 'listening' ? t.live.listening : t.live.tapToSpeak
+                    voiceState === 'listening'
+                      ? t.live.listening
+                      : voiceState === 'reconnecting'
+                        ? t.live.reconnecting
+                        : voiceState === 'error'
+                          ? t.live.voiceFailed
+                          : t.live.tapToSpeak
                   }
-                  className="h-11 w-full flex-row items-center justify-center gap-2 rounded-xl bg-primary px-3 active:opacity-80"
+                  className={`h-11 w-full flex-row items-center justify-center gap-2 rounded-xl px-3 ${
+                    VOICE_BLOCKED.has(voiceState) ? 'bg-muted' : 'bg-primary'
+                  } active:opacity-80`}
                 >
                   <View
                     className="h-2 w-2 rounded-full bg-white/60"
@@ -1306,9 +1357,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                       transform: [{ scale: 1 + audioLevel * 0.6 }],
                     }}
                   />
-                  <Mic size={16} color="#ffffff" />
+                  {voiceState === 'error' ? (
+                    <MicOff size={16} color="#ffffff" />
+                  ) : (
+                    <Mic size={16} color="#ffffff" />
+                  )}
                   <Text className="text-xs font-semibold text-white" numberOfLines={1}>
-                    {voiceState === 'listening' ? t.live.listening : t.live.tapToSpeak}
+                    {voiceState === 'listening'
+                      ? t.live.listening
+                      : voiceState === 'reconnecting'
+                        ? t.live.reconnecting
+                        : voiceState === 'error'
+                          ? t.live.voiceFailed
+                          : t.live.tapToSpeak}
                   </Text>
                 </Pressable>
               </View>
