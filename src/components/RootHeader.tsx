@@ -2,18 +2,15 @@ import React from 'react';
 import { Pressable, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Settings } from 'lucide-react-native';
-import { useTheme } from '../features/theme';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { iconColor } from '../design/iconColor';
 
 /**
- * The root header.
+ * Mobile-first root header.
  *
- * Settings is deliberately not a fourth tab. It stays one tap from every primary
- * destination through the same affordance on each root, which is why this is a
- * shared component rather than three copies that drift.
- *
- * Compact shows the title and the action. Expanded leaves room for a rail, so the
- * action is anchored consistently either way.
+ * Root screens expose one lightweight settings affordance. Theme and other
+ * secondary controls belong inside settings rather than competing with the
+ * screen's primary learning action.
  */
 interface RootHeaderProps {
   title: string;
@@ -22,40 +19,31 @@ interface RootHeaderProps {
 
 export const RootHeader: React.FC<RootHeaderProps> = ({ title, subtitle }) => {
   const router = useRouter();
-  const { isDark, setPreference } = useTheme();
+  const insets = useSafeAreaInsets();
 
   return (
     <View
-      className="flex-row items-start justify-between gap-3 px-4 pb-3"
-      style={{ paddingTop: 52 }}
+      className="w-full self-center flex-row items-start justify-between gap-4 px-4 pb-3"
+      style={{ paddingTop: insets.top + 10, maxWidth: 1200 }}
     >
-      <View className="flex-1">
-        <Text className="text-2xl font-semibold text-ink">{title}</Text>
-        {subtitle ? <Text className="mt-1 text-sm text-body">{subtitle}</Text> : null}
+      <View className="min-h-12 flex-1 justify-center">
+        <Text className="text-[26px] font-semibold leading-8 tracking-tight text-ink">
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text className="mt-1 max-w-[620px] text-sm leading-5 text-body">{subtitle}</Text>
+        ) : null}
       </View>
 
-      <View className="flex-row items-center gap-2">
-        <Pressable
-          onPress={() => setPreference(isDark ? 'light' : 'dark')}
-          accessibilityRole="button"
-          accessibilityLabel={isDark ? 'Switch to light mode' : 'Switch to dark mode'}
-          // 48px hit target even though the glyph is smaller.
-          hitSlop={8}
-          className="h-12 w-12 items-center justify-center rounded-xl border border-border-subtle bg-surface active:opacity-80"
-        >
-          <Text className="text-sm font-semibold text-muted">{isDark ? '☀' : '☾'}</Text>
-        </Pressable>
-
-        <Pressable
-          onPress={() => router.push('/settings')}
-          accessibilityRole="button"
-          accessibilityLabel="Settings"
-          hitSlop={8}
-          className="h-12 w-12 items-center justify-center rounded-xl border border-border-subtle bg-surface active:opacity-80"
-        >
-          <Settings size={20} color={iconColor('muted')} />
-        </Pressable>
-      </View>
+      <Pressable
+        onPress={() => router.push('/settings')}
+        accessibilityRole="button"
+        accessibilityLabel="Settings"
+        hitSlop={6}
+        className="h-12 w-12 items-center justify-center rounded-full bg-surface-soft active:opacity-70"
+      >
+        <Settings size={21} color={iconColor('muted')} strokeWidth={2} />
+      </Pressable>
     </View>
   );
 };
