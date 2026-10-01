@@ -205,6 +205,7 @@ export function inferLegacySkillEvidence(
         modality: observation.modality,
         retrieval: observation.retrieval,
         taskOutcome: observation.taskOutcome,
+        demonstration: 'demonstrated',
         supportExposureIds: observation.supportExposureIds,
         evidenceSource: 'legacy_inferred',
         quote,
