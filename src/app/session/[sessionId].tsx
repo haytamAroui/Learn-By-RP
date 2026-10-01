@@ -4,6 +4,7 @@ import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
 import { LiveSessionView } from '../../components/LiveSessionView';
+import { Button } from '../../components/ui';
 import { MISSION_CATALOG } from '../../data/missions';
 import { MissionDefinition, SessionRecord } from '../../types';
 import { useSessionCoordinator } from '../../features/session/SessionProvider';
@@ -63,11 +64,13 @@ export default function SessionScreen() {
 
   if (!mission || !persistedSession) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas p-6">
+      <View className="flex-1 items-center justify-center gap-4 bg-canvas p-6">
         <Text className="text-center text-sm text-muted">{t.settings.missionUnavailable}</Text>
-        <Text className="mt-3 text-xs text-primary" onPress={() => router.back()}>
-          {t.settings.goBack}
-        </Text>
+        <Button
+          label={t.settings.goBack}
+          onPress={() => router.back()}
+          variant="secondary"
+        />
       </View>
     );
   }
