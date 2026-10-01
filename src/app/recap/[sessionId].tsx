@@ -3,7 +3,7 @@ import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { I18nProvider } from '../../features/i18n';
-import { RecapScreen } from '../../components/RecapScreen';
+import { RecapScreen as RecapContent } from '../../components/RecapScreen';
 import { SessionRecord } from '../../types';
 
 export default function RecapScreen() {
@@ -57,7 +57,7 @@ export default function RecapScreen() {
         void archive.savePreferences({ ...archive.preferences, explanationLanguage: lang })
       }
     >
-      <RecapScreen
+      <RecapContent
         session={session}
         onClose={() => router.replace('/(tabs)')}
         onRetryMission={mission =>
