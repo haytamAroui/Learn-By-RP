@@ -1528,6 +1528,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         visible={showHelpSheet}
         onClose={() => setShowHelpSheet(false)}
         title={t.live.coachDrawerTitle}
+        size="compact"
       >
         <Text className="text-sm leading-6 text-body">
           {t.live.coachStepIntent}
@@ -1568,6 +1569,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         visible={showMeaningLine && Boolean(latestAssistantPassage?.meaning)}
         onClose={() => setShowMeaningLine(false)}
         title={t.common.meaning}
+        size="compact"
       >
         <Text className="text-lg font-medium leading-7 text-ink">
           {latestAssistantPassage?.meaning}
