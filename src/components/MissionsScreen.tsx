@@ -177,12 +177,12 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
                   className={`min-h-12 justify-center rounded-full px-4 ${
-                    selected ? 'bg-primary' : 'bg-surface-soft'
+                    selected ? 'bg-action' : 'bg-surface-soft'
                   }`}
                 >
                   <Text
                     className={`text-sm font-semibold ${
-                      selected ? 'text-white' : 'text-body'
+                      selected ? 'text-action-text' : 'text-body'
                     }`}
                   >
                     {category.label}
@@ -257,8 +257,8 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
             {missions.map((mission, index) => (
               <View key={mission.id} className="flex-row gap-3">
                 <View className="items-center">
-                  <View className="h-9 w-9 items-center justify-center rounded-full bg-primary">
-                    <Text className="text-sm font-bold text-white">{index + 1}</Text>
+                  <View className="h-9 w-9 items-center justify-center rounded-full bg-action">
+                    <Text className="text-sm font-bold text-action-text">{index + 1}</Text>
                   </View>
                   {index < missions.length - 1 ? (
                     <View className="my-1 w-px flex-1 bg-border-subtle" />
