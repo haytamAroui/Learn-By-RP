@@ -49,7 +49,7 @@ export const MissionBriefingModal: React.FC<MissionBriefingModalProps> = ({
             label={t.briefing.startMissionButton}
             onPress={() => onStartSession(mission, selectedMode, coldAttempt)}
             size="lg"
-            icon={<Play size={16} color="#ffffff" />}
+            icon={<Play size={16} color={iconColor('brandText')} />}
           />
         </View>
       }
