@@ -129,6 +129,11 @@ export interface Translations {
     previewPhrasesDesc: string;
     usefulPhrasesTitle: string;
     startMissionButton: string;
+    skillRequestSubstitution: string;
+    skillInquireSpecifications: string;
+    skillProposeAlternative: string;
+    skillCommunicativeRepair: string;
+    skillWayfindingTransit: string;
   };
   live: {
     liveTag: string;
@@ -159,6 +164,18 @@ export interface Translations {
     coachStepFull: string;
     coachStepExpl: string;
     coachAsking: string;
+    summaryNoSpeech: string;
+    summaryAssessmentUnavailable: string;
+    summaryGoalsClear: string;
+    summaryNoTargetPhrases: string;
+    sceneDirectorUnavailable: string;
+    actionNotApplied: string;
+    actionNotPermitted: string;
+    sceneAlternativeUpdated: string;
+    sceneTakeawayConfirmed: string;
+    rehearsalRestored: string;
+    feedbackGoodEngagement: string;
+    feedbackReviewDue: string;
   };
   recap: {
     tag: string;
@@ -442,6 +459,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Review useful phrases before speaking. Will mark items as assisted in your ledger.",
       usefulPhrasesTitle: "Useful Phrases in this Scene",
       startMissionButton: "Start Mission Now",
+      skillRequestSubstitution: "Ask for a change",
+      skillInquireSpecifications: "Clarify details",
+      skillProposeAlternative: "Propose an alternative",
+      skillCommunicativeRepair: "Repair the conversation",
+      skillWayfindingTransit: "Ask for directions",
     },
     live: {
       liveTag: "Session Live",
@@ -468,6 +490,25 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepFull: "3. Complete Model Phrase",
       coachStepExpl: "4. Cultural & Grammar Nuance",
       coachAsking: "Consulting language coach...",
+      summaryNoSpeech:
+        "No speech was captured in this conversation, so there is nothing to assess yet.",
+      summaryAssessmentUnavailable:
+        "Your conversation is saved. Automated review is unavailable right now, so phrases were matched directly against your transcript.",
+      summaryGoalsClear: "You communicated your goals clearly in this conversation.",
+      summaryNoTargetPhrases:
+        "Your conversation is saved. No target phrases could be confirmed from what you said.",
+      sceneDirectorUnavailable:
+        "Could not reach the scene director. Scene state is unchanged.",
+      actionNotApplied: "Not applied",
+      actionNotPermitted: "That action was not permitted here.",
+      sceneAlternativeUpdated: "The scene was updated with an alternative.",
+      sceneTakeawayConfirmed: "Takeaway was confirmed.",
+      rehearsalRestored:
+        "Checkpoint restored. This is a rehearsal, so the turn will not count as independent recall.",
+      feedbackGoodEngagement:
+        "Good engagement. Practising in real time builds fluency.",
+      feedbackReviewDue:
+        "Review phrases due in your Progress tab to keep retention high.",
     },
     recap: {
       tag: "Learning Receipt",
@@ -758,6 +799,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Lisez les expressions avant de parler. Elles seront enregistrées comme assistées dans votre registre.",
       usefulPhrasesTitle: "Expressions utiles dans cette scène",
       startMissionButton: "Démarrer la mission maintenant",
+      skillRequestSubstitution: "Demander un changement",
+      skillInquireSpecifications: "Clarifier les détails",
+      skillProposeAlternative: "Proposer une alternative",
+      skillCommunicativeRepair: "Réparer la conversation",
+      skillWayfindingTransit: "Demander son chemin",
     },
     live: {
       liveTag: "Session en direct",
@@ -784,6 +830,25 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepFull: "3. Phrase modèle complète",
       coachStepExpl: "4. Nuance culturelle et grammaticale",
       coachAsking: "Consultation du coach en cours...",
+      summaryNoSpeech:
+        "Aucune production n’a été capturée dans cette conversation ; il n’y a donc encore rien à évaluer.",
+      summaryAssessmentUnavailable:
+        "Votre conversation est enregistrée. L’analyse automatisée est indisponible pour le moment ; les phrases ont donc été rapprochées directement de votre transcription.",
+      summaryGoalsClear: "Vous avez communiqué vos objectifs clairement dans cette conversation.",
+      summaryNoTargetPhrases:
+        "Votre conversation est enregistrée. Aucune phrase cible n’a pu être confirmée à partir de ce que vous avez dit.",
+      sceneDirectorUnavailable:
+        "Impossible de joindre le moteur de scène. L’état de la scène reste inchangé.",
+      actionNotApplied: "Non appliqué",
+      actionNotPermitted: "Cette action n’était pas autorisée ici.",
+      sceneAlternativeUpdated: "La scène a été mise à jour avec une alternative.",
+      sceneTakeawayConfirmed: "La commande à emporter a été confirmée.",
+      rehearsalRestored:
+        "Point de reprise restauré. Il s’agit d’une répétition ; ce tour ne comptera donc pas comme rappel indépendant.",
+      feedbackGoodEngagement:
+        "Bonne participation. La pratique en temps réel développe l’aisance.",
+      feedbackReviewDue:
+        "Révisez les phrases à échéance dans l’onglet Progression pour entretenir la mémorisation.",
     },
     recap: {
       tag: "Reçu d’apprentissage",
@@ -1073,6 +1138,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Revisa las frases útiles antes de hablar. Quedarán registradas como asistidas en tu libro.",
       usefulPhrasesTitle: "Frases útiles para esta escena",
       startMissionButton: "Comenzar misión ahora",
+      skillRequestSubstitution: "Pedir un cambio",
+      skillInquireSpecifications: "Aclarar detalles",
+      skillProposeAlternative: "Proponer una alternativa",
+      skillCommunicativeRepair: "Reparar la conversación",
+      skillWayfindingTransit: "Pedir indicaciones",
     },
     live: {
       liveTag: "Sesión en vivo",
@@ -1099,6 +1169,25 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepFull: "3. Frase modelo completa",
       coachStepExpl: "4. Matiz cultural y gramatical",
       coachAsking: "Consultando al coach...",
+      summaryNoSpeech:
+        "No se capturó ninguna producción en esta conversación, así que todavía no hay nada que evaluar.",
+      summaryAssessmentUnavailable:
+        "Tu conversación está guardada. La revisión automática no está disponible ahora mismo, así que las frases se compararon directamente con tu transcripción.",
+      summaryGoalsClear: "Comunicaste tus objetivos con claridad en esta conversación.",
+      summaryNoTargetPhrases:
+        "Tu conversación está guardada. No se pudo confirmar ninguna frase objetivo a partir de lo que dijiste.",
+      sceneDirectorUnavailable:
+        "No se pudo contactar con el motor de la escena. El estado de la escena no cambia.",
+      actionNotApplied: "No aplicado",
+      actionNotPermitted: "Esa acción no estaba permitida aquí.",
+      sceneAlternativeUpdated: "La escena se actualizó con una alternativa.",
+      sceneTakeawayConfirmed: "Se confirmó el pedido para llevar.",
+      rehearsalRestored:
+        "Se restauró el punto de control. Esto es un ensayo, así que el turno no contará como recuerdo independiente.",
+      feedbackGoodEngagement:
+        "Buena participación. Practicar en tiempo real ayuda a ganar fluidez.",
+      feedbackReviewDue:
+        "Repasa las frases pendientes en la pestaña Progreso para mantener la retención.",
     },
     recap: {
       tag: "Recibo de Aprendizaje",
@@ -1388,6 +1477,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Lees de handige zinnen voor je spreekt. Ze worden als ondersteund gemarkeerd in je register.",
       usefulPhrasesTitle: "Handige zinnen in deze scène",
       startMissionButton: "Start missie nu",
+      skillRequestSubstitution: "Om een wijziging vragen",
+      skillInquireSpecifications: "Details verduidelijken",
+      skillProposeAlternative: "Een alternatief voorstellen",
+      skillCommunicativeRepair: "Het gesprek herstellen",
+      skillWayfindingTransit: "De weg vragen",
     },
     live: {
       liveTag: "Sessie live",
@@ -1414,6 +1508,25 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepFull: "3. Volledige voorbeeldzin",
       coachStepExpl: "4. Culturele en grammaticale toelichting",
       coachAsking: "Coach raadplegen...",
+      summaryNoSpeech:
+        "Er is in dit gesprek geen productie vastgelegd, dus er is nog niets om te beoordelen.",
+      summaryAssessmentUnavailable:
+        "Je gesprek is opgeslagen. Automatische beoordeling is nu niet beschikbaar, daarom zijn zinnen rechtstreeks met je transcript vergeleken.",
+      summaryGoalsClear: "Je hebt je doelen in dit gesprek duidelijk gecommuniceerd.",
+      summaryNoTargetPhrases:
+        "Je gesprek is opgeslagen. Er konden geen doelzinnen worden bevestigd op basis van wat je zei.",
+      sceneDirectorUnavailable:
+        "De scène-engine kon niet worden bereikt. De scènestatus blijft ongewijzigd.",
+      actionNotApplied: "Niet toegepast",
+      actionNotPermitted: "Die actie was hier niet toegestaan.",
+      sceneAlternativeUpdated: "De scène is bijgewerkt met een alternatief.",
+      sceneTakeawayConfirmed: "Afhalen is bevestigd.",
+      rehearsalRestored:
+        "Controlepunt hersteld. Dit is een oefenpoging, dus deze beurt telt niet als zelfstandige herinnering.",
+      feedbackGoodEngagement:
+        "Goede deelname. Oefenen in realtime helpt je vloeiender te spreken.",
+      feedbackReviewDue:
+        "Herhaal zinnen die klaarstaan in het tabblad Voortgang om ze beter te onthouden.",
     },
     recap: {
       tag: "Leerbewijs",
