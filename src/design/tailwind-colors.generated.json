@@ -1,0 +1,67 @@
+{
+  "colors": {
+    "canvas": "rgb(--color-canvas / <alpha-value>)",
+    "surface": {
+      "DEFAULT": "rgb(--color-surface / <alpha-value>)",
+      "soft": "rgb(--color-surface-soft / <alpha-value>)",
+      "hover": "rgb(--color-surface-hover / <alpha-value>)",
+      "sunken": "rgb(--color-sunken / <alpha-value>)",
+      "raised": "rgb(--color-raised / <alpha-value>)"
+    },
+    "border": {
+      "DEFAULT": "rgb(--color-border-subtle / <alpha-value>)",
+      "subtle": "rgb(--color-border-subtle / <alpha-value>)",
+      "interactive": "rgb(--color-border-interactive / <alpha-value>)"
+    },
+    "ink": "rgb(--color-ink / <alpha-value>)",
+    "body": "rgb(--color-body / <alpha-value>)",
+    "muted": "rgb(--color-muted / <alpha-value>)",
+    "brand": {
+      "DEFAULT": "rgb(--color-brand / <alpha-value>)",
+      "hover": "rgb(--color-brand-hover / <alpha-value>)",
+      "pressed": "rgb(--color-brand-pressed / <alpha-value>)",
+      "soft": "rgb(--color-brand-soft / <alpha-value>)",
+      "on": "rgb(--color-brand-text / <alpha-value>)",
+      "button": "rgb(--color-brand-button / <alpha-value>)"
+    },
+    "primary": {
+      "DEFAULT": "rgb(--color-brand / <alpha-value>)",
+      "dark": "rgb(--color-brand-hover / <alpha-value>)",
+      "pressed": "rgb(--color-brand-pressed / <alpha-value>)",
+      "text": "rgb(--color-brand-text / <alpha-value>)"
+    },
+    "language": {
+      "DEFAULT": "rgb(--color-language / <alpha-value>)",
+      "hover": "rgb(--color-language-hover / <alpha-value>)",
+      "soft": "rgb(--color-language-soft / <alpha-value>)",
+      "text": "rgb(--color-language-text / <alpha-value>)"
+    },
+    "success": {
+      "DEFAULT": "rgb(--color-success / <alpha-value>)",
+      "soft": "rgb(--color-success-soft / <alpha-value>)"
+    },
+    "warning": {
+      "DEFAULT": "rgb(--color-warning / <alpha-value>)",
+      "soft": "rgb(--color-warning-soft / <alpha-value>)"
+    },
+    "danger": {
+      "DEFAULT": "rgb(--color-danger / <alpha-value>)",
+      "soft": "rgb(--color-danger-soft / <alpha-value>)"
+    },
+    "info": {
+      "DEFAULT": "rgb(--color-info / <alpha-value>)",
+      "soft": "rgb(--color-info-soft / <alpha-value>)"
+    },
+    "focus": "rgb(--color-focus / <alpha-value>)",
+    "accent": {
+      "sage": "rgb(--color-success / <alpha-value>)",
+      "sky": "rgb(--color-info / <alpha-value>)"
+    },
+    "card": {
+      "warm": "rgb(--color-brand-soft / <alpha-value>)",
+      "sage": "rgb(--color-success-soft / <alpha-value>)",
+      "sky": "rgb(--color-info-soft / <alpha-value>)",
+      "heather": "rgb(--color-warning-soft / <alpha-value>)"
+    }
+  }
+}

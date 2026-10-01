@@ -1,34 +1,48 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { Pressable, ScrollView, Text, View } from 'react-native';
 import {
-  Volume2,
+  AlertCircle,
+  Check,
+  CheckCircle2,
+  Eye,
+  Keyboard,
   Mic,
   MicOff,
-  CheckCircle2,
-  RotateCcw,
-  Sparkles,
-  ArrowRight,
-  Eye,
-  X,
-  Keyboard,
-  Check,
-  AlertCircle
-} from 'lucide-react';
+  Volume2,
+} from 'lucide-react-native';
 import { PhraseItem, Modality } from '../types';
-import { WebVoiceTransport, VoiceEvent } from '../providers/voice/webVoiceTransport';
-import { ArchiveStorage } from '../features/archive/storage';
-import { projectPhraseState } from '../features/learning/learningCore';
+import { NativeVoiceTransport, VoiceEvent } from '../providers/voice';
 import { useI18n } from '../features/i18n';
+import { Button, Field, SectionLabel } from './ui';
+import { Sheet } from './Sheet';
+import { iconColor } from '../design/iconColor';
 
 interface DuePhrasesPracticeModalProps {
+  visible: boolean;
   duePhrases: PhraseItem[];
   onClose: () => void;
   onCompleted: () => void;
+  onRecordReview: (input: {
+    phrase: PhraseItem;
+    quote: string;
+    modality: 'spoken' | 'typed';
+    unassisted: boolean;
+  }) => Promise<void>;
+}
+
+interface ReviewedItem {
+  phrase: PhraseItem;
+  result: 'remembered' | 'supported';
+  quote: string;
+  modality: Modality;
 }
 
 export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = ({
+  visible,
   duePhrases,
   onClose,
-  onCompleted
+  onCompleted,
+  onRecordReview,
 }) => {
   const { t } = useI18n();
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -39,22 +53,31 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   const [showTypedInput, setShowTypedInput] = useState(false);
   const [typedAnswer, setTypedAnswer] = useState('');
   const [modalityUsed, setModalityUsed] = useState<Modality>('spoken');
-  const [reviewedItems, setReviewedItems] = useState<{
-    phrase: PhraseItem;
-    result: 'remembered' | 'supported';
-    quote: string;
-    modality: Modality;
-  }[]>([]);
+  const [reviewedItems, setReviewedItems] = useState<ReviewedItem[]>([]);
   const [isFinished, setIsFinished] = useState(false);
 
-  const voiceTransportRef = useRef<WebVoiceTransport | null>(null);
+  const voiceTransportRef = useRef<NativeVoiceTransport | null>(null);
 
   const currentPhrase = duePhrases[currentIndex];
 
   useEffect(() => {
-    if (!currentPhrase) return;
+    if (visible) {
+      setCurrentIndex(0);
+      setRevealed(false);
+      setUserTranscript('');
+      setInterimText('');
+      setTypedAnswer('');
+      setShowTypedInput(false);
+      setModalityUsed('spoken');
+      setReviewedItems([]);
+      setIsFinished(false);
+    }
+  }, [visible, duePhrases.length]);
 
-    const transport = new WebVoiceTransport();
+  useEffect(() => {
+    if (!visible || !currentPhrase) return;
+
+    const transport = new NativeVoiceTransport();
     transport.setLanguage(currentPhrase.language);
     voiceTransportRef.current = transport;
 
@@ -78,6 +101,9 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
           break;
         case 'error':
           setIsListening(false);
+          if (event.payload === 'mic_denied') {
+            setShowTypedInput(true);
+          }
           break;
       }
     });
@@ -85,8 +111,9 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
     return () => {
       unsubscribe();
       transport.dispose();
+      voiceTransportRef.current = null;
     };
-  }, [currentIndex, currentPhrase]);
+  }, [visible, currentIndex, currentPhrase]);
 
   const handleStartListening = () => {
     setUserTranscript('');
@@ -98,19 +125,23 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   };
 
   const handlePlayAudio = () => {
-    if (currentPhrase) {
-      voiceTransportRef.current?.playSpeech(currentPhrase.form, {
-        lang: currentPhrase.language
-      });
-    }
+    if (!currentPhrase) return;
+    voiceTransportRef.current?.playSpeech(currentPhrase.form, {
+      lang: currentPhrase.language,
+    });
   };
 
-  const handleTypedSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!typedAnswer.trim()) return;
-    setUserTranscript(typedAnswer.trim());
+  const handleTypedSubmit = () => {
+    const trimmed = typedAnswer.trim();
+    if (!trimmed) return;
+    setUserTranscript(trimmed);
     setModalityUsed('typed');
     setRevealed(true);
+  };
+
+  const handleFinish = () => {
+    onCompleted();
+    onClose();
   };
 
   const recordEvaluation = (result: 'remembered' | 'supported') => {
@@ -119,54 +150,20 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
     const quote = userTranscript || typedAnswer || currentPhrase.form;
     const isUnassisted = result === 'remembered';
 
-    // 1. Record Learning Observation in Archive
-    const observation = {
-      observationId: `obs-drill-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-      sessionId: `drill-${new Date().toISOString().slice(0, 10)}`,
-      attemptId: 'drill-attempt-1',
-      sourceTurnId: `drill-${currentPhrase.id}`,
-      sourceRevision: 'rev-1',
-      itemId: currentPhrase.id,
-      candidateForm: currentPhrase.form,
-      meaning: currentPhrase.meaning,
+    // The archive owns the write, so the projection is recomputed inside the
+    // same transaction as the observation itself.
+    void onRecordReview({
+      phrase: currentPhrase,
       quote,
       modality: modalityUsed,
-      retrieval: isUnassisted ? ('unassisted' as const) : ('assisted' as const),
-      taskOutcome: 'achieved' as const,
-      rehearsal: false,
-      supportExposureIds: isUnassisted ? [] : ['exposure-drill-hint'],
-      recordedAt: new Date().toISOString()
-    };
-
-    // Update observations in storage
-    const allObs = ArchiveStorage.getObservations();
-    allObs.push(observation);
-    localStorage.setItem('mission_coach_observations', JSON.stringify(allObs));
-
-    // 2. Recompute Phrase Recall & Spaced Review State
-    const allPhrases = ArchiveStorage.getPhrases();
-    const updatedPhrases = allPhrases.map(p => {
-      if (p.id === currentPhrase.id) {
-        const obsForP = allObs.filter(
-          o => o.itemId === p.id || o.candidateForm.toLowerCase() === p.form.toLowerCase()
-        );
-        return projectPhraseState(p, obsForP);
-      }
-      return p;
+      unassisted: isUnassisted,
     });
-    ArchiveStorage.savePhrases(updatedPhrases);
 
     setReviewedItems(prev => [
       ...prev,
-      {
-        phrase: currentPhrase,
-        result,
-        quote,
-        modality: modalityUsed
-      }
+      { phrase: currentPhrase, result, quote, modality: modalityUsed },
     ]);
 
-    // Next phrase or finish
     if (currentIndex + 1 < duePhrases.length) {
       setCurrentIndex(prev => prev + 1);
       setRevealed(false);
@@ -179,224 +176,217 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
     }
   };
 
-  if (!currentPhrase && !isFinished) {
-    return null;
-  }
+  if (!visible) return null;
+
+  const counterText = isFinished
+    ? t.drill.completeTitle
+    : t.drill.counter
+        .replace('{current}', String(currentIndex + 1))
+        .replace('{total}', String(duePhrases.length));
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-xs">
-      <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-2xl sm:rounded-2xl bg-surface border border-border-subtle shadow-2xl overflow-hidden text-heading">
-        {/* Header Bar */}
-        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3 sm:px-6 sm:py-4">
-          <div>
-            <span className="text-[11px] font-semibold uppercase tracking-wider text-primary">
-              {t.drill.title}
-            </span>
-            <div className="text-xs text-muted">
-              {isFinished
-                ? t.drill.completeTitle
-                : t.drill.counter.replace('{current}', String(currentIndex + 1)).replace('{total}', String(duePhrases.length))}
-            </div>
-          </div>
-          <button
-            onClick={() => {
-              onCompleted();
-              onClose();
-            }}
-            className="rounded-lg p-1.5 text-muted hover:bg-surface-hover hover:text-heading"
-            aria-label={t.common.close}
-          >
-            <X className="h-5 w-5" />
-          </button>
-        </div>
+    <Sheet visible onClose={handleFinish} title={t.drill.title} scrollable={false}>
+      <Text className="-mt-2 text-xs text-muted">{counterText}</Text>
 
-        {/* Modal Body */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe">
-          {!isFinished ? (
-            <div className="space-y-6">
-              {/* Meaning prompt (Front of Flash Drill) */}
-              <div className="rounded-2xl bg-surface-sunken p-6 text-center border border-border-subtle space-y-3">
-                <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-                  {t.drill.howDoYouSay.replace('{language}', t.languages[currentPhrase.language] || currentPhrase.language.toUpperCase())}
-                </span>
-                <div className="font-display text-2xl font-bold text-heading">
-                  "{currentPhrase.meaning}"
-                </div>
-                <div className="text-xs text-muted">
-                  {currentPhrase.usageNote}
-                </div>
-              </div>
+      {isFinished ? (
+        <ScrollView className="flex-1" contentContainerStyle={{ gap: 18, paddingBottom: 16 }}>
+          <View className="items-center gap-2 py-2">
+            <View className="h-14 w-14 items-center justify-center rounded-full border border-accent-sage/20 bg-card-sage">
+              <CheckCircle2 size={30} color={iconColor('success')} />
+            </View>
+            <Text className="font-display text-xl font-bold text-ink">
+              {t.common.allDueReviewed}
+            </Text>
+            <Text className="text-xs text-muted">{t.common.allDueReviewedDesc}</Text>
+          </View>
 
-              {/* Spoken input & Interim transcription */}
-              {!revealed && (
-                <div className="space-y-4 text-center">
-                  {interimText && (
-                    <div className="rounded-xl bg-card-warm p-3 text-xs italic text-primary animate-pulse border border-primary/20">
-                      {t.common.hearingYou} "{interimText}..."
-                    </div>
-                  )}
-
-                  {!showTypedInput ? (
-                    <div className="flex flex-col items-center justify-center gap-3">
-                      <button
-                        onClick={isListening ? handleStopListening : handleStartListening}
-                        className={`flex h-16 w-16 items-center justify-center rounded-full text-white shadow-md transition-all active:scale-95 ${
-                          isListening ? 'bg-red-600 animate-pulse' : 'bg-primary hover:bg-primary-dark'
-                        }`}
-                      >
-                        {isListening ? <MicOff className="h-7 w-7" /> : <Mic className="h-7 w-7" />}
-                      </button>
-                      <div className="text-xs text-muted">
-                        {isListening ? t.live.listening : t.live.tapToSpeak}
-                      </div>
-                    </div>
-                  ) : (
-                    <form onSubmit={handleTypedSubmit} className="flex gap-2">
-                      <input
-                        type="text"
-                        placeholder={t.live.typePlaceholder}
-                        value={typedAnswer}
-                        onChange={e => setTypedAnswer(e.target.value)}
-                        className="flex-1 rounded-xl border border-border-subtle bg-surface-sunken p-2.5 text-xs text-heading placeholder:text-faint focus:border-primary focus:outline-none"
-                        autoFocus
-                      />
-                      <button
-                        type="submit"
-                        disabled={!typedAnswer.trim()}
-                        className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white disabled:opacity-40 shadow-xs hover:bg-primary-dark"
-                      >
-                        {t.common.check}
-                      </button>
-                    </form>
-                  )}
-
-                  <div className="flex items-center justify-center gap-4 pt-2">
-                    <button
-                      onClick={() => setShowTypedInput(!showTypedInput)}
-                      className="flex items-center gap-1.5 text-xs text-muted hover:text-heading transition-colors"
-                    >
-                      <Keyboard className="h-3.5 w-3.5" />
-                      <span>{showTypedInput ? t.common.switchSpeech : t.common.typeInstead}</span>
-                    </button>
-                    <span className="text-xs text-muted">·</span>
-                    <button
-                      onClick={() => setRevealed(true)}
-                      className="flex items-center gap-1.5 text-xs text-muted hover:text-heading transition-colors"
-                    >
-                      <Eye className="h-3.5 w-3.5" />
-                      <span>{t.common.showAnswer}</span>
-                    </button>
-                  </div>
-                </div>
-              )}
-
-              {/* Answer Revealed Card */}
-              {revealed && (
-                <div className="space-y-5 animate-fadeIn">
-                  <div className="rounded-2xl border border-primary/20 bg-card-warm p-5 space-y-3">
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-primary uppercase tracking-wider">
-                        {t.common.targetPhrase}
-                      </span>
-                      <button
-                        onClick={handlePlayAudio}
-                        className="flex items-center gap-1.5 rounded-xl border border-primary/30 bg-surface px-2.5 py-1 text-xs font-medium text-primary hover:bg-surface-hover shadow-2xs"
-                      >
-                        <Volume2 className="h-3.5 w-3.5" />
-                        <span>{t.common.listen}</span>
-                      </button>
-                    </div>
-
-                    <div className="font-display text-2xl font-bold text-heading">
-                      "{currentPhrase.form}"
-                    </div>
-
-                    {userTranscript && (
-                      <div className="rounded-xl bg-surface p-3 text-xs border border-border-subtle text-heading">
-                        <span className="text-muted">{t.common.yourProduction} </span>
-                        <strong>"{userTranscript}"</strong>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Self-Rating Evidence Choice */}
-                  <div className="space-y-2 text-center">
-                    <span className="text-xs font-medium text-muted">
-                      {t.common.howWasRecall}
-                    </span>
-                    <div className="grid grid-cols-2 gap-3">
-                      <button
-                        onClick={() => recordEvaluation('supported')}
-                        className="flex items-center justify-center gap-1.5 rounded-xl border border-border-subtle bg-surface p-3 text-xs font-medium text-heading hover:bg-surface-hover transition-colors shadow-2xs"
-                      >
-                        <AlertCircle className="h-4 w-4 text-primary" />
-                        <span>{t.common.neededHelp}</span>
-                      </button>
-
-                      <button
-                        onClick={() => recordEvaluation('remembered')}
-                        className="flex items-center justify-center gap-1.5 rounded-xl bg-primary p-3 text-xs font-semibold text-white shadow-xs hover:bg-primary-dark transition-colors"
-                      >
-                        <Check className="h-4 w-4" />
-                        <span>{t.common.recalledClearly}</span>
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          ) : (
-            /* Drill Complete Summary */
-            <div className="space-y-6 text-center py-4">
-              <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-card-sage text-accent-sage border border-accent-sage/20">
-                <CheckCircle2 className="h-8 w-8" />
-              </div>
-
-              <div>
-                <h3 className="font-display text-2xl font-bold text-heading">
-                  {t.common.allDueReviewed}
-                </h3>
-                <p className="mt-1 text-xs text-muted">
-                  {t.common.allDueReviewedDesc}
-                </p>
-              </div>
-
-              <div className="space-y-2 text-left">
-                {reviewedItems.map((item, idx) => (
-                  <div
-                    key={idx}
-                    className="flex items-center justify-between rounded-xl border border-border-subtle bg-surface-sunken p-3 text-xs"
-                  >
-                    <div>
-                      <div className="font-semibold text-heading">"{item.phrase.form}"</div>
-                      <div className="text-[11px] text-muted">{item.phrase.meaning}</div>
-                    </div>
-                    <span
-                      className={`rounded-lg px-2 py-0.5 text-[10px] font-semibold capitalize border ${
-                        item.result === 'remembered'
-                          ? 'bg-card-sage text-accent-sage border-accent-sage/20'
-                          : 'bg-card-warm text-primary border-primary/20'
-                      }`}
-                    >
-                      {item.result === 'remembered' ? t.recap.unassisted : t.recap.assisted} ({item.modality})
-                    </span>
-                  </div>
-                ))}
-              </div>
-
-              <button
-                onClick={() => {
-                  onCompleted();
-                  onClose();
-                }}
-                className="w-full rounded-xl bg-primary py-3 text-xs font-semibold text-white hover:bg-primary-dark shadow-xs transition-all"
+          <View className="gap-2">
+            {reviewedItems.map((item, idx) => (
+              <View
+                key={`${item.phrase.id}-${idx}`}
+                className="flex-row items-center justify-between gap-3 rounded-xl border border-border-subtle bg-surface-sunken p-3"
               >
-                {t.drill.closeButton}
-              </button>
-            </div>
+                <View className="flex-1">
+                  <Text className="text-xs font-semibold text-ink">
+                    "{item.phrase.form}"
+                  </Text>
+                  <Text className="text-xs text-muted">{item.phrase.meaning}</Text>
+                </View>
+                <View
+                  className={`rounded-lg border px-2 py-0.5 ${
+                    item.result === 'remembered'
+                      ? 'border-accent-sage/20 bg-card-sage'
+                      : 'border-primary/20 bg-card-warm'
+                  }`}
+                >
+                  <Text
+                    className={`text-xs font-semibold capitalize ${
+                      item.result === 'remembered' ? 'text-accent-sage' : 'text-primary'
+                    }`}
+                  >
+                    {item.result === 'remembered' ? t.recap.unassisted : t.recap.assisted} (
+                    {item.modality})
+                  </Text>
+                </View>
+              </View>
+            ))}
+          </View>
+
+          <Button label={t.drill.closeButton} onPress={handleFinish} size="lg" />
+        </ScrollView>
+      ) : currentPhrase ? (
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{ gap: 20, paddingBottom: 16 }}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View className="items-center gap-2.5 rounded-2xl border border-border-subtle bg-surface-sunken p-6">
+            <Text className="text-center text-xs font-semibold uppercase tracking-wider text-muted">
+              {t.drill.howDoYouSay.replace(
+                '{language}',
+                t.languages[currentPhrase.language] || currentPhrase.language.toUpperCase()
+              )}
+            </Text>
+            <Text className="text-center font-display text-2xl font-bold text-ink">
+              "{currentPhrase.meaning}"
+            </Text>
+            <Text className="text-center text-xs text-muted">{currentPhrase.usageNote}</Text>
+          </View>
+
+          {!revealed ? (
+            <View className="items-center gap-3">
+              {interimText ? (
+                <View className="w-full rounded-xl border border-primary/20 bg-card-warm p-3">
+                  <Text className="text-center text-xs italic text-primary">
+                    {t.common.hearingYou} "{interimText}..."
+                  </Text>
+                </View>
+              ) : null}
+
+              {!showTypedInput ? (
+                <View className="items-center gap-3">
+                  <Pressable
+                    onPress={isListening ? handleStopListening : handleStartListening}
+                    accessibilityRole="button"
+                    accessibilityLabel={isListening ? t.live.listening : t.live.tapToSpeak}
+                    className={`h-16 w-16 items-center justify-center rounded-full ${
+                      isListening ? 'bg-red-600' : 'bg-primary'
+                    } active:opacity-80`}
+                  >
+                    {isListening ? (
+                      <MicOff size={28} color="#ffffff" />
+                    ) : (
+                      <Mic size={28} color="#ffffff" />
+                    )}
+                  </Pressable>
+                  <Text className="text-xs text-muted">
+                    {isListening ? t.live.listening : t.live.tapToSpeak}
+                  </Text>
+                </View>
+              ) : (
+                <View className="w-full flex-row items-end gap-2">
+                  <View className="flex-1">
+                    <Field
+                      placeholder={t.live.typePlaceholder}
+                      value={typedAnswer}
+                      onChangeText={setTypedAnswer}
+                      autoCapitalize="none"
+                      returnKeyType="done"
+                      onSubmitEditing={handleTypedSubmit}
+                      accessibilityLabel={t.live.typePlaceholder}
+                    />
+                  </View>
+                  <Button
+                    label={t.common.check}
+                    onPress={handleTypedSubmit}
+                    disabled={!typedAnswer.trim()}
+                    size="md"
+                  />
+                </View>
+              )}
+
+              <View className="flex-row flex-wrap items-center justify-center gap-3 pt-1">
+                <Pressable
+                  onPress={() => setShowTypedInput(prev => !prev)}
+                  accessibilityRole="button"
+                  className="flex-row items-center gap-1.5"
+                >
+                  <Keyboard size={14} color={iconColor('muted')} />
+                  <Text className="text-xs text-muted">
+                    {showTypedInput ? t.common.switchSpeech : t.common.typeInstead}
+                  </Text>
+                </Pressable>
+
+                <Text className="text-xs text-muted">·</Text>
+
+                <Pressable
+                  onPress={() => setRevealed(true)}
+                  accessibilityRole="button"
+                  className="flex-row items-center gap-1.5"
+                >
+                  <Eye size={14} color={iconColor('muted')} />
+                  <Text className="text-xs text-muted">{t.common.showAnswer}</Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : (
+            <View className="gap-5">
+              <View className="gap-3 rounded-2xl border border-primary/20 bg-card-warm p-5">
+                <View className="flex-row items-center justify-between gap-2">
+                  <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
+                    {t.common.targetPhrase}
+                  </Text>
+                  <Button
+                    label={t.common.listen}
+                    onPress={handlePlayAudio}
+                    size="sm"
+                    variant="secondary"
+                    className="border-primary/30"
+                    textClassName="text-primary"
+                    icon={<Volume2 size={14} color={iconColor('brand')} />}
+                  />
+                </View>
+
+                <Text className="font-display text-2xl font-bold text-ink">
+                  "{currentPhrase.form}"
+                </Text>
+
+                {userTranscript ? (
+                  <View className="rounded-xl border border-border-subtle bg-surface p-3">
+                    <Text className="text-xs text-ink">
+                      <Text className="text-muted">{t.common.yourProduction} </Text>
+                      <Text className="font-semibold">"{userTranscript}"</Text>
+                    </Text>
+                  </View>
+                ) : null}
+              </View>
+
+              <View className="gap-2">
+                <SectionLabel className="text-center">{t.common.howWasRecall}</SectionLabel>
+                <View className="flex-row gap-3">
+                  <View className="flex-1">
+                    <Button
+                      label={t.common.neededHelp}
+                      onPress={() => recordEvaluation('supported')}
+                      variant="secondary"
+                      icon={<AlertCircle size={16} color={iconColor('brand')} />}
+                    />
+                  </View>
+                  <View className="flex-1">
+                    <Button
+                      label={t.common.recalledClearly}
+                      onPress={() => recordEvaluation('remembered')}
+                      icon={<Check size={16} color="#ffffff" />}
+                    />
+                  </View>
+                </View>
+              </View>
+            </View>
           )}
-        </div>
-      </div>
-    </div>
+        </ScrollView>
+      ) : (
+        <Text className="py-8 text-center text-sm text-muted">No phrases due.</Text>
+      )}
+    </Sheet>
   );
 };

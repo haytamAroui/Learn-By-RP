@@ -1,7 +1,10 @@
 import React from 'react';
-import { ArrowRight, Sparkles, Clock, Repeat, Coffee, CheckCircle2 } from 'lucide-react';
+import { ScrollView, Text, View } from 'react-native';
+import { ArrowRight, Clock, Repeat } from 'lucide-react-native';
 import { MissionDefinition, PhraseItem, SessionRecord } from '../types';
 import { useI18n } from '../features/i18n';
+import { Button, Card, Pill } from './ui';
+import { iconColor } from '../design/iconColor';
 
 interface TalkScreenProps {
   currentLanguageName: string;
@@ -12,6 +15,7 @@ interface TalkScreenProps {
   onStartMission: (mission: MissionDefinition) => void;
   onExploreMissions: () => void;
   onPracticeDue: () => void;
+  onOpenSettings?: () => void;
 }
 
 export const TalkScreen: React.FC<TalkScreenProps> = ({
@@ -22,7 +26,8 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
   duePhrases,
   onStartMission,
   onExploreMissions,
-  onPracticeDue
+  onPracticeDue,
+  onOpenSettings,
 }) => {
   const { t } = useI18n();
 
@@ -35,134 +40,146 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
       : t.talk.allCaughtUp;
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 sm:space-y-8 px-3.5 py-4 sm:py-8 sm:px-6">
-      {/* 1. Natural Editorial Greeting */}
-      <div>
-        <div className="text-xs font-medium text-muted flex items-center gap-1.5 flex-wrap">
-          <span>{currentLanguageName} {t.talk.tagPractice}</span>
-          <span>·</span>
-          <span>{t.modes[currentMode as 'guided' | 'immersion' | 'focused'] || currentMode}</span>
-        </div>
-        <h1 className="mt-1.5 font-display text-2xl sm:text-4xl font-medium tracking-tight text-heading text-balance leading-tight">
-          {t.talk.heading}
-        </h1>
-        <p className="mt-1.5 text-xs sm:text-sm text-body leading-relaxed">
-          {t.talk.subheading}
-        </p>
-      </div>
+    <View className="flex-1 bg-canvas">
+      <View className="flex-row items-center justify-between gap-3 border-b border-border-subtle px-3.5 py-2.5">
+        <Text className="font-display text-lg font-semibold tracking-tight text-ink">
+          {t.nav.brandTitle}
+        </Text>
+        {onOpenSettings ? (
+          <Button label="Settings" onPress={onOpenSettings} variant="ghost" size="sm" />
+        ) : null}
+      </View>
 
-      {/* 2. Primary Focal Anchor: Continue or Featured Mission Card */}
-      <div className="rounded-2xl border border-border-subtle bg-surface p-4 sm:p-7 shadow-xs transition-all hover:border-primary/30">
-        <div className="flex flex-col gap-4 sm:gap-6 sm:flex-row sm:items-start sm:justify-between">
-          <div className="space-y-2.5 sm:space-y-3">
-            <div className="text-xs text-muted flex items-center gap-1.5 flex-wrap">
-              <span className="font-semibold text-heading">{featuredMission.neighborhood}</span>
-              <span>·</span>
-              <span>{featuredMission.estimatedMinutes} {t.common.minutes}</span>
-              <span>·</span>
-              <span>{t.common.level} {featuredMission.levelRange}</span>
-            </div>
+      <ScrollView contentContainerStyle={{ padding: 14, paddingBottom: 28, gap: 22 }}>
+        <View className="gap-1.5">
+          <View className="flex-row flex-wrap items-center gap-1.5">
+            <Text className="text-xs font-medium text-muted">
+              {currentLanguageName} {t.talk.tagPractice}
+            </Text>
+            <Text className="text-muted">·</Text>
+            <Text className="text-xs font-medium text-muted">
+              {t.modes[currentMode as 'guided' | 'immersion' | 'focused'] || currentMode}
+            </Text>
+          </View>
+          <Text className="font-display text-2xl font-medium leading-tight tracking-tight text-ink">
+            {t.talk.heading}
+          </Text>
+          <Text className="text-xs leading-relaxed text-body">{t.talk.subheading}</Text>
+        </View>
 
-            <h2 className="font-display text-xl sm:text-2xl font-semibold text-heading tracking-tight leading-snug">
-              {featuredMission.title}
-            </h2>
+        <Card className="gap-4 p-5">
+        <View className="gap-2.5">
+          <View className="flex-row flex-wrap items-center gap-1.5">
+            <Text className="text-xs font-semibold text-ink">
+              {featuredMission.neighborhood}
+            </Text>
+            <Text className="text-muted">·</Text>
+            <Text className="text-xs text-muted">
+              {featuredMission.estimatedMinutes} {t.common.minutes}
+            </Text>
+            <Text className="text-muted">·</Text>
+            <Text className="text-xs text-muted">
+              {t.common.level} {featuredMission.levelRange}
+            </Text>
+          </View>
 
-            <p className="text-xs sm:text-sm leading-relaxed text-body">
-              {featuredMission.setting}
-            </p>
+          <Text className="font-display text-xl font-semibold leading-snug tracking-tight text-ink">
+            {featuredMission.title}
+          </Text>
 
-            <div className="pt-1">
-              <span className="text-xs font-semibold text-heading">{t.common.goal} </span>
-              <span className="text-xs text-body">{featuredMission.learnerGoal}</span>
-            </div>
+          <Text className="text-sm leading-relaxed text-body">{featuredMission.setting}</Text>
 
-            {featuredMission.transferReason && (
-              <div className="flex items-start gap-2 rounded-xl bg-card-warm p-3 text-xs text-primary-dark dark:text-primary-light border border-primary/10">
-                <Repeat className="mt-0.5 h-3.5 w-3.5 shrink-0 text-primary" />
-                <span>
-                  <strong>{t.common.connectedLoop} </strong>
-                  {featuredMission.transferReason}
-                </span>
-              </div>
-            )}
-          </div>
-        </div>
+          <View className="pt-1 flex-row flex-wrap items-baseline gap-1">
+            <Text className="text-xs font-semibold text-ink">{t.common.goal} </Text>
+            <Text className="text-xs text-body">{featuredMission.learnerGoal}</Text>
+          </View>
 
-        <div className="mt-5 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3.5 border-t border-border-subtle pt-4 sm:pt-5">
-          <div className="text-xs text-muted">
-            {t.common.speakingWith} <strong className="text-heading font-medium">{featuredMission.character.name}</strong> ({featuredMission.character.role})
-          </div>
+          {featuredMission.transferReason ? (
+            <View className="flex-row items-start gap-2 rounded-xl border border-primary/10 bg-card-warm p-3">
+              <Repeat size={14} color={iconColor('brand')} style={{ marginTop: 1 }} />
+              <Text className="flex-1 text-xs text-primary-dark dark:text-primary">
+                <Text className="font-semibold">{t.common.connectedLoop} </Text>
+                {featuredMission.transferReason}
+              </Text>
+            </View>
+          ) : null}
+        </View>
 
-          <button
-            onClick={() => onStartMission(featuredMission)}
-            className="flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition-all hover:bg-primary-dark active:scale-98 w-full sm:w-auto"
-          >
-            <span>{t.talk.startConversation}</span>
-            <ArrowRight className="h-4 w-4" />
-          </button>
-        </div>
-      </div>
+        <View className="gap-3.5 border-t border-border-subtle pt-4">
+          <Text className="text-xs text-muted">
+            {t.common.speakingWith}{' '}
+            <Text className="font-medium text-ink">{featuredMission.character.name}</Text> (
+            {featuredMission.character.role})
+          </Text>
 
-      {/* 3. Secondary Actions Grid */}
-      <div className="grid gap-4 sm:grid-cols-2">
-        {/* Due phrases card */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border-subtle bg-surface p-4 sm:p-5 transition-all hover:border-primary/20">
-          <div>
-            <div className="text-xs font-medium text-muted">{t.talk.spacedRevisit}</div>
-            <h3 className="mt-1 font-display text-lg font-semibold text-heading">
+          <Button
+            label={t.talk.startConversation}
+            onPress={() => onStartMission(featuredMission)}
+            size="md"
+            icon={<ArrowRight size={16} color="#ffffff" />}
+          />
+        </View>
+      </Card>
+
+      <View className="gap-4">
+        <Card className="gap-3">
+          <View className="gap-1">
+            <Text className="text-xs font-medium text-muted">{t.talk.spacedRevisit}</Text>
+            <Text className="font-display text-lg font-semibold text-ink">
               {t.talk.practiseDueTitle}
-            </h3>
-            <p className="mt-1 text-xs text-body">
-              {dueSummary}
-            </p>
+            </Text>
+            <Text className="text-xs text-body">{dueSummary}</Text>
+          </View>
 
-            {duePhrases.length > 0 && (
-              <ul className="mt-3 space-y-1.5 text-xs text-heading">
-                {duePhrases.slice(0, 2).map(p => (
-                  <li key={p.id} className="flex items-center gap-2">
-                    <span className="h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                    <span className="font-medium">"{p.form}"</span>
-                    <span className="text-muted truncate">— {p.meaning}</span>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+          {duePhrases.length > 0 ? (
+            <View className="gap-1.5">
+              {duePhrases.slice(0, 2).map(phrase => (
+                <View key={phrase.id} className="flex-row items-center gap-2">
+                  <View className="h-1.5 w-1.5 rounded-full bg-primary" />
+                  <Text className="text-xs font-medium text-ink">"{phrase.form}"</Text>
+                  <Text className="flex-1 text-xs text-muted" numberOfLines={1}>
+                    — {phrase.meaning}
+                  </Text>
+                </View>
+              ))}
+            </View>
+          ) : null}
 
-          <button
-            onClick={onPracticeDue}
+          <Button
+            label={t.talk.reviewButton.replace('{count}', String(duePhrases.length))}
+            onPress={onPracticeDue}
+            variant="secondary"
             disabled={duePhrases.length === 0}
-            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border-subtle py-2.5 text-xs font-medium text-heading transition-colors hover:bg-surface-hover disabled:opacity-40 active:scale-98"
-          >
-            <Clock className="h-3.5 w-3.5 text-muted" />
-            <span>{t.talk.reviewButton.replace('{count}', String(duePhrases.length))}</span>
-          </button>
-        </div>
+            icon={<Clock size={14} color={iconColor('muted')} />}
+          />
+        </Card>
 
-        {/* Connected Neighborhood Explore */}
-        <div className="flex flex-col justify-between rounded-2xl border border-border-subtle bg-surface p-4 sm:p-5 transition-all hover:border-primary/20">
-          <div>
-            <div className="text-xs font-medium text-muted">{t.talk.neighborhoodTitle}</div>
-            <h3 className="mt-1 font-display text-lg font-semibold text-heading">
+        <Card className="gap-3">
+          <View className="gap-1">
+            <Text className="text-xs font-medium text-muted">{t.talk.neighborhoodTitle}</Text>
+            <Text className="font-display text-lg font-semibold text-ink">
               {t.talk.neighborhoodHeading}
-            </h3>
-            <p className="mt-1 text-xs text-body leading-relaxed">
-              {t.talk.neighborhoodDesc}
-            </p>
-            <div className="mt-3 text-xs text-muted">
-              {t.talk.neighborhoodConsequence}
-            </div>
-          </div>
+            </Text>
+            <Text className="text-xs leading-relaxed text-body">{t.talk.neighborhoodDesc}</Text>
+            <Text className="text-xs text-muted">{t.talk.neighborhoodConsequence}</Text>
+          </View>
 
-          <button
-            onClick={onExploreMissions}
-            className="mt-4 flex w-full items-center justify-center gap-1.5 rounded-xl border border-border-subtle py-2.5 text-xs font-medium text-heading transition-colors hover:bg-surface-hover active:scale-98"
-          >
-            <span>{t.talk.browseAllButton}</span>
-            <ArrowRight className="h-3.5 w-3.5 text-muted" />
-          </button>
-        </div>
-      </div>
-    </div>
+          <Button
+            label={t.talk.browseAllButton}
+            onPress={onExploreMissions}
+            variant="secondary"
+            icon={<ArrowRight size={14} color={iconColor('muted')} />}
+          />
+        </Card>
+      </View>
+
+        {lastSession ? (
+          <Pill
+            label={`${lastSession.passages.length} turns · ${lastSession.taskOutcome.replace(/_/g, ' ')}`}
+            tone="sage"
+          />
+        ) : null}
+      </ScrollView>
+    </View>
   );
 };

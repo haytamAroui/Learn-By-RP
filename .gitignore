@@ -6,3 +6,28 @@ coverage/
 *.log
 .env*
 !.env.example
+
+# Expo / native build output
+.expo/
+.expo-shared/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+web-build/
+android/
+ios/
+.data/
+
+# Playwright
+test-results/
+playwright-report/
+blob-report/
+
+# Baseline PNGs are deliberately NOT ignored.
+# Excluding them makes `--update-snapshots` a local convenience: the gate then
+# passes on any machine because it has nothing to compare against, and fails on CI
+# because its baselines do not exist. A visual gate that is not in version control
+# is not a gate.

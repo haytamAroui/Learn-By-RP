@@ -1,20 +1,21 @@
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useState } from "react";
+import { Pressable, ScrollView, Text, View } from "react-native";
+import { ChevronRight, Clock } from "lucide-react-native";
+import { PhraseItem, SessionRecord, LearningObservation } from "../types";
 import {
-  Clock,
-  CheckCircle2,
-  ChevronRight,
-  FileText,
-  Trash2,
-  EyeOff,
-  ShieldCheck,
-  ArrowUpRight,
-  Sparkles,
-  Repeat,
-  Layers
-} from 'lucide-react';
-import { PhraseItem, SessionRecord, LearningObservation } from '../types';
-import { COMMUNICATIVE_SKILLS_CATALOG, CommunicativeSkillMeta } from '../data/missions';
-import { useI18n } from '../features/i18n';
+  COMMUNICATIVE_SKILLS_CATALOG,
+  CommunicativeSkillMeta,
+} from "../data/missions";
+import { useI18n } from "../features/i18n";
+import { SKILL_POLICY } from "../features/learning/policy";
+import {
+  inferLegacySkillEvidence,
+  projectSkillsV2,
+} from "../features/learning/skillProjection";
+import { SkillProjectionV2 } from "../types";
+import { Button, Card, EmptyState, SectionLabel } from "./ui";
+import { Sheet } from "./Sheet";
+import { iconColor } from "../design/iconColor";
 
 interface ProgressScreenProps {
   phrases: PhraseItem[];
@@ -25,478 +26,623 @@ interface ProgressScreenProps {
   onHideObservation: (obsId: string) => void;
 }
 
+/** `skills` leads: action before analytics. `Ready to practise` sits above these. */
+type ProgressTab = "skills" | "phrases" | "history";
+
+const SKILL_STATUS_TONE = {
+  steady: "bg-card-sage border-accent-sage/20 text-accent-sage",
+  growing: "bg-card-sky border-accent-sky/20 text-accent-sky",
+  supported: "bg-card-warm border-primary/20 text-primary",
+  new: "border-border-subtle bg-surface text-muted",
+} as const;
+
 export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   phrases,
   sessions,
   observations,
   onSelectSession,
   onDisputeObservation,
-  onHideObservation
+  onHideObservation,
 }) => {
   const { t } = useI18n();
-  const [selectedTab, setSelectedTab] = useState<'phrases' | 'skills' | 'history'>('phrases');
+  const [selectedTab, setSelectedTab] = useState<ProgressTab>("skills");
   const [selectedPhrase, setSelectedPhrase] = useState<PhraseItem | null>(null);
-  const [selectedSkill, setSelectedSkill] = useState<CommunicativeSkillMeta | null>(null);
+  const [selectedSkill, setSelectedSkill] =
+    useState<CommunicativeSkillMeta | null>(null);
 
-  // Group phrases: due first, then steady, growing, supported, new
-  const duePhrases = phrases.filter(p => p.scheduling.due);
-  const otherPhrases = phrases.filter(p => !p.scheduling.due);
+  const duePhrases = useMemo(
+    () => phrases.filter((p) => p.scheduling.due),
+    [phrases],
+  );
+
+  const phraseObservations = useMemo(() => {
+    if (!selectedPhrase) return [];
+    const form = selectedPhrase.form.toLowerCase();
+    return observations.filter(
+      (o) =>
+        o.itemId === selectedPhrase.id ||
+        o.candidateForm.toLowerCase() === form,
+    );
+  }, [observations, selectedPhrase]);
+
+  /**
+   * Skill evidence comes from the validated contract, not from matching the
+   * learner's words against a skill's sample phrases. Histories recorded before
+   * that contract existed are carried through as `legacy_inferred`, which is shown
+   * but can never on its own mark a skill steady.
+   */
+  const skillEvidence = useMemo(() => {
+    if (!selectedSkill) return [];
+    return inferLegacySkillEvidence(observations).filter(
+      (o) => o.skillId === selectedSkill.id,
+    );
+  }, [observations, selectedSkill]);
+
+  const skillStats = useMemo(() => {
+    const map = new Map<string, SkillProjectionV2>();
+    for (const projection of projectSkillsV2(
+      inferLegacySkillEvidence(observations),
+    )) {
+      map.set(projection.skillId, projection);
+    }
+    return map;
+  }, [observations]);
+
+  const tabs: Array<{
+    id: ProgressTab;
+    label: string;
+    /** Compact label for the tab strip; `label` is the accessible full name. */
+    short: string;
+    count: number;
+  }> = [
+    {
+      id: "phrases",
+      label: t.progress.tabPhrases,
+      short: t.progress.tabPhrasesShort,
+      count: phrases.length,
+    },
+    {
+      id: "skills",
+      label: t.progress.tabSkills,
+      short: t.progress.tabSkillsShort,
+      count: COMMUNICATIVE_SKILLS_CATALOG.length,
+    },
+    {
+      id: "history",
+      label: t.progress.tabHistory,
+      short: t.progress.tabHistoryShort,
+      count: sessions.length,
+    },
+  ];
 
   return (
-    <div className="mx-auto max-w-4xl space-y-5 sm:space-y-8 px-3.5 py-4 sm:py-8 sm:px-6">
-      <div>
-        <h1 className="font-display text-2xl sm:text-3xl font-medium tracking-tight text-heading">
-          {t.progress.heading}
-        </h1>
-        <p className="mt-1 text-xs sm:text-sm text-body">
-          {t.progress.subheading}
-        </p>
-      </div>
+    <View className="flex-1 bg-canvas">
+      <ScrollView
+        contentContainerStyle={{ padding: 14, paddingBottom: 28, gap: 18 }}
+      >
+        <View className="gap-1">
+          <Text className="font-display text-2xl font-medium tracking-tight text-ink">
+            {t.progress.heading}
+          </Text>
+          <Text className="text-xs text-body">{t.progress.subheading}</Text>
+        </View>
 
-      {/* Tabs */}
-      <div className="flex border-b border-border-subtle text-xs sm:text-sm font-medium overflow-x-auto no-scrollbar gap-1 sm:gap-4">
-        <button
-          onClick={() => setSelectedTab('phrases')}
-          className={`pb-2.5 sm:pb-3 px-2.5 sm:px-2 transition-colors whitespace-nowrap shrink-0 ${
-            selectedTab === 'phrases'
-              ? 'border-b-2 border-primary text-heading font-semibold'
-              : 'text-muted hover:text-heading'
-          }`}
+        <View
+          accessibilityRole="tablist"
+          className="flex-row gap-1 border-b border-border-subtle"
         >
-          {t.progress.tabPhrases} ({phrases.length})
-        </button>
-        <button
-          onClick={() => setSelectedTab('skills')}
-          className={`pb-2.5 sm:pb-3 px-2.5 sm:px-2 transition-colors whitespace-nowrap shrink-0 ${
-            selectedTab === 'skills'
-              ? 'border-b-2 border-primary text-heading font-semibold'
-              : 'text-muted hover:text-heading'
-          }`}
-        >
-          {t.progress.tabSkills} ({COMMUNICATIVE_SKILLS_CATALOG.length})
-        </button>
-        <button
-          onClick={() => setSelectedTab('history')}
-          className={`pb-2.5 sm:pb-3 px-2.5 sm:px-2 transition-colors whitespace-nowrap shrink-0 ${
-            selectedTab === 'history'
-              ? 'border-b-2 border-primary text-heading font-semibold'
-              : 'text-muted hover:text-heading'
-          }`}
-        >
-          {t.progress.tabHistory} ({sessions.length})
-        </button>
-      </div>
+          {tabs.map((tab) => {
+            const isActive = selectedTab === tab.id;
+            return (
+              <Pressable
+                key={tab.id}
+                onPress={() => setSelectedTab(tab.id)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: isActive }}
+                // The full name is what gets announced; the visible label is short
+                // enough not to truncate at 390px.
+                accessibilityLabel={`${tab.label} (${tab.count})`}
+                className={`flex-1 border-b-2 px-1 pb-2.5 ${
+                  isActive ? "border-primary" : "border-transparent"
+                }`}
+              >
+                <Text
+                  numberOfLines={1}
+                  className={`text-center text-xs ${
+                    isActive
+                      ? "font-semibold text-ink"
+                      : "font-medium text-muted"
+                  }`}
+                >
+                  {tab.short} ({tab.count})
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
 
-      {selectedTab === 'phrases' && (
-        <div className="space-y-6">
-          {/* Due section */}
-          {duePhrases.length > 0 && (
-            <div className="space-y-3">
-              <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-primary">
-                <Clock className="h-3.5 w-3.5" />
-                <span>{t.progress.readyToPractise} ({duePhrases.length})</span>
-              </div>
+        {selectedTab === "phrases" ? (
+          <View className="gap-6">
+            {duePhrases.length > 0 ? (
+              <View className="gap-3">
+                <View className="flex-row items-center gap-2">
+                  <Clock size={14} color={iconColor("brand")} />
+                  <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
+                    {t.progress.readyToPractise} ({duePhrases.length})
+                  </Text>
+                </View>
 
-              <div className="grid gap-3 sm:grid-cols-2">
-                {duePhrases.map(phrase => (
-                  <div
+                {duePhrases.map((phrase) => (
+                  <Pressable
                     key={phrase.id}
-                    onClick={() => setSelectedPhrase(phrase)}
-                    className="cursor-pointer rounded-2xl border border-primary/20 bg-card-warm p-4 transition-all hover:border-primary hover:shadow-xs"
+                    onPress={() => setSelectedPhrase(phrase)}
+                    accessibilityRole="button"
+                    className="gap-3 rounded-2xl border border-primary/20 bg-card-warm p-4 active:opacity-80"
                   >
-                    <div className="flex items-start justify-between">
-                      <div>
-                        <div className="font-semibold text-heading">"{phrase.form}"</div>
-                        <div className="mt-0.5 text-xs text-muted">{phrase.meaning}</div>
-                      </div>
-                      <span className="rounded-lg bg-primary px-2 py-0.5 text-[10px] font-semibold text-white shadow-2xs">
+                    <View className="flex-row items-start justify-between gap-3">
+                      <View className="flex-1">
+                        <Text className="font-semibold text-ink">
+                          "{phrase.form}"
+                        </Text>
+                        <Text className="mt-0.5 text-xs text-muted">
+                          {phrase.meaning}
+                        </Text>
+                      </View>
+                      <View className="rounded-lg bg-primary px-2 py-0.5">
+                        <Text className="text-xs font-semibold text-white">
+                          {t.progress.reviewDue}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="flex-row items-center justify-between border-t border-border-subtle pt-2">
+                      <Text className="text-xs capitalize text-muted">
+                        {phrase.recallStatus}
+                      </Text>
+                      <Text className="text-xs text-muted">
                         {t.progress.reviewDue}
-                      </span>
-                    </div>
-
-                    <div className="mt-3 flex items-center justify-between border-t border-border-subtle pt-2 text-[11px] text-muted">
-                      <span className="capitalize">{phrase.recallStatus}</span>
-                      <span>{t.progress.reviewDue}</span>
-                    </div>
-                  </div>
+                      </Text>
+                    </View>
+                  </Pressable>
                 ))}
-              </div>
-            </div>
-          )}
+              </View>
+            ) : null}
 
-          {/* All phrases inventory */}
-          <div className="space-y-3">
-            <div className="text-xs font-semibold uppercase tracking-wider text-muted">
-              {t.common.allTrackedVocabulary} ({phrases.length})
-            </div>
+            <View className="gap-3">
+              <SectionLabel>
+                {t.common.allTrackedVocabulary} ({phrases.length})
+              </SectionLabel>
 
-            <div className="space-y-2">
-              {phrases.map(phrase => {
-                return (
-                  <div
-                    key={phrase.id}
-                    onClick={() => setSelectedPhrase(phrase)}
-                    className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 cursor-pointer rounded-2xl border border-border-subtle bg-surface p-3.5 sm:p-4 transition-all hover:border-primary/30 active:scale-99"
-                  >
-                    <div className="space-y-1">
-                      <div className="flex items-center gap-1.5 flex-wrap">
-                        <span className="font-medium text-heading">"{phrase.form}"</span>
-                        <span className="text-xs text-muted">·</span>
-                        <span className="text-xs text-body">{phrase.meaning}</span>
-                      </div>
-                      <div className="text-xs text-muted">
-                        {phrase.stats.unassistedCount > 0 ? (
-                          <span className="text-accent-sage font-medium">
-                            {t.progress.spokenCount.replace('{count}', String(phrase.stats.unassistedCount))}
-                          </span>
-                        ) : phrase.stats.assistedCount > 0 ? (
-                          <span>{t.progress.supportedTitle} ({phrase.stats.assistedCount})</span>
-                        ) : (
-                          <span>{t.progress.newTitle}</span>
+              {phrases.map((phrase) => (
+                <Pressable
+                  key={phrase.id}
+                  onPress={() => setSelectedPhrase(phrase)}
+                  accessibilityRole="button"
+                  className="flex-row items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-surface p-4 active:opacity-80"
+                >
+                  <View className="flex-1 gap-1">
+                    <View className="flex-row flex-wrap items-center gap-1.5">
+                      <Text className="text-sm font-medium text-ink">
+                        "{phrase.form}"
+                      </Text>
+                      <Text className="text-muted">·</Text>
+                      <Text
+                        className="flex-1 text-xs text-body"
+                        numberOfLines={1}
+                      >
+                        {phrase.meaning}
+                      </Text>
+                    </View>
+                    {phrase.stats.unassistedCount > 0 ? (
+                      <Text className="text-xs font-medium text-accent-sage">
+                        {t.progress.spokenCount.replace(
+                          "{count}",
+                          String(phrase.stats.unassistedCount),
                         )}
-                      </div>
-                    </div>
+                      </Text>
+                    ) : phrase.stats.assistedCount > 0 ? (
+                      <Text className="text-xs text-muted">
+                        {t.progress.supportedTitle} (
+                        {phrase.stats.assistedCount})
+                      </Text>
+                    ) : (
+                      <Text className="text-xs text-muted">
+                        {t.progress.newTitle}
+                      </Text>
+                    )}
+                  </View>
 
-                    <div className="flex items-center justify-between sm:justify-end gap-3 pt-1 sm:pt-0 border-t sm:border-t-0 border-border-subtle">
-                      <div className="text-left sm:text-right text-xs">
-                        <div className="font-medium capitalize text-heading">{phrase.recallStatus}</div>
-                        <div className="text-[11px] text-faint font-mono-numbers">
-                          {phrase.scheduling.intervalDays}d interval
-                        </div>
-                      </div>
-                      <ChevronRight className="h-4 w-4 text-faint" />
-                    </div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-        </div>
-      )}
+                  <View className="items-end gap-1">
+                    <Text className="text-xs font-medium capitalize text-ink">
+                      {phrase.recallStatus}
+                    </Text>
+                    <Text className="text-xs text-muted">
+                      {phrase.scheduling.intervalDays}d
+                    </Text>
+                    <ChevronRight size={16} color={iconColor("muted")} />
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+        ) : null}
 
-      {selectedTab === 'skills' && (
-        <div className="space-y-4">
-          <div className="rounded-2xl bg-surface p-4 text-xs text-body border border-border-subtle">
-            <strong className="text-heading font-medium">{t.progress.communicativeSkillsTitle}: </strong>
-            {t.progress.subheading}
-          </div>
+        {selectedTab === "skills" ? (
+          <View className="gap-3">
+            <View className="rounded-2xl border border-border-subtle bg-surface p-4">
+              <Text className="text-xs text-body">
+                <Text className="font-medium text-ink">
+                  {t.progress.communicativeSkillsTitle}:{" "}
+                </Text>
+                {t.progress.subheading}
+              </Text>
+            </View>
 
-          <div className="space-y-3">
-            {COMMUNICATIVE_SKILLS_CATALOG.map(skill => {
-              const matchingObs = observations.filter(o => {
-                const quoteLower = (o.quote || '').toLowerCase();
-                const formLower = (o.candidateForm || '').toLowerCase();
-                return skill.samplePhrases.some(
-                  sp => quoteLower.includes(sp.toLowerCase().slice(0, 8)) || formLower.includes(sp.toLowerCase().slice(0, 8))
-                );
-              });
+            {COMMUNICATIVE_SKILLS_CATALOG.map((skill) => {
+              const projection = skillStats.get(skill.id);
 
-              const unassistedCount = matchingObs.filter(o => o.retrieval === 'unassisted').length;
-              const contexts = new Set(matchingObs.map(o => o.sessionId));
+              // Status comes from the projection, never from a count rendered next
+              // to it. A skill with one observation is not an ability, and the row
+              // says what is still missing rather than implying a level.
+              const status = (projection?.status ??
+                "new") as keyof typeof SKILL_STATUS_TONE;
 
-              let status: 'emerging' | 'demonstrated' | 'steady' = 'emerging';
-              if (contexts.size >= 2 && unassistedCount >= 2) {
-                status = 'steady';
-              } else if (unassistedCount >= 1) {
-                status = 'demonstrated';
-              }
+              const contextCount = projection?.independentContexts.length ?? 0;
+              const dayCount = projection?.independentDays.length ?? 0;
+
+              /*
+  The badge must not reuse the sentence printed directly above it.
+  This branch used `observedAcross` with a hardcoded 0, so a skill associated with 8
+  missions rendered "Observed across 8 connected scenes" on one line and "Observed
+  Across 0 Connected Scenes" in the badge beneath it. `newTitle` is the intended
+  label and is already translated in every locale.
+*/
+              const statusLabel =
+                status === "steady"
+                  ? t.progress.steadyTitle.split(" ")[0]
+                  : status === "growing"
+                    ? t.progress.growingTitle.split(" ")[0]
+                    : status === "supported"
+                      ? t.progress.supportedTitle.split(" ")[0]
+                      : t.progress.newTitle.split(" ")[0];
 
               return (
-                <div
+                <Pressable
                   key={skill.id}
-                  onClick={() => setSelectedSkill(skill)}
-                  className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer rounded-2xl border border-border-subtle bg-surface p-4 sm:p-5 transition-all hover:border-primary/30 hover:shadow-xs active:scale-99"
+                  onPress={() => setSelectedSkill(skill)}
+                  accessibilityRole="button"
+                  className="flex-row items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-surface p-4 active:opacity-80"
                 >
-                  <div className="space-y-1.5">
-                    <div className="flex items-center gap-1.5 flex-wrap">
-                      <span className="text-[11px] font-semibold uppercase tracking-wider text-muted">
+                  <View className="flex-1 gap-1.5">
+                    <View className="flex-row flex-wrap items-center gap-1.5">
+                      <Text className="text-xs font-semibold uppercase tracking-wider text-muted">
                         {skill.category}
-                      </span>
-                      <span className="text-xs text-muted">·</span>
-                      <span className="text-xs text-body">
-                        {t.progress.observedAcross.replace('{count}', String(skill.associatedMissions.length))}
-                      </span>
-                    </div>
+                      </Text>
+                      <Text className="text-muted">·</Text>
+                      <Text className="text-xs text-body">
+                        {t.progress.observedAcross.replace(
+                          "{count}",
+                          String(skill.associatedMissions.length),
+                        )}
+                      </Text>
+                    </View>
 
-                    <h3 className="font-display text-base sm:text-lg font-semibold text-heading">
+                    <Text className="font-display text-base font-semibold text-ink">
                       {skill.name}
-                    </h3>
-
-                    <p className="text-xs text-body leading-relaxed max-w-xl">
+                    </Text>
+                    <Text className="text-xs leading-relaxed text-body">
                       {skill.description}
-                    </p>
+                    </Text>
 
-                    <div className="flex flex-wrap items-center gap-1.5 pt-1 text-[11px] text-muted">
-                      <span>{t.progress.samplePatterns}</span>
-                      {skill.patterns.map((p, idx) => (
-                        <code key={idx} className="rounded-md bg-surface-sunken px-1.5 py-0.5 font-mono text-[10px] text-heading border border-border-subtle">
-                          {p}
-                        </code>
+                    <View className="flex-row flex-wrap items-center gap-1.5 pt-1">
+                      <Text className="text-xs text-muted">
+                        {t.progress.samplePatterns}
+                      </Text>
+                      {skill.patterns.map((pattern, idx) => (
+                        <View
+                          key={`${pattern}-${idx}`}
+                          className="rounded-md border border-border-subtle bg-surface-sunken px-1.5 py-0.5"
+                        >
+                          <Text className="font-mono text-xs text-ink">
+                            {pattern}
+                          </Text>
+                        </View>
                       ))}
-                    </div>
-                  </div>
+                    </View>
+                  </View>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-border-subtle">
-                    <div className="text-left sm:text-right">
-                      <span
-                        className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize border ${
-                          status === 'steady'
-                            ? 'bg-card-sage text-accent-sage border-accent-sage/20'
-                            : status === 'demonstrated'
-                            ? 'bg-card-sky text-accent-sky border-accent-sky/20'
-                            : 'bg-card-warm text-primary border-primary/20'
-                        }`}
-                      >
-                        {status === 'steady' ? t.progress.steadyTitle.split(' ')[0] : status === 'demonstrated' ? t.progress.growingTitle.split(' ')[0] : t.progress.supportedTitle.split(' ')[0]}
-                      </span>
-                      <div className="mt-1 text-[11px] text-faint">
-                        {contexts.size} {t.common.evidence.toLowerCase()}
-                      </div>
-                    </div>
-                    <ChevronRight className="h-4 w-4 text-faint" />
-                  </div>
-                </div>
+                  <View className="items-end gap-1">
+                    <View
+                      className={`rounded-lg border px-2 py-1 ${SKILL_STATUS_TONE[status]}`}
+                    >
+                      <Text className="text-xs font-semibold capitalize">
+                        {statusLabel}
+                      </Text>
+                    </View>
+                    <Text className="text-xs text-muted">
+                      {status === "new"
+                        ? t.common.noEvidenceYet
+                        : status === "steady"
+                          ? `${contextCount} ${t.common.contextsLower} · ${dayCount} ${t.common.daysLower}`
+                          : `${contextCount}/${SKILL_POLICY.growingMinContexts} ${t.common.contextsLower}`}
+                    </Text>
+                    {/*
+                      A legacy-only history is weaker evidence and says so. Without
+                      this the learner cannot tell a reconstructed record from an
+                      observed one.
+                    */}
+                    {projection?.legacyInferredCount &&
+                    projection.validatedCount === 0 ? (
+                      <Text className="text-xs text-muted">
+                        {t.common.inferredFromHistory}
+                      </Text>
+                    ) : null}
+                    {projection?.reviewDue ? (
+                      <Text className="text-xs text-warning">
+                        {t.common.reviewDue}
+                      </Text>
+                    ) : null}
+                    <ChevronRight size={16} color={iconColor("muted")} />
+                  </View>
+                </Pressable>
               );
             })}
-          </div>
-        </div>
-      )}
+          </View>
+        ) : null}
 
-      {selectedTab === 'history' && (
-        <div className="space-y-3">
-          {sessions.length === 0 ? (
-            <div className="rounded-2xl border border-dashed border-border-subtle p-8 text-center text-sm text-muted">
-              {t.progress.noReceiptsYet}
-            </div>
-          ) : (
-            sessions.map(session => (
-              <div
-                key={session.id}
-                onClick={() => onSelectSession(session)}
-                className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 cursor-pointer rounded-2xl border border-border-subtle bg-surface p-4 sm:p-5 transition-all hover:border-primary/30 hover:shadow-xs active:scale-99"
-              >
-                <div className="space-y-1">
-                  <div className="flex items-center gap-1.5 flex-wrap text-xs text-muted">
-                    <span>{new Date(session.startedAt).toLocaleDateString()}</span>
-                    <span>·</span>
-                    <span className="capitalize">{t.modes[session.mode] || session.mode}</span>
-                    <span>·</span>
-                    <span>{session.passages.length} {t.common.turns}</span>
-                    {session.coldAttempt && (
-                      <>
-                        <span>·</span>
-                        <span className="text-accent-sage font-medium">{t.progress.coldAttempt}</span>
-                      </>
-                    )}
-                  </div>
+        {selectedTab === "history" ? (
+          <View className="gap-3">
+            {sessions.length === 0 ? (
+              <EmptyState message={t.progress.noReceiptsYet} />
+            ) : (
+              sessions.map((session) => (
+                <Pressable
+                  key={session.id}
+                  onPress={() => onSelectSession(session)}
+                  accessibilityRole="button"
+                  className="flex-row items-center justify-between gap-3 rounded-2xl border border-border-subtle bg-surface p-4 active:opacity-80"
+                >
+                  <View className="flex-1 gap-1">
+                    <View className="flex-row flex-wrap items-center gap-1.5">
+                      <Text className="text-xs text-muted">
+                        {new Date(session.startedAt).toLocaleDateString()}
+                      </Text>
+                      <Text className="text-muted">·</Text>
+                      <Text className="text-xs capitalize text-muted">
+                        {t.modes[session.mode] || session.mode}
+                      </Text>
+                      <Text className="text-muted">·</Text>
+                      <Text className="text-xs text-muted">
+                        {session.passages.length} {t.common.turns}
+                      </Text>
+                      {session.coldAttempt ? (
+                        <Text className="text-xs font-medium text-accent-sage">
+                          · {t.progress.coldAttempt}
+                        </Text>
+                      ) : null}
+                    </View>
 
-                  <h3 className="font-display text-base sm:text-lg font-semibold text-heading">
-                    {session.missionId.replace('mission-es-', 'Café / ').replace('-', ' ')}
-                  </h3>
+                    <Text className="font-display text-base font-semibold text-ink">
+                      {session.missionId
+                        .replace("mission-es-", "Café / ")
+                        .replace("-", " ")}
+                    </Text>
 
-                  <div className="text-xs text-body">
-                    {t.recap.communicativeOutcome}: <strong className="capitalize text-heading font-medium">{session.taskOutcome.replace('_', ' ')}</strong>
-                    {session.observations.length > 0 && ` · ${session.observations.length} ${t.common.evidence.toLowerCase()}`}
-                  </div>
-                </div>
+                    <Text className="text-xs text-body">
+                      {t.recap.communicativeOutcome}:{" "}
+                      <Text className="font-medium capitalize text-ink">
+                        {session.taskOutcome.replace("_", " ")}
+                      </Text>
+                      {session.observations.length > 0
+                        ? ` · ${session.observations.length} ${t.common.evidence.toLowerCase()}`
+                        : ""}
+                    </Text>
+                  </View>
 
-                <div className="flex items-center justify-end gap-2 pt-2 sm:pt-0 border-t sm:border-t-0 border-border-subtle">
-                  <span className="text-xs font-semibold text-primary">{t.progress.viewReceipt}</span>
-                  <ChevronRight className="h-4 w-4 text-primary" />
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      )}
+                  <View className="items-end gap-1">
+                    <Text className="text-xs font-semibold text-primary">
+                      {t.progress.viewReceipt}
+                    </Text>
+                    <ChevronRight size={16} color={iconColor("brand")} />
+                  </View>
+                </Pressable>
+              ))
+            )}
+          </View>
+        ) : null}
+      </ScrollView>
 
-      {/* Phrase Detail Modal */}
-      {selectedPhrase && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface border border-border-subtle p-6 shadow-xl text-heading">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-xs font-medium text-muted uppercase tracking-wider">
-                  {t.common.targetPhrase}
-                </span>
-                <h3 className="font-display text-2xl font-bold text-heading">
-                  "{selectedPhrase.form}"
-                </h3>
-                <p className="text-sm text-body">{selectedPhrase.meaning}</p>
-              </div>
-              <button
-                onClick={() => setSelectedPhrase(null)}
-                className="rounded-lg p-1 text-muted hover:bg-surface-hover hover:text-heading"
-              >
-                ✕
-              </button>
-            </div>
+      <Sheet
+        visible={Boolean(selectedPhrase)}
+        onClose={() => setSelectedPhrase(null)}
+        title={t.common.targetPhrase}
+      >
+        {selectedPhrase ? (
+          <>
+            <View className="gap-1">
+              <Text className="font-display text-2xl font-bold text-ink">
+                "{selectedPhrase.form}"
+              </Text>
+              <Text className="text-sm text-body">
+                {selectedPhrase.meaning}
+              </Text>
+            </View>
 
-            <div className="mt-4 rounded-xl bg-surface-sunken p-4 text-xs text-body space-y-1 border border-border-subtle">
-              <div><strong className="text-heading">Usage Note:</strong> {selectedPhrase.usageNote}</div>
-              <div><strong className="text-heading">Recall State:</strong> <span className="capitalize font-semibold text-heading">{selectedPhrase.recallStatus}</span></div>
-              <div><strong className="text-heading">Current Interval:</strong> {selectedPhrase.scheduling.intervalDays} days</div>
-            </div>
+            <View className="gap-1.5 rounded-xl border border-border-subtle bg-surface-sunken p-4">
+              <Text className="text-xs text-body">
+                <Text className="font-semibold text-ink">Usage Note: </Text>
+                {selectedPhrase.usageNote}
+              </Text>
+              <Text className="text-xs text-body">
+                <Text className="font-semibold text-ink">Recall State: </Text>
+                <Text className="font-semibold capitalize text-ink">
+                  {selectedPhrase.recallStatus}
+                </Text>
+              </Text>
+              <Text className="text-xs text-body">
+                <Text className="font-semibold text-ink">
+                  Current Interval:{" "}
+                </Text>
+                {selectedPhrase.scheduling.intervalDays} days
+              </Text>
+            </View>
 
-            <div className="mt-6 space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">
-                {t.recap.validatedEvidence}
-              </h4>
+            <View className="gap-3">
+              <SectionLabel>{t.recap.validatedEvidence}</SectionLabel>
 
-              {observations.filter(
-                o => o.itemId === selectedPhrase.id || o.candidateForm.toLowerCase() === selectedPhrase.form.toLowerCase()
-              ).length === 0 ? (
-                <p className="text-xs text-muted">
+              {phraseObservations.length === 0 ? (
+                <Text className="text-xs text-muted">
                   {t.recap.noPhrasesValidated}
-                </p>
+                </Text>
               ) : (
-                observations
-                  .filter(
-                    o => o.itemId === selectedPhrase.id || o.candidateForm.toLowerCase() === selectedPhrase.form.toLowerCase()
-                  )
-                  .map(obs => (
-                    <div
-                      key={obs.observationId}
-                      className="rounded-xl border border-border-subtle bg-surface-sunken p-3 text-xs space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-heading">
-                          "{obs.quote}"
-                        </span>
-                        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-                          obs.retrieval === 'unassisted'
-                            ? 'bg-card-sage text-accent-sage'
-                            : 'bg-card-warm text-primary'
-                        }`}>
-                          {obs.retrieval === 'unassisted' ? t.recap.unassisted : t.recap.assisted} ({obs.modality})
-                        </span>
-                      </div>
+                phraseObservations.map((obs) => (
+                  <View
+                    key={obs.observationId}
+                    className="gap-2 rounded-xl border border-border-subtle bg-surface-sunken p-3"
+                  >
+                    <View className="flex-row items-center justify-between gap-2">
+                      <Text className="flex-1 text-xs font-medium text-ink">
+                        "{obs.quote}"
+                      </Text>
+                      <View
+                        className={`rounded-md px-1.5 py-0.5 ${
+                          obs.retrieval === "unassisted"
+                            ? "bg-card-sage"
+                            : "bg-card-warm"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-semibold ${
+                            obs.retrieval === "unassisted"
+                              ? "text-accent-sage"
+                              : "text-primary"
+                          }`}
+                        >
+                          {obs.retrieval === "unassisted"
+                            ? t.recap.unassisted
+                            : t.recap.assisted}{" "}
+                          ({obs.modality})
+                        </Text>
+                      </View>
+                    </View>
 
-                      <div className="flex items-center justify-between text-[11px] text-muted">
-                        <span>{new Date(obs.recordedAt).toLocaleString()}</span>
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => onHideObservation(obs.observationId)}
-                            className="text-muted hover:text-heading"
-                          >
-                            {t.progress.hideEvidence}
-                          </button>
-                          <button
-                            onClick={() => onDisputeObservation(obs.observationId)}
-                            className="text-primary hover:underline"
-                          >
-                            {t.progress.disputeEvidence}
-                          </button>
-                        </div>
-                      </div>
-                    </div>
-                  ))
-              )}
-            </div>
-
-            <div className="mt-6 pt-4 border-t border-border-subtle flex justify-end">
-              <button
-                onClick={() => setSelectedPhrase(null)}
-                className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-primary-dark"
-              >
-                {t.common.close}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Skill Detail Modal */}
-      {selectedSkill && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4 backdrop-blur-xs">
-          <div className="max-h-[85vh] w-full max-w-lg overflow-y-auto rounded-2xl bg-surface border border-border-subtle p-6 shadow-xl text-heading">
-            <div className="flex items-start justify-between">
-              <div>
-                <span className="text-[11px] font-semibold text-primary uppercase tracking-wider">
-                  {selectedSkill.category}
-                </span>
-                <h3 className="font-display text-2xl font-bold text-heading">
-                  {selectedSkill.name}
-                </h3>
-                <p className="mt-1 text-xs text-body">{selectedSkill.description}</p>
-              </div>
-              <button
-                onClick={() => setSelectedSkill(null)}
-                className="rounded-lg p-1 text-muted hover:bg-surface-hover hover:text-heading"
-              >
-                ✕
-              </button>
-            </div>
-
-            <div className="mt-4 rounded-xl bg-surface-sunken p-4 text-xs space-y-2 border border-border-subtle">
-              <div className="font-semibold text-heading">{t.progress.samplePatterns}</div>
-              <ul className="list-disc pl-4 space-y-1 text-body">
-                {selectedSkill.patterns.map((p, idx) => (
-                  <li key={idx}><code className="font-mono text-xs text-heading">{p}</code></li>
-                ))}
-              </ul>
-            </div>
-
-            <div className="mt-6 space-y-3">
-              <h4 className="text-xs font-semibold uppercase tracking-wider text-muted">
-                {t.recap.validatedEvidence}
-              </h4>
-
-              {observations.filter(o => {
-                const quoteLower = (o.quote || '').toLowerCase();
-                const formLower = (o.candidateForm || '').toLowerCase();
-                return selectedSkill.samplePhrases.some(
-                  sp => quoteLower.includes(sp.toLowerCase().slice(0, 8)) || formLower.includes(sp.toLowerCase().slice(0, 8))
-                );
-              }).length === 0 ? (
-                <div className="rounded-xl border border-dashed border-border-subtle p-6 text-center text-xs text-muted">
-                  {t.progress.noReceiptsYet}
-                </div>
-              ) : (
-                observations
-                  .filter(o => {
-                    const quoteLower = (o.quote || '').toLowerCase();
-                    const formLower = (o.candidateForm || '').toLowerCase();
-                    return selectedSkill.samplePhrases.some(
-                      sp => quoteLower.includes(sp.toLowerCase().slice(0, 8)) || formLower.includes(sp.toLowerCase().slice(0, 8))
-                    );
-                  })
-                  .map(obs => (
-                    <div
-                      key={obs.observationId}
-                      className="rounded-xl border border-border-subtle bg-surface-sunken p-3 text-xs space-y-2"
-                    >
-                      <div className="flex items-center justify-between">
-                        <span className="font-medium text-heading">
-                          "{obs.quote}"
-                        </span>
-                        <span className={`rounded-md px-1.5 py-0.5 text-[10px] font-semibold ${
-                          obs.retrieval === 'unassisted'
-                            ? 'bg-card-sage text-accent-sage'
-                            : 'bg-card-warm text-primary'
-                        }`}>
-                          {obs.retrieval === 'unassisted' ? t.recap.unassisted : t.recap.assisted} ({obs.modality})
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-muted">
+                    <View className="flex-row items-center justify-between gap-2">
+                      <Text className="text-xs text-muted">
                         {new Date(obs.recordedAt).toLocaleString()}
-                      </div>
-                    </div>
-                  ))
+                      </Text>
+                      <View className="flex-row gap-3">
+                        <Button
+                          label={t.progress.hideEvidence}
+                          onPress={() => onHideObservation(obs.observationId)}
+                          variant="ghost"
+                          size="sm"
+                        />
+                        <Button
+                          label={t.progress.disputeEvidence}
+                          onPress={() =>
+                            onDisputeObservation(obs.observationId)
+                          }
+                          variant="ghost"
+                          size="sm"
+                        />
+                      </View>
+                    </View>
+                  </View>
+                ))
               )}
-            </div>
+            </View>
 
-            <div className="mt-6 pt-4 border-t border-border-subtle flex justify-end">
-              <button
-                onClick={() => setSelectedSkill(null)}
-                className="rounded-xl bg-primary px-4 py-2 text-xs font-semibold text-white shadow-xs hover:bg-primary-dark"
-              >
-                {t.common.close}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+            <Button
+              label={t.common.close}
+              onPress={() => setSelectedPhrase(null)}
+            />
+          </>
+        ) : null}
+      </Sheet>
+
+      <Sheet
+        visible={Boolean(selectedSkill)}
+        onClose={() => setSelectedSkill(null)}
+        title={selectedSkill?.category}
+      >
+        {selectedSkill ? (
+          <>
+            <View className="gap-1">
+              <Text className="font-display text-2xl font-bold text-ink">
+                {selectedSkill.name}
+              </Text>
+              <Text className="text-xs text-body">
+                {selectedSkill.description}
+              </Text>
+            </View>
+
+            <View className="gap-1.5 rounded-xl border border-border-subtle bg-surface-sunken p-4">
+              <Text className="text-xs font-semibold text-ink">
+                {t.progress.samplePatterns}
+              </Text>
+              {selectedSkill.patterns.map((pattern, idx) => (
+                <Text
+                  key={`${pattern}-${idx}`}
+                  className="font-mono text-xs text-ink"
+                >
+                  • {pattern}
+                </Text>
+              ))}
+            </View>
+
+            <View className="gap-3">
+              <SectionLabel>{t.recap.validatedEvidence}</SectionLabel>
+
+              {skillEvidence.length === 0 ? (
+                <EmptyState
+                  message={t.progress.noReceiptsYet}
+                  className="py-6"
+                />
+              ) : (
+                skillEvidence.map((obs) => (
+                  <View
+                    key={obs.id}
+                    className="gap-2 rounded-xl border border-border-subtle bg-surface p-3"
+                  >
+                    <View className="flex-row items-center justify-between gap-2">
+                      <Text className="flex-1 text-xs font-medium text-ink">
+                        "{obs.quote}"
+                      </Text>
+                      <View
+                        className={`rounded-md px-1.5 py-0.5 ${
+                          obs.retrieval === "unassisted"
+                            ? "bg-card-sage"
+                            : "bg-card-warm"
+                        }`}
+                      >
+                        <Text
+                          className={`text-xs font-semibold ${
+                            obs.retrieval === "unassisted"
+                              ? "text-accent-sage"
+                              : "text-primary"
+                          }`}
+                        >
+                          {obs.retrieval === "unassisted"
+                            ? t.recap.unassisted
+                            : t.recap.assisted}{" "}
+                          ({obs.modality})
+                        </Text>
+                      </View>
+                    </View>
+                    <Text className="text-xs text-muted">
+                      {new Date(obs.recordedAt).toLocaleString()}
+                    </Text>
+                  </View>
+                ))
+              )}
+            </View>
+
+            <Button
+              label={t.common.close}
+              onPress={() => setSelectedSkill(null)}
+            />
+          </>
+        ) : null}
+      </Sheet>
+    </View>
   );
 };

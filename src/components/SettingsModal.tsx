@@ -1,11 +1,35 @@
-import React, { useState, useRef } from 'react';
-import { Shield, Download, Upload, Trash2, CheckCircle2, AlertTriangle, Volume2, Globe, Sparkles, Sun, Moon } from 'lucide-react';
+import React, { useState } from 'react';
+import { Platform, Pressable, Switch, Text, View } from 'react-native';
+import { AlertTriangle, CheckCircle2, Download, Monitor, Moon, Shield, Sun, Trash2, Upload, Volume2 } from 'lucide-react-native';
+import * as DocumentPicker from 'expo-document-picker';
+import { File } from 'expo-file-system';
 import { UserPreferences, LanguageCode, UiLanguage, Mode } from '../types';
-import { ArchiveStorage } from '../features/archive/storage';
+import { archiveRepository } from '../features/archive/archiveRepository';
 import { useI18n, getTranslations } from '../features/i18n';
 import { useTheme } from '../features/theme';
+import { ThemePreference } from '../lib/themePreference';
+
+/**
+ * Appearance is a three-way choice. `system` is a real mode, so the option must
+ * exist here rather than being inferred from whichever theme is currently
+ * showing.
+ */
+const APPEARANCE_OPTIONS: Array<{
+  id: ThemePreference;
+  label: string;
+  Icon: typeof Sun;
+}> = [
+  { id: 'light', label: 'Light', Icon: Sun },
+  { id: 'dark', label: 'Dark', Icon: Moon },
+  { id: 'system', label: 'System', Icon: Monitor },
+];
+import { shareTextFile } from '../lib/share';
+import { Button, ChipRow, SectionLabel } from './ui';
+import { Sheet, ConfirmDialog } from './Sheet';
+import { iconColor } from '../design/iconColor';
 
 interface SettingsModalProps {
+  visible: boolean;
   preferences: UserPreferences;
   onSavePreferences: (prefs: UserPreferences) => void;
   onClearAllData: () => void;
@@ -13,428 +37,407 @@ interface SettingsModalProps {
   onClose: () => void;
 }
 
+const TARGET_LANGUAGE_FLAGS: Record<LanguageCode, string> = {
+  es: '🇪🇸',
+  fr: '🇫🇷',
+  de: '🇩🇪',
+  it: '🇮🇹',
+  ja: '🇯🇵',
+};
+
+const UI_LANGUAGE_FLAGS: Record<UiLanguage, string> = {
+  en: '🇬🇧',
+  fr: '🇫🇷',
+  es: '🇪🇸',
+  nl: '🇳🇱',
+};
+
 export const SettingsModal: React.FC<SettingsModalProps> = ({
+  visible,
   preferences,
   onSavePreferences,
   onClearAllData,
   onDataRestored,
-  onClose
+  onClose,
 }) => {
   const { setLanguage: setGlobalUiLanguage } = useI18n();
-  const { isDark, toggleTheme, setTheme } = useTheme();
+  const { isDark, preference, setPreference } = useTheme();
   const [prefs, setPrefs] = useState<UserPreferences>(preferences);
   const [exportNotice, setExportNotice] = useState<string | null>(null);
   const [importNotice, setImportNotice] = useState<{ text: string; success: boolean } | null>(null);
   const [confirmClear, setConfirmClear] = useState<boolean>(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
-  // Dynamic preview translations based on currently selected explanationLanguage
+  React.useEffect(() => {
+    if (visible) {
+      setPrefs(preferences);
+      setExportNotice(null);
+      setImportNotice(null);
+      setConfirmClear(false);
+    }
+  }, [visible, preferences]);
+
+  // Preview translations follow the currently selected explanation language.
   const t = getTranslations(prefs.explanationLanguage);
 
-  const handleExportJson = () => {
-    const json = ArchiveStorage.exportArchiveJson();
-    const blob = new Blob([json], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `mission-coach-archive-${new Date().toISOString().slice(0, 10)}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-    setExportNotice(t.recap.downloadSuccess || 'Archive downloaded.');
-    setTimeout(() => setExportNotice(null), 3500);
+  const patch = (updates: Partial<UserPreferences>) => {
+    setPrefs(prev => ({ ...prev, ...updates }));
   };
 
-  const handleImportFile = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleExportJson = async () => {
+    const json = await archiveRepository.exportArchiveJson();
+    const result = await shareTextFile(
+      `mission-coach-archive-${new Date().toISOString().slice(0, 10)}.json`,
+      json,
+      'application/json'
+    );
+    if (result.ok) {
+      setExportNotice(t.recap.downloadSuccess || 'Archive exported.');
+    } else {
+      setExportNotice('Export failed.');
+    }
+  };
 
-    const reader = new FileReader();
-    reader.onload = (event) => {
-      const content = event.target?.result as string;
-      const res = ArchiveStorage.importArchiveJson(content);
+  const handleImportFile = async () => {
+    try {
+      const picked = await DocumentPicker.getDocumentAsync({
+        type: ['application/json', 'text/plain', '*/*'],
+        copyToCacheDirectory: true,
+      });
+
+      if (picked.canceled) return;
+
+      const asset = picked.assets?.[0];
+      if (!asset) return;
+
+      const content = await readPickedFile(asset);
+      const res = await archiveRepository.importArchiveJson(content);
+
       if (res.success) {
-        setImportNotice({ text: res.message, success: true });
-        const restored = ArchiveStorage.getPreferences();
+        const restored = await archiveRepository.getPreferences();
         setPrefs(restored);
         setGlobalUiLanguage(restored.explanationLanguage);
-        if (onDataRestored) onDataRestored();
+        setImportNotice({ text: res.message, success: true });
+        onDataRestored?.();
       } else {
         setImportNotice({ text: res.message, success: false });
       }
-      setTimeout(() => setImportNotice(null), 5000);
-    };
-    reader.readAsText(file);
-    e.target.value = '';
+    } catch (e) {
+      setImportNotice({
+        text: e instanceof Error ? e.message : 'Failed to read archive file.',
+        success: false,
+      });
+    }
   };
 
   const handleSave = () => {
+    void archiveRepository.savePreferences(prefs);
     onSavePreferences(prefs);
-    ArchiveStorage.savePreferences(prefs);
     setGlobalUiLanguage(prefs.explanationLanguage);
     onClose();
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 p-0 sm:p-4 backdrop-blur-xs">
-      <div className="flex max-h-[92vh] w-full max-w-xl flex-col rounded-t-2xl sm:rounded-2xl bg-surface border border-border-subtle shadow-2xl overflow-hidden text-heading">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-border-subtle px-4 py-3 sm:px-6 sm:py-4">
-          <div>
-            <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-              {t.settings.subtitle}
-            </span>
-            <h2 className="font-display text-xl sm:text-2xl font-bold text-heading">
-              {t.settings.title}
-            </h2>
-          </div>
-          <button
-            onClick={onClose}
-            className="rounded-lg p-1.5 text-muted hover:bg-surface-hover hover:text-heading"
-            aria-label={t.common.close}
-          >
-            ✕
-          </button>
-        </div>
-
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-4 sm:space-y-6 text-xs text-heading">
-          {/* Theme & Display Mode */}
-          <div className="space-y-3">
-            <h3 className="font-semibold uppercase tracking-wider text-muted">
-              Appearance
-            </h3>
-            <div className="grid grid-cols-2 gap-3">
-              <button
-                type="button"
-                onClick={() => setTheme('light')}
-                className={`flex items-center justify-center gap-2 rounded-xl border p-3 font-medium transition-all ${
-                  !isDark
-                    ? 'border-primary bg-card-warm text-primary font-semibold ring-1 ring-primary'
-                    : 'border-border-subtle bg-surface text-muted hover:text-heading'
-                }`}
-              >
-                <Sun className="h-4 w-4" />
-                <span>Light (Warm Ivory)</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setTheme('dark')}
-                className={`flex items-center justify-center gap-2 rounded-xl border p-3 font-medium transition-all ${
-                  isDark
-                    ? 'border-primary bg-card-warm text-primary font-semibold ring-1 ring-primary'
-                    : 'border-border-subtle bg-surface text-muted hover:text-heading'
-                }`}
-              >
-                <Moon className="h-4 w-4" />
-                <span>Dark (Anthropic Slate)</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Language setup */}
-          <div className="space-y-3">
-            <h3 className="font-semibold uppercase tracking-wider text-muted">
-              {t.settings.sectionLang}
-            </h3>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="font-medium text-heading">{t.settings.targetLangLabel}</label>
-                <select
-                  value={prefs.learningLanguage}
-                  onChange={e =>
-                    setPrefs({ ...prefs, learningLanguage: e.target.value as LanguageCode })
-                  }
-                  className="mt-1 w-full rounded-xl border border-border-subtle bg-surface-sunken p-2.5 text-xs font-medium text-heading cursor-pointer focus:border-primary focus:outline-none"
+    <>
+      <Sheet
+        visible={visible}
+        onClose={onClose}
+        title={t.settings.title}
+        footer={
+          <View className="flex-row items-center gap-2">
+            <View className="flex-1">
+              <Button label={t.common.cancel} onPress={onClose} variant="secondary" size="sm" />
+            </View>
+            <View className="flex-1">
+              <Button label={t.settings.saveButton} onPress={handleSave} size="sm" />
+            </View>
+          </View>
+        }
+      >
+        <View className="gap-2">
+          <SectionLabel>Appearance</SectionLabel>
+          <View className="flex-row gap-2.5">
+            {APPEARANCE_OPTIONS.map(option => {
+              // Selection is by saved preference, not by resolved theme: on
+              // "System" with a dark device, two options would otherwise light up.
+              const isActive = preference === option.id;
+              return (
+                <Pressable
+                  key={option.id}
+                  onPress={() => setPreference(option.id)}
+                  accessibilityRole="radio"
+                  accessibilityState={{ selected: isActive }}
+                  accessibilityLabel={option.label}
+                  className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl border p-3 ${
+                    isActive ? 'border-primary bg-card-warm' : 'border-border-subtle bg-surface'
+                  }`}
                 >
-                  <option value="es">🇪🇸 {t.languages.es}</option>
-                  <option value="fr">🇫🇷 {t.languages.fr}</option>
-                  <option value="de">🇩🇪 {t.languages.de}</option>
-                  <option value="it">🇮🇹 {t.languages.it}</option>
-                  <option value="ja">🇯🇵 {t.languages.ja}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-medium text-heading">{t.settings.uiLangLabel}</label>
-                <select
-                  value={prefs.explanationLanguage}
-                  onChange={e => {
-                    const newUi = e.target.value as UiLanguage;
-                    setPrefs({ ...prefs, explanationLanguage: newUi });
-                    setGlobalUiLanguage(newUi);
-                  }}
-                  className="mt-1 w-full rounded-xl border border-border-subtle bg-surface-sunken p-2.5 text-xs font-medium text-heading cursor-pointer focus:border-primary focus:outline-none"
-                >
-                  <option value="en">🇬🇧 {t.languages.en}</option>
-                  <option value="fr">🇫🇷 {t.languages.fr}</option>
-                  <option value="es">🇪🇸 {t.languages.es}</option>
-                  <option value="nl">🇳🇱 {t.languages.nl}</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div>
-                <label className="font-medium text-heading">{t.settings.comfortLabel}</label>
-                <select
-                  value={prefs.comfortLevel}
-                  onChange={e =>
-                    setPrefs({ ...prefs, comfortLevel: e.target.value as any })
-                  }
-                  className="mt-1 w-full rounded-xl border border-border-subtle bg-surface-sunken p-2.5 text-xs text-heading cursor-pointer focus:border-primary focus:outline-none"
-                >
-                  <option value="beginner">{t.settings.comfortBeginner}</option>
-                  <option value="elementary">{t.settings.comfortElementary}</option>
-                  <option value="intermediate">{t.settings.comfortIntermediate}</option>
-                  <option value="not_sure">{t.settings.comfortNotSure}</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-medium text-heading">{t.settings.goalLabel}</label>
-                <select
-                  value={prefs.primaryGoal}
-                  onChange={e =>
-                    setPrefs({ ...prefs, primaryGoal: e.target.value as any })
-                  }
-                  className="mt-1 w-full rounded-xl border border-border-subtle bg-surface-sunken p-2.5 text-xs text-heading cursor-pointer focus:border-primary focus:outline-none"
-                >
-                  <option value="travel">{t.settings.goalTravel}</option>
-                  <option value="relocation">{t.settings.goalRelocation}</option>
-                  <option value="work">{t.settings.goalWork}</option>
-                  <option value="social">{t.settings.goalSocial}</option>
-                  <option value="explore">{t.settings.goalExplore}</option>
-                </select>
-              </div>
-            </div>
-
-            <div>
-              <label className="font-medium text-heading">{t.settings.modeLabel}</label>
-              <select
-                value={prefs.modeDefault}
-                onChange={e => setPrefs({ ...prefs, modeDefault: e.target.value as Mode })}
-                className="mt-1 w-full rounded-xl border border-border-subtle bg-surface-sunken p-2.5 text-xs text-heading cursor-pointer focus:border-primary focus:outline-none"
-              >
-                <option value="guided">{t.modes.guided}</option>
-                <option value="immersion">{t.modes.immersion}</option>
-                <option value="focused">{t.modes.focused}</option>
-              </select>
-            </div>
-          </div>
-
-          {/* Voice & Audio Settings */}
-          <div className="space-y-3 rounded-2xl bg-surface-sunken p-4 border border-border-subtle">
-            <div className="flex items-center gap-1.5 font-semibold text-heading">
-              <Volume2 className="h-4 w-4 text-primary" />
-              <span>{t.settings.sectionVoice}</span>
-            </div>
-
-            <div className="grid gap-3 sm:grid-cols-2 pt-1">
-              <div>
-                <label className="font-medium text-heading">{t.settings.speechSpeedLabel}</label>
-                <select
-                  value={prefs.speechRate ?? 1.0}
-                  onChange={e =>
-                    setPrefs({ ...prefs, speechRate: parseFloat(e.target.value) })
-                  }
-                  className="mt-1 w-full rounded-xl border border-border-subtle bg-surface p-2.5 text-xs text-heading cursor-pointer focus:border-primary focus:outline-none"
-                >
-                  <option value="0.8">{t.settings.speedSlower}</option>
-                  <option value="1.0">{t.settings.speedNatural}</option>
-                  <option value="1.2">{t.settings.speedBrisk}</option>
-                </select>
-              </div>
-
-              <div className="flex flex-col justify-center">
-                <label className="flex items-center gap-2 cursor-pointer mt-3">
-                  <input
-                    type="checkbox"
-                    checked={prefs.autoPlaySpeech}
-                    onChange={e =>
-                      setPrefs({ ...prefs, autoPlaySpeech: e.target.checked })
-                    }
-                    className="rounded text-primary focus:ring-primary"
+                  <option.Icon
+                    size={16}
+                    color={isActive ? 'rgb(var(--color-brand))' : 'rgb(var(--color-muted))'}
                   />
-                  <span className="font-medium text-heading">{t.settings.autoPlayLabel}</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* AI Privacy & Processing Consent */}
-          <div className="space-y-3 rounded-2xl bg-surface-sunken p-4 border border-border-subtle">
-            <div className="flex items-center gap-1.5 font-semibold text-heading">
-              <Shield className="h-4 w-4 text-primary" />
-              <span>{t.settings.sectionPrivacy}</span>
-            </div>
-
-            <p className="text-[11px] leading-relaxed text-body">
-              {t.settings.privacyDisclosure}
-            </p>
-
-            <div className="space-y-2 pt-1">
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={prefs.voiceProcessingConsent}
-                  onChange={e =>
-                    setPrefs({ ...prefs, voiceProcessingConsent: e.target.checked })
-                  }
-                  className="mt-0.5 rounded text-primary focus:ring-primary"
-                />
-                <div>
-                  <div className="font-medium text-heading">{t.settings.liveVoiceLabel}</div>
-                  <div className="text-[11px] text-muted">
-                    {t.settings.liveVoiceDesc}
-                  </div>
-                </div>
-              </label>
-
-              <label className="flex items-start gap-2.5 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={prefs.savedAnalysisConsent}
-                  onChange={e =>
-                    setPrefs({ ...prefs, savedAnalysisConsent: e.target.checked })
-                  }
-                  className="mt-0.5 rounded text-primary focus:ring-primary"
-                />
-                <div>
-                  <div className="font-medium text-heading">{t.settings.savedAnalysisLabel}</div>
-                  <div className="text-[11px] text-muted">
-                    {t.settings.savedAnalysisDesc}
-                  </div>
-                </div>
-              </label>
-            </div>
-          </div>
-
-          {/* On-device export & data rights */}
-          <div className="space-y-3">
-            <h3 className="font-semibold uppercase tracking-wider text-muted">
-              {t.settings.sectionArchive}
-            </h3>
-
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="flex flex-col justify-between rounded-2xl border border-border-subtle p-4 bg-surface">
-                <div>
-                  <div className="font-medium text-heading">{t.settings.exportArchiveTitle}</div>
-                  <div className="text-[11px] text-muted mt-0.5">
-                    {t.settings.exportArchiveDesc}
-                  </div>
-                </div>
-
-                <button
-                  type="button"
-                  onClick={handleExportJson}
-                  className="mt-3 flex items-center justify-center gap-1.5 rounded-xl border border-border-subtle bg-surface-sunken px-3 py-2 text-xs font-semibold text-heading hover:bg-surface-hover shadow-2xs"
-                >
-                  <Download className="h-3.5 w-3.5" />
-                  <span>{t.settings.exportArchiveButton}</span>
-                </button>
-              </div>
-
-              <div className="flex flex-col justify-between rounded-2xl border border-border-subtle p-4 bg-surface">
-                <div>
-                  <div className="font-medium text-heading">{t.settings.restoreArchiveTitle}</div>
-                  <div className="text-[11px] text-muted mt-0.5">
-                    {t.settings.restoreArchiveDesc}
-                  </div>
-                </div>
-
-                <input
-                  type="file"
-                  ref={fileInputRef}
-                  accept=".json"
-                  onChange={handleImportFile}
-                  className="hidden"
-                />
-
-                <button
-                  type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="mt-3 flex items-center justify-center gap-1.5 rounded-xl border border-border-subtle bg-surface-sunken px-3 py-2 text-xs font-semibold text-heading hover:bg-surface-hover shadow-2xs"
-                >
-                  <Upload className="h-3.5 w-3.5" />
-                  <span>{t.settings.restoreArchiveButton}</span>
-                </button>
-              </div>
-            </div>
-
-            {exportNotice && (
-              <div className="text-xs text-accent-sage font-medium flex items-center gap-1.5">
-                <CheckCircle2 className="h-3.5 w-3.5" />
-                <span>{exportNotice}</span>
-              </div>
-            )}
-
-            {importNotice && (
-              <div className={`text-xs font-medium flex items-center gap-1.5 ${importNotice.success ? 'text-accent-sage' : 'text-red-500'}`}>
-                {importNotice.success ? <CheckCircle2 className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}
-                <span>{importNotice.text}</span>
-              </div>
-            )}
-
-            <div className="rounded-2xl border border-red-500/20 bg-red-500/10 p-4 space-y-2">
-              <div className="font-medium text-red-500">{t.settings.eraseTitle}</div>
-              <div className="text-[11px] text-red-400">
-                {t.settings.eraseDesc}
-              </div>
-
-              {confirmClear ? (
-                <div className="flex items-center gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      onClearAllData();
-                      setConfirmClear(false);
-                      onClose();
-                    }}
-                    className="rounded-xl bg-red-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-red-700"
+                  <Text
+                    className={`text-xs font-medium ${
+                      isActive ? 'font-semibold text-primary' : 'text-muted'
+                    }`}
                   >
-                    {t.settings.eraseConfirm}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setConfirmClear(false)}
-                    className="text-xs text-muted hover:text-heading"
-                  >
-                    {t.common.cancel}
-                  </button>
-                </div>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+          {preference === 'system' ? (
+            <Text className="text-xs text-muted">
+              Following your device{isDark ? ' (dark)' : ' (light)'}.
+            </Text>
+          ) : null}
+        </View>
+
+        <View className="gap-3">
+          <SectionLabel>{t.settings.sectionLang}</SectionLabel>
+
+          <View className="gap-1.5">
+            <Text className="text-xs font-medium text-ink">{t.settings.targetLangLabel}</Text>
+            <ChipRow
+              value={prefs.learningLanguage}
+              onChange={id => patch({ learningLanguage: id as LanguageCode })}
+              options={(Object.keys(TARGET_LANGUAGE_FLAGS) as LanguageCode[]).map(id => ({
+                id,
+                label: `${TARGET_LANGUAGE_FLAGS[id]} ${t.languages[id]}`,
+              }))}
+            />
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-xs font-medium text-ink">{t.settings.uiLangLabel}</Text>
+            <ChipRow
+              value={prefs.explanationLanguage}
+              onChange={id => {
+                const newUi = id as UiLanguage;
+                patch({ explanationLanguage: newUi });
+                setGlobalUiLanguage(newUi);
+              }}
+              options={(Object.keys(UI_LANGUAGE_FLAGS) as UiLanguage[]).map(id => ({
+                id,
+                label: `${UI_LANGUAGE_FLAGS[id]} ${t.languages[id]}`,
+              }))}
+            />
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-xs font-medium text-ink">{t.settings.comfortLabel}</Text>
+            <ChipRow
+              value={prefs.comfortLevel}
+              onChange={id => patch({ comfortLevel: id as UserPreferences['comfortLevel'] })}
+              options={[
+                { id: 'beginner', label: t.settings.comfortBeginner },
+                { id: 'elementary', label: t.settings.comfortElementary },
+                { id: 'intermediate', label: t.settings.comfortIntermediate },
+                { id: 'not_sure', label: t.settings.comfortNotSure },
+              ]}
+            />
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-xs font-medium text-ink">{t.settings.goalLabel}</Text>
+            <ChipRow
+              value={prefs.primaryGoal}
+              onChange={id => patch({ primaryGoal: id as UserPreferences['primaryGoal'] })}
+              options={[
+                { id: 'travel', label: t.settings.goalTravel },
+                { id: 'relocation', label: t.settings.goalRelocation },
+                { id: 'work', label: t.settings.goalWork },
+                { id: 'social', label: t.settings.goalSocial },
+                { id: 'explore', label: t.settings.goalExplore },
+              ]}
+            />
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-xs font-medium text-ink">{t.settings.modeLabel}</Text>
+            <ChipRow
+              value={prefs.modeDefault}
+              onChange={id => patch({ modeDefault: id as Mode })}
+              options={[
+                { id: 'guided', label: t.modes.guided },
+                { id: 'immersion', label: t.modes.immersion },
+                { id: 'focused', label: t.modes.focused },
+              ]}
+            />
+          </View>
+        </View>
+
+        <View className="gap-3 rounded-2xl border border-border-subtle bg-surface-sunken p-4">
+          <View className="flex-row items-center gap-1.5">
+            <Volume2 size={16} color={iconColor('brand')} />
+            <Text className="text-xs font-semibold text-ink">{t.settings.sectionVoice}</Text>
+          </View>
+
+          <View className="gap-1.5">
+            <Text className="text-xs font-medium text-ink">{t.settings.speechSpeedLabel}</Text>
+            <ChipRow
+              value={String(prefs.speechRate ?? 1.0)}
+              onChange={id => patch({ speechRate: parseFloat(id) })}
+              options={[
+                { id: '0.8', label: t.settings.speedSlower },
+                { id: '1.0', label: t.settings.speedNatural },
+                { id: '1.2', label: t.settings.speedBrisk },
+              ]}
+            />
+          </View>
+
+          <ToggleRow
+            label={t.settings.autoPlayLabel}
+            value={prefs.autoPlaySpeech}
+            onChange={next => patch({ autoPlaySpeech: next })}
+          />
+        </View>
+
+        <View className="gap-3 rounded-2xl border border-border-subtle bg-surface-sunken p-4">
+          <View className="flex-row items-center gap-1.5">
+            <Shield size={16} color={iconColor('brand')} />
+            <Text className="text-xs font-semibold text-ink">{t.settings.sectionPrivacy}</Text>
+          </View>
+
+          <Text className="text-xs leading-relaxed text-body">
+            {t.settings.privacyDisclosure}
+          </Text>
+
+          <ToggleRow
+            label={t.settings.liveVoiceLabel}
+            description={t.settings.liveVoiceDesc}
+            value={prefs.voiceProcessingConsent}
+            onChange={next => patch({ voiceProcessingConsent: next })}
+          />
+          <ToggleRow
+            label={t.settings.savedAnalysisLabel}
+            description={t.settings.savedAnalysisDesc}
+            value={prefs.savedAnalysisConsent}
+            onChange={next => patch({ savedAnalysisConsent: next })}
+          />
+        </View>
+
+        <View className="gap-3">
+          <SectionLabel>{t.settings.sectionArchive}</SectionLabel>
+
+          <View className="gap-2.5">
+            <View className="gap-2.5 rounded-2xl border border-border-subtle bg-surface p-4">
+              <Text className="text-xs font-medium text-ink">
+                {t.settings.exportArchiveTitle}
+              </Text>
+              <Text className="text-xs text-muted">{t.settings.exportArchiveDesc}</Text>
+              <Button
+                label={t.settings.exportArchiveButton}
+                onPress={handleExportJson}
+                variant="secondary"
+                size="sm"
+                className="self-start"
+                icon={<Download size={14} color={iconColor('muted')} />}
+              />
+            </View>
+
+            <View className="gap-2.5 rounded-2xl border border-border-subtle bg-surface p-4">
+              <Text className="text-xs font-medium text-ink">
+                {t.settings.restoreArchiveTitle}
+              </Text>
+              <Text className="text-xs text-muted">{t.settings.restoreArchiveDesc}</Text>
+              <Button
+                label={t.settings.restoreArchiveButton}
+                onPress={handleImportFile}
+                variant="secondary"
+                size="sm"
+                className="self-start"
+                icon={<Upload size={14} color={iconColor('muted')} />}
+              />
+            </View>
+          </View>
+
+          {exportNotice ? (
+            <View className="flex-row items-center gap-1.5">
+              <CheckCircle2 size={14} color={iconColor('success')} />
+              <Text className="text-xs font-medium text-accent-sage">{exportNotice}</Text>
+            </View>
+          ) : null}
+
+          {importNotice ? (
+            <View className="flex-row items-center gap-1.5">
+              {importNotice.success ? (
+                <CheckCircle2 size={14} color={iconColor('success')} />
               ) : (
-                <button
-                  type="button"
-                  onClick={() => setConfirmClear(true)}
-                  className="flex items-center gap-1.5 text-xs font-semibold text-red-500 hover:text-red-400 pt-1"
-                >
-                  <Trash2 className="h-3.5 w-3.5" />
-                  <span>{t.settings.eraseButton}</span>
-                </button>
+                <AlertTriangle size={14} color="#ef4444" />
               )}
-            </div>
-          </div>
-        </div>
+              <Text
+                className={`flex-1 text-xs font-medium ${
+                  importNotice.success ? 'text-accent-sage' : 'text-red-500'
+                }`}
+              >
+                {importNotice.text}
+              </Text>
+            </View>
+          ) : null}
 
-        {/* Footer */}
-        <div className="flex items-center justify-between border-t border-border-subtle bg-surface-sunken px-4 py-3 sm:px-6 sm:py-4 pb-safe">
-          <button
-            onClick={onClose}
-            className="text-xs font-medium text-muted hover:text-heading transition-colors"
-          >
-            {t.common.cancel}
-          </button>
-          <button
-            onClick={handleSave}
-            className="rounded-xl bg-primary px-5 sm:px-6 py-2 sm:py-2.5 text-xs font-semibold text-white hover:bg-primary-dark shadow-xs transition-all active:scale-95"
-          >
-            {t.settings.saveButton}
-          </button>
-        </div>
-      </div>
-    </div>
+          <View className="gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
+            <Text className="text-xs font-medium text-red-500">{t.settings.eraseTitle}</Text>
+            <Text className="text-xs text-red-400">{t.settings.eraseDesc}</Text>
+            <Button
+              label={t.settings.eraseButton}
+              onPress={() => setConfirmClear(true)}
+              variant="danger"
+              size="sm"
+              className="self-start"
+              icon={<Trash2 size={14} color="#ef4444" />}
+            />
+          </View>
+        </View>
+      </Sheet>
+
+      <ConfirmDialog
+        visible={confirmClear}
+        title={t.settings.eraseTitle}
+        message={t.settings.eraseDesc}
+        confirmLabel={t.settings.eraseConfirm}
+        cancelLabel={t.common.cancel}
+        destructive
+        onConfirm={() => {
+          onClearAllData();
+          setConfirmClear(false);
+          onClose();
+        }}
+        onCancel={() => setConfirmClear(false)}
+      />
+    </>
   );
 };
 
+interface ToggleRowProps {
+  label: string;
+  description?: string;
+  value: boolean;
+  onChange: (next: boolean) => void;
+}
+
+const ToggleRow: React.FC<ToggleRowProps> = ({ label, description, value, onChange }) => (
+  <View className="flex-row items-center justify-between gap-3">
+    <View className="flex-1">
+      <Text className="text-xs font-medium text-ink">{label}</Text>
+      {description ? <Text className="text-xs text-muted">{description}</Text> : null}
+    </View>
+    <Switch
+      value={value}
+      onValueChange={onChange}
+      trackColor={{ false: 'rgb(var(--color-border-subtle))', true: 'rgb(var(--color-brand))' }}
+      thumbColor="#ffffff"
+      accessibilityLabel={label}
+    />
+  </View>
+);
+
+async function readPickedFile(asset: DocumentPicker.DocumentPickerAsset): Promise<string> {
+  if (Platform.OS === 'web') {
+    const response = await fetch(asset.uri);
+    return response.text();
+  }
+
+  const file = new File(asset.uri);
+  return file.text();
+}

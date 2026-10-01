@@ -7,6 +7,9 @@ import {
   SupportExposure,
   TaskOutcome
 } from '../../types';
+import { LEARNING_POLICY } from './policy';
+import { matchPhraseInText, normalizeText } from './matching';
+import { classifyEvidence, countsAsIndependentEvidence } from './evidence';
 
 export interface AssessmentCandidate {
   itemId?: string;
@@ -49,57 +52,113 @@ export function validateAssessmentProposal(
   const rejectedProposals: { candidate: AssessmentCandidate; reason: string }[] = [];
 
   const userPassages = passages.filter(p => p.speaker === 'user');
-  const allUserText = userPassages.map(p => p.text.toLowerCase()).join(' ');
+  const allUserText = normalizeText(userPassages.map(p => p.text).join(' '));
 
   for (const candidate of proposal.items) {
-    // 1. Passage & revision check
+    // 1. Provenance: the quote must be the learner's own speech, in a passage
+    //    the model is allowed to cite, at the revision it actually cited.
     const matchingPassage = userPassages.find(
       p => p.id === candidate.sourcePassageId && p.revisionKey === candidate.sourceRevision
     );
 
-    // If exact passage ID match not found, check if quote is in user transcript
-    const quoteClean = (candidate.quote || '').trim().toLowerCase();
+    // A proposal that names a passage must resolve to that passage at the
+    // revision it claims. Falling back to the whole transcript when the cited
+    // revision is missing would let a stale or invented citation smuggle a
+    // quote in from elsewhere, so a named-but-unresolvable passage is rejected.
+    if (candidate.sourcePassageId && !matchingPassage) {
+      rejectedProposals.push({
+        candidate,
+        reason: `Cited passage ${candidate.sourcePassageId}@${candidate.sourceRevision} is not a current learner passage (stale revision or unknown id)`
+      });
+      continue;
+    }
+
+    if (!candidate.itemId) {
+      rejectedProposals.push({
+        candidate,
+        reason: 'No curated item id; unmapped proposals are not stored as learner evidence'
+      });
+      continue;
+    }
+
+    const quoteClean = normalizeText(candidate.quote || '');
     if (!quoteClean) {
       rejectedProposals.push({ candidate, reason: 'Empty transcript quote in proposal' });
       continue;
     }
 
-    const passageText = matchingPassage ? matchingPassage.text.toLowerCase() : allUserText;
+    // A proposal that cites a specific passage is verified against that passage.
+    // One that cites nothing is verified against the whole learner transcript,
+    // so a quote cannot be smuggled in from the assistant's side of the
+    // conversation.
+    const passageText = matchingPassage ? normalizeText(matchingPassage.text) : allUserText;
+    const sourceScope = matchingPassage ? 'cited passage' : 'learner transcript';
+
     if (!passageText.includes(quoteClean)) {
-      // Lenient substring check: at least 70% of quote words match
-      const quoteWords = quoteClean.split(/\s+/).filter(w => w.length > 2);
-      const matchesWordCount = quoteWords.filter(w => passageText.includes(w)).length;
-      if (quoteWords.length > 0 && matchesWordCount / quoteWords.length < 0.6) {
+      const quoteWords = quoteClean.split(' ').filter(w => w.length > 3);
+      const presentWords = quoteWords.filter(w => passageText.includes(w));
+      const coverage = quoteWords.length === 0 ? 0 : presentWords.length / quoteWords.length;
+
+      if (coverage < LEARNING_POLICY.minQuoteCoverage) {
         rejectedProposals.push({
           candidate,
-          reason: `Quote "${candidate.quote}" not verified in learner transcript`
+          reason: `Quote "${candidate.quote}" not verified in learner ${sourceScope}`
         });
         continue;
       }
     }
 
-    // 2. Exposure ledger reclassification:
-    // Check if the learner had any support exposure for this item or phrase prior to this turn
-    const relevantExposures = supportExposures.filter(exp => {
-      if (!candidate.itemId) return true;
-      return exp.targetItemIds.length === 0 || exp.targetItemIds.includes(candidate.itemId);
-    });
+    // 2. Semantic check: does the learner's own wording actually convey the
+    //    curated form? A model may call any turn a match; this decides.
+    const scopeText = matchingPassage ? matchingPassage.text : allUserText;
+    const match = matchPhraseInText(candidate.candidateForm, scopeText);
 
-    let finalRetrieval: RetrievalType = candidate.retrievalProposal || 'unknown';
-
-    // If there were any hint exposures (briefing, coach hint, meaning line)
-    const hadDirectSupport = relevantExposures.some(
-      exp => exp.kind === 'full_form' || exp.kind === 'partial_form' || exp.source === 'briefing'
-    );
-
-    if (hadDirectSupport) {
-      finalRetrieval = 'assisted';
-    } else if (isRehearsalAttempt) {
-      finalRetrieval = 'assisted';
+    if (match.verdict === 'none') {
+      rejectedProposals.push({
+        candidate,
+        reason: `Learner wording does not convey "${candidate.candidateForm}"`
+      });
+      continue;
     }
 
-    // Spontaneous typing is valid written retrieval, but distinct from spoken
-    const finalModality = candidate.modality || 'spoken';
+    // 3. Exposure ledger reclassification. The model may propose; the ledger
+    //    decides. Support downgrades independent use, it never upgrades it.
+    const relevantExposures = supportExposures.filter(exp => {
+      if (exp.targetItemIds.length === 0) return true;
+      return exp.targetItemIds.includes(candidate.itemId!);
+    });
+
+    // 4. Retrieval is derived, never taken from the proposal. The model is not
+    //    allowed to claim the learner recalled something unaided.
+    let finalRetrieval: RetrievalType;
+
+    const hadFormExposure = relevantExposures.some(
+      exp =>
+        exp.kind === 'full_form' ||
+        exp.kind === 'partial_form' ||
+        exp.source === 'briefing'
+    );
+
+    const modeledRecently = relevantExposures.some(
+      exp =>
+        exp.source === 'actor' &&
+        Date.now() - new Date(exp.recordedAt).getTime() < LEARNING_POLICY.modeledFormWindowMs
+    );
+
+    if (hadFormExposure || modeledRecently || isRehearsalAttempt) {
+      finalRetrieval = 'assisted';
+    } else if (candidate.modality === 'spoken') {
+      // Provenance and equivalence both held against real speech.
+      finalRetrieval = 'unassisted';
+    } else {
+      // Spontaneous typing is written retrieval. It is valid evidence of recall
+      // but is not evidence of spoken production, and a model that claimed
+      // spoken here was wrong. Recorded as unknown rather than downgraded to
+      // assisted, because the learner did produce the form unaided.
+      finalRetrieval = 'unknown';
+    }
+
+    const finalModality: 'spoken' | 'typed' = candidate.modality === 'typed' ? 'typed' : 'spoken';
 
     const observation: LearningObservation = {
       observationId: `obs-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
@@ -107,16 +166,29 @@ export function validateAssessmentProposal(
       attemptId: proposal.attemptId,
       sourceTurnId: candidate.sourcePassageId || 'turn-1',
       sourceRevision: candidate.sourceRevision || 'rev-1',
-      itemId: candidate.itemId || `phrase-custom-${Math.random().toString(36).slice(2, 6)}`,
+      itemId: candidate.itemId,
       candidateForm: candidate.candidateForm,
       meaning: candidate.meaning,
-      quote: candidate.quote,
+      quote: match.matchedText || candidate.quote,
       modality: finalModality,
       retrieval: finalRetrieval,
-      taskOutcome: proposal.taskOutcome || 'achieved',
+      taskOutcome: proposal.taskOutcome || 'unknown',
       rehearsal: isRehearsalAttempt,
       supportExposureIds: relevantExposures.map(e => e.id),
-      recordedAt: new Date().toISOString()
+      recordedAt: new Date().toISOString(),
+      category: classifyEvidence({
+        retrieval: finalRetrieval,
+        modality: finalModality,
+        exposures: relevantExposures,
+        modelingWithinWindow: modeledRecently,
+        attemptedButFailed: false,
+        wasCorrected:
+          normalizeText(matchingPassage?.text ?? '') !== normalizeText(candidate.candidateForm) &&
+          match.verdict === 'paraphrase',
+      }),
+      // Retained together when the learner's wording differed from the curated
+      // form, so both are available without losing the original.
+      originalForm: match.verdict === 'paraphrase' ? match.matchedText || undefined : undefined,
     };
 
     validatedObservations.push(observation);
@@ -124,9 +196,111 @@ export function validateAssessmentProposal(
 
   return {
     validatedObservations,
-    taskOutcome: proposal.taskOutcome || 'completed',
+    taskOutcome: proposal.taskOutcome || 'unknown',
     rejectedProposals
   };
+}
+
+/**
+ * Deterministic assessment used when the hosted assessor is unavailable, and as
+ * the only thing that can write evidence when it is.
+ *
+ * Applies the same provenance, equivalence and exposure rules as the validator,
+ * so a failed network call never produces a more generous record than a
+ * successful one.
+ */
+export function buildLocalObservations(input: {
+  sessionId: string;
+  attemptId: string;
+  passages: Passage[];
+  supportExposures: SupportExposure[];
+  candidates: Array<{ id: string; form: string; meaning: string }>;
+  isColdAttempt: boolean;
+  isRehearsalAttempt: boolean;
+}): { observations: LearningObservation[]; ambiguous: number } {
+  const { sessionId, attemptId, passages, supportExposures, candidates, isColdAttempt, isRehearsalAttempt } =
+    input;
+
+  const userPassages = passages.filter(p => p.speaker === 'user');
+  const observations: LearningObservation[] = [];
+  const seen = new Set<string>();
+  let ambiguous = 0;
+
+  for (const phrase of candidates) {
+    for (const passage of userPassages) {
+      if (seen.has(`${passage.id}:${phrase.id}`)) continue;
+
+      const match = matchPhraseInText(phrase.form, passage.text);
+
+      if (match.verdict === 'ambiguous') {
+        ambiguous += 1;
+        continue;
+      }
+      if (match.verdict === 'none') continue;
+
+      seen.add(`${passage.id}:${phrase.id}`);
+
+      const relevantExposures = supportExposures.filter(
+        exp => exp.targetItemIds.length === 0 || exp.targetItemIds.includes(phrase.id)
+      );
+
+      const isSpoken = passage.modality === 'spoken';
+
+      const hadFormExposure = relevantExposures.some(
+        exp =>
+          exp.kind === 'full_form' ||
+          exp.kind === 'partial_form' ||
+          exp.source === 'briefing'
+      );
+
+      const modeledRecently = relevantExposures.some(
+        exp =>
+          exp.source === 'actor' &&
+          Date.now() - new Date(exp.recordedAt).getTime() < LEARNING_POLICY.modeledFormWindowMs
+      );
+
+      let retrieval: RetrievalType;
+      if (hadFormExposure || modeledRecently || !isColdAttempt || isRehearsalAttempt) {
+        retrieval = 'assisted';
+      } else if (isSpoken) {
+        retrieval = 'unassisted';
+      } else {
+        // Spontaneous typing is written retrieval: real recall, but not
+        // evidence of spoken production, so it is recorded as unknown rather
+        // than downgraded to assisted.
+        retrieval = 'unknown';
+      }
+
+      observations.push({
+        observationId: `obs-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+        sessionId,
+        attemptId,
+        sourceTurnId: passage.id,
+        sourceRevision: passage.revisionKey || 'rev-1',
+        itemId: phrase.id,
+        candidateForm: phrase.form,
+        meaning: phrase.meaning,
+        quote: match.matchedText || passage.text,
+        modality: passage.modality,
+        retrieval,
+        taskOutcome: 'achieved',
+        rehearsal: isRehearsalAttempt,
+        supportExposureIds: relevantExposures.map(e => e.id),
+        recordedAt: new Date().toISOString(),
+        category: classifyEvidence({
+          retrieval,
+          modality: passage.modality,
+          exposures: relevantExposures,
+          modelingWithinWindow: modeledRecently,
+          attemptedButFailed: false,
+          wasCorrected: match.verdict === 'paraphrase',
+        }),
+        originalForm: match.verdict === 'paraphrase' ? match.matchedText || undefined : undefined,
+      });
+    }
+  }
+
+  return { observations, ambiguous };
 }
 
 /**
@@ -161,13 +335,31 @@ export function projectPhraseState(
   const spokenCount = activeObs.filter(o => o.modality === 'spoken').length;
   const typedCount = activeObs.filter(o => o.modality === 'typed').length;
 
-  // Distinct contexts (sessions) where unassisted retrieval occurred
-  const unassistedSessions = new Set(
-    activeObs.filter(o => o.retrieval === 'unassisted').map(o => o.sessionId)
-  );
+  // Independent evidence, narrowed to what actually counts as spoken
+  // production. A typed answer is written retrieval: real recall, but not
+  // spoken production, so it cannot raise a phrase to steady on its own.
+  const independentObs = activeObs.filter(countsAsIndependentEvidence);
+
+  const unassistedSessions = new Set(independentObs.map(o => o.sessionId));
+
+  // Steady requires recall across distinct sessions *and* a real time span, so
+  // two attempts in one sitting cannot present as durable recall.
+  const independentTimes = independentObs
+    .map(o => new Date(o.recordedAt).getTime())
+    .filter(t => Number.isFinite(t))
+    .sort((a, b) => a - b);
+
+  const spanDays =
+    independentTimes.length >= 2
+      ? (independentTimes[independentTimes.length - 1] - independentTimes[0]) / 86_400_000
+      : 0;
+
+  const meetsSteady =
+    unassistedSessions.size >= LEARNING_POLICY.steadyMinSessions &&
+    spanDays >= LEARNING_POLICY.steadyMinSpanDays;
 
   let newRecallStatus: RecallStatus = 'new';
-  if (unassistedSessions.size >= 2) {
+  if (meetsSteady) {
     newRecallStatus = 'steady';
   } else if (unassistedCount >= 1) {
     newRecallStatus = 'growing';
@@ -175,16 +367,7 @@ export function projectPhraseState(
     newRecallStatus = 'supported';
   }
 
-  // Versioned scheduling policy:
-  // - supported / new: 1 day interval
-  // - growing: 4 days interval
-  // - steady: 14 days interval
-  let intervalDays = 1;
-  if (newRecallStatus === 'steady') {
-    intervalDays = 14;
-  } else if (newRecallStatus === 'growing') {
-    intervalDays = 4;
-  }
+  const intervalDays = LEARNING_POLICY.intervals[newRecallStatus];
 
   const latestObs = activeObs.reduce((latest, obs) => {
     return new Date(obs.recordedAt) > new Date(latest.recordedAt) ? obs : latest;

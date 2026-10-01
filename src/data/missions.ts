@@ -5,6 +5,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     id: 'mission-es-cafe-sol',
     version: 1,
     language: 'es',
+    sceneId: 'scene.es.cafe.breakfast',
     levelRange: 'A1',
     title: 'Café Sol: Breakfast Before the Train',
     category: 'cafes',
@@ -26,6 +27,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Order a coffee drink and confirm it is for takeaway ("para llevar")',
     stretchGoal: 'Ask if they have oat milk or inquire about a dairy-free milk alternative',
     targetIntents: ['order_beverage', 'request_substitution', 'specify_takeaway'],
+    primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-propose-alternative', 'skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.es.cafe_con_leche',
@@ -96,6 +99,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Give your tracking reference and ask to collect the package or change the pickup day',
     stretchGoal: 'Explain you cannot come this evening and propose collecting it tomorrow morning',
     targetIntents: ['provide_reference', 'reschedule_time', 'confirm_hours'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-propose-alternative'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.es.vengo_a_recoger',
@@ -159,6 +164,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask Sofia if she has the terrace key and arrange a quick handover',
     stretchGoal: 'Propose meeting downstairs at Café Sol if she is in a rush right now',
     targetIntents: ['ask_neighbor_help', 'propose_alternative_meeting', 'express_thanks'],
+    primarySkillIds: ['skill-propose-alternative', 'skill-communicative-repair'],
+    secondarySkillIds: ['skill-inquire-specifications'],
     usefulPhrases: [
       {
         id: 'phrase.es.tienes_un_momento',
@@ -221,6 +228,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask how to buy a 10-trip card and ask which platform goes toward Atocha train station',
     stretchGoal: 'Explain the card machine did not return your change or receipt',
     targetIntents: ['purchase_transit_ticket', 'ask_platform', 'clarify_directions'],
+    primarySkillIds: ['skill-wayfinding-transit', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.es.tarjeta_diez_viajes',
@@ -260,6 +269,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     id: 'mission-es-farmacia-sol',
     version: 1,
     language: 'es',
+    sceneId: 'scene.es.pharmacy.symptom',
     levelRange: 'A2',
     title: 'Farmacia Sol: Seasonal Allergies',
     category: 'problems',
@@ -280,6 +290,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Describe your symptoms (sneezing, itchy eyes) and ask for an allergy medicine that does not make you drowsy',
     stretchGoal: 'Ask how many times per day you need to take it and if it should be taken with food',
     targetIntents: ['describe_symptoms', 'request_medicine', 'ask_dosage'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
+    secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
       {
         id: 'phrase.es.tengo_alergia',
@@ -339,6 +351,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask for a table for two on the terrace and ask Andrés what tapas he recommends today',
     stretchGoal: 'Ask if the house special contains gluten or dairy',
     targetIntents: ['request_table', 'ask_recommendation', 'check_allergens'],
+    primarySkillIds: ['skill-propose-alternative', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
       {
         id: 'phrase.es.mesa_en_terraza',
@@ -397,6 +411,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Order a pastry and a warm drink, and ask if the pastry is fresh',
     stretchGoal: 'Ask for a pain au chocolat when told almond croissants are finished',
     targetIntents: ['order_food', 'ask_freshness', 'pay_counter'],
+    primarySkillIds: ['skill-inquire-specifications'],
+    secondarySkillIds: ['skill-request-substitution', 'skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.fr.croissant_svp',
@@ -456,6 +472,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Explain that you have a sore throat and ask for lozenges that do not cause drowsiness',
     stretchGoal: 'Ask how many times per day you should take them and if they should be taken after meals',
     targetIntents: ['describe_symptoms', 'request_remedy', 'clarify_dosage'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
+    secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
       {
         id: 'phrase.fr.mal_de_gorge',
@@ -515,6 +533,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask to buy a ten-ticket carnet on Navigo Easy and ask which metro line goes to Montparnasse',
     stretchGoal: 'Ask whether you can pay by contactless card ("par sans contact")',
     targetIntents: ['buy_transit_pass', 'ask_metro_direction', 'payment_inquiry'],
+    primarySkillIds: ['skill-wayfinding-transit', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.fr.carnet_tickets',
@@ -574,6 +594,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask for a table for two on the terrace and ask what Sophie recommends for dinner',
     stretchGoal: 'Ask if the daily special contains cream or dairy products',
     targetIntents: ['request_terrace_table', 'ask_recommendation', 'inquire_allergens'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-propose-alternative'],
+    secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
       {
         id: 'phrase.fr.table_terrasse',
@@ -632,6 +654,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Order two bread rolls and a coffee with oat milk to take away',
     stretchGoal: 'Ask if you can pay by card ("Mit Karte bitte")',
     targetIntents: ['order_bakery', 'specify_milk', 'payment_method'],
+    primarySkillIds: ['skill-request-substitution'],
+    secondarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.de.broetchen_bitte',
@@ -691,6 +715,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Explain seasonal allergy symptoms (hay fever, itchy eyes) and ask for medicine that does not make you drowsy',
     stretchGoal: 'Ask how often per day you should take it and if it should be taken with meals',
     targetIntents: ['describe_allergies', 'request_medicine', 'ask_dosage'],
+    primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.de.heuschnupfen',
@@ -750,6 +776,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask to buy a 24-hour AB ticket and ask which platform to take toward Alexanderplatz',
     stretchGoal: 'Ask whether you need to stamp / validate the ticket before boarding',
     targetIntents: ['buy_day_ticket', 'ask_platform', 'validate_ticket'],
+    primarySkillIds: ['skill-wayfinding-transit', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.de.tageskarte_ab',
@@ -809,6 +837,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask for a table for two in the beer garden and ask what seasonal specialty Hannah recommends',
     stretchGoal: 'Ask if the special dish contains dairy products or nuts',
     targetIntents: ['request_garden_table', 'ask_recommendation', 'check_ingredients'],
+    primarySkillIds: ['skill-propose-alternative', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
       {
         id: 'phrase.de.tisch_draussen',
@@ -867,6 +897,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Order an espresso and a croissant at the counter, and specify sparkling water',
     stretchGoal: 'Ask Gianni which pastry is his personal favorite today',
     targetIntents: ['order_espresso', 'specify_water', 'counter_service'],
+    primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.it.un_caffe',
@@ -926,6 +958,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Describe your sore throat and ask for a spray or lozenges that do not cause drowsiness',
     stretchGoal: 'Ask how many times per day you need to use it and whether before or after meals',
     targetIntents: ['describe_throat_pain', 'request_spray', 'ask_timing'],
+    primarySkillIds: ['skill-inquire-specifications'],
+    secondarySkillIds: ['skill-request-substitution', 'skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.it.mal_di_gola',
@@ -985,6 +1019,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Buy a one-way regional ticket to Pisa and ask which platform the train departs from',
     stretchGoal: 'Ask where to stamp/validate the ticket before getting on the train',
     targetIntents: ['buy_train_ticket', 'ask_platform', 'clarify_validation'],
+    primarySkillIds: ['skill-wayfinding-transit', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.it.biglietto_regionale',
@@ -1044,6 +1080,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask for an outdoor table for two and ask Sofia what pasta dish she recommends tonight',
     stretchGoal: 'Ask whether the house specialty contains dairy or cheese ("senza formaggio")',
     targetIntents: ['request_outdoor_table', 'ask_recommendation', 'check_dairy'],
+    primarySkillIds: ['skill-request-substitution', 'skill-propose-alternative'],
+    secondarySkillIds: ['skill-inquire-specifications'],
     usefulPhrases: [
       {
         id: 'phrase.it.tavolo_all_aperto',
@@ -1102,6 +1140,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Buy an onigiri and tea, ask to have your bento warmed up, and say a bag is not needed',
     stretchGoal: 'Pay using an IC card ("Suica de onegaishimasu")',
     targetIntents: ['order_konbini_items', 'request_heating', 'decline_bag', 'pay_suica'],
+    primarySkillIds: ['skill-request-substitution', 'skill-communicative-repair'],
+    secondarySkillIds: ['skill-inquire-specifications'],
     usefulPhrases: [
       {
         id: 'phrase.ja.atatamete_kudasai',
@@ -1161,6 +1201,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Explain you have a headache and ask for medicine that does not make you drowsy',
     stretchGoal: 'Ask how many tablets to take per dose and whether to take it after meals',
     targetIntents: ['describe_headache', 'request_non_drowsy_medicine', 'ask_dosage_timing'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-request-substitution'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.ja.zutsuu_ga_suru',
@@ -1220,6 +1262,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask how to charge your Suica card and ask which platform goes toward Tokyo Station',
     stretchGoal: 'Ask how many minutes it takes to reach Tokyo Station',
     targetIntents: ['ask_suica_charge', 'ask_platform_number', 'ask_travel_duration'],
+    primarySkillIds: ['skill-wayfinding-transit', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.ja.suica_chaaji',
@@ -1279,6 +1323,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask for a counter seat for two and ask Hiroshi what grilled skewer he recommends today',
     stretchGoal: 'Ask for the bill at the end and express your compliments ("Gochisousama deshita")',
     targetIntents: ['request_counter_seat', 'ask_chef_recommendation', 'ask_for_bill'],
+    primarySkillIds: ['skill-propose-alternative', 'skill-inquire-specifications'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.ja.kauntaa_seki',
@@ -1322,6 +1368,7 @@ export const INITIAL_PHRASE_ITEMS = MISSION_CATALOG.flatMap(m =>
     form: p.form,
     meaning: p.meaning,
     usageNote: p.usageNote,
+    difficulty: p.difficulty,
     recallStatus: 'new' as const,
     scheduling: {
       nextReviewAt: new Date(Date.now() - 3600000).toISOString(),

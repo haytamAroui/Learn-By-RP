@@ -1,0 +1,125 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/**
+ * GENERATED FILE - do not edit by hand.
+ *
+ * Source of truth: src/design/tokens.ts
+ * Regenerate:      node scripts/generate-css.mts
+ *
+ * Read by the web bundle only. React Native does not parse this stylesheet, so
+ * native theming comes from the `vars()` call in src/features/theme/index.tsx.
+ * Both read the same token file; tests/design.test.ts asserts they agree.
+ */
+
+@layer base {
+  /* Light: the default. */
+  :root {
+    --color-canvas: 242 237 228;
+    --color-surface: 255 255 255;
+    --color-surface-soft: 244 240 232;
+    --color-sunken: 232 224 210;
+    --color-surface-hover: 234 227 216;
+    --color-raised: 255 255 255;
+    --color-border-subtle: 200 191 178;
+    --color-border-interactive: 138 127 113;
+    --color-ink: 28 25 23;
+    --color-body: 87 83 78;
+    --color-muted: 110 105 99;
+    --color-brand: 167 68 47;
+    --color-brand-hover: 143 56 38;
+    --color-brand-pressed: 122 48 33;
+    --color-brand-soft: 247 232 226;
+    --color-brand-text: 255 255 255;
+    --color-brand-button: 167 68 47;
+    --color-language: 36 107 99;
+    --color-language-hover: 30 93 86;
+    --color-language-soft: 228 242 239;
+    --color-language-text: 255 255 255;
+    --color-success: 45 107 73;
+    --color-success-soft: 229 241 233;
+    --color-warning: 138 90 18;
+    --color-warning-soft: 247 237 216;
+    --color-danger: 180 35 24;
+    --color-danger-soft: 251 232 230;
+    --color-info: 53 108 150;
+    --color-info-soft: 229 239 247;
+    --color-focus: 36 107 99;
+    --color-focus-on-brand: 255 255 255;
+  }
+
+  /**
+   * Dark applies to any element carrying `dark`, not just `html`. On web
+   * NativeWind puts the class on the document element; on native it puts it on a
+   * wrapper View. Scoping to `html` alone themes the web and leaves native light.
+   */
+  .dark {
+    --color-canvas: 23 22 19;
+    --color-surface: 41 37 31;
+    --color-surface-soft: 51 46 39;
+    --color-sunken: 18 17 15;
+    --color-raised: 66 58 49;
+    --color-surface-hover: 59 52 44;
+    --color-border-subtle: 81 74 64;
+    --color-border-interactive: 122 112 99;
+    --color-ink: 247 244 238;
+    --color-body: 212 206 196;
+    --color-muted: 175 167 156;
+    --color-brand: 239 155 127;
+    --color-brand-hover: 245 171 147;
+    --color-brand-pressed: 217 130 99;
+    --color-brand-soft: 59 37 30;
+    --color-brand-button: 167 68 47;
+    --color-brand-text: 255 255 255;
+    --color-language: 124 199 190;
+    --color-language-hover: 152 214 206;
+    --color-language-soft: 23 51 47;
+    --color-language-text: 18 17 15;
+    --color-success: 123 197 154;
+    --color-success-soft: 25 51 38;
+    --color-warning: 224 180 102;
+    --color-warning-soft: 59 45 23;
+    --color-danger: 255 138 128;
+    --color-danger-soft: 58 30 27;
+    --color-info: 134 183 223;
+    --color-info-soft: 27 43 56;
+    --color-focus: 124 199 190;
+    --color-focus-on-brand: 255 255 255;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  body {
+    background-color: rgb(var(--color-canvas));
+    color: rgb(var(--color-ink));
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /**
+   * Reduced motion for CSS-driven transitions. Components must honour it in JS
+   * too; see src/design/motion.ts.
+   */
+  @media (prefers-reduced-motion: reduce) {
+    html {
+      scroll-behavior: auto;
+    }
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+
+  @layer utilities {
+    /* Safe-area padding that respects a gesture bar without a magic number. */
+    .pb-safe {
+      padding-bottom: max(env(safe-area-inset-bottom), 0.75rem);
+    }
+  }
+}

@@ -1,40 +1,187 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
+  KeyboardAvoidingView,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import {
+  HelpCircle,
+  Keyboard,
   Mic,
   MicOff,
-  Volume2,
-  VolumeX,
-  HelpCircle,
   Pause,
   Play,
   RotateCcw,
   Send,
-  Keyboard,
   X,
-  Sparkles,
-  Info,
-  Clock,
-  CheckCircle2,
-  ChevronDown,
-  Layers
-} from 'lucide-react';
+} from 'lucide-react-native';
 import {
   MissionDefinition,
   Mode,
   Passage,
   SessionRecord,
   SupportExposure,
-  SceneState
+  SceneState,
+  LearningObservation,
+  TaskOutcome,
 } from '../types';
-import { WebVoiceTransport, VoiceEvent } from '../providers/voice/webVoiceTransport';
+import { NativeVoiceTransport, VoiceEvent } from '../providers/voice';
 import { useI18n } from '../features/i18n';
+import {
+  buildLocalObservations,
+  StructuredAssessmentProposal,
+  validateAssessmentProposal,
+} from '../features/learning/learningCore';
+import {
+  SkillEvidenceCandidate,
+  SkillEvidenceProposal,
+  validateSkillEvidenceProposal,
+} from '../features/learning/skillEvidence';
+import { api } from '../lib/api';
+import { SceneMirror } from '../features/roleplay/SceneMirror';
+import { SceneActionName } from '../contracts/scene';
+import { Button, Field, SectionLabel } from './ui';
+import { Sheet } from './Sheet';
+import { iconColor } from '../design/iconColor';
 
 interface LiveSessionViewProps {
-  mission: MissionDefinition;
+  mission: MissionDefinition | null;
   mode: Mode;
   coldAttempt: boolean;
   onEndSession: (session: SessionRecord) => void;
   onCancel: () => void;
+}
+
+type VoiceState =
+  | 'connecting'
+  | 'listening'
+  | 'speaking'
+  | 'muted'
+  | 'paused'
+  | 'idle'
+  | 'ending';
+
+const VOICE_DOT: Record<VoiceState, string> = {
+  connecting: 'bg-muted',
+  listening: 'bg-primary',
+  speaking: 'bg-accent-sage',
+  muted: 'bg-muted',
+  paused: 'bg-warning',
+  idle: 'bg-muted',
+  ending: 'bg-muted',
+};
+
+const EXPLANATION_LANGUAGE_NAMES: Record<string, string> = {
+  en: 'English',
+  fr: 'French',
+  es: 'Spanish',
+  nl: 'Dutch',
+};
+
+/**
+ * Coerce the hosted assessor's JSON into the proposal shape the validator
+ * expects, dropping anything malformed. A malformed item is omitted; it does
+ * not invalidate the rest.
+ */
+function normalizeAssessmentResponse(
+  response: any,
+  sessionId: string,
+  attemptId: string
+): StructuredAssessmentProposal {
+  const rawItems: any[] = Array.isArray(response?.items) ? response.items : [];
+
+  const items = rawItems
+    .filter(item => item && typeof item.candidateForm === 'string' && item.candidateForm.trim())
+    .map(item => ({
+      itemId: typeof item.candidateItemId === 'string' ? item.candidateItemId : undefined,
+      candidateForm: item.candidateForm,
+      meaning: typeof item.meaning === 'string' ? item.meaning : '',
+      quote: typeof item.quote === 'string' ? item.quote : '',
+      sourcePassageId: typeof item.sourcePassageId === 'string' ? item.sourcePassageId : '',
+      sourceRevision: typeof item.sourceRevision === 'string' ? item.sourceRevision : 'rev-1',
+      modality: item.modality === 'typed' ? ('typed' as const) : ('spoken' as const),
+      retrievalProposal: (['assisted', 'unassisted', 'unknown'] as const).includes(
+        item.retrievalProposal
+      )
+        ? item.retrievalProposal
+        : ('unknown' as const),
+      modelConfidence: typeof item.modelConfidence === 'number' ? item.modelConfidence : undefined,
+    }));
+
+  const outcome = response?.taskOutcome;
+
+  return {
+    schemaVersion: typeof response?.schemaVersion === 'number' ? response.schemaVersion : 0,
+    sessionId: typeof response?.sessionId === 'string' ? response.sessionId : sessionId,
+    attemptId: typeof response?.attemptId === 'string' ? response.attemptId : attemptId,
+    taskOutcome: (['achieved', 'partial', 'not_achieved', 'unknown'] as const).includes(outcome)
+      ? outcome
+      : 'unknown',
+    outcomeReasoning:
+      typeof response?.outcomeReasoning === 'string' ? response.outcomeReasoning : undefined,
+    items,
+    actionableFeedback: Array.isArray(response?.actionableFeedback)
+      ? response.actionableFeedback.filter((f: any) => typeof f === 'string')
+      : undefined,
+  };
+}
+
+/**
+ * Normalises the assessor's skill proposals.
+ *
+ * Note what the model is allowed to say: which skill, which quote, which passage,
+ * which revision, and a retrieval guess. It does not get to name the session,
+ * attempt, domain or scene — those come from runtime state, so there is no field
+ * in which a fabricated context could arrive.
+ */
+function normalizeSkillItems(
+  response: any,
+  skillIds: string[]
+): SkillEvidenceCandidate[] {
+  const raw = Array.isArray(response?.skillItems) ? response.skillItems : [];
+
+  return raw
+    .filter((item: any) => item && typeof item === 'object')
+    .filter((item: any) => typeof item.skillId === 'string' && skillIds.includes(item.skillId))
+    .map((item: any) => ({
+      skillId: item.skillId as string,
+      sourcePassageId: typeof item.sourcePassageId === 'string' ? item.sourcePassageId : '',
+      sourceRevision: typeof item.sourceRevision === 'string' ? item.sourceRevision : 'rev-1',
+      quote: typeof item.quote === 'string' ? item.quote : '',
+      modality: item.modality === 'typed' ? ('typed' as const) : ('spoken' as const),
+      retrievalProposal: (['assisted', 'unassisted', 'unknown'] as const).includes(
+        item.retrievalProposal
+      )
+        ? item.retrievalProposal
+        : ('unknown' as const),
+      supportExposureIds: Array.isArray(item.supportExposureIds)
+        ? item.supportExposureIds.filter((id: unknown): id is string => typeof id === 'string')
+        : [],
+    }));
+}
+
+/** Plain-language recap copy. Never implies a level, and never implies failure. */
+function buildHonestSummary(
+  assessmentUnavailable: boolean,
+  observationCount: number,
+  hasLearnerSpeech: boolean
+): string {
+  if (!hasLearnerSpeech) {
+    return 'No speech was captured in this conversation, so there is nothing to assess yet.';
+  }
+  if (assessmentUnavailable) {
+    return 'Your conversation is saved. Automated review is unavailable right now, so phrases were matched directly against your transcript.';
+  }
+  if (observationCount > 0) {
+    return 'You communicated your goals clearly in this conversation.';
+  }
+  return 'Your conversation is saved. No target phrases could be confirmed from what you said.';
 }
 
 export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
@@ -42,53 +189,511 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   mode,
   coldAttempt,
   onEndSession,
-  onCancel
+  onCancel,
 }) => {
   const { t, language } = useI18n();
-  // Session & Scene State
-  const [sessionId] = useState(`session-${Date.now()}`);
-  const [attemptId, setAttemptId] = useState(`attempt-1`);
+  const insets = useSafeAreaInsets();
+
+  const [sessionId] = useState(() => `session-${Date.now()}`);
+  const [attemptId, setAttemptId] = useState('attempt-1');
   const [passages, setPassages] = useState<Passage[]>([]);
   const [supportExposures, setSupportExposures] = useState<SupportExposure[]>([]);
-  const [sceneState, setSceneState] = useState<SceneState>({
-    sceneId: mission.id,
+  const [sceneState, setSceneState] = useState<SceneState>(() => ({
+    sceneId: mission?.id ?? 'unknown',
     revision: 1,
-    facts: { ...mission.character },
-    learnerKnows: [mission.learnerGoal],
-    characterKnows: mission.character.knowledgeBoundary,
-    checkpoints: [{ id: 'cp-start', description: 'Session start', timestamp: new Date().toISOString() }],
+    facts: { ...(mission?.character ?? {}) },
+    learnerKnows: mission ? [mission.learnerGoal] : [],
+    characterKnows: mission?.character.knowledgeBoundary ?? [],
+    checkpoints: [
+      { id: 'cp-start', description: 'Session start', timestamp: new Date().toISOString() },
+    ],
     isFinished: false,
-    outcome: 'unknown'
-  });
+    outcome: 'unknown',
+  }));
 
-  // Conversation & Audio State
-  const [voiceState, setVoiceState] = useState<
-    'connecting' | 'listening' | 'speaking' | 'muted' | 'paused' | 'idle' | 'ending'
-  >('connecting');
-  const [audioLevel, setAudioLevel] = useState<number>(0);
-  const [isMuted, setIsMuted] = useState<boolean>(false);
-  const [audioPlaybackEnabled, setAudioPlaybackEnabled] = useState<boolean>(true);
-  const [showMeaningLine, setShowMeaningLine] = useState<boolean>(false);
-  const [showTypedInput, setShowTypedInput] = useState<boolean>(false);
-  const [typedMessage, setTypedMessage] = useState<string>('');
-  const [interimUserText, setInterimUserText] = useState<string>('');
+  const [voiceState, setVoiceState] = useState<VoiceState>('connecting');
+  const [audioLevel, setAudioLevel] = useState(0);
+  const [isMuted, setIsMuted] = useState(false);
+  const [audioPlaybackEnabled, setAudioPlaybackEnabled] = useState(true);
+  const [showMeaningLine, setShowMeaningLine] = useState(false);
+  /** The passage the meaning was revealed for, so a re-reveal is not double counted. */
+  const meaningRevealedForRef = useRef<string | null>(null);
+
+  /**
+   * Revealing a caption's meaning is support.
+   *
+   * This is the most-used support affordance in the product, and it used to be
+   * purely visual: a learner could read the translation, repeat the phrase, and
+   * have it recorded as `unassisted` because no exposure existed to contradict it.
+   * That inflated both phrase and skill evidence on the most common path through
+   * the app.
+   *
+   * Recorded once per passage. Hiding and revealing again is the same support, not
+   * additional support, and a second row would only add noise to the ledger.
+   */
+  /**
+   * Revealing a caption's meaning is support.
+   *
+   * This is the most-used support affordance in the product, and it used to be
+   * purely visual: a learner could read the translation, repeat the phrase, and
+   * have it recorded as `unassisted` because no exposure existed to contradict it.
+   * That inflated both phrase and skill evidence on the most common path through
+   * the app.
+   *
+   * Recorded once per passage. Hiding and revealing again is the same support, not
+   * additional support, and a second row would only add noise to the ledger.
+   */
+  const handleToggleMeaning = useCallback(() => {
+    if (showMeaningLine) {
+      setShowMeaningLine(false);
+      return;
+    }
+
+    setShowMeaningLine(true);
+
+    // Derived here rather than reusing the render-scope value, because this
+    // callback is declared before that value exists.
+    const passage = [...passages].reverse().find(p => p.speaker === 'assistant');
+    if (!passage?.meaning) return;
+    if (meaningRevealedForRef.current === passage.id) return;
+    meaningRevealedForRef.current = passage.id;
+
+    const exposure: SupportExposure = {
+      id: `exp-meaning-${passage.id}`,
+      sessionId,
+      attemptId,
+      turnId: passage.id,
+      source: 'caption',
+      kind: 'meaning',
+      // A caption translation is help with the whole line, not with one curated
+      // phrase, so no phrase ids are claimed.
+      targetItemIds: [],
+      exposure: 'visible',
+      recordedAt: new Date().toISOString(),
+    };
+
+    setSupportExposures(prev =>
+      prev.some(e => e.id === exposure.id) ? prev : [...prev, exposure]
+    );
+  }, [passages, showMeaningLine, sessionId, attemptId]);
+
+  const [showTypedInput, setShowTypedInput] = useState(false);
+  const [typedMessage, setTypedMessage] = useState('');
+  const [interimUserText, setInterimUserText] = useState('');
   const [sceneEventNotice, setSceneEventNotice] = useState<string | null>(null);
 
-  // Help & Freeze Overlay State
-  const [showHelpSheet, setShowHelpSheet] = useState<boolean>(false);
-  const [isSceneFrozen, setIsSceneFrozen] = useState<boolean>(false);
+  const [showHelpSheet, setShowHelpSheet] = useState(false);
+  const [isSceneFrozen, setIsSceneFrozen] = useState(false);
   const [activeCoachAdvice, setActiveCoachAdvice] = useState<string | null>(null);
-  const [isCoachLoading, setIsCoachLoading] = useState<boolean>(false);
-  const [hintLadderStep, setHintLadderStep] = useState<
-    'intent_hint' | 'partial_form' | 'full_form'
-  >('intent_hint');
+  const [isCoachLoading, setIsCoachLoading] = useState(false);
 
-  const voiceTransportRef = useRef<WebVoiceTransport | null>(null);
-  const passagesEndRef = useRef<HTMLDivElement | null>(null);
+  const voiceTransportRef = useRef<NativeVoiceTransport | null>(null);
+  const sceneMirrorRef = useRef<SceneMirror | null>(null);
+  const scrollRef = useRef<ScrollView | null>(null);
+  const sceneStateRef = useRef(sceneState);
+  const passagesRef = useRef(passages);
+  const isMutedRef = useRef(isMuted);
+  const isSceneFrozenRef = useRef(isSceneFrozen);
+  const isEndingRef = useRef(false);
+  const mountedRef = useRef(true);
 
-  // Initialize Voice Transport and initial character greeting
+  sceneStateRef.current = sceneState;
+  passagesRef.current = passages;
+  isMutedRef.current = isMuted;
+  isSceneFrozenRef.current = isSceneFrozen;
+
+  const explanationLanguage = EXPLANATION_LANGUAGE_NAMES[language] ?? 'English';
+
+  const buildInitialGreeting = useCallback(
+    (target: MissionDefinition): { greeting: string; meaning: string } => {
+      const { language: lang, category, title } = target;
+
+      if (lang === 'fr') {
+        if (category === 'problems') {
+          return {
+            greeting: 'Bonjour ! Bienvenue à la pharmacie. Qu’est-ce qui ne va pas aujourd’hui ?',
+            meaning: 'Good morning! Welcome to the pharmacy. What seems to be the problem today?',
+          };
+        }
+        if (category === 'transit') {
+          return {
+            greeting: 'Bonjour ! En quoi puis-je vous renseigner pour votre trajet ?',
+            meaning: 'Hello! How can I help you with your journey?',
+          };
+        }
+        if (category === 'cafes' && title.includes('Bistro')) {
+          return {
+            greeting: 'Bonsoir ! Bienvenue au Bistro. Vous êtes deux pour dîner ?',
+            meaning: 'Good evening! Welcome to the Bistro. Table for two for dinner?',
+          };
+        }
+        return {
+          greeting: 'Bonjour ! Bienvenue. Qu’est-ce qui vous ferait plaisir ce matin ?',
+          meaning: 'Good morning! Welcome. What can I get for you this morning?',
+        };
+      }
+
+      if (lang === 'de') {
+        if (category === 'problems') {
+          return {
+            greeting: 'Guten Tag! Willkommen in der Apotheke. Wie kann ich Ihnen helfen?',
+            meaning: 'Good day! Welcome to the pharmacy. How can I help you?',
+          };
+        }
+        if (category === 'transit') {
+          return {
+            greeting: 'Hallo! Suchen Sie eine Fahrkarte oder eine Verbindung?',
+            meaning: 'Hello! Are you looking for a ticket or a connection?',
+          };
+        }
+        if (category === 'cafes' && title.includes('Gasthaus')) {
+          return {
+            greeting: 'Guten Abend! Suchen Sie einen schönen Tisch zum Abendessen?',
+            meaning: 'Good evening! Are you looking for a nice table for dinner?',
+          };
+        }
+        return {
+          greeting: 'Guten Morgen! Was darf es denn heute Frisches sein?',
+          meaning: 'Good morning! What fresh items can I get for you today?',
+        };
+      }
+
+      if (lang === 'it') {
+        if (category === 'problems') {
+          return {
+            greeting: 'Buongiorno! Benvenuto in farmacia. Di cosa hai bisogno?',
+            meaning: 'Good morning! Welcome to the pharmacy. What do you need?',
+          };
+        }
+        if (category === 'transit') {
+          return {
+            greeting: 'Buongiorno! Dove devi andare oggi?',
+            meaning: 'Good morning! Where are you traveling today?',
+          };
+        }
+        if (category === 'cafes' && title.includes('Trattoria')) {
+          return {
+            greeting: 'Buonasera! Benvenuti da Mario. Volete accomodarvi all’aperto?',
+            meaning: 'Good evening! Welcome to Mario’s. Would you like to sit outside?',
+          };
+        }
+        return {
+          greeting: 'Buongiorno! Prego, cosa ti porto stamattina al banco?',
+          meaning: 'Good morning! Please, what can I get you this morning at the counter?',
+        };
+      }
+
+      if (lang === 'ja') {
+        if (category === 'problems') {
+          return {
+            greeting: 'こんにちは！薬局へようこそ。どのような症状でお困りですか？',
+            meaning: 'Hello! Welcome to the pharmacy. What symptoms are troubling you?',
+          };
+        }
+        if (category === 'transit') {
+          return {
+            greeting: 'いらっしゃいませ！JR日暮里駅です。切符や乗り換えのご案内をいたします。',
+            meaning:
+              'Welcome! This is JR Nippori Station. How can I assist with tickets or transfers?',
+          };
+        }
+        if (category === 'cafes') {
+          return {
+            greeting: 'いらっしゃい！居酒屋まるへようこそ！何名様ですか？',
+            meaning: 'Welcome! Welcome to Izakaya Maru! How many people in your party?',
+          };
+        }
+        return {
+          greeting: 'いらっしゃいませ！お弁当や温かい飲み物はいかがでしょうか？',
+          meaning: 'Welcome! Would you like a lunchbox or warm drink?',
+        };
+      }
+
+      if (category === 'problems') {
+        return {
+          greeting: 'Buenos días, bienvenido a la farmacia. ¿Qué síntomas tienes?',
+          meaning: 'Good morning, welcome to the pharmacy. What symptoms do you have?',
+        };
+      }
+      if (category === 'transit') {
+        return {
+          greeting: '¡Hola! ¿En qué puedo ayudarte en el metro hoy?',
+          meaning: 'Hello! How can I help you in the metro today?',
+        };
+      }
+      if (category === 'services') {
+        return {
+          greeting: 'Hola, buenos días. ¿Vienes a recoger o enviar un paquete?',
+          meaning: 'Hello, good morning. Are you here to pick up or send a parcel?',
+        };
+      }
+      if (category === 'social') {
+        return {
+          greeting: '¡Hola vecino! ¿Qué tal? ¿En qué puedo echarte una mano?',
+          meaning: 'Hi neighbor! How is it going? How can I lend a hand?',
+        };
+      }
+      if (title.includes('Terraza')) {
+        return {
+          greeting: '¡Buenas noches! Bienvenidos a La Terraza. ¿Buscaban mesa para cenar?',
+          meaning: 'Good evening! Welcome to La Terraza. Looking for a table for dinner?',
+        };
+      }
+
+      return {
+        greeting: '¡Hola! Muy buenos días. ¿Qué te gustaría tomar hoy?',
+        meaning: 'Hello! Good morning. What would you like to have today?',
+      };
+    },
+    []
+  );
+
+  const handleUserMessage = useCallback(
+    async (target: MissionDefinition, text: string, modality: 'spoken' | 'typed') => {
+      const trimmed = text.trim();
+      if (!trimmed || isEndingRef.current) return;
+
+      const userPassageId = `p-${Date.now()}`;
+      const userPassage: Passage = {
+        id: userPassageId,
+        sessionId,
+        attemptId,
+        speaker: 'user',
+        revisionKey: 'rev-1',
+        assemblyVersion: 1,
+        status: 'final',
+        text: trimmed,
+        modality,
+        startedAt: new Date().toISOString(),
+        fragments: [
+          {
+            id: `f-${Date.now()}`,
+            passageId: userPassageId,
+            origin: modality === 'spoken' ? 'asr' : 'typed',
+            text: trimmed,
+          },
+        ],
+      };
+
+      const updatedPassages = [...passagesRef.current, userPassage];
+      setPassages(updatedPassages);
+      setVoiceState('connecting');
+
+      try {
+        const response = await api.actorRespond({
+          character: target.character,
+          setting: target.setting,
+          learnerGoal: target.learnerGoal,
+          sceneFacts: sceneStateRef.current.facts,
+          mode,
+          recentPassages: updatedPassages.slice(-5),
+          userMessage: trimmed,
+          targetLanguage: target.language,
+          explanationLanguage,
+        });
+
+        if (response.proposedAction) {
+          void applyProposedSceneAction(
+            response.proposedAction,
+            [userPassageId]
+          );
+        }
+
+        const characterPassage: Passage = {
+          id: `p-${Date.now() + 1}`,
+          sessionId,
+          attemptId,
+          speaker: 'assistant',
+          revisionKey: 'rev-1',
+          assemblyVersion: 1,
+          status: 'final',
+          text: response.replyText,
+          meaning: response.meaning,
+          modality: 'spoken',
+          startedAt: new Date().toISOString(),
+          fragments: [
+            {
+              id: `f-${Date.now() + 1}`,
+              passageId: `p-${Date.now() + 1}`,
+              origin: 'assistant',
+              text: response.replyText,
+            },
+          ],
+        };
+
+        setPassages([...updatedPassages, characterPassage]);
+
+        setSceneState(prev => ({
+          ...prev,
+          revision: prev.revision + 1,
+          checkpoints: [
+            ...prev.checkpoints,
+            {
+              id: `cp-${Date.now()}`,
+              description: `Turn ${updatedPassages.length + 1}`,
+              timestamp: new Date().toISOString(),
+            },
+          ],
+        }));
+
+        if (audioPlaybackEnabled && !isSceneFrozenRef.current) {
+          setVoiceState('speaking');
+          await voiceTransportRef.current?.playSpeech(response.replyText, {
+            audioBase64: response.audioBase64,
+            lang: target.language,
+          });
+        } else {
+          setVoiceState('idle');
+        }
+      } catch (err) {
+        console.error('Actor respond error', err);
+        setVoiceState('idle');
+      }
+    },
+    [audioPlaybackEnabled, attemptId, explanationLanguage, mode, sessionId]
+  );
+
+  /**
+   * Asks the server reducer to apply a proposed action. The client never decides
+   * what is true in the scene: a rejection comes back with a reason and the
+   * still-permissible options, and it is surfaced rather than swallowed.
+   */
+  const applyProposedSceneAction = useCallback(
+    async (
+      proposedAction: { name: string; payload?: Record<string, unknown> },
+      sourceTurnIds: string[]
+    ) => {
+      const mirror = sceneMirrorRef.current;
+      if (!mirror) return;
+
+      const result = await mirror.propose(
+        attemptId,
+        proposedAction.name as SceneActionName,
+        proposedAction.payload ?? {},
+        sourceTurnIds
+      );
+
+      if (!result) {
+        setSceneEventNotice('Could not reach the scene director. Scene state is unchanged.');
+        setTimeout(() => setSceneEventNotice(null), 4000);
+        return;
+      }
+
+      if (!result.accepted) {
+        setSceneEventNotice(
+          result.reason
+            ? `Not applied: ${result.reason}`
+            : 'That action was not permitted here.'
+        );
+        setTimeout(() => setSceneEventNotice(null), 4000);
+        return;
+      }
+
+      setSceneState(prev => ({
+        ...prev,
+        revision: result.revision,
+        facts: result.newFacts,
+        lastAction: { name: proposedAction.name, actor: mission?.character.name ?? '' },
+      }));
+
+      if (proposedAction.name === 'offer_alternative') {
+        setSceneEventNotice(
+          `${mission?.character.name} checked: oat milk is out, offering almond milk.`
+        );
+      } else if (proposedAction.name === 'confirm_takeaway') {
+        setSceneEventNotice('Order confirmed for takeaway ("para llevar").');
+      }
+
+      setTimeout(() => setSceneEventNotice(null), 4000);
+    },
+    [attemptId, mission?.character.name]
+  );
+
+  const requestCoachHint = useCallback(
+    async (step: 'intent_hint' | 'partial_form' | 'full_form') => {
+      if (!mission) return;
+      setIsCoachLoading(true);
+
+      const lastAssistantPassage = [...passagesRef.current]
+        .reverse()
+        .find(p => p.speaker === 'assistant');
+
+      try {
+        const data = await api.coachHint({
+          step,
+          targetLanguage: mission.language,
+          explanationLanguage,
+          characterName: mission.character.name,
+          lastAssistantLine: lastAssistantPassage?.text ?? '',
+          learnerGoal: mission.learnerGoal,
+        });
+        setActiveCoachAdvice(data.hint);
+
+        const exposure: SupportExposure = {
+          id: `exp-${Date.now()}`,
+          sessionId,
+          attemptId,
+          source: 'coach',
+          kind: step,
+          targetItemIds: mission.usefulPhrases.map(p => p.id),
+          exposure: 'visible',
+          recordedAt: new Date().toISOString(),
+        };
+        setSupportExposures(prev => [...prev, exposure]);
+      } catch (e) {
+        setActiveCoachAdvice('Try expressing your order in simple, clear words.');
+      } finally {
+        setIsCoachLoading(false);
+      }
+    },
+    [attemptId, explanationLanguage, mission, sessionId]
+  );
+
   useEffect(() => {
-    const transport = new WebVoiceTransport();
+    if (!mission) return;
+
+    isEndingRef.current = false;
+
+    // Attach the scene mirror when this mission has a released SceneDefinition.
+    // Without one the session still runs; the client just does not mirror
+    // server scene truth, and no action is proposed.
+    if (mission.sceneId) {
+      const mirror = new SceneMirror(sessionId, mission.sceneId, mission.id);
+      sceneMirrorRef.current = mirror;
+      void mirror.begin('attempt-1').then(snapshot => {
+        if (!snapshot || !mountedRef.current) return;
+        setSceneState(prev => ({
+          ...prev,
+          sceneId: snapshot.sceneId,
+          revision: snapshot.revision,
+          facts: snapshot.facts,
+        }));
+      });
+    } else {
+      sceneMirrorRef.current = null;
+    }
+
+    // Support is recorded from the briefing, not just from inside the session.
+    // If the learner saw the target wording here, later use of it is assisted —
+    // that is what makes the cold-attempt choice meaningful.
+    if (!coldAttempt) {
+      setSupportExposures([
+        {
+          id: `exp-briefing-${Date.now()}`,
+          sessionId,
+          attemptId: 'attempt-1',
+          source: 'briefing',
+          kind: 'full_form',
+          targetItemIds: mission.usefulPhrases.map(p => p.id),
+          exposure: 'visible',
+          recordedAt: new Date().toISOString(),
+        },
+      ]);
+    } else {
+      setSupportExposures([]);
+    }
+
+    const transport = new NativeVoiceTransport();
     transport.setLanguage(mission.language);
     voiceTransportRef.current = transport;
 
@@ -98,7 +703,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           setVoiceState('listening');
           break;
         case 'listening_end':
-          setVoiceState('idle');
+          setVoiceState(prev => (prev === 'speaking' ? prev : 'idle'));
           break;
         case 'audio_level':
           setAudioLevel(event.payload);
@@ -106,7 +711,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         case 'speech_result':
           if (event.payload.isFinal) {
             setInterimUserText('');
-            handleUserMessage(event.payload.transcript, 'spoken');
+            void handleUserMessage(mission, event.payload.transcript, 'spoken');
           } else {
             setInterimUserText(event.payload.transcript);
           }
@@ -116,333 +721,77 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           break;
         case 'playback_end':
           setVoiceState('idle');
-          // Automatically listen for user reply once character finishes speaking
-          if (!isSceneFrozen && !isMuted) {
+          if (!isSceneFrozenRef.current && !isMutedRef.current && !isEndingRef.current) {
             transport.startListening();
           }
           break;
         case 'interrupted':
-          // Log partial/interrupted exposure
           break;
         case 'error':
           if (event.payload === 'mic_denied') {
             setShowTypedInput(true);
+            setVoiceState('idle');
           }
           break;
       }
     });
 
-    // Initial character turn
     const startInitialTurn = async () => {
-      let initialGreeting = '¡Hola! Muy buenos días. ¿Qué te gustaría tomar hoy?';
-      let greetingMeaning = 'Hello! Good morning. What would you like to have today?';
-
-      if (mission.language === 'fr') {
-        if (mission.category === 'problems') {
-          initialGreeting = 'Bonjour ! Bienvenue à la pharmacie. Qu’est-ce qui ne va pas aujourd’hui ?';
-          greetingMeaning = 'Good morning! Welcome to the pharmacy. What seems to be the problem today?';
-        } else if (mission.category === 'transit') {
-          initialGreeting = 'Bonjour ! En quoi puis-je vous renseigner pour votre trajet ?';
-          greetingMeaning = 'Hello! How can I help you with your journey?';
-        } else if (mission.category === 'cafes' && mission.title.includes('Bistro')) {
-          initialGreeting = 'Bonsoir ! Bienvenue au Bistro. Vous êtes deux pour dîner ?';
-          greetingMeaning = 'Good evening! Welcome to the Bistro. Table for two for dinner?';
-        } else {
-          initialGreeting = 'Bonjour ! Bienvenue. Qu’est-ce qui vous ferait plaisir ce matin ?';
-          greetingMeaning = 'Good morning! Welcome. What can I get for you this morning?';
-        }
-      } else if (mission.language === 'de') {
-        if (mission.category === 'problems') {
-          initialGreeting = 'Guten Tag! Willkommen in der Apotheke. Wie kann ich Ihnen helfen?';
-          greetingMeaning = 'Good day! Welcome to the pharmacy. How can I help you?';
-        } else if (mission.category === 'transit') {
-          initialGreeting = 'Hallo! Suchen Sie eine Fahrkarte oder eine Verbindung?';
-          greetingMeaning = 'Hello! Are you looking for a ticket or a connection?';
-        } else if (mission.category === 'cafes' && mission.title.includes('Gasthaus')) {
-          initialGreeting = 'Guten Abend! Suchen Sie einen schönen Tisch zum Abendessen?';
-          greetingMeaning = 'Good evening! Are you looking for a nice table for dinner?';
-        } else {
-          initialGreeting = 'Guten Morgen! Was darf es denn heute Frisches sein?';
-          greetingMeaning = 'Good morning! What fresh items can I get for you today?';
-        }
-      } else if (mission.language === 'it') {
-        if (mission.category === 'problems') {
-          initialGreeting = 'Buongiorno! Benvenuto in farmacia. Di cosa hai bisogno?';
-          greetingMeaning = 'Good morning! Welcome to the pharmacy. What do you need?';
-        } else if (mission.category === 'transit') {
-          initialGreeting = 'Buongiorno! Dove devi andare oggi?';
-          greetingMeaning = 'Good morning! Where are you traveling today?';
-        } else if (mission.category === 'cafes' && mission.title.includes('Trattoria')) {
-          initialGreeting = 'Buonasera! Benvenuti da Mario. Volete accomodarvi all’aperto?';
-          greetingMeaning = 'Good evening! Welcome to Mario’s. Would you like to sit outside?';
-        } else {
-          initialGreeting = 'Buongiorno! Prego, cosa ti porto stamattina al banco?';
-          greetingMeaning = 'Good morning! Please, what can I get you this morning at the counter?';
-        }
-      } else if (mission.language === 'ja') {
-        if (mission.category === 'problems') {
-          initialGreeting = 'こんにちは！薬局へようこそ。どのような症状でお困りですか？';
-          greetingMeaning = 'Hello! Welcome to the pharmacy. What symptoms are troubling you?';
-        } else if (mission.category === 'transit') {
-          initialGreeting = 'いらっしゃいませ！JR日暮里駅です。切符や乗り換えのご案内をいたします。';
-          greetingMeaning = 'Welcome! This is JR Nippori Station. How can I assist with tickets or transfers?';
-        } else if (mission.category === 'cafes') {
-          initialGreeting = 'いらっしゃい！居酒屋まるへようこそ！何名様ですか？';
-          greetingMeaning = 'Welcome! Welcome to Izakaya Maru! How many people in your party?';
-        } else {
-          initialGreeting = 'いらっしゃいませ！お弁当や温かい飲み物はいかがでしょうか？';
-          greetingMeaning = 'Welcome! Would you like a lunchbox or warm drink?';
-        }
-      } else if (mission.language === 'es') {
-        if (mission.category === 'problems') {
-          initialGreeting = 'Buenos días, bienvenido a la farmacia. ¿Qué síntomas tienes?';
-          greetingMeaning = 'Good morning, welcome to the pharmacy. What symptoms do you have?';
-        } else if (mission.category === 'transit') {
-          initialGreeting = '¡Hola! ¿En qué puedo ayudarte en el metro hoy?';
-          greetingMeaning = 'Hello! How can I help you in the metro today?';
-        } else if (mission.category === 'services') {
-          initialGreeting = 'Hola, buenos días. ¿Vienes a recoger o enviar un paquete?';
-          greetingMeaning = 'Hello, good morning. Are you here to pick up or send a parcel?';
-        } else if (mission.category === 'social') {
-          initialGreeting = '¡Hola vecino! ¿Qué tal? ¿En qué puedo echarte una mano?';
-          greetingMeaning = 'Hi neighbor! How is it going? How can I lend a hand?';
-        } else if (mission.title.includes('Terraza')) {
-          initialGreeting = '¡Buenas noches! Bienvenidos a La Terraza. ¿Buscaban mesa para cenar?';
-          greetingMeaning = 'Good evening! Welcome to La Terraza. Looking for a table for dinner?';
-        }
-      }
+      const { greeting, meaning } = buildInitialGreeting(mission);
+      const now = Date.now();
 
       const initialPassage: Passage = {
-        id: `p-${Date.now()}`,
+        id: `p-${now}`,
         sessionId,
-        attemptId,
+        attemptId: 'attempt-1',
         speaker: 'assistant',
         revisionKey: 'rev-1',
         assemblyVersion: 1,
         status: 'final',
-        text: initialGreeting,
-        meaning: greetingMeaning,
+        text: greeting,
+        meaning,
         modality: 'spoken',
         startedAt: new Date().toISOString(),
-        fragments: [{ id: `f-${Date.now()}`, passageId: `p-${Date.now()}`, origin: 'assistant', text: initialGreeting }]
+        fragments: [
+          { id: `f-${now}`, passageId: `p-${now}`, origin: 'assistant', text: greeting },
+        ],
       };
 
       setPassages([initialPassage]);
       setVoiceState('speaking');
 
-      // Speak greeting
-      await transport.playSpeech(initialGreeting, { lang: mission.language });
+      await transport.playSpeech(greeting, { lang: mission.language });
       transport.startListening();
     };
 
-    startInitialTurn();
+    void startInitialTurn();
 
     return () => {
+      isEndingRef.current = true;
+      mountedRef.current = false;
       unsubscribe();
       transport.dispose();
+      voiceTransportRef.current = null;
+      void sceneMirrorRef.current?.close();
+      sceneMirrorRef.current = null;
     };
-  }, []);
+  }, [mission, sessionId, coldAttempt, buildInitialGreeting, handleUserMessage]);
 
-  // Auto scroll transcript to latest line
   useEffect(() => {
-    passagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    const timer = setTimeout(() => {
+      scrollRef.current?.scrollToEnd({ animated: true });
+    }, 60);
+    return () => clearTimeout(timer);
   }, [passages, interimUserText]);
 
-  // Handle user speech or typed submission
-  const handleUserMessage = async (text: string, modality: 'spoken' | 'typed') => {
-    if (!text.trim()) return;
-
-    // Record user passage
-    const userPassageId = `p-${Date.now()}`;
-    const userPassage: Passage = {
-      id: userPassageId,
-      sessionId,
-      attemptId,
-      speaker: 'user',
-      revisionKey: 'rev-1',
-      assemblyVersion: 1,
-      status: 'final',
-      text: text.trim(),
-      modality,
-      startedAt: new Date().toISOString(),
-      fragments: [
-        {
-          id: `f-${Date.now()}`,
-          passageId: userPassageId,
-          origin: modality === 'spoken' ? 'asr' : 'typed',
-          text: text.trim()
-        }
-      ]
-    };
-
-    const updatedPassages = [...passages, userPassage];
-    setPassages(updatedPassages);
-    setVoiceState('connecting');
-
-    // Call server actor endpoint
-    try {
-      const explLang = language === 'fr' ? 'French' : language === 'es' ? 'Spanish' : language === 'nl' ? 'Dutch' : 'English';
-      const response = await fetch('/api/actor/respond', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          character: mission.character,
-          setting: mission.setting,
-          learnerGoal: mission.learnerGoal,
-          sceneFacts: sceneState.facts,
-          mode,
-          recentPassages: updatedPassages.slice(-5),
-          userMessage: text.trim(),
-          targetLanguage: mission.language,
-          explanationLanguage: explLang
-        })
-      });
-
-      const data = await response.json();
-
-      // If actor proposed a scene action, execute via reducer
-      if (data.proposedAction) {
-        handleProposedSceneAction(data.proposedAction);
-      }
-
-      // Record character reply passage
-      const characterPassage: Passage = {
-        id: `p-${Date.now() + 1}`,
-        sessionId,
-        attemptId,
-        speaker: 'assistant',
-        revisionKey: 'rev-1',
-        assemblyVersion: 1,
-        status: 'final',
-        text: data.replyText,
-        meaning: data.meaning,
-        modality: 'spoken',
-        startedAt: new Date().toISOString(),
-        fragments: [
-          {
-            id: `f-${Date.now() + 1}`,
-            passageId: `p-${Date.now() + 1}`,
-            origin: 'assistant',
-            text: data.replyText
-          }
-        ]
-      };
-
-      setPassages([...updatedPassages, characterPassage]);
-
-      // Checkpoint addition
-      setSceneState(prev => ({
-        ...prev,
-        revision: prev.revision + 1,
-        checkpoints: [
-          ...prev.checkpoints,
-          {
-            id: `cp-${Date.now()}`,
-            description: `Turn ${updatedPassages.length + 1}`,
-            timestamp: new Date().toISOString()
-          }
-        ]
-      }));
-
-      // Speak response if audio playback is enabled and scene is not frozen
-      if (audioPlaybackEnabled && !isSceneFrozen) {
-        setVoiceState('speaking');
-        await voiceTransportRef.current?.playSpeech(data.replyText, {
-          audioBase64: data.audioBase64,
-          lang: mission.language
-        });
-      } else {
-        setVoiceState('idle');
-      }
-    } catch (err) {
-      console.error('Actor respond error', err);
-      setVoiceState('idle');
-    }
-  };
-
-  const handleProposedSceneAction = async (proposedAction: { name: string; payload?: any }) => {
-    try {
-      const res = await fetch('/api/scene/action', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          currentFacts: sceneState.facts,
-          actionName: proposedAction.name,
-          payload: proposedAction.payload
-        })
-      });
-      const result = await res.json();
-      if (result.accepted) {
-        setSceneState(prev => ({
-          ...prev,
-          facts: result.newFacts,
-          lastAction: { name: proposedAction.name, actor: mission.character.name }
-        }));
-        if (proposedAction.name === 'offer_alternative') {
-          setSceneEventNotice(`${mission.character.name} checked: oat milk is out, offering almond milk.`);
-        } else if (proposedAction.name === 'confirm_takeaway') {
-          setSceneEventNotice(`Order confirmed for takeaway ("para llevar").`);
-        }
-        setTimeout(() => setSceneEventNotice(null), 4000);
-      }
-    } catch (e) {
-      console.error('Scene action error', e);
-    }
-  };
-
-  // Help ladder: intent -> partial -> full
-  const requestCoachHint = async (step: 'intent_hint' | 'partial_form' | 'full_form') => {
-    setIsCoachLoading(true);
-    const lastAssistantPassage = [...passages].reverse().find(p => p.speaker === 'assistant');
-
-    try {
-      const explLang = language === 'fr' ? 'French' : language === 'es' ? 'Spanish' : language === 'nl' ? 'Dutch' : 'English';
-      const res = await fetch('/api/coach/hint', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          step,
-          targetLanguage: mission.language,
-          explanationLanguage: explLang,
-          characterName: mission.character.name,
-          lastAssistantLine: lastAssistantPassage?.text || '',
-          learnerGoal: mission.learnerGoal
-        })
-      });
-      const data = await res.json();
-      setActiveCoachAdvice(data.hint);
-
-      // Record support exposure in ledger!
-      const exposure: SupportExposure = {
-        id: `exp-${Date.now()}`,
-        sessionId,
-        attemptId,
-        source: 'coach',
-        kind: step,
-        targetItemIds: mission.usefulPhrases.map(p => p.id),
-        exposure: 'visible',
-        recordedAt: new Date().toISOString()
-      };
-      setSupportExposures(prev => [...prev, exposure]);
-    } catch (e) {
-      setActiveCoachAdvice('Try expressing your order in simple, clear words.');
-    } finally {
-      setIsCoachLoading(false);
-    }
-  };
-
-  // Freeze the scene
   const toggleFreezeScene = () => {
     if (!isSceneFrozen) {
-      // Freeze
       voiceTransportRef.current?.stopPlayback();
       voiceTransportRef.current?.stopListening();
       setIsSceneFrozen(true);
       setVoiceState('paused');
-      // Fetch private coach strategy
-      requestCoachHint('intent_hint');
+      void requestCoachHint('intent_hint');
     } else {
-      // Resume
       setIsSceneFrozen(false);
       setActiveCoachAdvice(null);
       setVoiceState('idle');
@@ -450,501 +799,603 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     }
   };
 
-  // Retry from checkpoint
-  const handleRetryCheckpoint = () => {
-    if (passages.length <= 1) return;
+  const handleRetryCheckpoint = async () => {
+    if (passagesRef.current.length <= 1) return;
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
 
-    // Fork attempt into a rehearsed attempt
-    setAttemptId(`attempt-${Date.now()}`);
-    // Roll back to after initial greeting
-    setPassages(passages.slice(0, 1));
+    // Fork a new attempt on the server too. The earlier attempt keeps its own
+    // transcript and is marked rehearsal, because the learner has seen the turn.
+    const forkedAttemptId = await sceneMirrorRef.current?.fork('cp-start', true);
+    const nextAttemptId = forkedAttemptId ?? `attempt-${Date.now()}`;
+
+    setAttemptId(nextAttemptId);
+    setPassages(passagesRef.current.slice(0, 1));
     setIsSceneFrozen(false);
     setActiveCoachAdvice(null);
-    setSceneEventNotice('Checkpoint restored: Try your response again.');
-    setTimeout(() => setSceneEventNotice(null), 3000);
+    setSceneEventNotice(
+      'Checkpoint restored. This is a rehearsal, so the turn will not count as independent recall.'
+    );
+    setTimeout(() => setSceneEventNotice(null), 4000);
     voiceTransportRef.current?.startListening();
   };
 
-  // Conclude session & invoke structured assessment
-  const handleFinishConversation = async () => {
+  /**
+   * Ends the session and assesses it.
+   *
+   * `reason` matters for evidence: a session the learner walked away from is not a
+   * failed attempt, and must not produce a lapse. The inactivity controller passes
+   * `time_limit` when it ends a conversation; every other caller reaches a natural
+   * conclusion and is `completed`.
+   */
+  const handleFinishConversation = useCallback(
+    async (endReason: SessionRecord['endReason'] = 'completed') => {
+    if (!mission || isEndingRef.current) return;
+    isEndingRef.current = true;
+
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
-
     setVoiceState('ending');
 
+    const finalPassages = passagesRef.current;
+    const finalSceneState = sceneStateRef.current;
+    const wasRehearsal = attemptId !== 'attempt-1';
+
+    // The assessor proposes; the deterministic core decides. If the model is
+    // unreachable we fall back to the same local rules rather than a looser
+    // path, so a network failure can never overstate what was produced.
+    let proposal: StructuredAssessmentProposal | null = null;
+    let assessmentUnavailable = false;
+    // Held so the skill proposals can be read even when phrase normalisation has
+    // already discarded something. Both come from the same model response.
+    let lastAssessmentResponse: unknown = null;
+
     try {
-      let assessmentProposal: any = null;
-      try {
-        const res = await fetch('/api/assessment', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            sessionId,
-            attemptId,
-            passages,
-            supportExposures,
-            usefulPhrases: mission.usefulPhrases,
-            language: mission.language
-          })
-        });
-        if (res.ok) {
-          assessmentProposal = await res.json();
-        }
-      } catch (fetchErr) {
-        console.warn('Remote assessment unavailable, using local grounded evaluation:', fetchErr);
-      }
-
-      // If remote proposal succeeded with items, map them; otherwise build grounded local observations
-      const userPassages = passages.filter(p => p.speaker === 'user');
-      let finalObservations: any[] = [];
-
-      if (assessmentProposal && Array.isArray(assessmentProposal.items) && assessmentProposal.items.length > 0) {
-        finalObservations = assessmentProposal.items.map((item: any) => ({
-          observationId: `obs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-          sessionId,
-          attemptId,
-          sourceTurnId: item.sourcePassageId || 'turn-1',
-          sourceRevision: item.sourceRevision || 'rev-1',
-          itemId: item.candidateItemId || item.itemId || 'phrase-custom',
-          candidateForm: item.candidateForm,
-          meaning: item.meaning,
-          quote: item.quote,
-          modality: item.modality || 'spoken',
-          retrieval: supportExposures.length > 0 || !coldAttempt ? 'assisted' : 'unassisted',
-          taskOutcome: assessmentProposal.taskOutcome || 'completed',
-          rehearsal: attemptId !== 'attempt-1',
-          supportExposureIds: supportExposures.map(e => e.id),
-          recordedAt: new Date().toISOString()
-        }));
-      } else {
-        // Deterministic client-side quote matcher
-        for (const phrase of mission.usefulPhrases) {
-          const match = userPassages.find(p =>
-            p.text && p.text.toLowerCase().includes(phrase.form.toLowerCase().slice(0, 8))
-          );
-          if (match) {
-            finalObservations.push({
-              observationId: `obs-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`,
-              sessionId,
-              attemptId,
-              sourceTurnId: match.id,
-              sourceRevision: match.revisionKey || 'rev-1',
-              itemId: phrase.id,
-              candidateForm: phrase.form,
-              meaning: phrase.meaning,
-              quote: match.text,
-              modality: match.modality || 'spoken',
-              retrieval: supportExposures.length > 0 || !coldAttempt ? 'assisted' : 'unassisted',
-              taskOutcome: 'completed',
-              rehearsal: attemptId !== 'attempt-1',
-              supportExposureIds: supportExposures.map(e => e.id),
-              recordedAt: new Date().toISOString()
-            });
-          }
-        }
-      }
-
-      const finalRecord: SessionRecord = {
-        id: sessionId,
+      const response = await api.assessment({
+        sessionId,
+        attemptId,
+        // Lets the server tell the model which skills are creditable. Membership is
+        // still validated client-side; this only narrows what is offered.
         missionId: mission.id,
-        missionVersion: mission.version,
-        language: mission.language,
-        mode,
-        coldAttempt,
-        state: 'recap_ready',
-        startedAt: passages[0]?.startedAt || new Date().toISOString(),
-        endedAt: new Date().toISOString(),
-        endReason: 'completed',
-        passages,
+        passages: finalPassages,
         supportExposures,
-        observations: finalObservations,
-        taskOutcome: assessmentProposal?.taskOutcome || (finalObservations.length > 0 ? 'completed' : 'partly_completed'),
-        sceneState,
-        summary: assessmentProposal?.outcomeReasoning || (finalObservations.length > 0 ? 'You communicated your goals clearly in this conversation.' : 'Conversation completed.'),
-        actionableFeedback: assessmentProposal?.actionableFeedback || [
-          'Good engagement! Practising in real-time builds fluency.',
-          'Review phrases due in your Progress tab to keep retention high.'
-        ]
-      };
-
-      onEndSession(finalRecord);
-    } catch (e) {
-      console.warn('Session completion notice:', e);
-      // Graceful fallback
-      const fallbackRecord: SessionRecord = {
-        id: sessionId,
-        missionId: mission.id,
-        missionVersion: mission.version,
+        usefulPhrases: mission.usefulPhrases,
         language: mission.language,
-        mode,
-        coldAttempt,
-        state: 'recap_ready',
-        startedAt: new Date().toISOString(),
-        endedAt: new Date().toISOString(),
-        endReason: 'completed',
-        passages,
-        supportExposures,
-        observations: [],
-        taskOutcome: 'partly_completed',
-        sceneState
-      };
-      onEndSession(fallbackRecord);
+      });
+      lastAssessmentResponse = response;
+      proposal = normalizeAssessmentResponse(response, sessionId, attemptId);
+    } catch (fetchErr) {
+      assessmentUnavailable = true;
+      console.warn('Remote assessment unavailable, using local grounded evaluation:', fetchErr);
     }
-  };
+
+    let finalObservations: LearningObservation[] = [];
+    let rejectedCount = 0;
+    let ambiguousCount = 0;
+    let proposedOutcome: TaskOutcome = 'unknown';
+
+    if (proposal) {
+      const validated = validateAssessmentProposal(
+        proposal,
+        finalPassages,
+        supportExposures,
+        wasRehearsal
+      );
+      finalObservations = validated.validatedObservations;
+      rejectedCount = validated.rejectedProposals.length;
+      proposedOutcome = validated.taskOutcome;
+    }
+
+    /**
+     * Skill evidence.
+     *
+     * The view does not decide what the learner demonstrated. It hands the model's
+     * proposals plus the real runtime facts to the validator and persists only what
+     * survived, so the same checks apply whether the evidence came from a live
+     * session or from a test.
+     *
+     * The context identifiers below come from the mission and this attempt, never
+     * from the model, so a proposal cannot relocate evidence into a situation the
+     * learner was never in.
+     */
+    const missionSkillIds = [...mission.primarySkillIds, ...mission.secondarySkillIds];
+    const skillProposal: SkillEvidenceProposal = {
+      schemaVersion: proposal?.schemaVersion ?? 1,
+      sessionId,
+      attemptId,
+      taskOutcome: proposedOutcome,
+      skillItems: normalizeSkillItems(lastAssessmentResponse, missionSkillIds),
+    };
+
+    const skillValidation = validateSkillEvidenceProposal(skillProposal, {
+      sessionId,
+      attemptId,
+      mission,
+      passages: finalPassages,
+      supportExposures,
+      isRehearsalAttempt: wasRehearsal,
+      sessionEndReason: endReason,
+      // A live session only ever writes validated evidence. `legacy_inferred` is
+      // produced solely by migration/backfill.
+      evidenceSource: 'validated_explicit',
+    });
+
+    const validatedSkillObservations = skillValidation.validated;
+    const skillEvidenceIssues = skillValidation.rejected;
+    const skillLapses = skillValidation.lapses;
+
+    if (skillEvidenceIssues.length > 0) {
+      console.warn(
+        `Skill evidence: ${skillEvidenceIssues.length} proposal(s) rejected`,
+        skillEvidenceIssues.map(i => `${i.check}:${i.candidate.skillId}`)
+      );
+    }
+
+    // Always cross-check the model's claims against the transcript. This catches
+    // a model that validated fine on paper but matched nothing the learner said.
+    const local = buildLocalObservations({
+      sessionId,
+      attemptId,
+      passages: finalPassages,
+      supportExposures,
+      candidates: mission.usefulPhrases,
+      isColdAttempt: coldAttempt,
+      isRehearsalAttempt: wasRehearsal,
+    });
+    ambiguousCount = local.ambiguous;
+
+    const validatedIds = new Set(finalObservations.map(o => `${o.sourceTurnId}:${o.itemId}`));
+    const extraVerified = local.observations.filter(
+      o => !validatedIds.has(`${o.sourceTurnId}:${o.itemId}`)
+    );
+    finalObservations = [...finalObservations, ...extraVerified];
+
+    if (rejectedCount > 0) {
+      console.warn(
+        `Assessment: ${rejectedCount} proposal(s) rejected, ${ambiguousCount} ambiguous, ${extraVerified.length} confirmed locally`
+      );
+    }
+
+    const userPassages = finalPassages.filter(p => p.speaker === 'user');
+    const hasLearnerSpeech = userPassages.length > 0;
+
+    // Map the assessor's scene-level outcome onto the receipt's vocabulary.
+    // `unknown` is preserved rather than collapsed into a flattering label.
+    let resolvedOutcome: SessionRecord['taskOutcome'];
+    if (!hasLearnerSpeech) {
+      // Silence is not a lapse, and it is not evidence of success either.
+      resolvedOutcome = 'unknown';
+    } else {
+      switch (proposedOutcome) {
+        case 'achieved':
+          resolvedOutcome = 'completed';
+          break;
+        case 'partial':
+          resolvedOutcome = 'partly_completed';
+          break;
+        case 'not_achieved':
+          resolvedOutcome = 'changed_direction';
+          break;
+        default:
+          resolvedOutcome = 'unknown';
+      }
+    }
+
+    onEndSession({
+      id: sessionId,
+      missionId: mission.id,
+      missionVersion: mission.version,
+      language: mission.language,
+      mode,
+      coldAttempt,
+      state: 'recap_ready',
+      startedAt: finalPassages[0]?.startedAt || new Date().toISOString(),
+      endedAt: new Date().toISOString(),
+      endReason,
+      passages: finalPassages,
+      supportExposures,
+      observations: finalObservations,
+      // Only validated evidence reaches the archive, written in the same
+      // transaction as the transcript it cites.
+      skillObservations: validatedSkillObservations,
+      skillLapses,
+      taskOutcome: resolvedOutcome,
+      sceneState: finalSceneState,
+      summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, finalObservations.length, hasLearnerSpeech),
+      actionableFeedback: proposal?.actionableFeedback ?? [
+        ...(finalObservations.length > 0
+          ? ['Good engagement! Practising in real-time builds fluency.']
+          : []),
+        'Review phrases due in your Progress tab to keep retention high.',
+      ],
+    });
+  }, [
+    attemptId,
+    coldAttempt,
+    mission,
+    mode,
+    onEndSession,
+    sessionId,
+    supportExposures,
+  ]);
+
+  if (!mission) return null;
 
   const latestAssistantPassage = [...passages].reverse().find(p => p.speaker === 'assistant');
+  const voiceLabel = isSceneFrozen ? t.live.pausedTag : voiceState;
 
   return (
-    <div className="fixed inset-0 z-50 flex flex-col bg-canvas text-heading transition-colors duration-200">
-      {/* 1. Header Bar: Scene Label, Objective, Freeze & End */}
-      <div className="flex items-center justify-between border-b border-border-subtle bg-surface px-3 py-2.5 sm:px-6 sm:py-3">
-        <div className="min-w-0 pr-2">
-          <div className="flex items-center gap-1.5 text-xs text-muted flex-wrap">
-            <span className="font-semibold text-heading truncate max-w-[120px] sm:max-w-none">{mission.title}</span>
-            <span>·</span>
-            <span className="truncate">{mission.character.name}</span>
-            <span className="hidden sm:inline">·</span>
-            <span className="capitalize hidden sm:inline">{t.modes[mode] || mode}</span>
-          </div>
-          <div className="text-[11px] sm:text-xs text-body mt-0.5 truncate max-w-[220px] sm:max-w-none">
-            <strong className="text-heading font-medium">{t.common.goal}</strong> {mission.learnerGoal}
-          </div>
-        </div>
+    <Modal visible transparent animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
+      <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
+        <View className="flex-row items-center justify-between gap-2 border-b border-border-subtle bg-surface px-3.5 py-2.5">
+          <View className="flex-1 min-w-0">
+            <View className="flex-row items-center gap-1.5">
+              <Text className="text-xs font-semibold text-ink" numberOfLines={1}>
+                {mission.title}
+              </Text>
+              <Text className="text-xs text-muted">·</Text>
+              <Text className="text-xs text-muted" numberOfLines={1}>
+                {mission.character.name}
+              </Text>
+            </View>
+            <Text className="mt-0.5 text-xs text-body" numberOfLines={1}>
+              <Text className="font-medium text-ink">{t.common.goal}</Text> {mission.learnerGoal}
+            </Text>
+          </View>
 
-        <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-          {/* Freeze scene toggle */}
-          <button
-            onClick={toggleFreezeScene}
-            className={`flex items-center gap-1 sm:gap-1.5 rounded-xl border px-2.5 py-1.5 sm:px-3 text-xs font-medium transition-all ${
-              isSceneFrozen
-                ? 'border-primary bg-card-warm text-primary'
-                : 'border-border-subtle bg-surface-sunken text-heading hover:bg-surface-hover'
-            }`}
-            title={isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
-            aria-label={isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
-          >
-            {isSceneFrozen ? (
-              <>
-                <Play className="h-3.5 w-3.5 fill-primary text-primary" />
-                <span className="hidden xs:inline">{t.common.resumeScene}</span>
-              </>
-            ) : (
-              <>
-                <Pause className="h-3.5 w-3.5" />
-                <span className="hidden xs:inline">{t.common.freezeScene}</span>
-              </>
-            )}
-          </button>
-
-          {/* End session */}
-          <button
-            onClick={handleFinishConversation}
-            className="rounded-xl bg-primary px-3 sm:px-3.5 py-1.5 text-xs font-semibold text-white hover:bg-primary-dark shadow-xs transition-all active:scale-95"
-          >
-            {t.common.endConversation}
-          </button>
-        </div>
-      </div>
-
-      {/* Scene Event Notification Banner */}
-      {sceneEventNotice && (
-        <div className="bg-card-warm px-4 py-2 text-center text-xs font-medium text-primary border-b border-primary/20 animate-fadeIn">
-          {sceneEventNotice}
-        </div>
-      )}
-
-      {/* 2. Main Live Conversation Viewport */}
-      <div className="flex-1 overflow-y-auto px-4 py-6 sm:px-6 space-y-6 max-w-3xl mx-auto w-full">
-        {/* Latest Assistant Spoken Line (Primary Focal Anchor) */}
-        {latestAssistantPassage && (
-          <div className="rounded-2xl border border-border-subtle bg-surface p-6 shadow-xs space-y-3">
-            <div className="flex items-center justify-between text-xs text-muted">
-              <span className="font-medium text-heading">{mission.character.name}</span>
-              <button
-                onClick={() => setShowMeaningLine(!showMeaningLine)}
-                className="text-xs text-primary hover:underline font-medium"
+          <View className="flex-row items-center gap-1.5">
+            <Pressable
+              onPress={toggleFreezeScene}
+              accessibilityRole="button"
+              accessibilityLabel={isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
+              className={`h-8 flex-row items-center gap-1 rounded-xl border px-2.5 ${
+                isSceneFrozen
+                  ? 'border-primary bg-card-warm'
+                  : 'border-border-subtle bg-surface-sunken'
+              }`}
+            >
+              {isSceneFrozen ? (
+                <Play size={14} color={iconColor('brand')} fill="rgb(var(--color-brand))" />
+              ) : (
+                <Pause size={14} color={iconColor('ink')} />
+              )}
+              <Text
+                className={`text-xs font-medium ${
+                  isSceneFrozen ? 'text-primary' : 'text-ink'
+                }`}
               >
-                {showMeaningLine ? t.common.hideTranslation : t.common.showTranslation}
-              </button>
-            </div>
+                {isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
+              </Text>
+            </Pressable>
 
-            <div className="font-display text-2xl sm:text-3xl font-medium leading-snug text-heading">
-              "{latestAssistantPassage.text}"
-            </div>
+            <Pressable
+              onPress={() => void handleFinishConversation()}
+              accessibilityRole="button"
+              accessibilityLabel={t.common.endConversation}
+              className="h-8 items-center justify-center rounded-xl bg-primary px-3 active:opacity-80"
+            >
+              <Text className="text-xs font-semibold text-white">
+                {t.common.endConversation}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
 
-            {showMeaningLine && latestAssistantPassage.meaning && (
-              <div className="rounded-xl bg-surface-sunken p-3 text-xs text-body border border-border-subtle">
-                <strong className="text-heading font-medium">{t.common.meaning} </strong>
-                {latestAssistantPassage.meaning}
-              </div>
-            )}
-          </div>
-        )}
+        {sceneEventNotice ? (
+          <View className="border-b border-primary/20 bg-card-warm px-4 py-2">
+            <Text className="text-center text-xs font-medium text-primary">{sceneEventNotice}</Text>
+          </View>
+        ) : null}
 
-        {/* Live Interim Recognized User Speech */}
-        {interimUserText && (
-          <div className="rounded-xl border border-dashed border-primary/40 bg-card-warm p-4 text-sm text-heading italic animate-pulse">
-            {t.common.hearingYou} "{interimUserText}..."
-          </div>
-        )}
+        <ScrollView
+          ref={scrollRef}
+          className="flex-1"
+          contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 20 }}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+        >
+          {latestAssistantPassage ? (
+            <View className="gap-3 rounded-2xl border border-border-subtle bg-surface p-5">
+              <View className="flex-row items-center justify-between gap-3">
+                <Text className="flex-1 text-xs font-medium text-ink">
+                  {mission.character.name}
+                </Text>
+                <Pressable
+                  onPress={handleToggleMeaning}
+                  accessibilityRole="button"
+                  accessibilityState={{ expanded: showMeaningLine }}
+                  accessibilityLabel={
+                    showMeaningLine
+                      ? t.common.hideTranslation
+                      : `${t.common.showTranslation}: ${latestAssistantPassage.meaning ?? ''}`
+                  }
+                >
+                  <Text className="text-xs font-medium text-primary">
+                    {showMeaningLine ? t.common.hideTranslation : t.common.showTranslation}
+                  </Text>
+                </Pressable>
+              </View>
 
-        {/* Transcript Log (Scrollable) */}
-        <div className="space-y-3 pt-2">
-          <div className="text-[11px] font-semibold uppercase tracking-wider text-muted">
-            {t.recap.transcriptTitle}
-          </div>
-          {passages.map(passage => {
-            const isUser = passage.speaker === 'user';
-            return (
-              <div
-                key={passage.id}
-                className={`flex flex-col ${isUser ? 'items-end' : 'items-start'}`}
-              >
-                <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-2.5 text-xs sm:text-sm ${
-                    isUser
-                      ? 'bg-primary text-white rounded-br-xs shadow-xs'
-                      : 'bg-surface border border-border-subtle text-heading rounded-bl-xs shadow-2xs'
+              <Text className="font-display text-2xl font-medium leading-snug text-ink">
+                "{latestAssistantPassage.text}"
+              </Text>
+
+              {showMeaningLine && latestAssistantPassage.meaning ? (
+                <View className="rounded-xl border border-border-subtle bg-surface-sunken p-3">
+                  <Text className="text-xs text-body">
+                    <Text className="font-medium text-ink">{t.common.meaning} </Text>
+                    {latestAssistantPassage.meaning}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+          ) : null}
+
+          {interimUserText ? (
+            <View className="rounded-xl border border-dashed border-primary/40 bg-card-warm p-4">
+              <Text className="text-sm italic text-ink">
+                {t.common.hearingYou} "{interimUserText}..."
+              </Text>
+            </View>
+          ) : null}
+
+          <View className="gap-3 pt-1">
+            <SectionLabel>{t.recap.transcriptTitle}</SectionLabel>
+            {passages.map(passage => {
+              const isUser = passage.speaker === 'user';
+              return (
+                <View
+                  key={passage.id}
+                  className={`${isUser ? 'items-end' : 'items-start'} flex-row`}
+                >
+                  <View
+                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
+                      isUser
+                        ? 'rounded-br-xs bg-primary'
+                        : 'rounded-bl-xs border border-border-subtle bg-surface'
+                    }`}
+                  >
+                    <Text
+                      className={`mb-0.5 text-xs ${
+                        isUser ? 'text-white/80' : 'text-muted'
+                      }`}
+                    >
+                      {isUser ? `${t.common.you} (${passage.modality})` : mission.character.name}
+                    </Text>
+                    <Text className={`text-sm ${isUser ? 'text-white' : 'text-ink'}`}>
+                      {passage.text}
+                    </Text>
+                  </View>
+                </View>
+              );
+            })}
+          </View>
+        </ScrollView>
+
+        {isSceneFrozen ? (
+          <View className="border-t border-primary/20 bg-card-warm p-4">
+            <View className="gap-3">
+              <View className="gap-1">
+                <View className="flex-row items-center gap-1.5">
+                  <Pause size={14} color={iconColor('brand')} />
+                  <Text className="text-xs font-semibold text-primary">{t.live.frozenTag}</Text>
+                </View>
+                <Text className="text-xs leading-relaxed text-ink">
+                  {isCoachLoading
+                    ? t.live.coachAsking
+                    : activeCoachAdvice || t.live.coachStepIntent}
+                </Text>
+              </View>
+
+              <View className="flex-row items-center gap-2">
+                <View className="flex-1">
+                  <Button
+                    label={t.live.coachStepPartial}
+                    onPress={() => requestCoachHint('partial_form')}
+                    variant="secondary"
+                    size="sm"
+                    className="border-primary/30"
+                    textClassName="text-primary"
+                  />
+                </View>
+                <View className="flex-1">
+                  <Button
+                    label={t.common.retryTurn}
+                    onPress={handleRetryCheckpoint}
+                    variant="secondary"
+                    size="sm"
+                    icon={<RotateCcw size={14} color={iconColor('muted')} />}
+                  />
+                </View>
+              </View>
+            </View>
+          </View>
+        ) : null}
+
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          keyboardVerticalOffset={insets.top}
+        >
+          {showTypedInput ? (
+            <View className="border-t border-border-subtle bg-surface p-3">
+              <View className="flex-row items-end gap-2">
+                <View className="flex-1">
+                  <Field
+                    placeholder={t.live.typePlaceholder}
+                    value={typedMessage}
+                    onChangeText={setTypedMessage}
+                    autoCapitalize="none"
+                    returnKeyType="send"
+                    onSubmitEditing={() => {
+                      void handleUserMessage(mission, typedMessage, 'typed');
+                      setTypedMessage('');
+                    }}
+                    accessibilityLabel={t.live.typePlaceholder}
+                  />
+                </View>
+                <Pressable
+                  onPress={() => {
+                    void handleUserMessage(mission, typedMessage, 'typed');
+                    setTypedMessage('');
+                  }}
+                  disabled={!typedMessage.trim()}
+                  accessibilityRole="button"
+                  accessibilityLabel="Send"
+                  className={`h-11 w-11 items-center justify-center rounded-xl bg-primary ${
+                    typedMessage.trim() ? '' : 'opacity-40'
                   }`}
                 >
-                  <div className={`text-[10px] mb-0.5 ${isUser ? 'text-white/80' : 'text-faint'}`}>
-                    {isUser ? `${t.common.you} (${passage.modality})` : mission.character.name}
-                  </div>
-                  <div>{passage.text}</div>
-                </div>
-              </div>
-            );
-          })}
-          <div ref={passagesEndRef} />
-        </div>
-      </div>
+                  <Send size={16} color="#ffffff" />
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
 
-      {/* 3. Freeze Scene / Coach Advice Overlay */}
-      {isSceneFrozen && (
-        <div className="border-t border-primary/20 bg-card-warm p-4 text-xs">
-          <div className="mx-auto max-w-3xl flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="space-y-1">
-              <div className="flex items-center gap-1.5 font-semibold text-primary">
-                <Pause className="h-3.5 w-3.5" />
-                <span>{t.live.frozenTag}</span>
-              </div>
-              <p className="text-heading">
-                {isCoachLoading ? t.live.coachAsking : activeCoachAdvice || t.live.coachStepIntent}
-              </p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => requestCoachHint('partial_form')}
-                className="rounded-xl border border-primary/30 bg-surface px-3 py-1.5 text-xs font-medium text-primary hover:bg-surface-hover shadow-2xs"
-              >
-                {t.live.coachStepPartial}
-              </button>
-              <button
-                onClick={handleRetryCheckpoint}
-                className="flex items-center gap-1 rounded-xl border border-border-subtle bg-surface px-3 py-1.5 text-xs font-medium text-heading hover:bg-surface-hover shadow-2xs"
-              >
-                <RotateCcw className="h-3.5 w-3.5 text-muted" />
-                <span>{t.common.retryTurn}</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Typed Input Fallback Drawer */}
-      {showTypedInput && (
-        <div className="border-t border-border-subtle bg-surface p-3">
-          <form
-            onSubmit={e => {
-              e.preventDefault();
-              handleUserMessage(typedMessage, 'typed');
-              setTypedMessage('');
-            }}
-            className="mx-auto max-w-3xl flex items-center gap-2"
+          <View
+            className="border-t border-border-subtle bg-surface px-3.5 py-2.5"
+            style={{ paddingBottom: Math.max(insets.bottom, 10) }}
           >
-            <input
-              type="text"
-              placeholder={t.live.typePlaceholder}
-              value={typedMessage}
-              onChange={e => setTypedMessage(e.target.value)}
-              className="flex-1 rounded-xl border border-border-subtle bg-surface-sunken px-4 py-2 text-xs sm:text-sm text-heading placeholder:text-faint focus:border-primary focus:outline-none"
-            />
-            <button
-              type="submit"
-              disabled={!typedMessage.trim()}
-              className="flex h-9 w-9 items-center justify-center rounded-xl bg-primary text-white disabled:opacity-40 shadow-xs"
-            >
-              <Send className="h-4 w-4" />
-            </button>
-          </form>
-        </div>
-      )}
-
-      {/* 5. Bottom Conversation Controls Bar */}
-      <div className="border-t border-border-subtle bg-surface px-3 py-2.5 sm:px-6 sm:py-3 pb-safe">
-        <div className="mx-auto max-w-3xl flex items-center justify-between gap-2">
-          {/* Audio toggle & speech state indicator */}
-          <div className="flex items-center gap-1.5 sm:gap-3 shrink-0">
-            <button
-              onClick={() => {
-                const nextMuted = !isMuted;
-                setIsMuted(nextMuted);
-                voiceTransportRef.current?.setMuted(nextMuted);
-              }}
-              className={`flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border transition-colors ${
-                isMuted
-                  ? 'border-red-300 bg-red-500/10 text-red-500'
-                  : 'border-border-subtle bg-surface-sunken text-heading hover:bg-surface-hover'
-              }`}
-              title={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-              aria-label={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-            >
-              {isMuted ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            </button>
-
-            {/* Voice state badge with visual pulse */}
-            <div className="hidden xs:flex items-center gap-1.5 text-xs">
-              <span
-                className={`h-2.5 w-2.5 rounded-full ${
-                  voiceState === 'listening'
-                    ? 'bg-primary animate-ping'
-                    : voiceState === 'speaking'
-                    ? 'bg-accent-sage'
-                    : voiceState === 'paused'
-                    ? 'bg-warning'
-                    : 'bg-muted'
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                onPress={() => {
+                  const nextMuted = !isMuted;
+                  setIsMuted(nextMuted);
+                  voiceTransportRef.current?.setMuted(nextMuted);
+                }}
+                accessibilityRole="button"
+                accessibilityLabel={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                className={`h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
+                  isMuted
+                    ? 'border-red-300 bg-red-500/10'
+                    : 'border-border-subtle bg-surface-sunken'
                 }`}
-              />
-              <span className="capitalize text-muted font-medium text-[11px] sm:text-xs">
-                {isSceneFrozen ? t.live.pausedTag : voiceState}
-              </span>
-            </div>
-          </div>
-
-          {/* Primary Mic Trigger Button (Tap to talk or Continuous) */}
-          <div className="flex items-center justify-center flex-1 max-w-[200px] sm:max-w-none">
-            <button
-              onClick={() => {
-                if (voiceState === 'listening') {
-                  voiceTransportRef.current?.stopListening();
-                } else {
-                  voiceTransportRef.current?.startListening();
-                }
-              }}
-              className="flex w-full sm:w-auto items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-primary px-3 sm:px-5 py-2.5 text-xs font-semibold text-white shadow-xs transition-transform hover:bg-primary-dark active:scale-95"
-            >
-              <Mic className="h-4 w-4 shrink-0" />
-              <span className="truncate">{voiceState === 'listening' ? t.live.listening : t.live.tapToSpeak}</span>
-            </button>
-          </div>
-
-          {/* Auxiliary Controls: Help & Typed fallback */}
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
-            <button
-              onClick={() => setShowHelpSheet(!showHelpSheet)}
-              className="flex h-9 w-9 sm:w-auto sm:px-3 sm:py-2 items-center justify-center gap-1 rounded-xl border border-border-subtle bg-surface text-xs font-medium text-heading hover:bg-surface-hover shadow-2xs"
-              title={t.common.help}
-              aria-label={t.common.help}
-            >
-              <HelpCircle className="h-4 w-4 text-primary shrink-0" />
-              <span className="hidden sm:inline">{t.common.help}</span>
-            </button>
-
-            <button
-              onClick={() => setShowTypedInput(!showTypedInput)}
-              className={`flex h-9 w-9 items-center justify-center rounded-xl border transition-colors ${
-                showTypedInput
-                  ? 'border-primary bg-card-warm text-primary'
-                  : 'border-border-subtle bg-surface text-muted hover:text-heading hover:bg-surface-hover'
-              }`}
-              title={t.live.typeInstead}
-              aria-label={t.live.typeInstead}
-            >
-              <Keyboard className="h-4 w-4" />
-            </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Help Action Sheet Drawer */}
-      {showHelpSheet && (
-        <div className="fixed inset-0 z-60 flex items-end justify-center bg-black/60 backdrop-blur-2xs p-4">
-          <div className="w-full max-w-lg rounded-2xl bg-surface border border-border-subtle p-5 shadow-2xl space-y-4 text-heading">
-            <div className="flex items-center justify-between border-b border-border-subtle pb-3">
-              <span className="text-xs font-semibold uppercase tracking-wider text-muted">
-                {t.live.coachDrawerTitle}
-              </span>
-              <button
-                onClick={() => setShowHelpSheet(false)}
-                className="text-xs text-muted hover:text-heading"
               >
-                {t.common.close}
-              </button>
-            </div>
+                {isMuted ? (
+                  <MicOff size={16} color="#ef4444" />
+                ) : (
+                  <Mic size={16} color={iconColor('ink')} />
+                )}
+              </Pressable>
 
-            <div className="grid gap-2">
-              <button
-                onClick={() => {
-                  requestCoachHint('intent_hint');
-                  setShowHelpSheet(false);
-                  setIsSceneFrozen(true);
-                }}
-                className="rounded-xl border border-border-subtle p-3 text-left hover:bg-surface-hover transition-colors"
-              >
-                <div className="text-xs font-semibold text-heading">
-                  {t.live.coachStepIntent}
-                </div>
-              </button>
+              <View className="flex-row items-center gap-1.5">
+                <View className={`h-2.5 w-2.5 rounded-full ${VOICE_DOT[voiceState]}`} />
+                <Text className="text-xs font-medium capitalize text-muted">
+                  {voiceLabel}
+                </Text>
+              </View>
 
-              <button
-                onClick={() => {
-                  requestCoachHint('partial_form');
-                  setShowHelpSheet(false);
-                  setIsSceneFrozen(true);
-                }}
-                className="rounded-xl border border-border-subtle p-3 text-left hover:bg-surface-hover transition-colors"
-              >
-                <div className="text-xs font-semibold text-heading">
-                  {t.live.coachStepPartial}
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  requestCoachHint('full_form');
-                  setShowHelpSheet(false);
-                  setIsSceneFrozen(true);
-                }}
-                className="rounded-xl border border-border-subtle p-3 text-left hover:bg-surface-hover transition-colors"
-              >
-                <div className="text-xs font-semibold text-heading">
-                  {t.live.coachStepFull}
-                </div>
-              </button>
-
-              <button
-                onClick={() => {
-                  if (latestAssistantPassage) {
-                    voiceTransportRef.current?.playSpeech(latestAssistantPassage.text, {
-                      speed: 0.75,
-                      lang: mission.language
-                    });
+              <View className="flex-1">
+                <Pressable
+                  onPress={() => {
+                    if (voiceState === 'listening') {
+                      voiceTransportRef.current?.stopListening();
+                    } else {
+                      voiceTransportRef.current?.startListening();
+                    }
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    voiceState === 'listening' ? t.live.listening : t.live.tapToSpeak
                   }
-                  setShowHelpSheet(false);
-                }}
-                className="rounded-xl border border-border-subtle p-3 text-left hover:bg-surface-hover transition-colors"
+                  className="h-11 w-full flex-row items-center justify-center gap-2 rounded-xl bg-primary px-3 active:opacity-80"
+                >
+                  <View
+                    className="h-2 w-2 rounded-full bg-white/60"
+                    style={{
+                      opacity: voiceState === 'listening' ? 0.4 + audioLevel * 0.6 : 0.3,
+                      transform: [{ scale: 1 + audioLevel * 0.6 }],
+                    }}
+                  />
+                  <Mic size={16} color="#ffffff" />
+                  <Text className="text-xs font-semibold text-white" numberOfLines={1}>
+                    {voiceState === 'listening' ? t.live.listening : t.live.tapToSpeak}
+                  </Text>
+                </Pressable>
+              </View>
+
+              <Pressable
+                onPress={() => setShowHelpSheet(prev => !prev)}
+                accessibilityRole="button"
+                accessibilityLabel={t.common.help}
+                className="h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-surface"
               >
-                <div className="text-xs font-semibold text-heading">
-                  {t.settings.speedSlower}
-                </div>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-    </div>
+                <HelpCircle size={16} color={iconColor('brand')} />
+              </Pressable>
+
+              <Pressable
+                onPress={() => setShowTypedInput(prev => !prev)}
+                accessibilityRole="button"
+                accessibilityLabel={t.live.typeInstead}
+                className={`h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                  showTypedInput
+                    ? 'border-primary bg-card-warm'
+                    : 'border-border-subtle bg-surface'
+                }`}
+              >
+                <Keyboard
+                  size={16}
+                  color={
+                    showTypedInput
+                      ? 'rgb(var(--color-brand))'
+                      : 'rgb(var(--color-muted))'
+                  }
+                />
+              </Pressable>
+            </View>
+          </View>
+        </KeyboardAvoidingView>
+
+        <Sheet
+          visible={showHelpSheet}
+          onClose={() => setShowHelpSheet(false)}
+          title={t.live.coachDrawerTitle}
+        >
+          <Button
+            label={t.live.coachStepIntent}
+            onPress={() => {
+              void requestCoachHint('intent_hint');
+              setShowHelpSheet(false);
+              setIsSceneFrozen(true);
+            }}
+            variant="secondary"
+            className="items-start"
+          />
+          <Button
+            label={t.live.coachStepPartial}
+            onPress={() => {
+              void requestCoachHint('partial_form');
+              setShowHelpSheet(false);
+              setIsSceneFrozen(true);
+            }}
+            variant="secondary"
+            className="items-start"
+          />
+          <Button
+            label={t.live.coachStepFull}
+            onPress={() => {
+              void requestCoachHint('full_form');
+              setShowHelpSheet(false);
+              setIsSceneFrozen(true);
+            }}
+            variant="secondary"
+            className="items-start"
+          />
+          <Button
+            label={t.settings.speedSlower}
+            onPress={() => {
+              if (latestAssistantPassage) {
+                void voiceTransportRef.current?.playSpeech(latestAssistantPassage.text, {
+                  speed: 0.75,
+                  lang: mission.language,
+                });
+              }
+              setShowHelpSheet(false);
+            }}
+            variant="secondary"
+            className="items-start"
+          />
+        </Sheet>
+      </View>
+    </Modal>
   );
 };
