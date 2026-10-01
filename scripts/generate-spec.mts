@@ -32,6 +32,8 @@ const SPEC_TOKEN_LABELS: Record<string, string> = {
   brandPressed: 'Primary action pressed',
   brandSoft: 'Warm highlighted / selected card',
   brandButton: 'CTA fill',
+  brandButtonHover: 'CTA hover fill',
+  brandButtonPressed: 'CTA pressed fill',
   brandText: 'Label on a brand fill',
   language: 'Target-language semantics',
   languageHover: 'Target-language hover',
