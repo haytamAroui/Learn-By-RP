@@ -263,6 +263,13 @@ export const MIGRATIONS: Migration[] = [
       );`,
     ],
   },
+  {
+    version: 2,
+    name: 'persist_session_attempt_metadata',
+    statements: [
+      `ALTER TABLE sessions ADD COLUMN cold_attempt INTEGER NOT NULL DEFAULT 1;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
