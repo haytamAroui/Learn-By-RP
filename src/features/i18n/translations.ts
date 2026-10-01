@@ -135,6 +135,13 @@ export interface Translations {
     skillCommunicativeRepair: string;
     skillWayfindingTransit: string;
   };
+  skills: {
+    requestSubstitution: { name: string; category: string; description: string };
+    proposeAlternative: { name: string; category: string; description: string };
+    inquireSpecifications: { name: string; category: string; description: string };
+    wayfindingTransit: { name: string; category: string; description: string };
+    communicativeRepair: { name: string; category: string; description: string };
+  };
   live: {
     liveTag: string;
     frozenTag: string;
@@ -464,6 +471,38 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       skillProposeAlternative: "Propose an alternative",
       skillCommunicativeRepair: "Repair the conversation",
       skillWayfindingTransit: "Ask for directions",
+    },
+    skills: {
+      requestSubstitution: {
+        name: "Requesting a substitution & dietary needs",
+        category: "Transaction & service",
+        description:
+          "Politely ask whether an alternative option, ingredient replacement, or dietary adaptation is available.",
+      },
+      proposeAlternative: {
+        name: "Proposing an alternative arrangement",
+        category: "Coordination & negotiation",
+        description:
+          "Suggest another time, meeting slot, or seating arrangement when the default is not preferred.",
+      },
+      inquireSpecifications: {
+        name: "Asking about details & recommendations",
+        category: "Clarification & inquiry",
+        description:
+          "Ask for recommendations, dosage frequency, ingredient details, or other specifications before deciding.",
+      },
+      wayfindingTransit: {
+        name: "Wayfinding & navigating transit",
+        category: "Mobility & wayfinding",
+        description:
+          "Ask for platform directions, ticket validation, or travel duration on public transport.",
+      },
+      communicativeRepair: {
+        name: "Communicative repair & clarification",
+        category: "Social interaction",
+        description:
+          "Report a problem, ask for clarification, or request help gracefully when communication breaks down.",
+      },
     },
     live: {
       liveTag: "Session Live",
@@ -805,6 +844,38 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       skillCommunicativeRepair: "Réparer la conversation",
       skillWayfindingTransit: "Demander son chemin",
     },
+    skills: {
+      requestSubstitution: {
+        name: "Demander une substitution ou une adaptation",
+        category: "Transaction et service",
+        description:
+          "Demander poliment si une alternative, un remplacement d’ingrédient ou une adaptation alimentaire est disponible.",
+      },
+      proposeAlternative: {
+        name: "Proposer une autre organisation",
+        category: "Coordination et négociation",
+        description:
+          "Proposer un autre horaire, rendez-vous ou emplacement lorsque l’option par défaut ne convient pas.",
+      },
+      inquireSpecifications: {
+        name: "Demander des précisions et recommandations",
+        category: "Clarification et demande",
+        description:
+          "Demander une recommandation, une fréquence de dosage, des ingrédients ou d’autres précisions avant de décider.",
+      },
+      wayfindingTransit: {
+        name: "S’orienter dans les transports",
+        category: "Mobilité et orientation",
+        description:
+          "Demander un quai, la validation d’un billet ou la durée d’un trajet en transport public.",
+      },
+      communicativeRepair: {
+        name: "Réparer la communication et clarifier",
+        category: "Interaction sociale",
+        description:
+          "Signaler un problème, demander une clarification ou solliciter de l’aide avec tact lorsque l’échange bloque.",
+      },
+    },
     live: {
       liveTag: "Session en direct",
       frozenTag: "Scène gelée pour conseil du coach",
@@ -1144,6 +1215,38 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       skillCommunicativeRepair: "Reparar la conversación",
       skillWayfindingTransit: "Pedir indicaciones",
     },
+    skills: {
+      requestSubstitution: {
+        name: "Pedir una sustitución o adaptación",
+        category: "Transacción y servicio",
+        description:
+          "Preguntar con cortesía si hay una alternativa, un cambio de ingrediente o una adaptación alimentaria.",
+      },
+      proposeAlternative: {
+        name: "Proponer una alternativa",
+        category: "Coordinación y negociación",
+        description:
+          "Proponer otra hora, cita o ubicación cuando la opción inicial no es la preferida.",
+      },
+      inquireSpecifications: {
+        name: "Pedir detalles y recomendaciones",
+        category: "Aclaración y consulta",
+        description:
+          "Pedir recomendaciones, frecuencia de dosis, ingredientes u otros detalles antes de decidir.",
+      },
+      wayfindingTransit: {
+        name: "Orientarse y moverse en transporte",
+        category: "Movilidad y orientación",
+        description:
+          "Preguntar por andenes, validación de billetes o duración del trayecto en transporte público.",
+      },
+      communicativeRepair: {
+        name: "Reparar la comunicación y pedir aclaración",
+        category: "Interacción social",
+        description:
+          "Comunicar un problema, pedir una aclaración o solicitar ayuda con naturalidad cuando la conversación se atasca.",
+      },
+    },
     live: {
       liveTag: "Sesión en vivo",
       frozenTag: "Escena congelada para consejo",
@@ -1482,6 +1585,38 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       skillProposeAlternative: "Een alternatief voorstellen",
       skillCommunicativeRepair: "Het gesprek herstellen",
       skillWayfindingTransit: "De weg vragen",
+    },
+    skills: {
+      requestSubstitution: {
+        name: "Om een vervanging of aanpassing vragen",
+        category: "Transactie en dienstverlening",
+        description:
+          "Beleefd vragen of een alternatief, ander ingrediënt of voedingsaanpassing mogelijk is.",
+      },
+      proposeAlternative: {
+        name: "Een alternatief voorstellen",
+        category: "Afstemming en onderhandeling",
+        description:
+          "Een ander tijdstip, afspraakmoment of zitplaats voorstellen wanneer de standaardoptie niet past.",
+      },
+      inquireSpecifications: {
+        name: "Naar details en aanbevelingen vragen",
+        category: "Verduidelijking en informatie",
+        description:
+          "Vragen naar aanbevelingen, dosering, ingrediënten of andere details voordat je beslist.",
+      },
+      wayfindingTransit: {
+        name: "De weg vinden en reizen met openbaar vervoer",
+        category: "Mobiliteit en oriëntatie",
+        description:
+          "Vragen naar perrons, ticketvalidatie of reistijd in het openbaar vervoer.",
+      },
+      communicativeRepair: {
+        name: "Communicatief herstellen en verduidelijken",
+        category: "Sociale interactie",
+        description:
+          "Een probleem melden, om verduidelijking vragen of beleefd hulp vragen wanneer de communicatie vastloopt.",
+      },
     },
     live: {
       liveTag: "Sessie live",
