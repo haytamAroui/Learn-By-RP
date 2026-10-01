@@ -3,8 +3,7 @@ import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { I18nProvider } from '../../features/i18n';
-import { RecapModal } from '../../components/RecapModal';
-import { MISSION_CATALOG } from '../../data/missions';
+import { RecapScreen } from '../../components/RecapScreen';
 import { SessionRecord } from '../../types';
 
 export default function RecapScreen() {
@@ -58,23 +57,22 @@ export default function RecapScreen() {
         void archive.savePreferences({ ...archive.preferences, explanationLanguage: lang })
       }
     >
-      <View className="flex-1 bg-canvas">
-        <RecapModal
-          session={session}
-          onClose={() => router.back()}
-          onNextMission={mission => {
-            router.replace({
-              pathname: '/session/[sessionId]',
-              params: {
-                sessionId: `session-${Date.now()}`,
-                missionId: mission.id,
-                mode: archive.preferences.modeDefault,
-                coldAttempt: 'true',
-              },
-            });
-          }}
-        />
-      </View>
+      <RecapScreen
+        session={session}
+        onClose={() => router.replace('/(tabs)')}
+        onRetryMission={mission =>
+          router.replace({
+            pathname: '/mission/[missionId]',
+            params: { missionId: mission.id },
+          })
+        }
+        onNextMission={mission =>
+          router.replace({
+            pathname: '/mission/[missionId]',
+            params: { missionId: mission.id },
+          })
+        }
+      />
     </I18nProvider>
   );
 }
