@@ -40,7 +40,7 @@ export const RootHeader: React.FC<RootHeaderProps> = ({ title, subtitle }) => {
         accessibilityRole="button"
         accessibilityLabel="Settings"
         hitSlop={6}
-        className="h-12 w-12 items-center justify-center rounded-full bg-surface-soft active:opacity-70"
+        className="h-12 w-12 items-center justify-center rounded-full border border-transparent bg-surface-soft hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
       >
         <Settings size={21} color={iconColor('muted')} strokeWidth={2} />
       </Pressable>
