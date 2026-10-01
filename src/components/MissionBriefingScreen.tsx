@@ -233,6 +233,7 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
         visible={showModeSheet}
         onClose={() => setShowModeSheet(false)}
         title={t.briefing.selectMode}
+        size="compact"
       >
         <View className="gap-2">
           {MODES.map(mode => {
