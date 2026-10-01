@@ -27,7 +27,6 @@ export const Sheet: React.FC<SheetProps> = ({
   footer,
   scrollable = true,
 }) => {
-  const Body = scrollable ? ScrollView : View;
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const isPhone = width < BREAKPOINTS.tablet.min;
@@ -72,16 +71,18 @@ export const Sheet: React.FC<SheetProps> = ({
             />
           </View>
 
-          <Body
-            className={scrollable ? 'flex-1' : undefined}
-            contentContainerStyle={
-              scrollable ? { padding: 16, paddingBottom: 24, gap: 16 } : undefined
-            }
-            style={scrollable ? undefined : { padding: 16, gap: 16, flex: 1 }}
-            keyboardShouldPersistTaps={scrollable ? 'handled' : undefined}
-          >
-            {children}
-          </Body>
+          {scrollable ? (
+            <ScrollView
+              className="flex-1"
+              contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}
+              keyboardShouldPersistTaps="handled"
+              showsVerticalScrollIndicator={false}
+            >
+              {children}
+            </ScrollView>
+          ) : (
+            <View style={{ padding: 16, gap: 16, flex: 1 }}>{children}</View>
+          )}
 
           {footer ? (
             <View
