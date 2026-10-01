@@ -232,6 +232,10 @@ export interface Translations {
     sessionReceiptsTitle: string;
     coldAttempt: string;
     assistedAttempt: string;
+    outcomeCompleted: string;
+    outcomePartlyCompleted: string;
+    outcomeChangedDirection: string;
+    outcomeUnknown: string;
     viewReceipt: string;
     noReceiptsYet: string;
     disputeEvidence: string;
@@ -517,6 +521,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Send",
       listening: "Listening to your speech...",
       characterSpeaking: "Character is speaking...",
+      connecting: "Connecting…",
+      voiceMuted: "Microphone muted",
+      ending: "Ending conversation…",
       reconnecting: "Reconnecting...",
       voiceFailed: "Voice unavailable",
       retryConnection: "Retry connection",
@@ -592,6 +599,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       sessionReceiptsTitle: "Session Receipts",
       coldAttempt: "Cold Attempt",
       assistedAttempt: "Assisted Attempt",
+      outcomeCompleted: "Completed",
+      outcomePartlyCompleted: "Partly completed",
+      outcomeChangedDirection: "Changed direction",
+      outcomeUnknown: "Not enough evidence",
       viewReceipt: "View Receipt",
       noReceiptsYet:
         "No session receipts recorded yet. Complete your first mission to start your ledger.",
@@ -889,6 +900,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Envoyer",
       listening: "Écoute de votre voix...",
       characterSpeaking: "Le personnage parle...",
+      connecting: "Connexion…",
+      voiceMuted: "Microphone coupé",
+      ending: "Fin de la conversation…",
       reconnecting: "Reconnexion...",
       voiceFailed: "Voix indisponible",
       retryConnection: "Réessayer",
@@ -964,6 +978,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       sessionReceiptsTitle: "Reçus de session",
       coldAttempt: "Tentative à froid",
       assistedAttempt: "Tentative assistée",
+      outcomeCompleted: "Terminé",
+      outcomePartlyCompleted: "Partiellement terminé",
+      outcomeChangedDirection: "Direction modifiée",
+      outcomeUnknown: "Pas assez de preuves",
       viewReceipt: "Voir le reçu",
       noReceiptsYet:
         "Aucun reçu de session enregistré. Terminez votre première mission pour commencer votre registre.",
@@ -1260,6 +1278,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Enviar",
       listening: "Escuchando tu voz...",
       characterSpeaking: "El personaje está hablando...",
+      connecting: "Conectando…",
+      voiceMuted: "Micrófono silenciado",
+      ending: "Finalizando conversación…",
       reconnecting: "Reconectando...",
       voiceFailed: "Voz no disponible",
       retryConnection: "Reintentar",
@@ -1334,6 +1355,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       sessionReceiptsTitle: "Recibos de Sesión",
       coldAttempt: "Intento en frío",
       assistedAttempt: "Intento asistido",
+      outcomeCompleted: "Completado",
+      outcomePartlyCompleted: "Parcialmente completado",
+      outcomeChangedDirection: "Dirección cambiada",
+      outcomeUnknown: "No hay suficiente evidencia",
       viewReceipt: "Ver recibo",
       noReceiptsYet:
         "Aún no hay recibos guardados. Completa tu primera misión para iniciar tu registro.",
@@ -1631,6 +1656,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Verzenden",
       listening: "Luisteren naar je stem...",
       characterSpeaking: "Personage spreekt...",
+      connecting: "Verbinden…",
+      voiceMuted: "Microfoon gedempt",
+      ending: "Gesprek afronden…",
       reconnecting: "Opnieuw verbinden...",
       voiceFailed: "Stem niet beschikbaar",
       retryConnection: "Opnieuw proberen",
@@ -1706,6 +1734,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       sessionReceiptsTitle: "Sessiebewijzen",
       coldAttempt: "Koude poging",
       assistedAttempt: "Ondersteunde poging",
+      outcomeCompleted: "Voltooid",
+      outcomePartlyCompleted: "Gedeeltelijk voltooid",
+      outcomeChangedDirection: "Andere richting gekozen",
+      outcomeUnknown: "Niet genoeg bewijs",
       viewReceipt: "Bekijk bewijs",
       noReceiptsYet:
         "Nog geen sessiebewijzen opgeslagen. Voltooi je eerste missie om je register op te bouwen.",
