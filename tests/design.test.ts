@@ -240,6 +240,8 @@ describe('no token is an accidental duplicate of another in the same theme', () 
       // Light brand is already dark enough for white text, so the CTA fill is
       // the brand itself.
       'brand === brandButton',
+      'brandHover === brandButtonHover',
+      'brandPressed === brandButtonPressed',
       // Focus is the language teal by design: one teal, two roles.
       'language === focus',
       // Light mode has no lighter white, so a raised surface is a card-coloured
@@ -345,6 +347,15 @@ describe('generated files match the tokens', () => {
     // previous stylesheet ended up doing nothing.
     expect(css).not.toContain('@import "tailwindcss"');
     expect(css).not.toContain('@theme');
+  });
+
+  it('maps filled actions to brandButton rather than the foreground brand', () => {
+    const { colors } = JSON.parse(
+      readFileSync('src/design/tailwind-colors.generated.json', 'utf8')
+    ) as { colors: { action: { DEFAULT: string; text: string } } };
+
+    expect(colors.action.DEFAULT).toContain('--color-brand-button');
+    expect(colors.action.text).toContain('--color-brand-text');
   });
 
   it('the Tailwind colour map points only at defined tokens', () => {
@@ -586,18 +597,32 @@ describe('layout and targets', () => {
     expect(Object.values(SPACE)).not.toContain(23);
   });
 
-  it('maps widths to the documented tiers', () => {
-    expect(layoutForWidth(390)).toBe('compact');
-    expect(layoutForWidth(600)).toBe('medium');
-    expect(layoutForWidth(840)).toBe('expanded');
-    expect(layoutForWidth(1200)).toBe('large');
-    expect(layoutForWidth(1600)).toBe('xl');
+  it('maps widths to the mobile-first phone/tablet/desktop tiers', () => {
+    expect(layoutForWidth(390)).toBe('phone');
+    expect(layoutForWidth(600)).toBe('tablet');
+    expect(layoutForWidth(844)).toBe('tablet');
+    expect(layoutForWidth(1024)).toBe('desktop');
+    expect(layoutForWidth(1600)).toBe('desktop');
   });
 
-  it('treats the boundary widths as belonging to the wider tier', () => {
-    expect(layoutForWidth(599)).toBe('compact');
-    expect(layoutForWidth(839)).toBe('medium');
-    expect(layoutForWidth(1199)).toBe('expanded');
-    expect(layoutForWidth(1599)).toBe('large');
+  it('treats the canonical boundaries as belonging to the wider tier', () => {
+    expect(layoutForWidth(599)).toBe('phone');
+    expect(layoutForWidth(600)).toBe('tablet');
+    expect(layoutForWidth(1023)).toBe('tablet');
+    expect(layoutForWidth(1024)).toBe('desktop');
+  });
+
+  it('keeps every shared button size at or above the 48px target', () => {
+    const ui = readFileSync('src/components/ui.tsx', 'utf8');
+    expect(ui).toContain("sm: 'min-h-12");
+    expect(ui).toContain("md: 'min-h-12");
+    expect(ui).toContain("lg: 'min-h-14");
+  });
+
+  it('uses the dark-safe action fill for the primary button', () => {
+    const ui = readFileSync('src/components/ui.tsx', 'utf8');
+    expect(ui).toContain('bg-action');
+    expect(ui).toContain('text-action-text');
+    expect(ui).not.toMatch(/primary:\s*'[^']*bg-primary\b/);
   });
 });
