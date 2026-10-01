@@ -26,6 +26,7 @@ export default function ProgressTab() {
           phrases={archive.phrases}
           sessions={archive.sessions}
           observations={archive.observations}
+          learningLanguage={archive.preferences.learningLanguage}
           onPracticeDue={() => setPracticeDueOpen(true)}
           onSelectSession={s => router.push({ pathname: '/recap/[sessionId]', params: { sessionId: s.id } })}
           onDisputeObservation={id => void archive.disputeObservation(id)}
