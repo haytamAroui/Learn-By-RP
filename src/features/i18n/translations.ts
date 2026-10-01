@@ -228,6 +228,38 @@ export interface Translations {
   settings: {
     title: string;
     subtitle: string;
+    appearanceLabel: string;
+    appearanceLight: string;
+    appearanceDark: string;
+    appearanceSystem: string;
+    doneLabel: string;
+    privacyTitle: string;
+    privacyStorageLabel: string;
+    privacyStorageLocal: string;
+    privacyStorageAnalysis: string;
+    privacyStorageExports: string;
+    consentLabel: string;
+    grantedLabel: string;
+    withdrawnLabel: string;
+    withdrawLabel: string;
+    consentVersionLabel: string;
+    voiceWithdrawnNotice: string;
+    analysisWithdrawnNotice: string;
+    yourDataLabel: string;
+    exportArchiveAction: string;
+    archiveExportedNotice: string;
+    exportFailedNotice: string;
+    eraseAllTitle: string;
+    eraseAllDesc: string;
+    eraseEverything: string;
+    eraseConfirmTap: string;
+    erasedNotice: string;
+    versionsLabel: string;
+    learningPolicyLabel: string;
+    openingConversation: string;
+    missionUnavailable: string;
+    goBack: string;
+    shareFailed: string;
     sectionLang: string;
     targetLangLabel: string;
     uiLangLabel: string;
@@ -502,6 +534,42 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     settings: {
       title: "Settings",
       subtitle: "Preferences & Data Sovereignty",
+      appearanceLabel: "Appearance",
+      appearanceLight: "Light",
+      appearanceDark: "Dark",
+      appearanceSystem: "System",
+      doneLabel: "Done",
+      privacyTitle: "Privacy & data",
+      privacyStorageLabel: "What is stored where",
+      privacyStorageLocal:
+        "Your conversations, phrase history and evidence ledger are stored only on this device. They are not synced anywhere.",
+      privacyStorageAnalysis:
+        "When you end a session, the transcript turns you produced are sent to an AI provider for review so phrases can be matched. Nothing else leaves the device, and nothing is used to train a model.",
+      privacyStorageExports:
+        "Files you export or share leave the app. Once shared, they cannot be recalled by clearing this app.",
+      consentLabel: "Consent",
+      grantedLabel: "Granted",
+      withdrawnLabel: "Withdrawn",
+      withdrawLabel: "Withdraw",
+      consentVersionLabel: "Consent version",
+      voiceWithdrawnNotice: "Voice processing withdrawn. Speaking is disabled.",
+      analysisWithdrawnNotice: "Analysis withdrawn. No new evidence will be recorded.",
+      yourDataLabel: "Your data",
+      exportArchiveAction: "Export my archive",
+      archiveExportedNotice: "Archive exported.",
+      exportFailedNotice: "Export failed.",
+      eraseAllTitle: "Erase all learning data",
+      eraseAllDesc:
+        "Deletes every session, observation and schedule on this device. This cannot be undone.",
+      eraseEverything: "Erase everything",
+      eraseConfirmTap: "Tap again to confirm",
+      erasedNotice: "All learning data erased.",
+      versionsLabel: "Versions",
+      learningPolicyLabel: "Learning policy",
+      openingConversation: "Opening conversation…",
+      missionUnavailable: "That mission is no longer available.",
+      goBack: "Go back",
+      shareFailed: "Share failed",
       sectionLang: "Language & Learning Context",
       targetLangLabel: "Target Language",
       uiLangLabel: "Interface & Explanation Language",
@@ -782,6 +850,42 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     settings: {
       title: "Paramètres",
       subtitle: "Préférences & Souveraineté des données",
+      appearanceLabel: "Apparence",
+      appearanceLight: "Clair",
+      appearanceDark: "Sombre",
+      appearanceSystem: "Système",
+      doneLabel: "Terminé",
+      privacyTitle: "Confidentialité et données",
+      privacyStorageLabel: "Où sont stockées vos données",
+      privacyStorageLocal:
+        "Vos conversations, l’historique des phrases et le registre de preuves sont stockés uniquement sur cet appareil. Ils ne sont synchronisés nulle part.",
+      privacyStorageAnalysis:
+        "À la fin d’une session, les tours de transcription que vous avez produits sont envoyés à un fournisseur d’IA pour analyse afin d’associer les phrases. Rien d’autre ne quitte l’appareil et rien n’est utilisé pour entraîner un modèle.",
+      privacyStorageExports:
+        "Les fichiers que vous exportez ou partagez quittent l’application. Une fois partagés, ils ne peuvent pas être rappelés en effaçant cette application.",
+      consentLabel: "Consentement",
+      grantedLabel: "Accordé",
+      withdrawnLabel: "Retiré",
+      withdrawLabel: "Retirer",
+      consentVersionLabel: "Version du consentement",
+      voiceWithdrawnNotice: "Le traitement vocal a été retiré. La parole est désactivée.",
+      analysisWithdrawnNotice: "L’analyse a été retirée. Aucune nouvelle preuve ne sera enregistrée.",
+      yourDataLabel: "Vos données",
+      exportArchiveAction: "Exporter mon archive",
+      archiveExportedNotice: "Archive exportée.",
+      exportFailedNotice: "Échec de l’export.",
+      eraseAllTitle: "Effacer toutes les données d’apprentissage",
+      eraseAllDesc:
+        "Supprime toutes les sessions, observations et planifications de cet appareil. Cette action est irréversible.",
+      eraseEverything: "Tout effacer",
+      eraseConfirmTap: "Touchez à nouveau pour confirmer",
+      erasedNotice: "Toutes les données d’apprentissage ont été effacées.",
+      versionsLabel: "Versions",
+      learningPolicyLabel: "Politique d’apprentissage",
+      openingConversation: "Ouverture de la conversation…",
+      missionUnavailable: "Cette mission n’est plus disponible.",
+      goBack: "Retour",
+      shareFailed: "Échec du partage",
       sectionLang: "Langue & Contexte d’apprentissage",
       targetLangLabel: "Langue cible à apprendre",
       uiLangLabel: "Langue de l’interface et explications",
@@ -1060,6 +1164,42 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     settings: {
       title: "Ajustes",
       subtitle: "Preferencias y Soberanía de Datos",
+      appearanceLabel: "Apariencia",
+      appearanceLight: "Claro",
+      appearanceDark: "Oscuro",
+      appearanceSystem: "Sistema",
+      doneLabel: "Listo",
+      privacyTitle: "Privacidad y datos",
+      privacyStorageLabel: "Dónde se guardan tus datos",
+      privacyStorageLocal:
+        "Tus conversaciones, historial de frases y registro de evidencias se guardan únicamente en este dispositivo. No se sincronizan en ningún otro lugar.",
+      privacyStorageAnalysis:
+        "Al terminar una sesión, los turnos de transcripción que produjiste se envían a un proveedor de IA para revisión y asociación de frases. Nada más sale del dispositivo y nada se utiliza para entrenar un modelo.",
+      privacyStorageExports:
+        "Los archivos que exportas o compartes salen de la aplicación. Una vez compartidos, no pueden recuperarse borrando esta aplicación.",
+      consentLabel: "Consentimiento",
+      grantedLabel: "Concedido",
+      withdrawnLabel: "Retirado",
+      withdrawLabel: "Retirar",
+      consentVersionLabel: "Versión del consentimiento",
+      voiceWithdrawnNotice: "Se retiró el procesamiento de voz. Hablar está desactivado.",
+      analysisWithdrawnNotice: "Se retiró el análisis. No se registrarán nuevas evidencias.",
+      yourDataLabel: "Tus datos",
+      exportArchiveAction: "Exportar mi archivo",
+      archiveExportedNotice: "Archivo exportado.",
+      exportFailedNotice: "Falló la exportación.",
+      eraseAllTitle: "Borrar todos los datos de aprendizaje",
+      eraseAllDesc:
+        "Elimina todas las sesiones, observaciones y programaciones de este dispositivo. Esta acción no se puede deshacer.",
+      eraseEverything: "Borrar todo",
+      eraseConfirmTap: "Toca de nuevo para confirmar",
+      erasedNotice: "Se borraron todos los datos de aprendizaje.",
+      versionsLabel: "Versiones",
+      learningPolicyLabel: "Política de aprendizaje",
+      openingConversation: "Abriendo conversación…",
+      missionUnavailable: "Esta misión ya no está disponible.",
+      goBack: "Volver",
+      shareFailed: "Error al compartir",
       sectionLang: "Idioma y Contexto de Aprendizaje",
       targetLangLabel: "Idioma que quieres aprender",
       uiLangLabel: "Idioma de interfaz y explicaciones",
@@ -1340,6 +1480,42 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     settings: {
       title: "Instellingen",
       subtitle: "Voorkeuren & Gegevenssoevereiniteit",
+      appearanceLabel: "Weergave",
+      appearanceLight: "Licht",
+      appearanceDark: "Donker",
+      appearanceSystem: "Systeem",
+      doneLabel: "Klaar",
+      privacyTitle: "Privacy en gegevens",
+      privacyStorageLabel: "Waar je gegevens worden opgeslagen",
+      privacyStorageLocal:
+        "Je gesprekken, zinsgeschiedenis en bewijsregister worden alleen op dit apparaat opgeslagen. Ze worden nergens gesynchroniseerd.",
+      privacyStorageAnalysis:
+        "Wanneer je een sessie beëindigt, worden de transcriptiebeurten die je hebt geproduceerd naar een AI-provider gestuurd voor analyse zodat zinnen kunnen worden gekoppeld. Niets anders verlaat het apparaat en niets wordt gebruikt om een model te trainen.",
+      privacyStorageExports:
+        "Bestanden die je exporteert of deelt verlaten de app. Nadat ze zijn gedeeld, kunnen ze niet worden teruggehaald door deze app te wissen.",
+      consentLabel: "Toestemming",
+      grantedLabel: "Toegestaan",
+      withdrawnLabel: "Ingetrokken",
+      withdrawLabel: "Intrekken",
+      consentVersionLabel: "Toestemmingsversie",
+      voiceWithdrawnNotice: "Spraakverwerking is ingetrokken. Spreken is uitgeschakeld.",
+      analysisWithdrawnNotice: "Analyse is ingetrokken. Er wordt geen nieuw bewijs opgeslagen.",
+      yourDataLabel: "Jouw gegevens",
+      exportArchiveAction: "Mijn archief exporteren",
+      archiveExportedNotice: "Archief geëxporteerd.",
+      exportFailedNotice: "Export mislukt.",
+      eraseAllTitle: "Alle leergegevens wissen",
+      eraseAllDesc:
+        "Verwijdert alle sessies, observaties en planningen van dit apparaat. Dit kan niet ongedaan worden gemaakt.",
+      eraseEverything: "Alles wissen",
+      eraseConfirmTap: "Tik nogmaals om te bevestigen",
+      erasedNotice: "Alle leergegevens zijn gewist.",
+      versionsLabel: "Versies",
+      learningPolicyLabel: "Leerbeleid",
+      openingConversation: "Gesprek openen…",
+      missionUnavailable: "Deze missie is niet meer beschikbaar.",
+      goBack: "Terug",
+      shareFailed: "Delen mislukt",
       sectionLang: "Taal & Leercontext",
       targetLangLabel: "Doeltaal die je leert",
       uiLangLabel: "App- en uitlegtaal (i18n)",
