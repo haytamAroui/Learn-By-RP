@@ -45,6 +45,7 @@ function observation(overrides: Partial<SkillObservation> = {}): SkillObservatio
     modality: 'spoken',
     retrieval: 'unassisted',
     taskOutcome: 'achieved',
+    demonstration: 'demonstrated',
     supportExposureIds: [],
     evidenceSource: 'validated_explicit',
     quote: '¿Tiene leche de avena?',
