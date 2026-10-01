@@ -127,6 +127,65 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
           <Text className="text-xs text-body">{t.progress.subheading}</Text>
         </View>
 
+        {/*
+          Ready to practise sits above the tabs, not inside one.
+
+          It used to render only within the Phrases tab and below the strip, so a
+          learner opening Progress on its default Skills tab with work due saw no
+          prompt at all. The tab strip answers "what can I look at"; this answers
+          "what should I do now", and it is the reason to be on the screen.
+        */}
+        {duePhrases.length > 0 && (
+          <View className="gap-3">
+            <View className="flex-row items-center gap-2">
+              <Clock size={14} color={iconColor("brand")} />
+              <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
+                {t.progress.readyToPractise} ({duePhrases.length})
+              </Text>
+            </View>
+
+            {duePhrases.slice(0, 3).map((phrase) => (
+              <Pressable
+                key={phrase.id}
+                onPress={() => {
+                  setSelectedTab("phrases");
+                  setSelectedPhrase(phrase);
+                }}
+                accessibilityRole="button"
+                className="gap-3 rounded-2xl border border-primary/20 bg-card-warm p-4 active:opacity-80"
+              >
+                <View className="flex-row items-start justify-between gap-3">
+                  <View className="flex-1">
+                    <Text className="font-semibold text-ink">
+                      "{phrase.form}"
+                    </Text>
+                    <Text className="mt-0.5 text-xs text-muted">
+                      {phrase.meaning}
+                    </Text>
+                  </View>
+                  <View className="shrink-0 rounded-lg border border-primary/30 bg-surface-sunken px-2 py-0.5">
+                    <Text className="text-xs font-semibold text-primary">
+                      {t.progress.reviewDue}
+                    </Text>
+                  </View>
+                </View>
+              </Pressable>
+            ))}
+
+            {duePhrases.length > 3 && (
+              <Pressable
+                onPress={() => setSelectedTab("phrases")}
+                accessibilityRole="button"
+                className="self-start py-1"
+              >
+                <Text className="text-xs font-semibold text-primary">
+                  {`+ ${duePhrases.length - 3} more`}
+                </Text>
+              </Pressable>
+            )}
+          </View>
+        )}
+
         <View
           accessibilityRole="tablist"
           className="flex-row gap-1 border-b border-border-subtle"
@@ -163,50 +222,6 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
 
         {selectedTab === "phrases" ? (
           <View className="gap-6">
-            {duePhrases.length > 0 ? (
-              <View className="gap-3">
-                <View className="flex-row items-center gap-2">
-                  <Clock size={14} color={iconColor("brand")} />
-                  <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
-                    {t.progress.readyToPractise} ({duePhrases.length})
-                  </Text>
-                </View>
-
-                {duePhrases.map((phrase) => (
-                  <Pressable
-                    key={phrase.id}
-                    onPress={() => setSelectedPhrase(phrase)}
-                    accessibilityRole="button"
-                    className="gap-3 rounded-2xl border border-primary/20 bg-card-warm p-4 active:opacity-80"
-                  >
-                    <View className="flex-row items-start justify-between gap-3">
-                      <View className="flex-1">
-                        <Text className="font-semibold text-ink">
-                          "{phrase.form}"
-                        </Text>
-                        <Text className="mt-0.5 text-xs text-muted">
-                          {phrase.meaning}
-                        </Text>
-                      </View>
-                      <View className="rounded-lg bg-primary px-2 py-0.5">
-                        <Text className="text-xs font-semibold text-white">
-                          {t.progress.reviewDue}
-                        </Text>
-                      </View>
-                    </View>
-                    <View className="flex-row items-center justify-between border-t border-border-subtle pt-2">
-                      <Text className="text-xs capitalize text-muted">
-                        {phrase.recallStatus}
-                      </Text>
-                      <Text className="text-xs text-muted">
-                        {t.progress.reviewDue}
-                      </Text>
-                    </View>
-                  </Pressable>
-                ))}
-              </View>
-            ) : null}
-
             <View className="gap-3">
               <SectionLabel>
                 {t.common.allTrackedVocabulary} ({phrases.length})
