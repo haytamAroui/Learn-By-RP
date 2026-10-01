@@ -125,8 +125,8 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
               onPress={() => setActiveView(item.id)}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 ${
-                selected ? 'bg-ink' : 'bg-surface-soft'
+              className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border px-4 hover:bg-surface-hover focus:border-2 focus:border-focus ${
+                selected ? 'border-ink bg-ink' : 'border-transparent bg-surface-soft'
               }`}
             >
               <Icon
@@ -176,8 +176,8 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                   onPress={() => setSelectedCategory(category.id)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  className={`min-h-12 justify-center rounded-full px-4 ${
-                    selected ? 'bg-action' : 'bg-surface-soft'
+                  className={`min-h-12 justify-center rounded-full border px-4 hover:bg-surface-hover focus:border-2 focus:border-focus ${
+                    selected ? 'border-action bg-action' : 'border-transparent bg-surface-soft'
                   }`}
                 >
                   <Text
@@ -199,7 +199,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                   onPress={() => onSelectMission(mission)}
                   accessibilityRole="button"
                   accessibilityLabel={mission.title}
-                  className="min-h-[104px] flex-row items-center gap-3 py-4 active:opacity-70"
+                  className="min-h-[104px] flex-row items-center gap-3 rounded-2xl border border-transparent py-4 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
                 >
                   <View className="h-12 w-12 items-center justify-center rounded-2xl bg-card-warm">
                     <Compass size={21} color={iconColor('brand')} />
@@ -269,7 +269,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                   onPress={() => onSelectMission(mission)}
                   accessibilityRole="button"
                   accessibilityLabel={mission.title}
-                  className="mb-5 min-h-[92px] flex-1 rounded-[22px] bg-surface-soft p-4 active:opacity-70"
+                  className="mb-5 min-h-[92px] flex-1 rounded-[22px] border border-transparent bg-surface-soft p-4 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
                 >
                   <View className="flex-row items-start gap-3">
                     <View className="flex-1">
