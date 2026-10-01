@@ -39,3 +39,9 @@ jobs:
 
       - name: Web export
         run: npm run build:web
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      - name: 390x844 mobile smoke
+        run: npx playwright test e2e/mobile-v3-smoke.spec.ts --project=light
