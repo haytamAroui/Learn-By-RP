@@ -35,12 +35,11 @@ const UI_LANGUAGE_FLAGS: Record<UiLanguage, string> = {
 
 const APPEARANCE_OPTIONS: Array<{
   id: ThemePreference;
-  label: string;
   Icon: typeof Sun;
 }> = [
-  { id: 'light', label: 'Light', Icon: Sun },
-  { id: 'dark', label: 'Dark', Icon: Moon },
-  { id: 'system', label: 'System', Icon: Monitor },
+  { id: 'light', Icon: Sun },
+  { id: 'dark', Icon: Moon },
+  { id: 'system', Icon: Monitor },
 ];
 
 export default function SettingsScreen() {
@@ -82,7 +81,7 @@ export default function SettingsScreen() {
         }}
       >
         <View className="gap-3">
-          <SectionLabel>Appearance</SectionLabel>
+          <SectionLabel>{t.settings.appearanceLabel}</SectionLabel>
           <View className="flex-row gap-2">
             {APPEARANCE_OPTIONS.map(option => {
               const selected = preference === option.id;
@@ -107,7 +106,11 @@ export default function SettingsScreen() {
                       selected ? 'text-primary' : 'text-body'
                     }`}
                   >
-                    {option.label}
+                    {option.id === 'light'
+                      ? t.settings.appearanceLight
+                      : option.id === 'dark'
+                        ? t.settings.appearanceDark
+                        : t.settings.appearanceSystem}
                   </Text>
                 </Pressable>
               );
