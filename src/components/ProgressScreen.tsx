@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 import { ChevronRight, Clock3 } from 'lucide-react-native';
 import {
+  LanguageCode,
   LearningObservation,
   PhraseItem,
   SessionRecord,
@@ -25,6 +26,7 @@ interface ProgressScreenProps {
   phrases: PhraseItem[];
   sessions: SessionRecord[];
   observations: LearningObservation[];
+  learningLanguage: LanguageCode;
   onPracticeDue: () => void;
   onSelectSession: (session: SessionRecord) => void;
   onDisputeObservation: (obsId: string) => void;
@@ -32,6 +34,14 @@ interface ProgressScreenProps {
 }
 
 type ProgressTab = 'skills' | 'phrases' | 'history';
+
+const PATTERN_INDEX: Record<LanguageCode, number> = {
+  es: 0,
+  fr: 1,
+  de: 2,
+  it: 3,
+  ja: 4,
+};
 
 const STATUS_SURFACE = {
   steady: { container: 'bg-card-sage', text: 'text-accent-sage' },
@@ -45,6 +55,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   phrases,
   sessions,
   observations,
+  learningLanguage,
   onPracticeDue,
   onSelectSession,
   onDisputeObservation,
@@ -87,6 +98,27 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     }
     return map;
   }, [legacySkillEvidence]);
+
+  const localizeSkill = (skill: CommunicativeSkillMeta) => {
+    switch (skill.id) {
+      case 'skill-request-substitution':
+        return t.skills.requestSubstitution;
+      case 'skill-propose-alternative':
+        return t.skills.proposeAlternative;
+      case 'skill-inquire-specifications':
+        return t.skills.inquireSpecifications;
+      case 'skill-wayfinding-transit':
+        return t.skills.wayfindingTransit;
+      case 'skill-communicative-repair':
+        return t.skills.communicativeRepair;
+      default:
+        return {
+          name: skill.name,
+          category: skill.category,
+          description: skill.description,
+        };
+    }
+  };
 
   const tabs: Array<{ id: ProgressTab; label: string; short: string }> = [
     { id: 'skills', label: t.progress.tabSkills, short: t.progress.tabSkillsShort },
@@ -197,6 +229,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
           <View>
             {COMMUNICATIVE_SKILLS_CATALOG.map((skill, index) => {
               const projection = skillStats.get(skill.id);
+              const localized = localizeSkill(skill);
               return (
                 <React.Fragment key={skill.id}>
                   <Pressable
@@ -206,10 +239,10 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                   >
                     <View className="flex-1">
                       <Text className="text-[16px] font-semibold leading-[21px] text-ink">
-                        {skill.name}
+                        {localized.name}
                       </Text>
                       <Text className="mt-1 text-[13px] leading-[18px] text-muted" numberOfLines={2}>
-                        {skill.description}
+                        {localized.description}
                       </Text>
                     </View>
 
@@ -364,22 +397,24 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
       <Sheet
         visible={Boolean(selectedSkill)}
         onClose={() => setSelectedSkill(null)}
-        title={selectedSkill?.category}
+        title={selectedSkill ? localizeSkill(selectedSkill).category : undefined}
       >
         {selectedSkill ? (
           <View className="gap-5">
             <View className="gap-1">
-              <Text className="text-2xl font-semibold text-ink">{selectedSkill.name}</Text>
-              <Text className="text-sm leading-6 text-body">{selectedSkill.description}</Text>
+              <Text className="text-2xl font-semibold text-ink">
+                {localizeSkill(selectedSkill).name}
+              </Text>
+              <Text className="text-sm leading-6 text-body">
+                {localizeSkill(selectedSkill).description}
+              </Text>
             </View>
 
             <View className="gap-2 rounded-2xl bg-surface-soft p-4">
               <SectionLabel>{t.progress.samplePatterns}</SectionLabel>
-              {selectedSkill.patterns.map((pattern, index) => (
-                <Text key={`${pattern}-${index}`} className="text-sm leading-5 text-ink">
-                  • {pattern}
-                </Text>
-              ))}
+              <Text className="text-sm leading-5 text-ink">
+                • {selectedSkill.patterns[PATTERN_INDEX[learningLanguage]]}
+              </Text>
             </View>
 
             <View className="gap-3">
