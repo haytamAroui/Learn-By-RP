@@ -127,16 +127,30 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   ];
 
   const statusLabel = (projection?: SkillProjectionV2) => {
-    if (projection?.reviewDue) return t.progress.reviewDue;
+    if (projection?.reviewDue) return t.progress.statusWorthRevisiting;
     switch (projection?.status) {
       case 'steady':
-        return t.progress.steadyTitle;
+        return t.progress.statusSteady;
       case 'growing':
-        return t.progress.growingTitle;
+        return t.progress.statusGrowing;
       case 'supported':
-        return t.progress.supportedTitle;
+        return t.progress.statusSupported;
       default:
-        return t.progress.newTitle;
+        return t.progress.statusNew;
+    }
+  };
+
+  const phraseStatusLabel = (phrase: PhraseItem) => {
+    if (phrase.scheduling.due) return t.progress.statusWorthRevisiting;
+    switch (phrase.recallStatus) {
+      case 'steady':
+        return t.progress.statusSteady;
+      case 'growing':
+        return t.progress.statusGrowing;
+      case 'supported':
+        return t.progress.statusSupported;
+      default:
+        return t.progress.statusNew;
     }
   };
 
@@ -303,7 +317,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
 
                     <View className="items-end gap-1">
                       <Text className="text-xs font-semibold capitalize text-primary">
-                        {phrase.scheduling.due ? t.progress.reviewDue : phrase.recallStatus}
+                        {phraseStatusLabel(phrase)}
                       </Text>
                       <ChevronRight size={18} color={iconColor('muted')} />
                     </View>
