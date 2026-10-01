@@ -56,8 +56,7 @@ import { iconColor } from '../design/iconColor';
 
 interface LiveSessionViewProps {
   mission: MissionDefinition | null;
-  mode: Mode;
-  coldAttempt: boolean;
+  initialSession: SessionRecord;
   onEndSession: (session: SessionRecord) => void;
   onCancel: () => void;
 }
@@ -214,30 +213,24 @@ function buildHonestSummary(
 
 export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   mission,
-  mode,
-  coldAttempt,
+  initialSession,
   onEndSession,
   onCancel,
 }) => {
   const { t, language } = useI18n();
   const insets = useSafeAreaInsets();
 
-  const [sessionId] = useState(() => `session-${Date.now()}`);
-  const [attemptId, setAttemptId] = useState('attempt-1');
-  const [passages, setPassages] = useState<Passage[]>([]);
-  const [supportExposures, setSupportExposures] = useState<SupportExposure[]>([]);
-  const [sceneState, setSceneState] = useState<SceneState>(() => ({
-    sceneId: mission?.id ?? 'unknown',
-    revision: 1,
-    facts: { ...(mission?.character ?? {}) },
-    learnerKnows: mission ? [mission.learnerGoal] : [],
-    characterKnows: mission?.character.knowledgeBoundary ?? [],
-    checkpoints: [
-      { id: 'cp-start', description: 'Session start', timestamp: new Date().toISOString() },
-    ],
-    isFinished: false,
-    outcome: 'unknown',
-  }));
+  const sessionId = initialSession.id;
+  const mode = initialSession.mode;
+  const coldAttempt = initialSession.coldAttempt;
+  const [attemptId, setAttemptId] = useState(
+    () => initialSession.passages.at(-1)?.attemptId ?? 'attempt-1'
+  );
+  const [passages, setPassages] = useState<Passage[]>(() => initialSession.passages);
+  const [supportExposures, setSupportExposures] = useState<SupportExposure[]>(
+    () => initialSession.supportExposures
+  );
+  const [sceneState, setSceneState] = useState<SceneState>(() => initialSession.sceneState);
 
   const [voiceState, setVoiceState] = useState<VoiceState>('connecting');
   const [audioLevel, setAudioLevel] = useState(0);
@@ -789,25 +782,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       sceneMirrorRef.current = null;
     }
 
-    // Support is recorded from the briefing, not just from inside the session.
-    // If the learner saw the target wording here, later use of it is assisted —
-    // that is what makes the cold-attempt choice meaningful.
-    if (!coldAttempt) {
-      setSupportExposures([
-        {
-          id: `exp-briefing-${Date.now()}`,
-          sessionId,
-          attemptId: 'attempt-1',
-          source: 'briefing',
-          kind: 'full_form',
-          targetItemIds: mission.usefulPhrases.map(p => p.id),
-          exposure: 'visible',
-          recordedAt: new Date().toISOString(),
-        },
-      ]);
-    } else {
-      setSupportExposures([]);
-    }
+    // Briefing support is already persisted before this route mounts. Keep that
+    // exact ledger: do not infer or broaden exposure from coldAttempt.
 
     const transport = new NativeVoiceTransport();
     transport.setLanguage(mission.language);
@@ -1133,7 +1109,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       mode,
       coldAttempt,
       state: 'recap_ready',
-      startedAt: finalPassages[0]?.startedAt || new Date().toISOString(),
+      startedAt: initialSession.startedAt,
       endedAt: new Date().toISOString(),
       endReason,
       passages: finalPassages,
@@ -1156,6 +1132,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   }, [
     attemptId,
     coldAttempt,
+    initialSession.startedAt,
     mission,
     mode,
     onEndSession,
