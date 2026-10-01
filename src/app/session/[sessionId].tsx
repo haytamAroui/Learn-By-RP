@@ -66,7 +66,7 @@ export default function SessionScreen() {
       <View className="flex-1 items-center justify-center bg-canvas p-6">
         <Text className="text-center text-sm text-muted">{t.settings.missionUnavailable}</Text>
         <Text className="mt-3 text-xs text-primary" onPress={() => router.back()}>
-          Go back
+          {t.settings.goBack}
         </Text>
       </View>
     );
