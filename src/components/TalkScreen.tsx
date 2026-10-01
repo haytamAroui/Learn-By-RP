@@ -64,7 +64,7 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
           <Text className="text-sm font-semibold text-primary">
             {currentLanguageName} · {t.talk.tagPractice}
           </Text>
-          <Text className="max-w-[560px] text-[30px] font-semibold leading-[36px] tracking-tight text-ink">
+          <Text className="max-w-[560px] text-[28px] font-semibold leading-[34px] tracking-tight text-ink">
             {t.talk.heading}
           </Text>
           <Text className="max-w-[560px] text-[15px] leading-[22px] text-body">
