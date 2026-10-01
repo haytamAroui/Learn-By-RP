@@ -715,8 +715,13 @@ Any checked anti-pattern is a blocker.
 
 # 28. Learning-product work after V4 hardening
 
+Roleplay/pedagogy implementation is now tracked in
+`LEARNBYRP_ROLEPLAY_PROGRAM_TODO_V1.md`. That checklist is the execution authority
+for Goal → Program → Mission → Attempt → Evidence → Next RP work. V4 remains the UI/UX
+authority and must not duplicate the roleplay runtime contracts.
+
 Do not let UI/provider hardening indefinitely block product learning features, but complete
-the core device/provider gates first.
+the correctness gates in the roleplay-program TODO before implementing Transfer/Recovery UI.
 
 ## Next learning sequence
 
@@ -774,7 +779,12 @@ Cloud-provider acceptance is complete on CI. Remaining P0 work requires physical
 
 ## P4 — next learning intelligence
 
-- [ ] Cold → Guided → Transfer.
+Execution details live in `LEARNBYRP_ROLEPLAY_PROGRAM_TODO_V1.md`.
+
+- [ ] Complete roleplay-program P0.5 learning-correctness gate.
+- [ ] Complete roleplay-program P1 scene/mission runtime hardening.
+- [ ] Complete roleplay-program P2 evidence loop.
+- [ ] Then implement Cold → Guided → Transfer.
 - [ ] Transfer Chains.
 - [ ] Retry from moment.
 - [ ] Skill Recovery Missions.
