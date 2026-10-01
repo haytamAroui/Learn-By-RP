@@ -156,8 +156,11 @@ export interface Translations {
     listening: string;
     characterSpeaking: string;
     tapToSpeak: string;
+    connecting: string;
     /** R3: a retry is in flight. Must not read as a failure. */
     reconnecting: string;
+    voiceMuted: string;
+    ending: string;
     /** R3: voice has failed, typed input still works. */
     voiceFailed: string;
     /** R3: recover the connection without losing the transcript. */
