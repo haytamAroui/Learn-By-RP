@@ -221,7 +221,7 @@ export const RecapModal: React.FC<RecapModalProps> = ({
             onPress={() => onNextMission(nextMission)}
             size="sm"
             className="mt-1 self-start"
-            icon={<ArrowRight size={14} color="#ffffff" />}
+            icon={<ArrowRight size={14} color={iconColor('brandText')} />}
           />
         </View>
       ) : null}
