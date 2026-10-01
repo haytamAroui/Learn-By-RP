@@ -1,6 +1,6 @@
 import React, { useCallback, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
@@ -11,7 +11,6 @@ import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
 export default function SettingsPrivacyScreen() {
   const router = useRouter();
   const archive = useArchive();
-  const params = useLocalSearchParams<{ section?: string }>();
   const t = getTranslations(archive.preferences.explanationLanguage);
 
   const [notice, setNotice] = useState<string | null>(null);
