@@ -7,35 +7,8 @@ import {
 import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from 'expo-audio';
 import { File, Paths, EncodingType } from 'expo-file-system';
 import * as Speech from 'expo-speech';
-
-export interface VoiceEvent {
-  type:
-    | 'listening_start'
-    | 'listening_end'
-    | 'speech_result'
-    | 'audio_level'
-    | 'playback_start'
-    | 'playback_end'
-    | 'error'
-    | 'interrupted';
-  payload?: any;
-}
-
-const LOCALE_MAP: Record<string, string> = {
-  es: 'es-ES',
-  fr: 'fr-FR',
-  de: 'de-DE',
-  it: 'it-IT',
-  ja: 'ja-JP',
-};
-
-const TTS_LOCALE_MAP: Record<string, string> = {
-  es: 'es-ES',
-  fr: 'fr-FR',
-  de: 'de-DE',
-  it: 'it-IT',
-  ja: 'ja-JP',
-};
+import { pickBestNativeVoice, resolveSpeechLocale } from './language';
+import type { VoiceEvent, VoicePlaybackOptions, VoiceTransport } from './types';
 
 /**
  * Voice transport backed by expo-speech-recognition (capture + interim results)
@@ -44,15 +17,19 @@ const TTS_LOCALE_MAP: Record<string, string> = {
  * Exposes the same event surface as the previous Web Speech API implementation so
  * the session components do not change their listening logic.
  */
-export class NativeVoiceTransport {
+export class NativeVoiceTransport implements VoiceTransport {
+  readonly id = 'native-expo';
   private listeners: ((event: VoiceEvent) => void)[] = [];
   private subscriptions: Array<{ remove: () => void }> = [];
-  private targetLanguage = 'es-ES';
+  private targetLanguage = 'es';
+  private targetLocale = 'es-ES';
+  private nativeVoiceCache = new Map<string, string | null>();
   private isMuted = false;
   private isRecording = false;
   private player: AudioPlayer | null = null;
   private tempAudioFile: File | null = null;
   private audioConfigured = false;
+  private disposed = false;
 
   constructor() {
     this.attachListeners();
@@ -118,8 +95,9 @@ export class NativeVoiceTransport {
     });
   }
 
-  public setLanguage(langCode: string) {
-    this.targetLanguage = LOCALE_MAP[langCode] || 'es-ES';
+  public setLanguage(langCode: string, preferredLocale?: string) {
+    this.targetLanguage = langCode;
+    this.targetLocale = resolveSpeechLocale(langCode, preferredLocale);
   }
 
   public subscribe(fn: (event: VoiceEvent) => void): () => void {
@@ -153,7 +131,7 @@ export class NativeVoiceTransport {
   }
 
   public async startListening(): Promise<boolean> {
-    if (this.isMuted) return false;
+    if (this.disposed || this.isMuted) return false;
     if (this.isRecording) return true;
 
     this.stopPlayback();
@@ -173,7 +151,7 @@ export class NativeVoiceTransport {
 
     try {
       ExpoSpeechRecognitionModule.start({
-        lang: this.targetLanguage,
+        lang: this.targetLocale,
         interimResults: true,
         continuous: false,
         maxAlternatives: 1,
@@ -228,29 +206,45 @@ export class NativeVoiceTransport {
 
   public async playSpeech(
     text: string,
-    options: { audioBase64?: string; speed?: number; lang?: string } = {}
+    options: VoicePlaybackOptions = {}
   ): Promise<void> {
+    if (this.disposed) return;
     this.stopPlayback();
     const speed = options.speed || 1.0;
     const lang = options.lang || this.targetLanguage;
+    const locale = resolveSpeechLocale(lang, options.locale);
 
     if (options.audioBase64) {
-      const played = await this.playBase64Audio(options.audioBase64, speed);
+      const played = await this.playBase64Audio(
+        options.audioBase64,
+        speed,
+        options.mimeType
+      );
       if (played) return;
     }
 
-    return this.fallbackSpeech(text, speed, lang);
+    return this.fallbackSpeech(text, speed, locale);
   }
 
-  private async playBase64Audio(base64: string, speed: number): Promise<boolean> {
+  private async playBase64Audio(
+    base64: string,
+    speed: number,
+    mimeType = 'audio/wav'
+  ): Promise<boolean> {
     if (Platform.OS === 'web') {
-      return this.playViaWebAudio(base64, speed);
+      return this.playViaWebAudio(base64, speed, mimeType);
     }
 
     try {
       await this.ensureAudioMode();
 
-      const file = new File(Paths.cache, `mission-coach-${Date.now()}.wav`);
+      const extension =
+        mimeType.includes('mpeg') || mimeType.includes('mp3')
+          ? 'mp3'
+          : mimeType.includes('aac')
+            ? 'aac'
+            : 'wav';
+      const file = new File(Paths.cache, `learnbyrp-${Date.now()}.${extension}`);
       file.create({ overwrite: true });
       file.write(base64, { encoding: EncodingType.Base64 });
       this.tempAudioFile = file;
@@ -292,13 +286,17 @@ export class NativeVoiceTransport {
     }
   }
 
-  private async playViaWebAudio(base64: string, speed: number): Promise<boolean> {
+  private async playViaWebAudio(
+    base64: string,
+    speed: number,
+    mimeType: string
+  ): Promise<boolean> {
     try {
       const AudioCtor = (globalThis as any).Audio;
       if (!AudioCtor) return false;
 
       return new Promise<boolean>(resolve => {
-        const audio = new AudioCtor(`data:audio/wav;base64,${base64}`);
+        const audio = new AudioCtor(`data:${mimeType};base64,${base64}`);
         audio.playbackRate = speed;
         this.emit({ type: 'playback_start' });
         const done = () => {
@@ -335,14 +333,40 @@ export class NativeVoiceTransport {
     }
   }
 
-  private fallbackSpeech(text: string, speed: number, lang: string): Promise<void> {
+  private async resolveNativeVoice(locale: string): Promise<string | undefined> {
+    if (this.nativeVoiceCache.has(locale)) {
+      return this.nativeVoiceCache.get(locale) || undefined;
+    }
+
+    try {
+      const voices = await Speech.getAvailableVoicesAsync();
+      const match = pickBestNativeVoice(voices as any[], locale);
+      const identifier = match?.identifier ?? null;
+      this.nativeVoiceCache.set(locale, identifier);
+      return identifier || undefined;
+    } catch (error) {
+      console.warn('Could not inspect native voices:', error);
+      this.nativeVoiceCache.set(locale, null);
+      return undefined;
+    }
+  }
+
+  private async fallbackSpeech(
+    text: string,
+    speed: number,
+    locale: string
+  ): Promise<void> {
+    const voice = await this.resolveNativeVoice(locale);
+
     return new Promise(resolve => {
       this.emit({ type: 'playback_start' });
 
       Speech.speak(text, {
-        language: TTS_LOCALE_MAP[lang.split('-')[0]] || lang,
+        language: locale,
+        voice,
         rate: speed,
         pitch: 1.0,
+        useApplicationAudioSession: true,
         onDone: () => {
           this.emit({ type: 'playback_end' });
           resolve();
@@ -360,8 +384,10 @@ export class NativeVoiceTransport {
   }
 
   public dispose() {
+    if (this.disposed) return;
     this.stopListening();
     this.stopPlayback();
+    this.disposed = true;
     for (const sub of this.subscriptions) {
       try {
         sub.remove();

@@ -35,7 +35,11 @@ import {
   LearningObservation,
   TaskOutcome,
 } from '../types';
-import { NativeVoiceTransport, VoiceEvent } from '../providers/voice';
+import { createVoiceTransport } from '../providers/voice';
+import type { VoiceEvent, VoiceTransport } from '../providers/voice';
+import { createConversationProvider } from '../providers/conversation';
+import type { ConversationProvider } from '../providers/conversation/types';
+import { speakWithBestAvailable } from '../providers/voice/speechOutput';
 import { useI18n } from '../features/i18n';
 import {
   buildLocalObservations,
@@ -312,7 +316,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const [activeCoachAdvice, setActiveCoachAdvice] = useState<string | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
 
-  const voiceTransportRef = useRef<NativeVoiceTransport | null>(null);
+  const voiceTransportRef = useRef<VoiceTransport | null>(null);
+  const conversationProviderRef = useRef<ConversationProvider | null>(null);
   const sceneMirrorRef = useRef<SceneMirror | null>(null);
   const scrollRef = useRef<ScrollView | null>(null);
   const sceneStateRef = useRef(sceneState);
@@ -527,7 +532,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       setVoiceState('connecting');
 
       try {
-        const response = await api.actorRespond({
+        const provider = conversationProviderRef.current;
+        if (!provider) {
+          throw new Error('Conversation provider is not initialized');
+        }
+
+        const response = await provider.respond({
           character: target.character,
           setting: target.setting,
           learnerGoal: target.learnerGoal,
@@ -594,10 +604,21 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
         if (audioPlaybackEnabled && !isSceneFrozenRef.current) {
           setVoiceState('speaking');
-          await voiceTransportRef.current?.playSpeech(response.replyText, {
-            audioBase64: response.audioBase64,
-            lang: target.language,
-          });
+          const transport = voiceTransportRef.current;
+          if (transport) {
+            if (response.audioBase64) {
+              await transport.playSpeech(response.replyText, {
+                audioBase64: response.audioBase64,
+                mimeType: response.audioMimeType,
+                lang: target.language,
+              });
+            } else {
+              await speakWithBestAvailable(transport, response.replyText, {
+                language: target.language,
+                style: target.character.voiceStyle,
+              });
+            }
+          }
         } else {
           setVoiceState('idle');
         }
@@ -776,9 +797,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     // Briefing support is already persisted before this route mounts. Keep that
     // exact ledger: do not infer or broaden exposure from coldAttempt.
 
-    const transport = new NativeVoiceTransport();
+    const transport = createVoiceTransport();
     transport.setLanguage(mission.language);
     voiceTransportRef.current = transport;
+
+    const conversationProvider = createConversationProvider();
+    conversationProviderRef.current = conversationProvider;
+    void conversationProvider.connect?.().catch(error => {
+      console.warn('Conversation provider preconnect failed:', error);
+    });
 
     const unsubscribe = transport.subscribe((event: VoiceEvent) => {
       switch (event.type) {
@@ -856,8 +883,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       setPassages([initialPassage]);
       setVoiceState('speaking');
 
-      await transport.playSpeech(greeting, { lang: mission.language });
-      transport.startListening();
+      await speakWithBestAvailable(transport, greeting, {
+        language: mission.language,
+        style: mission.character.voiceStyle,
+      });
     };
 
     void startInitialTurn();
@@ -868,6 +897,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       unsubscribe();
       transport.dispose();
       voiceTransportRef.current = null;
+      conversationProvider.dispose();
+      conversationProviderRef.current = null;
       void sceneMirrorRef.current?.close();
       sceneMirrorRef.current = null;
     };
@@ -944,6 +975,7 @@ t.live.rehearsalRestored
     */
     invalidateGeneration();
 
+    conversationProviderRef.current?.cancel?.();
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
     setVoiceState('ending');
@@ -1540,10 +1572,14 @@ t.live.rehearsalRestored
             label={t.settings.speedSlower}
             onPress={() => {
               if (latestAssistantPassage) {
-                void voiceTransportRef.current?.playSpeech(latestAssistantPassage.text, {
-                  speed: 0.75,
-                  lang: mission.language,
-                });
+                const transport = voiceTransportRef.current;
+                if (transport) {
+                  void speakWithBestAvailable(transport, latestAssistantPassage.text, {
+                    language: mission.language,
+                    speed: 0.75,
+                    style: mission.character.voiceStyle,
+                  });
+                }
               }
               setShowHelpSheet(false);
             }}

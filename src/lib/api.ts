@@ -1,3 +1,10 @@
+import type {
+  ProviderRuntimeDescriptor,
+  RealtimeSessionDescriptor,
+  RealtimeSessionRequest,
+  SpeechSynthesisRequest,
+  SpeechSynthesisResponse,
+} from '../providers/runtime/contracts';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 
 function resolveBaseUrl(): string {
@@ -30,6 +37,35 @@ class ApiError extends Error {
     this.name = 'ApiError';
     this.status = status;
     this.payload = payload;
+  }
+}
+
+async function getRequest<T>(path: string, timeoutMs = 10000): Promise<T> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const init = {
+      method: 'GET',
+      signal: controller.signal,
+    } as RequestInit;
+
+    const response = await fetch(`${API_BASE_URL}${path}`, init);
+
+    const text = await response.text();
+    const parsed = text ? JSON.parse(text) : null;
+
+    if (!response.ok) {
+      throw new ApiError(
+        parsed?.error || `Request to ${path} failed with ${response.status}`,
+        response.status,
+        parsed
+      );
+    }
+
+    return parsed as T;
+  } finally {
+    clearTimeout(timer);
   }
 }
 
@@ -81,6 +117,7 @@ export interface ActorResponse {
   meaning: string;
   proposedAction: ActorAction | null;
   audioBase64?: string;
+  audioMimeType?: string;
 }
 
 export const api = {
@@ -121,6 +158,15 @@ export const api = {
     usefulPhrases: any[];
     language: string;
   }) => request<any>('/api/assessment', body, 60000),
+
+  providers: () =>
+    getRequest<ProviderRuntimeDescriptor>('/api/providers'),
+
+  synthesizeSpeech: (body: SpeechSynthesisRequest) =>
+    request<SpeechSynthesisResponse>('/api/speech/synthesize', body, 12000),
+
+  createRealtimeSession: (body: RealtimeSessionRequest) =>
+    request<RealtimeSessionDescriptor>('/api/realtime/session', body, 15000),
 };
 
 export { ApiError };
