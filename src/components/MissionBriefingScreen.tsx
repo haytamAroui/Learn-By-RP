@@ -138,7 +138,7 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
           <View className="h-px bg-border-subtle" />
 
           <View className="gap-3">
-            <SectionLabel>{t.progress.skillsTab}</SectionLabel>
+            <SectionLabel>{t.progress.tabSkills}</SectionLabel>
             <View className="gap-2">
               {mission.primarySkillIds.map(skillId => (
                 <View key={skillId} className="flex-row items-center gap-3">
