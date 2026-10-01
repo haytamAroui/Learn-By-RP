@@ -263,13 +263,35 @@ for (const viewport of WIDTHS) {
       await page.waitForLoadState('networkidle');
       await expectRenderedApp(page);
 
-      // The briefing opens from the first mission card, so it is exercised through
-      // the same affordance a learner uses rather than a route that does not exist.
-      const card = page.getByRole('button').first();
+      /*
+        The briefing opens from a mission card, so it is exercised through the same
+        affordance a learner uses rather than a route that does not exist.
+
+        Scoped by text rather than `getByRole('button').first()`: the navigation is
+        also a set of buttons, so "first button" silently changed meaning whenever
+        navigation changed - it was clicking a tab, not a mission.
+      */
+/*
+        Scoped by text and count, not by "first button": navigation is also a set of
+        buttons, so `first()` silently changed meaning whenever navigation changed.
+        The mission card is the one whose accessible name starts with the district
+        line, which is unique to a mission.
+
+        `click({ force: true })` because the card sits inside a scroll view whose
+        container can report a pointer-event interception on web that does not exist
+        for a real user.
+      */
+      const card = page
+        .getByRole("button")
+        .filter({ hasText: /Level A\d/ })
+        .first();
       await expect(card).toBeVisible();
-      await card.click();
+      await card.click({ force: true });
       await page.waitForTimeout(800);
 
+      // Confirm the briefing actually opened, so a click that lands somewhere else
+      // cannot be recorded as the briefing.
+      await expect(page.locator('body')).toContainText(/Briefing|roleplay|scene/i);
       await expect(page).toHaveScreenshot(`briefing-${viewport.name}.png`, { fullPage: true });
     });
 
