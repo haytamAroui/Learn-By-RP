@@ -352,9 +352,10 @@ export function deriveLapses(
 ): SkillLapse[] {
   if (context.isRehearsalAttempt) return [];
 
-  // A session that ended because the learner left, time expired, or the runtime
-  // failed is not a language failure.
-  if (context.sessionEndReason && context.sessionEndReason !== 'completed') {
+  // A lapse is only valid after a known natural completion. Missing/unknown
+  // termination provenance is not licence to turn a runtime interruption into a
+  // learner weakness.
+  if (context.sessionEndReason !== 'completed') {
     return [];
   }
 
