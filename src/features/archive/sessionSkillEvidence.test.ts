@@ -5,7 +5,7 @@ import { archiveRepository } from './SqliteArchiveRepository';
 import { MISSION_CATALOG } from '../../data/missions';
 import { validateSkillEvidenceProposal } from '../learning/skillEvidence';
 import { projectSkillsV2 } from '../learning/skillProjection';
-import { SessionRecord, Passage, SupportExposure } from '../../types';
+import { OpportunityInstance, SessionRecord, Passage, SupportExposure } from '../../types';
 
 /**
  * Live-session wiring.
@@ -86,8 +86,25 @@ function runtimeFacts(overrides: Partial<Parameters<typeof validateSkillEvidence
     mission: MISSION,
     passages: [PASSAGE],
     supportExposures: [] as SupportExposure[],
+    opportunityInstances: [] as OpportunityInstance[],
     isRehearsalAttempt: false,
     evidenceSource: 'validated_explicit' as const,
+    ...overrides,
+  };
+}
+
+function failedOpportunity(overrides: Partial<OpportunityInstance> = {}): OpportunityInstance {
+  return {
+    id: 'opp-failed-1',
+    attemptId: 'attempt-1',
+    opportunityId: 'opportunity-request-substitution',
+    skillId: 'skill-request-substitution',
+    status: 'taken',
+    detection: 'validated',
+    demonstration: 'attempted_not_demonstrated',
+    learnerAttemptPassageId: 'p-1',
+    learnerAttemptRevision: 'rev-1',
+    recordedAt: '2026-09-20T09:00:04.000Z',
     ...overrides,
   };
 }
@@ -95,7 +112,7 @@ function runtimeFacts(overrides: Partial<Parameters<typeof validateSkillEvidence
 function sessionWith(skillEvidence: {
   observations?: SessionRecord['skillObservations'];
   lapses?: SessionRecord['skillLapses'];
-}): SessionRecord {
+}, opportunityInstances: OpportunityInstance[] = []): SessionRecord {
   return {
     id: 'sess-1',
     missionId: MISSION.id,
@@ -108,6 +125,7 @@ function sessionWith(skillEvidence: {
     endedAt: '2026-09-20T09:05:00.000Z',
     passages: [PASSAGE],
     supportExposures: [],
+    opportunityInstances,
     observations: [],
     skillObservations: skillEvidence.observations,
     skillLapses: skillEvidence.lapses,
@@ -299,15 +317,21 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
   it('stores a lapse without promoting or demoting anything', async () => {
     const result = validateSkillEvidenceProposal(
       modelProposal({ taskOutcome: 'not_achieved', skillItems: [] }) as any,
-      runtimeFacts()
+      runtimeFacts({ opportunityInstances: [failedOpportunity()] })
     );
 
     expect(result.validated).toHaveLength(0);
     expect(result.lapses.length).toBeGreaterThan(0);
 
     await archiveRepository.completeSession(
-      sessionWith({ observations: result.validated, lapses: result.lapses })
+      sessionWith(
+        { observations: result.validated, lapses: result.lapses },
+        [failedOpportunity()]
+      )
     );
+
+    const storedSession = await archiveRepository.getSessionById('sess-1');
+    expect(storedSession?.opportunityInstances).toHaveLength(1);
 
     const lapses = await archiveRepository.getSkillLapses();
     expect(lapses.length).toBeGreaterThan(0);
@@ -318,9 +342,12 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
   it('does not duplicate a lapse on replay', async () => {
     const result = validateSkillEvidenceProposal(
       modelProposal({ taskOutcome: 'not_achieved', skillItems: [] }) as any,
-      runtimeFacts()
+      runtimeFacts({ opportunityInstances: [failedOpportunity()] })
     );
-    const session = sessionWith({ observations: result.validated, lapses: result.lapses });
+    const session = sessionWith(
+      { observations: result.validated, lapses: result.lapses },
+      [failedOpportunity()]
+    );
 
     await archiveRepository.completeSession(session);
     await archiveRepository.completeSession(session);
