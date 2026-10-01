@@ -21,6 +21,40 @@ describe('categoriseProviderError', () => {
     expect(error.typedFallbackAvailable).toBe(true);
   });
 
+  /*
+    Captured verbatim from server/index.ts against Gemini with an invalid key.
+
+    It arrives as HTTP 400, not 401, carrying `reason: "API_KEY_INVALID"` and
+    "API key not valid." The original 401/403 matching missed it entirely and
+    classified it as an unknown, retryable failure - so the client would burn its
+    whole retry budget against a key that can never work. This test exists so that
+    mapping cannot silently regress to a guess.
+  */
+  it('classifies the real Gemini invalid-key payload', () => {
+    const error = categoriseProviderError({
+      message:
+        'ApiError: {"error":{"code":400,"message":"API key not valid. Please pass a valid API key.","status":"INVALID_ARGUMENT","details":[{"@type":"type.googleapis.com/google.rpc.ErrorInfo","reason":"API_KEY_INVALID","domain":"googleapis.com","metadata":{"service":"generativelanguage.googleapis.com"}},{"@type":"type.googleapis.com/google.rpc.LocalizedMessage","locale":"en-US","message":"API key not valid. Please pass a valid API key."}]}}',
+      code: 400,
+    });
+
+    expect(error.category).toBe('authentication');
+    // A misclassified auth failure is retryable, which is how a bad key turns into a
+    // spinner instead of an explanation.
+    expect(error.retryable).toBe(false);
+    expect(error.typedFallbackAvailable).toBe(true);
+  });
+
+  it('does not treat a 400 as fatal when it is a bad request instead', () => {
+    // 400 is only fatal for this provider's key rejection. A malformed request is a
+    // different problem and must not be reported as an authentication failure.
+    const error = categoriseProviderError({
+      message: '400 {"error":{"status":"INVALID_ARGUMENT","message":"field is required"}}',
+      code: 400,
+    });
+
+    expect(error.category).not.toBe('authentication');
+  });
+
   it('treats a quota failure as retryable', () => {
     expect(categoriseProviderError({ message: '429 rate limit exceeded' }).retryable).toBe(true);
   });

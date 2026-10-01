@@ -112,7 +112,29 @@ export function categoriseProviderError(input: {
 
   const has = (...needles: string[]) => needles.some(needle => text.includes(needle));
 
-  if (has('unauthorized', 'unauthenticated', 'invalid_api_key', 'invalid api key', '401', '403')) {
+  /*
+    Authentication, verified against a real Gemini rejection rather than assumed.
+
+    The provider returns HTTP 400 with `reason: "API_KEY_INVALID"` and the message
+    "API key not valid." Matching on 401/403 - the intuitive guess - misses it
+    entirely, which this test now pins. It matters beyond tidiness: a misclassified
+    auth failure is marked retryable, so the client burns its whole retry budget
+    against a key that will never work, and the learner watches a spinner instead of
+    being told what is wrong.
+  */
+  if (
+    input.code === 401 ||
+    input.code === 403 ||
+    has(
+      'unauthorized',
+      'unauthenticated',
+      'invalid_api_key',
+      'api_key_invalid',
+      'invalid api key',
+      'api key not valid',
+      'permission_denied',
+    )
+  ) {
     return {
       category: 'authentication',
       userMessage: 'The assistant could not be reached with the current configuration.',
