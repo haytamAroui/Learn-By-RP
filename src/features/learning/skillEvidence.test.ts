@@ -117,6 +117,7 @@ const context = (
   passages: [passage()],
   supportExposures: [] as SupportExposure[],
   opportunityInstances: [] as OpportunityInstance[],
+  sessionEndReason: 'completed' as const,
   ...overrides,
 } as Parameters<typeof validateSkillEvidenceProposal>[1]);
 
