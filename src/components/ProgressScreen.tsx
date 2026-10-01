@@ -163,8 +163,8 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                       {phrase.meaning}
                     </Text>
                   </View>
-                  <View className="shrink-0 rounded-lg bg-primary px-2 py-0.5">
-                    <Text className="text-xs font-semibold text-white">
+                  <View className="shrink-0 rounded-lg bg-action px-2 py-0.5">
+                    <Text className="text-xs font-semibold text-action-text">
                       {t.progress.reviewDue}
                     </Text>
                   </View>
