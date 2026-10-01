@@ -26,14 +26,6 @@ interface MissionBriefingScreenProps {
 
 const MODES: Mode[] = ['guided', 'immersion', 'focused'];
 
-const SKILL_LABELS: Record<string, string> = {
-  'skill-request-substitution': 'Ask for a change',
-  'skill-inquire-specifications': 'Clarify details',
-  'skill-propose-alternative': 'Propose an alternative',
-  'skill-communicative-repair': 'Repair the conversation',
-  'skill-wayfinding-transit': 'Ask for directions',
-};
-
 export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
   mission,
   initialMode,
@@ -52,6 +44,14 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
   const revealPhrases = () => {
     setShowPhrases(true);
     setPreviewedSupport(true);
+  };
+
+  const skillLabels: Record<string, string> = {
+    'skill-request-substitution': t.briefing.skillRequestSubstitution,
+    'skill-inquire-specifications': t.briefing.skillInquireSpecifications,
+    'skill-propose-alternative': t.briefing.skillProposeAlternative,
+    'skill-communicative-repair': t.briefing.skillCommunicativeRepair,
+    'skill-wayfinding-transit': t.briefing.skillWayfindingTransit,
   };
 
   const modeDescriptions: Record<Mode, { title: string; desc: string }> = {
@@ -146,7 +146,7 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
                     <Check size={15} color={iconColor('success')} />
                   </View>
                   <Text className="flex-1 text-[15px] font-medium text-ink">
-                    {SKILL_LABELS[skillId] ?? skillId.replace(/^skill-/, '').replace(/-/g, ' ')}
+                    {skillLabels[skillId] ?? skillId.replace(/^skill-/, '').replace(/-/g, ' ')}
                   </Text>
                 </View>
               ))}

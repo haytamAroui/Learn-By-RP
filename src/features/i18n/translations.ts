@@ -129,6 +129,18 @@ export interface Translations {
     previewPhrasesDesc: string;
     usefulPhrasesTitle: string;
     startMissionButton: string;
+    skillRequestSubstitution: string;
+    skillInquireSpecifications: string;
+    skillProposeAlternative: string;
+    skillCommunicativeRepair: string;
+    skillWayfindingTransit: string;
+  };
+  skills: {
+    requestSubstitution: { name: string; category: string; description: string };
+    proposeAlternative: { name: string; category: string; description: string };
+    inquireSpecifications: { name: string; category: string; description: string };
+    wayfindingTransit: { name: string; category: string; description: string };
+    communicativeRepair: { name: string; category: string; description: string };
   };
   live: {
     liveTag: string;
@@ -144,8 +156,11 @@ export interface Translations {
     listening: string;
     characterSpeaking: string;
     tapToSpeak: string;
+    connecting: string;
     /** R3: a retry is in flight. Must not read as a failure. */
     reconnecting: string;
+    voiceMuted: string;
+    ending: string;
     /** R3: voice has failed, typed input still works. */
     voiceFailed: string;
     /** R3: recover the connection without losing the transcript. */
@@ -159,6 +174,18 @@ export interface Translations {
     coachStepFull: string;
     coachStepExpl: string;
     coachAsking: string;
+    summaryNoSpeech: string;
+    summaryAssessmentUnavailable: string;
+    summaryGoalsClear: string;
+    summaryNoTargetPhrases: string;
+    sceneDirectorUnavailable: string;
+    actionNotApplied: string;
+    actionNotPermitted: string;
+    sceneAlternativeUpdated: string;
+    sceneTakeawayConfirmed: string;
+    rehearsalRestored: string;
+    feedbackGoodEngagement: string;
+    feedbackReviewDue: string;
   };
   recap: {
     tag: string;
@@ -193,6 +220,11 @@ export interface Translations {
     tabSkillsShort: string;
     tabHistoryShort: string;
     readyToPractise: string;
+    statusNew: string;
+    statusSupported: string;
+    statusGrowing: string;
+    statusSteady: string;
+    statusWorthRevisiting: string;
     steadyTitle: string;
     growingTitle: string;
     supportedTitle: string;
@@ -208,6 +240,10 @@ export interface Translations {
     sessionReceiptsTitle: string;
     coldAttempt: string;
     assistedAttempt: string;
+    outcomeCompleted: string;
+    outcomePartlyCompleted: string;
+    outcomeChangedDirection: string;
+    outcomeUnknown: string;
     viewReceipt: string;
     noReceiptsYet: string;
     disputeEvidence: string;
@@ -228,6 +264,38 @@ export interface Translations {
   settings: {
     title: string;
     subtitle: string;
+    appearanceLabel: string;
+    appearanceLight: string;
+    appearanceDark: string;
+    appearanceSystem: string;
+    doneLabel: string;
+    privacyTitle: string;
+    privacyStorageLabel: string;
+    privacyStorageLocal: string;
+    privacyStorageAnalysis: string;
+    privacyStorageExports: string;
+    consentLabel: string;
+    grantedLabel: string;
+    withdrawnLabel: string;
+    withdrawLabel: string;
+    consentVersionLabel: string;
+    voiceWithdrawnNotice: string;
+    analysisWithdrawnNotice: string;
+    yourDataLabel: string;
+    exportArchiveAction: string;
+    archiveExportedNotice: string;
+    exportFailedNotice: string;
+    eraseAllTitle: string;
+    eraseAllDesc: string;
+    eraseEverything: string;
+    eraseConfirmTap: string;
+    erasedNotice: string;
+    versionsLabel: string;
+    learningPolicyLabel: string;
+    openingConversation: string;
+    missionUnavailable: string;
+    goBack: string;
+    shareFailed: string;
     sectionLang: string;
     targetLangLabel: string;
     uiLangLabel: string;
@@ -410,6 +478,43 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Review useful phrases before speaking. Will mark items as assisted in your ledger.",
       usefulPhrasesTitle: "Useful Phrases in this Scene",
       startMissionButton: "Start Mission Now",
+      skillRequestSubstitution: "Ask for a change",
+      skillInquireSpecifications: "Clarify details",
+      skillProposeAlternative: "Propose an alternative",
+      skillCommunicativeRepair: "Repair the conversation",
+      skillWayfindingTransit: "Ask for directions",
+    },
+    skills: {
+      requestSubstitution: {
+        name: "Requesting a substitution & dietary needs",
+        category: "Transaction & service",
+        description:
+          "Politely ask whether an alternative option, ingredient replacement, or dietary adaptation is available.",
+      },
+      proposeAlternative: {
+        name: "Proposing an alternative arrangement",
+        category: "Coordination & negotiation",
+        description:
+          "Suggest another time, meeting slot, or seating arrangement when the default is not preferred.",
+      },
+      inquireSpecifications: {
+        name: "Asking about details & recommendations",
+        category: "Clarification & inquiry",
+        description:
+          "Ask for recommendations, dosage frequency, ingredient details, or other specifications before deciding.",
+      },
+      wayfindingTransit: {
+        name: "Wayfinding & navigating transit",
+        category: "Mobility & wayfinding",
+        description:
+          "Ask for platform directions, ticket validation, or travel duration on public transport.",
+      },
+      communicativeRepair: {
+        name: "Communicative repair & clarification",
+        category: "Social interaction",
+        description:
+          "Report a problem, ask for clarification, or request help gracefully when communication breaks down.",
+      },
     },
     live: {
       liveTag: "Session Live",
@@ -424,6 +529,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Send",
       listening: "Listening to your speech...",
       characterSpeaking: "Character is speaking...",
+      connecting: "Connecting…",
+      voiceMuted: "Microphone muted",
+      ending: "Ending conversation…",
       reconnecting: "Reconnecting...",
       voiceFailed: "Voice unavailable",
       retryConnection: "Retry connection",
@@ -436,6 +544,25 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepFull: "3. Complete Model Phrase",
       coachStepExpl: "4. Cultural & Grammar Nuance",
       coachAsking: "Consulting language coach...",
+      summaryNoSpeech:
+        "No speech was captured in this conversation, so there is nothing to assess yet.",
+      summaryAssessmentUnavailable:
+        "Your conversation is saved. Automated review is unavailable right now, so phrases were matched directly against your transcript.",
+      summaryGoalsClear: "You communicated your goals clearly in this conversation.",
+      summaryNoTargetPhrases:
+        "Your conversation is saved. No target phrases could be confirmed from what you said.",
+      sceneDirectorUnavailable:
+        "Could not reach the scene director. Scene state is unchanged.",
+      actionNotApplied: "Not applied",
+      actionNotPermitted: "That action was not permitted here.",
+      sceneAlternativeUpdated: "The scene was updated with an alternative.",
+      sceneTakeawayConfirmed: "Takeaway was confirmed.",
+      rehearsalRestored:
+        "Checkpoint restored. This is a rehearsal, so the turn will not count as independent recall.",
+      feedbackGoodEngagement:
+        "Good engagement. Practising in real time builds fluency.",
+      feedbackReviewDue:
+        "Review phrases due in your Progress tab to keep retention high.",
     },
     recap: {
       tag: "Learning Receipt",
@@ -465,6 +592,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tabHistoryShort: "Receipts",
       tabHistory: "Session Receipts",
       readyToPractise: "Ready to practise",
+      statusNew: "New",
+      statusSupported: "Supported",
+      statusGrowing: "Growing",
+      statusSteady: "Steady",
+      statusWorthRevisiting: "Worth revisiting",
       steadyTitle: "Steady (demonstrated in 2+ independent sessions)",
       growingTitle: "Growing (unassisted retrieval demonstrated)",
       supportedTitle: "Supported (practiced with hints or preview)",
@@ -480,6 +612,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       sessionReceiptsTitle: "Session Receipts",
       coldAttempt: "Cold Attempt",
       assistedAttempt: "Assisted Attempt",
+      outcomeCompleted: "Completed",
+      outcomePartlyCompleted: "Partly completed",
+      outcomeChangedDirection: "Changed direction",
+      outcomeUnknown: "Not enough evidence",
       viewReceipt: "View Receipt",
       noReceiptsYet:
         "No session receipts recorded yet. Complete your first mission to start your ledger.",
@@ -502,6 +638,42 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     settings: {
       title: "Settings",
       subtitle: "Preferences & Data Sovereignty",
+      appearanceLabel: "Appearance",
+      appearanceLight: "Light",
+      appearanceDark: "Dark",
+      appearanceSystem: "System",
+      doneLabel: "Done",
+      privacyTitle: "Privacy & data",
+      privacyStorageLabel: "What is stored where",
+      privacyStorageLocal:
+        "Your conversations, phrase history and evidence ledger are stored only on this device. They are not synced anywhere.",
+      privacyStorageAnalysis:
+        "When you end a session, the transcript turns you produced are sent to an AI provider for review so phrases can be matched. Nothing else leaves the device, and nothing is used to train a model.",
+      privacyStorageExports:
+        "Files you export or share leave the app. Once shared, they cannot be recalled by clearing this app.",
+      consentLabel: "Consent",
+      grantedLabel: "Granted",
+      withdrawnLabel: "Withdrawn",
+      withdrawLabel: "Withdraw",
+      consentVersionLabel: "Consent version",
+      voiceWithdrawnNotice: "Voice processing withdrawn. Speaking is disabled.",
+      analysisWithdrawnNotice: "Analysis withdrawn. No new evidence will be recorded.",
+      yourDataLabel: "Your data",
+      exportArchiveAction: "Export my archive",
+      archiveExportedNotice: "Archive exported.",
+      exportFailedNotice: "Export failed.",
+      eraseAllTitle: "Erase all learning data",
+      eraseAllDesc:
+        "Deletes every session, observation and schedule on this device. This cannot be undone.",
+      eraseEverything: "Erase everything",
+      eraseConfirmTap: "Tap again to confirm",
+      erasedNotice: "All learning data erased.",
+      versionsLabel: "Versions",
+      learningPolicyLabel: "Learning policy",
+      openingConversation: "Opening conversation…",
+      missionUnavailable: "That mission is no longer available.",
+      goBack: "Go back",
+      shareFailed: "Share failed",
       sectionLang: "Language & Learning Context",
       targetLangLabel: "Target Language",
       uiLangLabel: "Interface & Explanation Language",
@@ -690,6 +862,43 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Lisez les expressions avant de parler. Elles seront enregistrées comme assistées dans votre registre.",
       usefulPhrasesTitle: "Expressions utiles dans cette scène",
       startMissionButton: "Démarrer la mission maintenant",
+      skillRequestSubstitution: "Demander un changement",
+      skillInquireSpecifications: "Clarifier les détails",
+      skillProposeAlternative: "Proposer une alternative",
+      skillCommunicativeRepair: "Réparer la conversation",
+      skillWayfindingTransit: "Demander son chemin",
+    },
+    skills: {
+      requestSubstitution: {
+        name: "Demander une substitution ou une adaptation",
+        category: "Transaction et service",
+        description:
+          "Demander poliment si une alternative, un remplacement d’ingrédient ou une adaptation alimentaire est disponible.",
+      },
+      proposeAlternative: {
+        name: "Proposer une autre organisation",
+        category: "Coordination et négociation",
+        description:
+          "Proposer un autre horaire, rendez-vous ou emplacement lorsque l’option par défaut ne convient pas.",
+      },
+      inquireSpecifications: {
+        name: "Demander des précisions et recommandations",
+        category: "Clarification et demande",
+        description:
+          "Demander une recommandation, une fréquence de dosage, des ingrédients ou d’autres précisions avant de décider.",
+      },
+      wayfindingTransit: {
+        name: "S’orienter dans les transports",
+        category: "Mobilité et orientation",
+        description:
+          "Demander un quai, la validation d’un billet ou la durée d’un trajet en transport public.",
+      },
+      communicativeRepair: {
+        name: "Réparer la communication et clarifier",
+        category: "Interaction sociale",
+        description:
+          "Signaler un problème, demander une clarification ou solliciter de l’aide avec tact lorsque l’échange bloque.",
+      },
     },
     live: {
       liveTag: "Session en direct",
@@ -704,6 +913,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Envoyer",
       listening: "Écoute de votre voix...",
       characterSpeaking: "Le personnage parle...",
+      connecting: "Connexion…",
+      voiceMuted: "Microphone coupé",
+      ending: "Fin de la conversation…",
       reconnecting: "Reconnexion...",
       voiceFailed: "Voix indisponible",
       retryConnection: "Réessayer",
@@ -716,6 +928,25 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepFull: "3. Phrase modèle complète",
       coachStepExpl: "4. Nuance culturelle et grammaticale",
       coachAsking: "Consultation du coach en cours...",
+      summaryNoSpeech:
+        "Aucune production n’a été capturée dans cette conversation ; il n’y a donc encore rien à évaluer.",
+      summaryAssessmentUnavailable:
+        "Votre conversation est enregistrée. L’analyse automatisée est indisponible pour le moment ; les phrases ont donc été rapprochées directement de votre transcription.",
+      summaryGoalsClear: "Vous avez communiqué vos objectifs clairement dans cette conversation.",
+      summaryNoTargetPhrases:
+        "Votre conversation est enregistrée. Aucune phrase cible n’a pu être confirmée à partir de ce que vous avez dit.",
+      sceneDirectorUnavailable:
+        "Impossible de joindre le moteur de scène. L’état de la scène reste inchangé.",
+      actionNotApplied: "Non appliqué",
+      actionNotPermitted: "Cette action n’était pas autorisée ici.",
+      sceneAlternativeUpdated: "La scène a été mise à jour avec une alternative.",
+      sceneTakeawayConfirmed: "La commande à emporter a été confirmée.",
+      rehearsalRestored:
+        "Point de reprise restauré. Il s’agit d’une répétition ; ce tour ne comptera donc pas comme rappel indépendant.",
+      feedbackGoodEngagement:
+        "Bonne participation. La pratique en temps réel développe l’aisance.",
+      feedbackReviewDue:
+        "Révisez les phrases à échéance dans l’onglet Progression pour entretenir la mémorisation.",
     },
     recap: {
       tag: "Reçu d’apprentissage",
@@ -745,6 +976,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tabHistoryShort: "Reçus",
       tabHistory: "Reçus de sessions",
       readyToPractise: "Prêtes à pratiquer",
+      statusNew: "Nouveau",
+      statusSupported: "Accompagné",
+      statusGrowing: "En progression",
+      statusSteady: "Stable",
+      statusWorthRevisiting: "À revoir",
       steadyTitle: "Acquises (démontrées dans 2+ sessions distinctes)",
       growingTitle: "En progression (rappel non assisté démontré)",
       supportedTitle: "Accompagnées (pratiquées avec indices)",
@@ -760,6 +996,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       sessionReceiptsTitle: "Reçus de session",
       coldAttempt: "Tentative à froid",
       assistedAttempt: "Tentative assistée",
+      outcomeCompleted: "Terminé",
+      outcomePartlyCompleted: "Partiellement terminé",
+      outcomeChangedDirection: "Direction modifiée",
+      outcomeUnknown: "Pas assez de preuves",
       viewReceipt: "Voir le reçu",
       noReceiptsYet:
         "Aucun reçu de session enregistré. Terminez votre première mission pour commencer votre registre.",
@@ -782,6 +1022,42 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     settings: {
       title: "Paramètres",
       subtitle: "Préférences & Souveraineté des données",
+      appearanceLabel: "Apparence",
+      appearanceLight: "Clair",
+      appearanceDark: "Sombre",
+      appearanceSystem: "Système",
+      doneLabel: "Terminé",
+      privacyTitle: "Confidentialité et données",
+      privacyStorageLabel: "Où sont stockées vos données",
+      privacyStorageLocal:
+        "Vos conversations, l’historique des phrases et le registre de preuves sont stockés uniquement sur cet appareil. Ils ne sont synchronisés nulle part.",
+      privacyStorageAnalysis:
+        "À la fin d’une session, les tours de transcription que vous avez produits sont envoyés à un fournisseur d’IA pour analyse afin d’associer les phrases. Rien d’autre ne quitte l’appareil et rien n’est utilisé pour entraîner un modèle.",
+      privacyStorageExports:
+        "Les fichiers que vous exportez ou partagez quittent l’application. Une fois partagés, ils ne peuvent pas être rappelés en effaçant cette application.",
+      consentLabel: "Consentement",
+      grantedLabel: "Accordé",
+      withdrawnLabel: "Retiré",
+      withdrawLabel: "Retirer",
+      consentVersionLabel: "Version du consentement",
+      voiceWithdrawnNotice: "Le traitement vocal a été retiré. La parole est désactivée.",
+      analysisWithdrawnNotice: "L’analyse a été retirée. Aucune nouvelle preuve ne sera enregistrée.",
+      yourDataLabel: "Vos données",
+      exportArchiveAction: "Exporter mon archive",
+      archiveExportedNotice: "Archive exportée.",
+      exportFailedNotice: "Échec de l’export.",
+      eraseAllTitle: "Effacer toutes les données d’apprentissage",
+      eraseAllDesc:
+        "Supprime toutes les sessions, observations et planifications de cet appareil. Cette action est irréversible.",
+      eraseEverything: "Tout effacer",
+      eraseConfirmTap: "Touchez à nouveau pour confirmer",
+      erasedNotice: "Toutes les données d’apprentissage ont été effacées.",
+      versionsLabel: "Versions",
+      learningPolicyLabel: "Politique d’apprentissage",
+      openingConversation: "Ouverture de la conversation…",
+      missionUnavailable: "Cette mission n’est plus disponible.",
+      goBack: "Retour",
+      shareFailed: "Échec du partage",
       sectionLang: "Langue & Contexte d’apprentissage",
       targetLangLabel: "Langue cible à apprendre",
       uiLangLabel: "Langue de l’interface et explications",
@@ -969,6 +1245,43 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Revisa las frases útiles antes de hablar. Quedarán registradas como asistidas en tu libro.",
       usefulPhrasesTitle: "Frases útiles para esta escena",
       startMissionButton: "Comenzar misión ahora",
+      skillRequestSubstitution: "Pedir un cambio",
+      skillInquireSpecifications: "Aclarar detalles",
+      skillProposeAlternative: "Proponer una alternativa",
+      skillCommunicativeRepair: "Reparar la conversación",
+      skillWayfindingTransit: "Pedir indicaciones",
+    },
+    skills: {
+      requestSubstitution: {
+        name: "Pedir una sustitución o adaptación",
+        category: "Transacción y servicio",
+        description:
+          "Preguntar con cortesía si hay una alternativa, un cambio de ingrediente o una adaptación alimentaria.",
+      },
+      proposeAlternative: {
+        name: "Proponer una alternativa",
+        category: "Coordinación y negociación",
+        description:
+          "Proponer otra hora, cita o ubicación cuando la opción inicial no es la preferida.",
+      },
+      inquireSpecifications: {
+        name: "Pedir detalles y recomendaciones",
+        category: "Aclaración y consulta",
+        description:
+          "Pedir recomendaciones, frecuencia de dosis, ingredientes u otros detalles antes de decidir.",
+      },
+      wayfindingTransit: {
+        name: "Orientarse y moverse en transporte",
+        category: "Movilidad y orientación",
+        description:
+          "Preguntar por andenes, validación de billetes o duración del trayecto en transporte público.",
+      },
+      communicativeRepair: {
+        name: "Reparar la comunicación y pedir aclaración",
+        category: "Interacción social",
+        description:
+          "Comunicar un problema, pedir una aclaración o solicitar ayuda con naturalidad cuando la conversación se atasca.",
+      },
     },
     live: {
       liveTag: "Sesión en vivo",
@@ -983,6 +1296,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Enviar",
       listening: "Escuchando tu voz...",
       characterSpeaking: "El personaje está hablando...",
+      connecting: "Conectando…",
+      voiceMuted: "Micrófono silenciado",
+      ending: "Finalizando conversación…",
       reconnecting: "Reconectando...",
       voiceFailed: "Voz no disponible",
       retryConnection: "Reintentar",
@@ -995,6 +1311,25 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepFull: "3. Frase modelo completa",
       coachStepExpl: "4. Matiz cultural y gramatical",
       coachAsking: "Consultando al coach...",
+      summaryNoSpeech:
+        "No se capturó ninguna producción en esta conversación, así que todavía no hay nada que evaluar.",
+      summaryAssessmentUnavailable:
+        "Tu conversación está guardada. La revisión automática no está disponible ahora mismo, así que las frases se compararon directamente con tu transcripción.",
+      summaryGoalsClear: "Comunicaste tus objetivos con claridad en esta conversación.",
+      summaryNoTargetPhrases:
+        "Tu conversación está guardada. No se pudo confirmar ninguna frase objetivo a partir de lo que dijiste.",
+      sceneDirectorUnavailable:
+        "No se pudo contactar con el motor de la escena. El estado de la escena no cambia.",
+      actionNotApplied: "No aplicado",
+      actionNotPermitted: "Esa acción no estaba permitida aquí.",
+      sceneAlternativeUpdated: "La escena se actualizó con una alternativa.",
+      sceneTakeawayConfirmed: "Se confirmó el pedido para llevar.",
+      rehearsalRestored:
+        "Se restauró el punto de control. Esto es un ensayo, así que el turno no contará como recuerdo independiente.",
+      feedbackGoodEngagement:
+        "Buena participación. Practicar en tiempo real ayuda a ganar fluidez.",
+      feedbackReviewDue:
+        "Repasa las frases pendientes en la pestaña Progreso para mantener la retención.",
     },
     recap: {
       tag: "Recibo de Aprendizaje",
@@ -1023,6 +1358,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tabHistoryShort: "Recibos",
       tabHistory: "Recibos de sesión",
       readyToPractise: "Listas para practicar",
+      statusNew: "Nueva",
+      statusSupported: "Con apoyo",
+      statusGrowing: "En progreso",
+      statusSteady: "Estable",
+      statusWorthRevisiting: "Conviene repasar",
       steadyTitle: "Asimiladas (demostradas en 2+ sesiones independientes)",
       growingTitle: "En desarrollo (recuperación sin ayuda demostrada)",
       supportedTitle: "Apoyadas (practicadas con pistas o vista previa)",
@@ -1038,6 +1378,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       sessionReceiptsTitle: "Recibos de Sesión",
       coldAttempt: "Intento en frío",
       assistedAttempt: "Intento asistido",
+      outcomeCompleted: "Completado",
+      outcomePartlyCompleted: "Parcialmente completado",
+      outcomeChangedDirection: "Dirección cambiada",
+      outcomeUnknown: "No hay suficiente evidencia",
       viewReceipt: "Ver recibo",
       noReceiptsYet:
         "Aún no hay recibos guardados. Completa tu primera misión para iniciar tu registro.",
@@ -1060,6 +1404,42 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     settings: {
       title: "Ajustes",
       subtitle: "Preferencias y Soberanía de Datos",
+      appearanceLabel: "Apariencia",
+      appearanceLight: "Claro",
+      appearanceDark: "Oscuro",
+      appearanceSystem: "Sistema",
+      doneLabel: "Listo",
+      privacyTitle: "Privacidad y datos",
+      privacyStorageLabel: "Dónde se guardan tus datos",
+      privacyStorageLocal:
+        "Tus conversaciones, historial de frases y registro de evidencias se guardan únicamente en este dispositivo. No se sincronizan en ningún otro lugar.",
+      privacyStorageAnalysis:
+        "Al terminar una sesión, los turnos de transcripción que produjiste se envían a un proveedor de IA para revisión y asociación de frases. Nada más sale del dispositivo y nada se utiliza para entrenar un modelo.",
+      privacyStorageExports:
+        "Los archivos que exportas o compartes salen de la aplicación. Una vez compartidos, no pueden recuperarse borrando esta aplicación.",
+      consentLabel: "Consentimiento",
+      grantedLabel: "Concedido",
+      withdrawnLabel: "Retirado",
+      withdrawLabel: "Retirar",
+      consentVersionLabel: "Versión del consentimiento",
+      voiceWithdrawnNotice: "Se retiró el procesamiento de voz. Hablar está desactivado.",
+      analysisWithdrawnNotice: "Se retiró el análisis. No se registrarán nuevas evidencias.",
+      yourDataLabel: "Tus datos",
+      exportArchiveAction: "Exportar mi archivo",
+      archiveExportedNotice: "Archivo exportado.",
+      exportFailedNotice: "Falló la exportación.",
+      eraseAllTitle: "Borrar todos los datos de aprendizaje",
+      eraseAllDesc:
+        "Elimina todas las sesiones, observaciones y programaciones de este dispositivo. Esta acción no se puede deshacer.",
+      eraseEverything: "Borrar todo",
+      eraseConfirmTap: "Toca de nuevo para confirmar",
+      erasedNotice: "Se borraron todos los datos de aprendizaje.",
+      versionsLabel: "Versiones",
+      learningPolicyLabel: "Política de aprendizaje",
+      openingConversation: "Abriendo conversación…",
+      missionUnavailable: "Esta misión ya no está disponible.",
+      goBack: "Volver",
+      shareFailed: "Error al compartir",
       sectionLang: "Idioma y Contexto de Aprendizaje",
       targetLangLabel: "Idioma que quieres aprender",
       uiLangLabel: "Idioma de interfaz y explicaciones",
@@ -1248,6 +1628,43 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Lees de handige zinnen voor je spreekt. Ze worden als ondersteund gemarkeerd in je register.",
       usefulPhrasesTitle: "Handige zinnen in deze scène",
       startMissionButton: "Start missie nu",
+      skillRequestSubstitution: "Om een wijziging vragen",
+      skillInquireSpecifications: "Details verduidelijken",
+      skillProposeAlternative: "Een alternatief voorstellen",
+      skillCommunicativeRepair: "Het gesprek herstellen",
+      skillWayfindingTransit: "De weg vragen",
+    },
+    skills: {
+      requestSubstitution: {
+        name: "Om een vervanging of aanpassing vragen",
+        category: "Transactie en dienstverlening",
+        description:
+          "Beleefd vragen of een alternatief, ander ingrediënt of voedingsaanpassing mogelijk is.",
+      },
+      proposeAlternative: {
+        name: "Een alternatief voorstellen",
+        category: "Afstemming en onderhandeling",
+        description:
+          "Een ander tijdstip, afspraakmoment of zitplaats voorstellen wanneer de standaardoptie niet past.",
+      },
+      inquireSpecifications: {
+        name: "Naar details en aanbevelingen vragen",
+        category: "Verduidelijking en informatie",
+        description:
+          "Vragen naar aanbevelingen, dosering, ingrediënten of andere details voordat je beslist.",
+      },
+      wayfindingTransit: {
+        name: "De weg vinden en reizen met openbaar vervoer",
+        category: "Mobiliteit en oriëntatie",
+        description:
+          "Vragen naar perrons, ticketvalidatie of reistijd in het openbaar vervoer.",
+      },
+      communicativeRepair: {
+        name: "Communicatief herstellen en verduidelijken",
+        category: "Sociale interactie",
+        description:
+          "Een probleem melden, om verduidelijking vragen of beleefd hulp vragen wanneer de communicatie vastloopt.",
+      },
     },
     live: {
       liveTag: "Sessie live",
@@ -1262,6 +1679,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       send: "Verzenden",
       listening: "Luisteren naar je stem...",
       characterSpeaking: "Personage spreekt...",
+      connecting: "Verbinden…",
+      voiceMuted: "Microfoon gedempt",
+      ending: "Gesprek afronden…",
       reconnecting: "Opnieuw verbinden...",
       voiceFailed: "Stem niet beschikbaar",
       retryConnection: "Opnieuw proberen",
@@ -1274,6 +1694,25 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepFull: "3. Volledige voorbeeldzin",
       coachStepExpl: "4. Culturele en grammaticale toelichting",
       coachAsking: "Coach raadplegen...",
+      summaryNoSpeech:
+        "Er is in dit gesprek geen productie vastgelegd, dus er is nog niets om te beoordelen.",
+      summaryAssessmentUnavailable:
+        "Je gesprek is opgeslagen. Automatische beoordeling is nu niet beschikbaar, daarom zijn zinnen rechtstreeks met je transcript vergeleken.",
+      summaryGoalsClear: "Je hebt je doelen in dit gesprek duidelijk gecommuniceerd.",
+      summaryNoTargetPhrases:
+        "Je gesprek is opgeslagen. Er konden geen doelzinnen worden bevestigd op basis van wat je zei.",
+      sceneDirectorUnavailable:
+        "De scène-engine kon niet worden bereikt. De scènestatus blijft ongewijzigd.",
+      actionNotApplied: "Niet toegepast",
+      actionNotPermitted: "Die actie was hier niet toegestaan.",
+      sceneAlternativeUpdated: "De scène is bijgewerkt met een alternatief.",
+      sceneTakeawayConfirmed: "Afhalen is bevestigd.",
+      rehearsalRestored:
+        "Controlepunt hersteld. Dit is een oefenpoging, dus deze beurt telt niet als zelfstandige herinnering.",
+      feedbackGoodEngagement:
+        "Goede deelname. Oefenen in realtime helpt je vloeiender te spreken.",
+      feedbackReviewDue:
+        "Herhaal zinnen die klaarstaan in het tabblad Voortgang om ze beter te onthouden.",
     },
     recap: {
       tag: "Leerbewijs",
@@ -1303,6 +1742,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tabHistoryShort: "Bewijzen",
       tabHistory: "Sessiebewijzen",
       readyToPractise: "Klaar om te oefenen",
+      statusNew: "Nieuw",
+      statusSupported: "Ondersteund",
+      statusGrowing: "Groeiend",
+      statusSteady: "Stabiel",
+      statusWorthRevisiting: "Opnieuw oefenen",
       steadyTitle: "Stabiel (aangetoond in 2+ onafhankelijke sessies)",
       growingTitle: "Groeiend (zelfstandige herinnering aangetoond)",
       supportedTitle: "Ondersteund (geoefend met hints of preview)",
@@ -1318,6 +1762,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       sessionReceiptsTitle: "Sessiebewijzen",
       coldAttempt: "Koude poging",
       assistedAttempt: "Ondersteunde poging",
+      outcomeCompleted: "Voltooid",
+      outcomePartlyCompleted: "Gedeeltelijk voltooid",
+      outcomeChangedDirection: "Andere richting gekozen",
+      outcomeUnknown: "Niet genoeg bewijs",
       viewReceipt: "Bekijk bewijs",
       noReceiptsYet:
         "Nog geen sessiebewijzen opgeslagen. Voltooi je eerste missie om je register op te bouwen.",
@@ -1340,6 +1788,42 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     settings: {
       title: "Instellingen",
       subtitle: "Voorkeuren & Gegevenssoevereiniteit",
+      appearanceLabel: "Weergave",
+      appearanceLight: "Licht",
+      appearanceDark: "Donker",
+      appearanceSystem: "Systeem",
+      doneLabel: "Klaar",
+      privacyTitle: "Privacy en gegevens",
+      privacyStorageLabel: "Waar je gegevens worden opgeslagen",
+      privacyStorageLocal:
+        "Je gesprekken, zinsgeschiedenis en bewijsregister worden alleen op dit apparaat opgeslagen. Ze worden nergens gesynchroniseerd.",
+      privacyStorageAnalysis:
+        "Wanneer je een sessie beëindigt, worden de transcriptiebeurten die je hebt geproduceerd naar een AI-provider gestuurd voor analyse zodat zinnen kunnen worden gekoppeld. Niets anders verlaat het apparaat en niets wordt gebruikt om een model te trainen.",
+      privacyStorageExports:
+        "Bestanden die je exporteert of deelt verlaten de app. Nadat ze zijn gedeeld, kunnen ze niet worden teruggehaald door deze app te wissen.",
+      consentLabel: "Toestemming",
+      grantedLabel: "Toegestaan",
+      withdrawnLabel: "Ingetrokken",
+      withdrawLabel: "Intrekken",
+      consentVersionLabel: "Toestemmingsversie",
+      voiceWithdrawnNotice: "Spraakverwerking is ingetrokken. Spreken is uitgeschakeld.",
+      analysisWithdrawnNotice: "Analyse is ingetrokken. Er wordt geen nieuw bewijs opgeslagen.",
+      yourDataLabel: "Jouw gegevens",
+      exportArchiveAction: "Mijn archief exporteren",
+      archiveExportedNotice: "Archief geëxporteerd.",
+      exportFailedNotice: "Export mislukt.",
+      eraseAllTitle: "Alle leergegevens wissen",
+      eraseAllDesc:
+        "Verwijdert alle sessies, observaties en planningen van dit apparaat. Dit kan niet ongedaan worden gemaakt.",
+      eraseEverything: "Alles wissen",
+      eraseConfirmTap: "Tik nogmaals om te bevestigen",
+      erasedNotice: "Alle leergegevens zijn gewist.",
+      versionsLabel: "Versies",
+      learningPolicyLabel: "Leerbeleid",
+      openingConversation: "Gesprek openen…",
+      missionUnavailable: "Deze missie is niet meer beschikbaar.",
+      goBack: "Terug",
+      shareFailed: "Delen mislukt",
       sectionLang: "Taal & Leercontext",
       targetLangLabel: "Doeltaal die je leert",
       uiLangLabel: "App- en uitlegtaal (i18n)",

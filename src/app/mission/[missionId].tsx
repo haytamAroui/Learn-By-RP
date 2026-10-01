@@ -2,23 +2,30 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
-import { I18nProvider } from '../../features/i18n';
+import { getTranslations, I18nProvider } from '../../features/i18n';
 import { MissionBriefingScreen } from '../../components/MissionBriefingScreen';
+import { Button } from '../../components/ui';
 import { MISSION_CATALOG } from '../../data/missions';
 import { MissionDefinition, Mode, SessionRecord, SupportExposure } from '../../types';
 
 export default function MissionBriefingRoute() {
   const router = useRouter();
   const archive = useArchive();
+  const t = getTranslations(archive.preferences.explanationLanguage);
   const { missionId } = useLocalSearchParams<{ missionId: string }>();
   const mission = MISSION_CATALOG.find(item => item.id === missionId);
 
   if (!mission) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas p-6">
+      <View className="flex-1 items-center justify-center gap-4 bg-canvas p-6">
         <Text className="text-center text-sm text-muted">
-          That mission is no longer available.
+          {t.settings.missionUnavailable}
         </Text>
+        <Button
+          label={t.settings.goBack}
+          onPress={() => router.back()}
+          variant="secondary"
+        />
       </View>
     );
   }

@@ -271,7 +271,7 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
               shareState === 'done'
                 ? t.recap.downloadSuccess
                 : shareState === 'failed'
-                  ? 'Share failed'
+                  ? t.settings.shareFailed
                   : t.recap.downloadReceipt
             }
             onPress={handleShareReceipt}
