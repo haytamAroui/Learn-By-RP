@@ -1,5 +1,5 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { MISSION_CATALOG } from '../../data/missions';
@@ -9,7 +9,6 @@ import { RootHeader } from '../../components/RootHeader';
 import { TalkScreen } from '../../components/TalkScreen';
 import { MissionBriefingModal } from '../../components/MissionBriefingModal';
 import { DuePhrasesPracticeModal } from '../../components/DuePhrasesPracticeModal';
-import { SettingsModal } from '../../components/SettingsModal';
 import { MissionDefinition, Mode, SessionRecord } from '../../types';
 
 export default function TalkTab() {
@@ -19,12 +18,11 @@ export default function TalkTab() {
 
   const [briefing, setBriefing] = React.useState<MissionDefinition | null>(null);
   const [isPracticeDueOpen, setPracticeDueOpen] = React.useState(false);
-  const [isSettingsOpen, setSettingsOpen] = React.useState(false);
 
   const t = getTranslations(archive.preferences.explanationLanguage);
 
   const availableMissions = MISSION_CATALOG.filter(
-    m => m.language === archive.preferences.learningLanguage
+    mission => mission.language === archive.preferences.learningLanguage
   );
   const featuredMission = availableMissions[0] ?? MISSION_CATALOG[0];
 
@@ -57,7 +55,11 @@ export default function TalkTab() {
         learnerKnows: [mission.learnerGoal],
         characterKnows: mission.character.knowledgeBoundary,
         checkpoints: [
-          { id: 'cp-start', description: 'Session start', timestamp: new Date().toISOString() },
+          {
+            id: 'cp-start',
+            description: 'Session start',
+            timestamp: new Date().toISOString(),
+          },
         ],
         isFinished: false,
         outcome: 'unknown',
@@ -84,24 +86,24 @@ export default function TalkTab() {
     <I18nProvider
       language={archive.preferences.explanationLanguage}
       setLanguage={lang =>
-        void archive.savePreferences({ ...archive.preferences, explanationLanguage: lang })
+        void archive.savePreferences({
+          ...archive.preferences,
+          explanationLanguage: lang,
+        })
       }
     >
       <View className="flex-1 bg-canvas">
-        <RootHeader title="Talk" />
+        <RootHeader title={t.nav.brandTitle} />
         <TalkScreen
           currentLanguageName={
             t.languages[archive.preferences.learningLanguage] ??
             archive.preferences.learningLanguage
           }
-          currentMode={archive.preferences.modeDefault}
           featuredMission={featuredMission}
-          lastSession={archive.lastSession}
           duePhrases={archive.duePhrases}
           onStartMission={setBriefing}
           onExploreMissions={() => router.push('/(tabs)/missions')}
           onPracticeDue={() => setPracticeDueOpen(true)}
-          onOpenSettings={() => setSettingsOpen(true)}
         />
       </View>
 
@@ -118,19 +120,12 @@ export default function TalkTab() {
         onClose={() => setPracticeDueOpen(false)}
         onCompleted={() => void archive.refresh()}
         onRecordReview={async input => {
-          const { archiveRepository } = await import('../../features/archive/archiveRepository');
+          const { archiveRepository } = await import(
+            '../../features/archive/archiveRepository'
+          );
           await archiveRepository.recordDrillReview(input);
           await archive.refresh();
         }}
-      />
-
-      <SettingsModal
-        visible={isSettingsOpen}
-        preferences={archive.preferences}
-        onSavePreferences={prefs => void archive.savePreferences(prefs)}
-        onClearAllData={() => void archive.clearAllLearningData()}
-        onDataRestored={() => void archive.refresh()}
-        onClose={() => setSettingsOpen(false)}
       />
     </I18nProvider>
   );
