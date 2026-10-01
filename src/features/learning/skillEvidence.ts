@@ -262,8 +262,15 @@ export function validateSkillEvidenceProposal(
       sourcePassageId: candidate.sourcePassageId,
       sourceRevision: candidate.sourceRevision,
 
+      contextKey: {
+        domainId: context.mission.category,
+        scenarioFamilyId: context.mission.scenarioFamilyId,
+        scenarioId: context.mission.sceneId ?? context.mission.id,
+      },
+
+      // Transitional provenance fields. Projection reads contextKey only.
       domainId: context.mission.category,
-      scenarioId: context.mission.sceneId,
+      scenarioId: context.mission.sceneId ?? context.mission.id,
 
       modality: candidate.modality,
       retrieval,
