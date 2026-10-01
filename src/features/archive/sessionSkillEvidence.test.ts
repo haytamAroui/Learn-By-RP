@@ -88,6 +88,7 @@ function runtimeFacts(overrides: Partial<Parameters<typeof validateSkillEvidence
     supportExposures: [] as SupportExposure[],
     opportunityInstances: [] as OpportunityInstance[],
     isRehearsalAttempt: false,
+    sessionEndReason: 'completed' as const,
     evidenceSource: 'validated_explicit' as const,
     ...overrides,
   };
