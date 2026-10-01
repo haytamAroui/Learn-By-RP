@@ -103,6 +103,8 @@ One palette. Two themes. No third definition anywhere.
 | `brand-soft` | `#F7E8E2` | Warm highlighted / selected card |
 | `brand-text` | `#FFFFFF` | Label on a brand fill |
 | `brand-button` | `#A7442F` | CTA fill |
+| `brand-button-hover` | `#8F3826` | CTA hover fill |
+| `brand-button-pressed` | `#7A3021` | CTA pressed fill |
 | `language` | `#246B63` | Target-language semantics |
 | `language-hover` | `#1E5D56` | Target-language hover |
 | `language-soft` | `#E4F2EF` | Phrase card background |
@@ -138,6 +140,8 @@ One palette. Two themes. No third definition anywhere.
 | `brand-pressed` | `#D98263` | Primary action pressed |
 | `brand-soft` | `#3B251E` | Warm highlighted / selected card |
 | `brand-button` | `#A7442F` | CTA fill |
+| `brand-button-hover` | `#8F3826` | CTA hover fill |
+| `brand-button-pressed` | `#7A3021` | CTA pressed fill |
 | `brand-text` | `#FFFFFF` | Label on a brand fill |
 | `language` | `#7CC7BE` | Target-language semantics |
 | `language-hover` | `#98D6CE` | Target-language hover |
