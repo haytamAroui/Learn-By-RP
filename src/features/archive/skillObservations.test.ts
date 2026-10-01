@@ -119,13 +119,26 @@ describe('saveSkillObservations / getSkillObservations', () => {
     expect(loaded[0].examTaskId).toBe('interaction-1');
   });
 
-  it('leaves absent optional context undefined rather than empty strings', async () => {
+  it('keeps the required context domain while leaving optional scenario undefined', async () => {
     await archiveRepository.saveSkillObservations([
-      observation({ domainId: undefined, scenarioId: undefined }),
+      observation({
+        contextKey: {
+          domainId: 'cafes',
+          scenarioFamilyId: 'counter-ordering',
+        },
+        domainId: undefined,
+        scenarioId: undefined,
+      }),
     ]);
 
     const loaded = await archiveRepository.getSkillObservations();
-    expect(loaded[0].domainId).toBeUndefined();
+    expect(loaded[0].contextKey).toEqual({
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: undefined,
+      examTaskId: undefined,
+    });
+    expect(loaded[0].domainId).toBe('cafes');
     expect(loaded[0].scenarioId).toBeUndefined();
   });
 
