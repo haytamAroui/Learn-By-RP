@@ -2,13 +2,14 @@ import React from 'react';
 import { View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
-import { I18nProvider } from '../../features/i18n';
+import { getTranslations, I18nProvider } from '../../features/i18n';
 import { RootHeader } from '../../components/RootHeader';
 import { ProgressScreen } from '../../components/ProgressScreen';
 
 export default function ProgressTab() {
   const router = useRouter();
   const archive = useArchive();
+  const t = getTranslations(archive.preferences.explanationLanguage);
 
   return (
     <I18nProvider
@@ -18,7 +19,7 @@ export default function ProgressTab() {
       }
     >
       <View className="flex-1 bg-canvas">
-        <RootHeader title="Progress" />
+        <RootHeader title={t.nav.progress} />
         <ProgressScreen
           phrases={archive.phrases}
           sessions={archive.sessions}
