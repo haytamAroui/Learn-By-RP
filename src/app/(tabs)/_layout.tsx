@@ -12,7 +12,6 @@ import { BarChart2, Compass, MessageSquare } from "lucide-react-native";
 import { useArchive } from "../../features/archive/ArchiveProvider";
 import { useTheme } from "../../features/theme";
 import { iconColor } from "../../design/iconColor";
-import { BREAKPOINTS } from "../../design/tokens";
 
 /** Shared by the compact bar and the expanded rail so the two cannot drift. */
 const RAIL_ITEM_HEIGHT = 44;
@@ -141,7 +140,7 @@ export default function TabsLayout() {
   useTheme();
 
   const { width } = useWindowDimensions();
-  const isWide = width >= BREAKPOINTS.expanded.min;
+  const isWide = width >= 1024;
   const router = useRouter();
 
   // A browser viewport has no home indicator to clear.
@@ -271,103 +270,71 @@ export default function TabsLayout() {
 
   return (
     <Tabs
+      tabBar={({ state, navigation }) => (
+        <View
+          style={{
+            flexDirection: "row",
+            alignItems: "flex-start",
+            height: BAR_HEIGHT + bottomInset,
+            paddingTop: BAR_PADDING,
+            paddingBottom: bottomInset + BAR_PADDING,
+            paddingHorizontal: 8,
+            backgroundColor: iconColor("surface"),
+            borderTopColor: iconColor("borderSubtle"),
+            borderTopWidth: 1,
+          }}
+        >
+          {state.routes.map((route, index) => {
+            const meta = TAB_META.find(tab => tab.name === route.name);
+            if (!meta) return null;
+
+            const focused = state.index === index;
+
+            return (
+              <Pressable
+                key={route.key}
+                onPress={() => navigation.navigate(route.name)}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: focused }}
+                accessibilityLabel={meta.label}
+                style={{
+                  flex: 1,
+                  minHeight: 52,
+                  alignItems: "center",
+                  justifyContent: "center",
+                  gap: 3,
+                  borderRadius: 14,
+                }}
+              >
+                <TabIcon
+                  name={meta.label}
+                  focused={focused}
+                  color={focused ? activeTint : inactiveTint}
+                />
+                <Text
+                  numberOfLines={1}
+                  style={{
+                    fontSize: 12,
+                    lineHeight: 16,
+                    fontWeight: focused ? "700" : "600",
+                    color: focused ? activeTint : inactiveTint,
+                  }}
+                >
+                  {meta.label}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </View>
+      )}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: activeTint,
         tabBarInactiveTintColor: inactiveTint,
-        tabBarStyle: {
-          backgroundColor: iconColor("surface"),
-          borderTopColor: iconColor("borderSubtle"),
-          height: BAR_HEIGHT + bottomInset,
-          paddingBottom: bottomInset + BAR_PADDING,
-          paddingTop: BAR_PADDING,
-        },
-tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
-        /*
-          A custom button rather than a custom bar, so the icon and label sit in one
-          row and the badge sits inline.
-
-          `tabBarBadge` is positioned absolutely over the icon's top-right corner,
-          and at 390px with three tabs there is not enough room to clear it - that
-          overlap was the badge sitting on top of the bar-chart icon. Reading the
-          badge from our own metadata instead of the prop keeps the count in the
-          layout rather than floating above it.
-        */
-        tabBarButton: props => {
-          // `accessibilityState` is optional on the pressable, so the selected flag
-          // is read defensively rather than assumed.
-          const selected = props.accessibilityState?.selected === true;
-
-          // `BottomTabBarButtonProps` exposes no route name, only an href. The href
-          // is the route path, which is enough to recover the entry from the same
-          // metadata every other layer uses.
-          const routeName =
-            (typeof props.href === "string" ? props.href.split("/").filter(Boolean).pop() : "") ??
-            "";
-          const meta = TAB_META.find(tab => tab.name === routeName);
-          const badge =
-            routeName === "progress" && duePhrases.length > 0
-              ? duePhrases.length
-              : undefined;
-
-          return (
-            <Pressable
-              onPress={() =>
-                router.navigate({ pathname: "/(tabs)", params: { screen: routeName } })
-              }
-              accessibilityRole="tab"
-              accessibilityState={{ selected }}
-              accessibilityLabel={
-                badge ? `${meta?.label ?? routeName}, ${badge} due` : meta?.label ?? routeName
-              }
-              style={{
-                flex: 1,
-                flexDirection: "row",
-                alignItems: "center",
-                justifyContent: "center",
-                gap: 8,
-                height: RAIL_ITEM_HEIGHT,
-              }}
-            >
-              {meta ? (
-                <TabIcon
-                  name={meta.label}
-                  focused={selected}
-                  color={
-                    selected ? activeTint : inactiveTint
-                  }
-                />
-              ) : null}
-              {badge !== undefined && badge > 0 ? (
-                <View
-                  style={{
-                    minWidth: 22,
-                    paddingHorizontal: 6,
-                    paddingVertical: 1,
-                    borderRadius: 11,
-                    alignItems: "center",
-                    backgroundColor: iconColor("brand"),
-                  }}
-                >
-                  <Text style={{ fontSize: 12, fontWeight: "700", color: "#FFFFFF" }}>
-                    {badge}
-                  </Text>
-                </View>
-              ) : null}
-            </Pressable>
-          );
-        },
       }}
     >
       {TAB_META.map(({ name, label }) => (
-        <Tabs.Screen
-          key={name}
-          name={name}
-          options={{
-            title: label,
-            tabBarShowLabel: true,
-          }}
-        />
+        <Tabs.Screen key={name} name={name} options={{ title: label }} />
       ))}
     </Tabs>
   );
