@@ -28,13 +28,18 @@ afterEach(() => {
 });
 
 function observation(overrides: Partial<SkillObservation> = {}): SkillObservation {
-  return {
+  const base: SkillObservation = {
     id: 'so-1',
     skillId: 'skill-request-substitution',
     sessionId: 'session-1',
     attemptId: 'attempt-1',
     sourcePassageId: 'p-1',
     sourceRevision: 'rev-1',
+    contextKey: {
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.es.cafe.breakfast',
+    },
     domainId: 'cafes',
     scenarioId: 'scene.es.cafe.breakfast',
     modality: 'spoken',
@@ -44,7 +49,11 @@ function observation(overrides: Partial<SkillObservation> = {}): SkillObservatio
     evidenceSource: 'validated_explicit',
     quote: '¿Tiene leche de avena?',
     recordedAt: '2026-09-20T09:00:00.000Z',
+  };
+  return {
+    ...base,
     ...overrides,
+    contextKey: overrides.contextKey ?? base.contextKey,
   };
 }
 
@@ -68,6 +77,11 @@ describe('saveSkillObservations / getSkillObservations', () => {
       sourceRevision: 'rev-1',
       domainId: 'cafes',
       scenarioId: 'scene.es.cafe.breakfast',
+      contextKey: {
+        domainId: 'cafes',
+        scenarioFamilyId: 'counter-ordering',
+        scenarioId: 'scene.es.cafe.breakfast',
+      },
       modality: 'spoken',
       retrieval: 'unassisted',
       taskOutcome: 'achieved',
