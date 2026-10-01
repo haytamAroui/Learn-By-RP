@@ -217,6 +217,11 @@ export interface Translations {
     tabSkillsShort: string;
     tabHistoryShort: string;
     readyToPractise: string;
+    statusNew: string;
+    statusSupported: string;
+    statusGrowing: string;
+    statusSteady: string;
+    statusWorthRevisiting: string;
     steadyTitle: string;
     growingTitle: string;
     supportedTitle: string;
@@ -584,6 +589,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tabHistoryShort: "Receipts",
       tabHistory: "Session Receipts",
       readyToPractise: "Ready to practise",
+      statusNew: "New",
+      statusSupported: "Supported",
+      statusGrowing: "Growing",
+      statusSteady: "Steady",
+      statusWorthRevisiting: "Worth revisiting",
       steadyTitle: "Steady (demonstrated in 2+ independent sessions)",
       growingTitle: "Growing (unassisted retrieval demonstrated)",
       supportedTitle: "Supported (practiced with hints or preview)",
@@ -963,6 +973,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tabHistoryShort: "Reçus",
       tabHistory: "Reçus de sessions",
       readyToPractise: "Prêtes à pratiquer",
+      statusNew: "Nouveau",
+      statusSupported: "Accompagné",
+      statusGrowing: "En progression",
+      statusSteady: "Stable",
+      statusWorthRevisiting: "À revoir",
       steadyTitle: "Acquises (démontrées dans 2+ sessions distinctes)",
       growingTitle: "En progression (rappel non assisté démontré)",
       supportedTitle: "Accompagnées (pratiquées avec indices)",
@@ -1340,6 +1355,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tabHistoryShort: "Recibos",
       tabHistory: "Recibos de sesión",
       readyToPractise: "Listas para practicar",
+      statusNew: "Nueva",
+      statusSupported: "Con apoyo",
+      statusGrowing: "En progreso",
+      statusSteady: "Estable",
+      statusWorthRevisiting: "Conviene repasar",
       steadyTitle: "Asimiladas (demostradas en 2+ sesiones independientes)",
       growingTitle: "En desarrollo (recuperación sin ayuda demostrada)",
       supportedTitle: "Apoyadas (practicadas con pistas o vista previa)",
@@ -1719,6 +1739,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tabHistoryShort: "Bewijzen",
       tabHistory: "Sessiebewijzen",
       readyToPractise: "Klaar om te oefenen",
+      statusNew: "Nieuw",
+      statusSupported: "Ondersteund",
+      statusGrowing: "Groeiend",
+      statusSteady: "Stabiel",
+      statusWorthRevisiting: "Opnieuw oefenen",
       steadyTitle: "Stabiel (aangetoond in 2+ onafhankelijke sessies)",
       growingTitle: "Groeiend (zelfstandige herinnering aangetoond)",
       supportedTitle: "Ondersteund (geoefend met hints of preview)",
