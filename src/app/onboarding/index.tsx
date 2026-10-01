@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
@@ -70,8 +70,19 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
-      <View className="flex-1">
-        <View className="gap-5 p-5">
+      <ScrollView
+        className="flex-1"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          width: '100%',
+          maxWidth: 720,
+          alignSelf: 'center',
+          padding: 20,
+          paddingBottom: 40,
+          gap: 20,
+        }}
+      >
           <View className="gap-1.5">
             <Text className="font-display text-2xl font-semibold tracking-tight text-ink">
               {t.nav.brandTitle}
@@ -160,8 +171,7 @@ export default function OnboardingScreen() {
             disabled={!canContinue}
             size="lg"
           />
-        </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }
