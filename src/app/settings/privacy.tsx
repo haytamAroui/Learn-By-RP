@@ -3,7 +3,7 @@ import { ScrollView, Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
-import { I18nProvider } from '../../features/i18n';
+import { getTranslations, I18nProvider } from '../../features/i18n';
 import { Button, SectionLabel } from '../../components/ui';
 import { CONSENT_VERSION } from '../../features/archive/schema';
 import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
@@ -12,6 +12,7 @@ export default function SettingsPrivacyScreen() {
   const router = useRouter();
   const archive = useArchive();
   const params = useLocalSearchParams<{ section?: string }>();
+  const t = getTranslations(archive.preferences.explanationLanguage);
 
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmErase, setConfirmErase] = useState(false);
@@ -31,9 +32,9 @@ export default function SettingsPrivacyScreen() {
       <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
         <View className="w-full self-center flex-row items-center justify-between px-4 py-2" style={{ maxWidth: 1200 }}>
           <Text className="text-xl font-semibold text-ink">
-            {params.section === 'privacy' ? 'Privacy & data' : 'Privacy & data'}
+            {t.settings.privacyTitle}
           </Text>
-          <Button label="Done" onPress={() => router.back()} variant="ghost" size="sm" />
+          <Button label={t.settings.doneLabel} onPress={() => router.back()} variant="ghost" size="sm" />
         </View>
 
         <ScrollView
@@ -50,52 +51,56 @@ export default function SettingsPrivacyScreen() {
           }}
         >
           <View className="gap-2">
-            <SectionLabel>What is stored where</SectionLabel>
+            <SectionLabel>{t.settings.privacyStorageLabel}</SectionLabel>
             <View className="gap-2 rounded-2xl bg-surface-soft p-4">
               <Text className="text-sm leading-6 text-body">
-                Your conversations, phrase history and evidence ledger are stored only on this
-                device. They are not synced anywhere.
+                {t.settings.privacyStorageLocal}
               </Text>
               <Text className="text-sm leading-6 text-body">
-                When you end a session, the transcript turns you produced is sent to an AI
-                provider for review so phrases can be matched. Nothing else leaves the device,
-                and nothing is used to train a model.
+                {t.settings.privacyStorageAnalysis}
               </Text>
               <Text className="text-sm leading-6 text-body">
-                Files you export or share leave the app. Once shared, they cannot be recalled by
-                clearing this app.
+                {t.settings.privacyStorageExports}
               </Text>
             </View>
           </View>
 
           <View className="gap-2">
-            <SectionLabel>Consent</SectionLabel>
+            <SectionLabel>{t.settings.consentLabel}</SectionLabel>
             <View className="gap-3 rounded-2xl bg-surface-soft p-4">
               <ConsentLine
-                label="Live voice processing"
+                label={t.settings.liveVoiceLabel}
                 granted={archive.consent.voice?.granted ?? false}
+                grantedLabel={t.settings.grantedLabel}
+                withdrawnLabel={t.settings.withdrawnLabel}
+                withdrawLabel={t.settings.withdrawLabel}
                 onWithdraw={() => {
                   void archive.consent.withdrawConsent('voice');
-                  flash('Voice processing withdrawn. Speaking is disabled.');
+                  flash(t.settings.voiceWithdrawnNotice);
                 }}
               />
               <ConsentLine
-                label="Conversation analysis"
+                label={t.settings.savedAnalysisLabel}
                 granted={archive.consent.savedAnalysis?.granted ?? false}
+                grantedLabel={t.settings.grantedLabel}
+                withdrawnLabel={t.settings.withdrawnLabel}
+                withdrawLabel={t.settings.withdrawLabel}
                 onWithdraw={() => {
                   void archive.consent.withdrawConsent('saved_analysis');
-                  flash('Analysis withdrawn. No new evidence will be recorded.');
+                  flash(t.settings.analysisWithdrawnNotice);
                 }}
               />
-              <Text className="text-xs text-muted">Consent version {CONSENT_VERSION}</Text>
+              <Text className="text-xs text-muted">
+                {t.settings.consentVersionLabel} {CONSENT_VERSION}
+              </Text>
             </View>
           </View>
 
           <View className="gap-2">
-            <SectionLabel>Your data</SectionLabel>
+            <SectionLabel>{t.settings.yourDataLabel}</SectionLabel>
             <View className="rounded-2xl bg-surface-soft p-4">
               <Button
-                label="Export my archive"
+                label={t.settings.exportArchiveAction}
                 onPress={async () => {
                   const { shareTextFile } = await import('../../lib/share');
                   const json = await archive.exportArchive();
@@ -104,7 +109,7 @@ export default function SettingsPrivacyScreen() {
                     json,
                     'application/json'
                   );
-                  flash(result.ok ? 'Archive exported.' : 'Export failed.');
+                  flash(result.ok ? t.settings.archiveExportedNotice : t.settings.exportFailedNotice);
                 }}
                 variant="secondary"
                 className="self-start"
@@ -113,13 +118,12 @@ export default function SettingsPrivacyScreen() {
           </View>
 
           <View className="gap-2.5 rounded-2xl border border-danger/30 bg-danger-soft p-4">
-            <Text className="text-sm font-semibold text-danger">Erase all learning data</Text>
+            <Text className="text-sm font-semibold text-danger">{t.settings.eraseAllTitle}</Text>
             <Text className="text-sm leading-5 text-danger">
-              Deletes every session, observation and schedule on this device. This cannot be
-              undone.
+              {t.settings.eraseAllDesc}
             </Text>
             <Button
-              label={confirmErase ? 'Tap again to confirm' : 'Erase everything'}
+              label={confirmErase ? t.settings.eraseConfirmTap : t.settings.eraseEverything}
               onPress={async () => {
                 if (!confirmErase) {
                   setConfirmErase(true);
@@ -127,7 +131,7 @@ export default function SettingsPrivacyScreen() {
                 }
                 await archive.clearAllLearningData();
                 setConfirmErase(false);
-                flash('All learning data erased.');
+                flash(t.settings.erasedNotice);
               }}
               variant="danger"
               className="self-start"
@@ -135,9 +139,9 @@ export default function SettingsPrivacyScreen() {
           </View>
 
           <View className="gap-1">
-            <SectionLabel>Versions</SectionLabel>
+            <SectionLabel>{t.settings.versionsLabel}</SectionLabel>
             <Text className="text-xs text-muted">
-              Learning policy v{LEARNING_POLICY_VERSION} · Consent {CONSENT_VERSION}
+              {t.settings.learningPolicyLabel} v{LEARNING_POLICY_VERSION} · {t.settings.consentLabel} {CONSENT_VERSION}
             </Text>
           </View>
 
@@ -151,19 +155,29 @@ export default function SettingsPrivacyScreen() {
 interface ConsentLineProps {
   label: string;
   granted: boolean;
+  grantedLabel: string;
+  withdrawnLabel: string;
+  withdrawLabel: string;
   onWithdraw: () => void;
 }
 
-const ConsentLine: React.FC<ConsentLineProps> = ({ label, granted, onWithdraw }) => (
+const ConsentLine: React.FC<ConsentLineProps> = ({
+  label,
+  granted,
+  grantedLabel,
+  withdrawnLabel,
+  withdrawLabel,
+  onWithdraw,
+}) => (
   <View className="min-h-12 flex-row items-center justify-between gap-3">
     <View className="flex-1">
       <Text className="text-sm font-medium text-ink">{label}</Text>
       <Text className={`text-xs ${granted ? 'text-accent-sage' : 'text-muted'}`}>
-        {granted ? 'Granted' : 'Withdrawn'}
+        {granted ? grantedLabel : withdrawnLabel}
       </Text>
     </View>
     {granted ? (
-      <Button label="Withdraw" onPress={onWithdraw} variant="secondary" size="sm" />
+      <Button label={withdrawLabel} onPress={onWithdraw} variant="secondary" size="sm" />
     ) : null}
   </View>
 );
