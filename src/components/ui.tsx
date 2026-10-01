@@ -9,28 +9,33 @@ import {
   View,
   ViewStyle,
 } from 'react-native';
+import { iconColor } from '../design/iconColor';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
 
 const VARIANT_CONTAINER: Record<ButtonVariant, string> = {
-  primary: 'bg-primary border border-transparent',
-  secondary: 'bg-surface border border-border-subtle',
-  ghost: 'bg-transparent border border-transparent',
-  danger: 'bg-red-500/10 border border-red-500/40',
+  primary:
+    'border-2 border-transparent bg-action hover:bg-action-hover active:bg-action-pressed focus:border-brand-on',
+  secondary:
+    'border border-border-interactive bg-surface hover:bg-surface-hover active:opacity-80 focus:border-2 focus:border-focus',
+  ghost:
+    'border border-transparent bg-transparent hover:bg-surface-hover active:opacity-80 focus:border-2 focus:border-focus',
+  danger:
+    'border border-danger/40 bg-danger-soft hover:opacity-90 active:opacity-75 focus:border-2 focus:border-focus',
 };
 
 const VARIANT_LABEL: Record<ButtonVariant, string> = {
-  primary: 'text-white',
+  primary: 'text-action-text',
   secondary: 'text-ink',
   ghost: 'text-primary',
-  danger: 'text-red-500',
+  danger: 'text-danger',
 };
 
 const SIZE_CONTAINER: Record<ButtonSize, string> = {
-  sm: 'px-3 py-1.5 rounded-lg',
-  md: 'px-4 py-2.5 rounded-xl',
-  lg: 'px-5 py-3.5 rounded-2xl',
+  sm: 'min-h-12 px-3 rounded-xl',
+  md: 'min-h-12 px-4 rounded-xl',
+  lg: 'min-h-14 px-5 rounded-2xl',
 };
 
 const SIZE_LABEL: Record<ButtonSize, string> = {
@@ -77,11 +82,11 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       testID={testID}
       className={`flex-row items-center justify-center gap-2 ${VARIANT_CONTAINER[variant]} ${SIZE_CONTAINER[size]} ${
-        isDisabled ? 'opacity-40' : 'active:opacity-80'
+        isDisabled ? 'opacity-40' : ''
       } ${className}`}
     >
       {loading ? (
-        <ActivityIndicator size="small" color={variant === 'primary' ? '#ffffff' : undefined} />
+        <ActivityIndicator size="small" color={variant === 'primary' ? iconColor('brandText') : undefined} />
       ) : (
         icon
       )}
@@ -133,7 +138,7 @@ const PILL_TONE: Record<PillTone, string> = {
   sky: 'bg-card-sky border-accent-sky/30 text-accent-sky',
   sage: 'bg-card-sage border-accent-sage/30 text-accent-sage',
   heather: 'bg-card-heather border-accent-sky/20 text-body',
-  danger: 'bg-red-500/10 border-red-500/30 text-red-500',
+  danger: 'bg-danger-soft border-danger/30 text-danger',
 };
 
 interface PillProps {
@@ -165,7 +170,7 @@ export const Pill: React.FC<PillProps> = ({
   if (!onPress) return content;
 
   return (
-    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={accessibilityLabel ?? label} className="min-h-12 justify-center rounded-full focus:border-2 focus:border-focus">
       {content}
     </Pressable>
   );
@@ -193,8 +198,8 @@ export const Field: React.FC<FieldProps> = ({
       <TextInput
         ref={inputRef}
         multiline={multiline}
-        placeholderTextColor="rgb(var(--color-muted))"
-        className={`rounded-xl border border-border-subtle bg-surface-sunken px-4 py-2.5 text-sm text-ink ${
+        placeholderTextColor={iconColor('muted')}
+        className={`min-h-12 rounded-xl border border-border-interactive bg-surface-sunken px-4 py-2.5 text-sm text-ink hover:bg-surface-hover focus:border-2 focus:border-focus ${
           multiline ? 'min-h-[88px] text-left' : ''
         } ${className}`}
         {...inputProps}
@@ -232,7 +237,7 @@ export function Segmented<T extends string>({
             onPress={() => onChange(option.id)}
             accessibilityRole="tab"
             accessibilityState={{ selected: isActive }}
-            className={`flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-2.5 py-1.5 ${
+            className={`min-h-12 flex-1 flex-row items-center justify-center gap-1.5 rounded-lg px-2.5 focus:border-2 focus:border-focus ${
               isActive ? 'bg-surface' : ''
             }`}
           >
@@ -278,7 +283,7 @@ export const ChipRow: React.FC<ChipRowProps> = ({
           onPress={() => onChange(option.id)}
           accessibilityRole="button"
           accessibilityState={{ selected: isActive }}
-          className={`rounded-lg px-3 py-1.5 ${isActive ? 'bg-surface' : ''} ${
+          className={`min-h-12 justify-center rounded-lg px-3 focus:border-2 focus:border-focus ${isActive ? 'bg-surface' : ''} ${
             scrollable ? 'shrink-0' : ''
           }`}
         >
