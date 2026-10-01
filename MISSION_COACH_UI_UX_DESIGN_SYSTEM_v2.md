@@ -3,9 +3,14 @@
 **Version:** 2.0
 **Date:** 2026-10-01
 **Supersedes:** `MISSION_COACH_COMPLETE_UI_UX_DESIGN_SYSTEM_2026_v1 (1).md`
-**Status:** Implementation authority for UI
+**Status:** Historical / superseded by V4
 
 ---
+
+> **Historical reference only.** This document is superseded by
+> `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`, which is the active UI/UX implementation
+> authority on `main`. Keep V2 only for historical rationale and details that were
+> intentionally carried forward into V4.
 
 ## Authority
 

@@ -1,12 +1,11 @@
 # LearnByRP Design System V4 — Implementation TODO
 
 **Version:** 4.0  
-**Status:** implementation checklist / proposed UI authority  
-**Branch:** `docs/design-system-v4-todo`  
+**Status:** active UI/UX implementation authority on `main`  
 **Primary target:** mobile first  
 **Canonical phone review:** **390 × 844**
 
-When this document is merged, it supersedes:
+This document supersedes:
 
 - `MISSION_COACH_UI_UX_DESIGN_SYSTEM_v2.md`
 - `MISSION_COACH_MOBILE_FIRST_DESIGN_SYSTEM_V3.md`
@@ -24,9 +23,9 @@ Use this precedence when implementation documents disagree:
 - [x] Learning/evidence runtime remains evidence-truth authority.
 - [x] Scene reducer remains authoritative for scene truth.
 - [x] Archive repository remains persistence authority.
-- [x] V4 becomes the UI/UX implementation authority after merge.
-- [ ] Archive V2/V3 as historical references after V4 is accepted.
-- [ ] Add a short notice at the top of V2/V3 pointing readers to V4.
+- [x] V4 is the active UI/UX implementation authority.
+- [x] Archive V2/V3 as historical references.
+- [x] Add a short notice at the top of V2/V3 pointing readers to V4.
 
 **Working rule:** do not add a new screen-specific visual system. Reuse the V4 primitives,
 tokens, spacing, states, navigation and responsive rules.
@@ -335,7 +334,7 @@ Provider choice must not leak into the learner-screen architecture.
 - [ ] Add development-only Voice & AI diagnostics screen.
 - [ ] Show selected locale, native voice, provider and fallback status.
 - [ ] Add provider latency/fallback telemetry separate from learning evidence.
-- [ ] Do not run paid real-provider acceptance on every normal commit.
+- [x] Do not run paid real-provider acceptance on every normal commit.
 
 ## Future voice transports
 
@@ -741,13 +740,16 @@ Work in this order.
 
 ## P0 — real provider/device confidence
 
+Cloud-provider acceptance is complete on CI. Remaining P0 work requires physical-device validation.
+
 - [x] Add `provider-acceptance.yml`.
 - [x] Real OpenAI Realtime acceptance.
 - [x] Real Gemini TTS acceptance.
 - [x] FR/NL real speech checks.
+- [x] Repository secrets confirmed by live workflow and masked in logs.
 - [ ] Android native voice/STT test.
 - [ ] iPhone native voice/STT test.
-- [ ] Verify cloud → native fallback.
+- [ ] Verify cloud → native fallback on a physical device.
 
 ## P1 — mobile release hardening
 
@@ -780,6 +782,8 @@ Work in this order.
 ---
 
 # 30. V4 release definition of done
+
+**Last verified cloud-provider milestone:** Provider Acceptance R1 merged to `main` at `fd7ea554521e33143763f18117d00e1e14f71389`.
 
 V4 is complete only when:
 
