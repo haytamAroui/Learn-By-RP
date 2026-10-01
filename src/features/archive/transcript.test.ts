@@ -237,6 +237,11 @@ describe('a corrected passage invalidates the skill evidence that cited it', () 
         attemptId: 'attempt-1',
         sourcePassageId: 'p-1',
         sourceRevision,
+        contextKey: {
+          domainId: 'cafes',
+          scenarioFamilyId: 'counter-ordering',
+          scenarioId: 'scene.es.cafe.breakfast',
+        },
         domainId: 'cafes',
         scenarioId: 'scene.es.cafe.breakfast',
         modality: 'spoken',
