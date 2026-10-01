@@ -22,7 +22,9 @@
       "pressed": "rgb(var(--color-brand-pressed) / <alpha-value>)",
       "soft": "rgb(var(--color-brand-soft) / <alpha-value>)",
       "on": "rgb(var(--color-brand-text) / <alpha-value>)",
-      "button": "rgb(var(--color-brand-button) / <alpha-value>)"
+      "button": "rgb(var(--color-brand-button) / <alpha-value>)",
+      "buttonHover": "rgb(var(--color-brand-button-hover) / <alpha-value>)",
+      "buttonPressed": "rgb(var(--color-brand-button-pressed) / <alpha-value>)"
     },
     "primary": {
       "DEFAULT": "rgb(var(--color-brand) / <alpha-value>)",
@@ -62,6 +64,12 @@
       "sage": "rgb(var(--color-success-soft) / <alpha-value>)",
       "sky": "rgb(var(--color-info-soft) / <alpha-value>)",
       "heather": "rgb(var(--color-warning-soft) / <alpha-value>)"
+    },
+    "action": {
+      "DEFAULT": "rgb(var(--color-brand-button) / <alpha-value>)",
+      "hover": "rgb(var(--color-brand-button-hover) / <alpha-value>)",
+      "pressed": "rgb(var(--color-brand-button-pressed) / <alpha-value>)",
+      "text": "rgb(var(--color-brand-text) / <alpha-value>)"
     }
   }
 }
