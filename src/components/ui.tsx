@@ -121,7 +121,7 @@ export const Card: React.FC<CardProps> = ({ children, className = '', style, onP
       onPress={onPress}
       accessibilityRole="button"
       testID={testID}
-      className={`${base} active:opacity-85`}
+      className={`${base} min-h-12 hover:bg-surface-hover active:opacity-85 focus:border-2 focus:border-focus`}
       style={style}
     >
       {children}
@@ -227,7 +227,7 @@ export function Segmented<T extends string>({
     <View
       accessibilityRole="tablist"
       accessibilityLabel={accessibilityLabel}
-      className={`flex-row items-center rounded-xl border border-border-subtle bg-surface-sunken p-1 ${className}`}
+      className={`flex-row items-center rounded-xl border border-border-interactive bg-surface-sunken p-1 ${className}`}
     >
       {options.map(option => {
         const isActive = option.id === value;
@@ -271,7 +271,7 @@ export const ChipRow: React.FC<ChipRowProps> = ({
   scrollable = false,
 }) => (
   <View
-    className={`flex-row gap-1 rounded-xl border border-border-subtle bg-surface-sunken p-1 ${
+    className={`flex-row gap-1 rounded-xl border border-border-interactive bg-surface-sunken p-1 ${
       scrollable ? '' : 'flex-wrap'
     } ${className}`}
   >
@@ -283,7 +283,7 @@ export const ChipRow: React.FC<ChipRowProps> = ({
           onPress={() => onChange(option.id)}
           accessibilityRole="button"
           accessibilityState={{ selected: isActive }}
-          className={`min-h-12 justify-center rounded-lg px-3 focus:border-2 focus:border-focus ${isActive ? 'bg-surface' : ''} ${
+          className={`min-h-12 justify-center rounded-lg border px-3 focus:border-2 focus:border-focus ${isActive ? 'border-primary/30 bg-card-warm' : 'border-transparent'} ${
             scrollable ? 'shrink-0' : ''
           }`}
         >
