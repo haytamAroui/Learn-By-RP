@@ -2,7 +2,7 @@ import React from 'react';
 import { Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
-import { I18nProvider } from '../../features/i18n';
+import { getTranslations, I18nProvider } from '../../features/i18n';
 import { RootHeader } from '../../components/RootHeader';
 import { MissionsScreen } from '../../components/MissionsScreen';
 import { MissionBriefingModal } from '../../components/MissionBriefingModal';
@@ -14,6 +14,7 @@ export default function MissionsTab() {
   const router = useRouter();
   const archive = useArchive();
   const session = useSessionCoordinator();
+  const t = getTranslations(archive.preferences.explanationLanguage);
 
   const [briefing, setBriefing] = React.useState<MissionDefinition | null>(null);
 
@@ -78,7 +79,7 @@ export default function MissionsTab() {
       }
     >
       <View className="flex-1 bg-canvas">
-        <RootHeader title="Missions" />
+        <RootHeader title={t.nav.missions} />
         <MissionsScreen
           missions={availableMissions}
           onSelectMission={setBriefing}
