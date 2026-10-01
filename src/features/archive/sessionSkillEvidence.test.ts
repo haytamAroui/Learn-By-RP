@@ -339,6 +339,10 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       attemptId: 'attempt-1',
       sourcePassageId: `p-${i}`,
       sourceRevision: 'rev-1',
+      contextKey: {
+        domainId: 'test',
+        scenarioFamilyId: `family-${i}`,
+      },
       modality: 'spoken' as const,
       retrieval: 'unassisted' as const,
       taskOutcome: 'achieved' as const,
