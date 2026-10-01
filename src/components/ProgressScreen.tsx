@@ -140,6 +140,19 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     }
   };
 
+  const outcomeLabel = (outcome: SessionRecord['taskOutcome']) => {
+    switch (outcome) {
+      case 'completed':
+        return t.progress.outcomeCompleted;
+      case 'partly_completed':
+        return t.progress.outcomePartlyCompleted;
+      case 'changed_direction':
+        return t.progress.outcomeChangedDirection;
+      default:
+        return t.progress.outcomeUnknown;
+    }
+  };
+
   const statusTone = (projection?: SkillProjectionV2) => {
     if (projection?.reviewDue) return STATUS_SURFACE.review;
     switch (projection?.status) {
@@ -327,7 +340,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
 
                       <View className="items-end gap-1">
                         <Text className="text-xs font-semibold capitalize text-primary">
-                          {session.taskOutcome.replace(/_/g, ' ')}
+                          {outcomeLabel(session.taskOutcome)}
                         </Text>
                         <ChevronRight size={18} color={iconColor('muted')} />
                       </View>
