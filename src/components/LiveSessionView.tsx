@@ -87,7 +87,7 @@ type VoiceState =
 
 const VOICE_DOT: Record<VoiceState, string> = {
   connecting: 'bg-muted',
-  listening: 'bg-primary',
+  listening: 'bg-action',
   speaking: 'bg-accent-sage',
   muted: 'bg-muted',
   paused: 'bg-warning',
@@ -1190,6 +1190,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               onPress={toggleFreezeScene}
               accessibilityRole="button"
               accessibilityLabel={isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
+              hitSlop={8}
               className={`h-8 flex-row items-center gap-1 rounded-xl border px-2.5 ${
                 isSceneFrozen
                   ? 'border-primary bg-card-warm'
@@ -1197,7 +1198,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               }`}
             >
               {isSceneFrozen ? (
-                <Play size={14} color={iconColor('brand')} fill="rgb(var(--color-brand))" />
+                <Play size={14} color={iconColor('brand')} fill={iconColor('brand')} />
               ) : (
                 <Pause size={14} color={iconColor('ink')} />
               )}
@@ -1214,9 +1215,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               onPress={() => void handleFinishConversation()}
               accessibilityRole="button"
               accessibilityLabel={t.common.endConversation}
-              className="h-8 items-center justify-center rounded-xl bg-primary px-3 active:opacity-80"
+              hitSlop={8}
+              className="h-8 items-center justify-center rounded-xl bg-action px-3 active:opacity-80"
             >
-              <Text className="text-xs font-semibold text-white">
+              <Text className="text-xs font-semibold text-action-text">
                 {t.common.endConversation}
               </Text>
             </Pressable>
@@ -1322,18 +1324,18 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                   <View
                     className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
                       isUser
-                        ? 'rounded-br-xs bg-primary'
+                        ? 'rounded-br-xs bg-action'
                         : 'rounded-bl-xs border border-border-subtle bg-surface'
                     }`}
                   >
                     <Text
                       className={`mb-0.5 text-xs ${
-                        isUser ? 'text-white/80' : 'text-muted'
+                        isUser ? 'text-action-text/80' : 'text-muted'
                       }`}
                     >
                       {isUser ? `${t.common.you} (${passage.modality})` : mission.character.name}
                     </Text>
-                    <Text className={`text-sm ${isUser ? 'text-white' : 'text-ink'}`}>
+                    <Text className={`text-sm ${isUser ? 'text-action-text' : 'text-ink'}`}>
                       {passage.text}
                     </Text>
                   </View>
@@ -1414,10 +1416,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                       }}
                       accessibilityRole="button"
                       accessibilityLabel={t.live.retryConnection}
-                      className="h-10 w-full flex-row items-center justify-center gap-2 rounded-lg bg-primary px-3"
+                      hitSlop={4}
+                      className="h-10 w-full flex-row items-center justify-center gap-2 rounded-lg bg-action px-3"
                     >
-                      <RotateCcw size={14} color="#ffffff" />
-                      <Text className="text-xs font-semibold text-white">
+                      <RotateCcw size={14} color={iconColor('brandText')} />
+                      <Text className="text-xs font-semibold text-action-text">
                         {t.live.retryConnection}
                       </Text>
                     </Pressable>
@@ -1446,11 +1449,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                   disabled={!typedMessage.trim()}
                   accessibilityRole="button"
                   accessibilityLabel="Send"
-                  className={`h-11 w-11 items-center justify-center rounded-xl bg-primary ${
+                  hitSlop={2}
+                  className={`h-11 w-11 items-center justify-center rounded-xl bg-action ${
                     typedMessage.trim() ? '' : 'opacity-40'
                   }`}
                 >
-                  <Send size={16} color="#ffffff" />
+                  <Send size={16} color={iconColor('brandText')} />
                 </Pressable>
               </View>
             </View>
@@ -1469,14 +1473,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 }}
                 accessibilityRole="button"
                 accessibilityLabel={isMuted ? 'Unmute microphone' : 'Mute microphone'}
+                hitSlop={4}
                 className={`h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
                   isMuted
-                    ? 'border-red-300 bg-red-500/10'
+                    ? 'border-danger/40 bg-danger-soft'
                     : 'border-border-subtle bg-surface-sunken'
                 }`}
               >
                 {isMuted ? (
-                  <MicOff size={16} color="#ef4444" />
+                  <MicOff size={16} color={iconColor('danger')} />
                 ) : (
                   <Mic size={16} color={iconColor('ink')} />
                 )}
@@ -1515,22 +1520,22 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                           : t.live.tapToSpeak
                   }
                   className={`h-11 w-full flex-row items-center justify-center gap-2 rounded-xl px-3 ${
-                    VOICE_BLOCKED.has(voiceState) ? 'bg-muted' : 'bg-primary'
+                    VOICE_BLOCKED.has(voiceState) ? 'bg-action opacity-40' : 'bg-action'
                   } active:opacity-80`}
                 >
                   <View
-                    className="h-2 w-2 rounded-full bg-white/60"
+                    className="h-2 w-2 rounded-full bg-action-text/60"
                     style={{
                       opacity: voiceState === 'listening' ? 0.4 + audioLevel * 0.6 : 0.3,
                       transform: [{ scale: 1 + audioLevel * 0.6 }],
                     }}
                   />
                   {voiceState === 'error' ? (
-                    <MicOff size={16} color="#ffffff" />
+                    <MicOff size={16} color={iconColor('brandText')} />
                   ) : (
-                    <Mic size={16} color="#ffffff" />
+                    <Mic size={16} color={iconColor('brandText')} />
                   )}
-                  <Text className="text-xs font-semibold text-white" numberOfLines={1}>
+                  <Text className="text-xs font-semibold text-action-text" numberOfLines={1}>
                     {voiceState === 'listening'
                       ? t.live.listening
                       : voiceState === 'reconnecting'
@@ -1546,6 +1551,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 onPress={() => setShowHelpSheet(prev => !prev)}
                 accessibilityRole="button"
                 accessibilityLabel={t.common.help}
+                hitSlop={4}
                 className="h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-surface"
               >
                 <HelpCircle size={16} color={iconColor('brand')} />
@@ -1555,6 +1561,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 onPress={() => setShowTypedInput(prev => !prev)}
                 accessibilityRole="button"
                 accessibilityLabel={t.live.typeInstead}
+                hitSlop={4}
                 className={`h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
                   showTypedInput
                     ? 'border-primary bg-card-warm'
@@ -1565,8 +1572,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                   size={16}
                   color={
                     showTypedInput
-                      ? 'rgb(var(--color-brand))'
-                      : 'rgb(var(--color-muted))'
+                      ? iconColor('brand')
+                      : iconColor('muted')
                   }
                 />
               </Pressable>
