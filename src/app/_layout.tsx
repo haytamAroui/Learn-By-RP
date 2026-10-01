@@ -60,10 +60,7 @@ function MotionAwareStack() {
           animation: reduced ? "none" : "default",
         }}
       />
-      <Stack.Screen
-        name="recap/[sessionId]"
-        options={{ presentation: "modal" }}
-      />
+      <Stack.Screen name="recap/[sessionId]" />
       <Stack.Screen
         name="phrase/[phraseId]"
         options={{ presentation: "modal" }}
