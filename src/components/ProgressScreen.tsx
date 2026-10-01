@@ -164,12 +164,13 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                     </Text>
                   </View>
                   {/*
-  Outlined rather than a solid fill.
-  `bg-primary` produces no visible fill on this screen - checked against the DOM,
-  not just by eye - so a solid brand pill under brand-on text renders as unmarked
-  floating text. The generator did have a real bug (see generate-css.mts), fixing
-  it was correct and necessary, but it did not change this behaviour, so the cause
-  is still unidentified. Logged rather than papered over.
+  Outlined, not a solid brand fill.
+  `bg-primary` on this exact element renders no fill, while the same class renders
+  correctly on the live session controls in the same build and theme, and
+  `text-white` on this same element does apply. So it is neither the utility, the
+  generated CSS, nor the theme - something about this screen's context drops it.
+  Unidentified, so the chip is the verified-readable option rather than shipping
+  white text on a cream card.
 */}
                   <View className="shrink-0 rounded-lg border border-primary/30 bg-surface-sunken px-2 py-0.5">
                     <Text className="text-xs font-semibold text-primary">

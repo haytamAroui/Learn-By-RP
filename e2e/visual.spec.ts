@@ -286,12 +286,25 @@ for (const viewport of WIDTHS) {
 
     test('live session', async ({ page }) => {
       await seedArchive(page);
-      await page.goto('/session/mission-es-cafe-sol');
+      /*
+        The route takes the session id in the path and the mission id as a query
+        parameter. This test used to pass `/session/mission-es-cafe-sol`, which put a
+        mission id where a session id was expected, so the mission never resolved and
+        the snapshot recorded "That mission is no longer available." For months the
+        gate protected a dead-end screen and called it the live session.
+
+        The assertion below is what makes that failure mode impossible: a baseline of
+        an error screen is worse than no baseline, because it reports green.
+      */
+      await page.goto(
+        `/session/${SEEDED_SESSION.id}?missionId=mission-es-cafe-sol&mode=guided&coldAttempt=true`
+      );
       await page.waitForLoadState('networkidle');
       // The voice transport will not connect in CI, so the session is captured in
       // its connecting state. That is a real state worth guarding.
       await page.waitForTimeout(1500);
       await expectRenderedApp(page);
+      await expect(page.locator('body')).not.toContainText('no longer available');
       await expect(page).toHaveScreenshot(`live-${viewport.name}.png`, { fullPage: true });
     });
   });
