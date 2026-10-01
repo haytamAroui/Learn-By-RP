@@ -1,7 +1,12 @@
 # LearnByRP Mobile-First UI/UX Design System v3
 
-**Status:** active UI authority for `feature/mobile-first-ui-v3`  
+**Status:** Historical / superseded by V4  
 **Primary target:** phone first, then tablet, then desktop/web  
+> **Historical reference only.** This document is superseded by
+> `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`, which is the active UI/UX implementation
+> authority on `main`. V3 remains useful as the record of the mobile-first redesign,
+> but new work should follow V4.
+
 **Canonical review viewport:** **390 × 844**
 
 This document supersedes the existing dashboard-oriented visual treatment for new UI work.
