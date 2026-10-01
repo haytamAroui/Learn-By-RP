@@ -4,6 +4,10 @@
 **Checked against:** `MISSION_COACH_MASTER_SPEC.md`, `MISSION_COACH_COMPLETE_FEATURES.md`, `UI_UX_2026_AUDIT_AND_PATCH.md`, `LEARNBYRP_CROSS_PLATFORM_UI_SPEC.md`.
 **Date:** 30 September 2026
 
+> **Execution checklist:** roleplay/program implementation is tracked in
+> `LEARNBYRP_ROLEPLAY_PROGRAM_TODO_V1.md`. This roadmap explains sequencing and policy;
+> the TODO is the item-by-item source of execution status.
+
 ---
 
 ## 0. Basis and limits
