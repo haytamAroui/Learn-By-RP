@@ -1289,7 +1289,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 </Pressable>
               </View>
 
-              <Text className="font-display text-2xl font-medium leading-snug text-ink">
+              <Text className="text-2xl font-medium leading-snug text-ink">
                 "{latestAssistantPassage.text}"
               </Text>
 
@@ -1510,6 +1510,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                   }}
                   accessibilityRole="button"
                   accessibilityState={{ disabled: VOICE_BLOCKED.has(voiceState) }}
+                  hitSlop={2}
                   accessibilityLabel={
                     voiceState === 'listening'
                       ? t.live.listening
