@@ -327,7 +327,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       showTranslation: "Show translation",
     },
     nav: {
-      brandTitle: "Mission Coach",
+      brandTitle: "LearnByRP",
       brandSubtitle: "Voice roleplay & grounded evidence",
       talk: "Talk",
       missions: "Missions",
@@ -605,7 +605,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       showTranslation: "Afficher la traduction",
     },
     nav: {
-      brandTitle: "Mission Coach",
+      brandTitle: "LearnByRP",
       brandSubtitle: "Jeu de rôle vocal et preuves authentiques",
       talk: "Parler",
       missions: "Missions",
@@ -886,7 +886,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       showTranslation: "Mostrar traducción",
     },
     nav: {
-      brandTitle: "Mission Coach",
+      brandTitle: "LearnByRP",
       brandSubtitle: "Juego de rol por voz y evidencias honestas",
       talk: "Hablar",
       missions: "Misiones",
@@ -1164,7 +1164,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       showTranslation: "Vertaling tonen",
     },
     nav: {
-      brandTitle: "Mission Coach",
+      brandTitle: "LearnByRP",
       brandSubtitle: "Stemgestuurd rollenspel & eerlijk bewijs",
       talk: "Spreken",
       missions: "Missies",
