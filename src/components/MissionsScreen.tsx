@@ -147,7 +147,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
       </View>
 
       {activeView === 'catalog' ? (
-        <View className="gap-18">
+        <View className="gap-5">
           <View className="h-12 flex-row items-center gap-3 rounded-2xl bg-surface-soft px-4">
             <Search size={19} color={iconColor('muted')} />
             <TextInput
