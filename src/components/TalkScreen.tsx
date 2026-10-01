@@ -117,7 +117,7 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
             accessibilityRole="button"
             accessibilityLabel={t.talk.practiseDueTitle}
             accessibilityState={{ disabled: duePhrases.length === 0 }}
-            className={`min-h-[72px] flex-row items-center gap-3 py-3 active:opacity-70 ${
+            className={`min-h-[72px] flex-row items-center gap-3 rounded-2xl border border-transparent py-3 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus ${
               duePhrases.length === 0 ? 'opacity-60' : ''
             }`}
           >
@@ -143,7 +143,7 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
             onPress={onExploreMissions}
             accessibilityRole="button"
             accessibilityLabel={t.talk.browseAllButton}
-            className="min-h-[72px] flex-row items-center gap-3 py-3 active:opacity-70"
+            className="min-h-[72px] flex-row items-center gap-3 rounded-2xl border border-transparent py-3 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
           >
             <View className="h-11 w-11 items-center justify-center rounded-2xl bg-surface-soft">
               <Compass size={20} color={iconColor('muted')} />
