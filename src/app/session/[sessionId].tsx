@@ -95,12 +95,6 @@ export default function SessionScreen() {
           mission={mission}
           initialSession={persistedSession}
           onEndSession={handleEndSession}
-          onCancel={async () => {
-            // Cancelling preserves the transcript; the session is marked ended
-            // so it is not offered as a live recovery candidate.
-            coordinator.dispatch('END');
-            router.back();
-          }}
         />
       </View>
     </I18nProvider>
