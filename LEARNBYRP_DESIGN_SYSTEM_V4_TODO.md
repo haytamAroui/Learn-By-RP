@@ -314,15 +314,16 @@ Provider choice must not leak into the learner-screen architecture.
 
 ## Next provider acceptance tasks
 
-- [ ] Add separate `provider-acceptance.yml` workflow.
-- [ ] Use GitHub secrets `OPENAI_API_KEY` and `GEMINI_API_KEY`.
-- [ ] Never print secret values.
-- [ ] Real OpenAI Realtime session creation test.
-- [ ] Real OpenAI Realtime learner-turn response test.
-- [ ] Real Gemini TTS generation test.
-- [ ] Validate returned audio MIME/bytes.
-- [ ] Real French speech generation sample.
-- [ ] Real Belgian-Dutch speech generation sample.
+- [x] Add separate `provider-acceptance.yml` workflow.
+- [x] Use GitHub secrets `OPENAI_API_KEY` and `GEMINI_API_KEY`.
+- [x] Never print secret values.
+- [x] Real OpenAI Realtime session creation test.
+- [x] Real OpenAI Realtime learner-turn response test.
+- [x] Real Gemini TTS generation test.
+- [x] Validate returned audio MIME/bytes.
+- [x] Real French speech generation sample.
+- [x] Real Belgian-Dutch speech generation sample.
+  - Verified in GitHub Actions run 36925596885 (OpenAI + Gemini real-provider acceptance).
 - [ ] Real Spanish speech generation sample.
 - [ ] Real German speech generation sample.
 - [ ] Real Italian speech generation sample.
@@ -740,10 +741,10 @@ Work in this order.
 
 ## P0 — real provider/device confidence
 
-- [ ] Add `provider-acceptance.yml`.
-- [ ] Real OpenAI Realtime acceptance.
-- [ ] Real Gemini TTS acceptance.
-- [ ] FR/NL real speech checks.
+- [x] Add `provider-acceptance.yml`.
+- [x] Real OpenAI Realtime acceptance.
+- [x] Real Gemini TTS acceptance.
+- [x] FR/NL real speech checks.
 - [ ] Android native voice/STT test.
 - [ ] iPhone native voice/STT test.
 - [ ] Verify cloud → native fallback.
@@ -791,8 +792,8 @@ V4 is complete only when:
 - [x] OpenAI Realtime has HTTP fallback.
 - [x] Local OpenAI-compatible structured providers can be configured.
 - [x] Native voice selection follows target locale.
-- [ ] Real OpenAI provider acceptance passes.
-- [ ] Real Gemini TTS provider acceptance passes.
+- [x] Real OpenAI provider acceptance passes.
+- [x] Real Gemini TTS provider acceptance passes.
 - [ ] FR and NL native-device voice acceptance passes.
 - [ ] Android physical-device learner flow passes.
 - [ ] iPhone physical-device learner flow passes.
