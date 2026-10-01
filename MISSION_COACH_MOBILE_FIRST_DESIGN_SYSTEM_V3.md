@@ -251,4 +251,21 @@ Implemented in the initial slice:
 - mobile mission browsing
 - simplified connected-route presentation
 
-Next implementation target: **mission briefing**, then **live conversation**.
+Foundation hardening completed before the next learner-flow screens:
+
+- semantic action colors separated from foreground brand colors
+- dark-mode CTA fill remains contrast-safe
+- semantic danger colors replace raw red palette usage
+- shared buttons, inputs, chips, and segmented controls enforce 48px targets
+- hover/focus/pressed states are defined for shared interactive primitives
+- breakpoints are canonicalized to phone (<600), tablet (600–1023), desktop (>=1024)
+- desktop navigation uses the navigator's responsive left-tab mode
+- tab labels follow the selected UI language
+- sheets are safe-area-aware on phones and bounded on tablet/web
+- Settings is restored as a full settings screen; Privacy & data is secondary
+- onboarding, privacy, phrase detail, and recovery are scroll/safe-area robust
+- native icon/input props resolve concrete theme colors rather than CSS-variable strings
+- product-facing brand title is LearnByRP
+- shared typography defaults to the platform/system sans stack
+
+Next implementation target after verification: **mission briefing**, then **live conversation**.
