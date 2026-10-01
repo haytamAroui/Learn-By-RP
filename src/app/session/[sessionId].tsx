@@ -2,7 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
-import { I18nProvider } from '../../features/i18n';
+import { getTranslations, I18nProvider } from '../../features/i18n';
 import { LiveSessionView } from '../../components/LiveSessionView';
 import { MISSION_CATALOG } from '../../data/missions';
 import { MissionDefinition, SessionRecord } from '../../types';
@@ -12,6 +12,7 @@ export default function SessionScreen() {
   const router = useRouter();
   const archive = useArchive();
   const coordinator = useSessionCoordinator();
+  const t = getTranslations(archive.preferences.explanationLanguage);
   const params = useLocalSearchParams<{
     sessionId: string;
     missionId: string;
@@ -55,7 +56,7 @@ export default function SessionScreen() {
   if (sessionLoading) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas">
-        <Text className="text-xs text-muted">Opening conversation…</Text>
+        <Text className="text-xs text-muted">{t.settings.openingConversation}</Text>
       </View>
     );
   }
@@ -63,7 +64,7 @@ export default function SessionScreen() {
   if (!mission || !persistedSession) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas p-6">
-        <Text className="text-center text-sm text-muted">That mission is no longer available.</Text>
+        <Text className="text-center text-sm text-muted">{t.settings.missionUnavailable}</Text>
         <Text className="mt-3 text-xs text-primary" onPress={() => router.back()}>
           Go back
         </Text>
