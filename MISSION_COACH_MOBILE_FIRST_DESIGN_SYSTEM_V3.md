@@ -268,4 +268,22 @@ Foundation hardening completed before the next learner-flow screens:
 - product-facing brand title is LearnByRP
 - shared typography defaults to the platform/system sans stack
 
-Next implementation target after verification: **mission briefing**, then **live conversation**.
+Learner-flow redesign now implemented:
+
+- Mission selection navigates to a full-screen briefing route instead of a modal
+- briefing keeps one dominant Start action and moves practice style to a compact sheet
+- phrase preview is progressive disclosure; once previewed, the attempt can no longer become cold again
+- briefing support previews are persisted as support exposures before the session begins
+- Live Conversation is route-native rather than nested inside another modal
+- the latest character turn is the visual focus; older transcript is intentionally quiet
+- Help and Meaning are compact secondary sheets
+- pause is separate from asking for coaching support
+- the voice action is dominant; Help / Type / End are the only persistent secondary actions
+- Recap is a full learner-facing screen with evidence moved to a secondary sheet
+- retry and transfer missions both return through governed mission briefing
+- Progress leads with Ready to practise, then Skills / Phrases / History
+- skill, phrase, and evidence depth remains available through sheets without dominating list rows
+- superseded MissionBriefingModal, RecapModal, and SettingsModal implementations were removed
+
+Next implementation target after source verification: **390 × 844 visual/device QA**, followed by
+tablet and 1024/1440 web polish.
