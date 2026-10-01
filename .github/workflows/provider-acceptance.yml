@@ -1,0 +1,65 @@
+name: Provider Acceptance
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - feature/provider-acceptance-r1
+    paths:
+      - '.github/workflows/provider-acceptance.yml'
+      - 'server/providers/**'
+      - 'src/providers/**'
+      - 'tests/provider-acceptance.integration.test.ts'
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: provider-acceptance-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-providers:
+    name: Real OpenAI + Gemini
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    env:
+      RUN_PROVIDER_ACCEPTANCE: '1'
+      OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+      GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+      OPENAI_REALTIME_MODEL: gpt-realtime-2.1
+      GEMINI_TTS_MODEL: gemini-3.8-flash-lite-tts
+      SPEECH_PROVIDER: gemini
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check required secrets are configured
+        shell: bash
+        run: |
+          if [ -z "$OPENAI_API_KEY" ]; then
+            echo "::error::OPENAI_API_KEY is not configured"
+            exit 1
+          fi
+          if [ -z "$GEMINI_API_KEY" ]; then
+            echo "::error::GEMINI_API_KEY is not configured"
+            exit 1
+          fi
+          echo "OpenAI secret configured: yes"
+          echo "Gemini secret configured: yes"
+
+      - name: Run real provider acceptance
+        run: npx vitest run tests/provider-acceptance.integration.test.ts --reporter=verbose
