@@ -11,6 +11,7 @@ interface SheetProps {
   children: React.ReactNode;
   footer?: React.ReactNode;
   scrollable?: boolean;
+  size?: 'compact' | 'large';
 }
 
 /**
@@ -26,11 +27,19 @@ export const Sheet: React.FC<SheetProps> = ({
   children,
   footer,
   scrollable = true,
+  size = 'large',
 }) => {
   const insets = useSafeAreaInsets();
   const { width, height } = useWindowDimensions();
   const isPhone = width < BREAKPOINTS.tablet.min;
-  const sheetHeight = isPhone ? Math.round(height * 0.92) : Math.min(Math.round(height * 0.86), 760);
+  const sheetHeight =
+    size === 'compact'
+      ? isPhone
+        ? Math.min(Math.round(height * 0.56), 520)
+        : Math.min(Math.round(height * 0.68), 560)
+      : isPhone
+        ? Math.round(height * 0.92)
+        : Math.min(Math.round(height * 0.86), 760);
 
   return (
     <Modal
