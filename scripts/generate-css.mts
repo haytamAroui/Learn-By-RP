@@ -107,11 +107,18 @@ type ColorSpec = string | { DEFAULT: string; [key: string]: string };
  * A missing token produces `--color-x` that is never assigned, which fails to no
  * colour at all and silently inherits instead — the same class of bug as the
  * original mismatch, one level deeper.
+ *
+ * The `var()` wrapper is not optional. `rgb(--color-brand / <alpha-value>)` is
+ * invalid CSS: the browser needs `rgb(var(--color-brand) / <alpha-value>)`, where
+ * the variable reference is a function argument. Without it the declaration is
+ * dropped, the utility silently does nothing, and the result depends on what
+ * happens to be inherited — which is why a solid `bg-primary` badge rendered as
+ * white-on-cream while `text-primary` looked fine.
  */
 const referenced = new Set<string>();
 const alias = (token: string): string => {
   referenced.add(token);
-  return `rgb(${cssVarName(token as keyof typeof LIGHT)} / <alpha-value>)`;
+  return `rgb(var(${cssVarName(token as keyof typeof LIGHT)}) / <alpha-value>)`;
 };
 
 const colors: Record<string, ColorSpec> = {
