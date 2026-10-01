@@ -125,7 +125,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
               onPress={() => setActiveView(item.id)}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              className={`min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 ${
+              className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full px-4 ${
                 selected ? 'bg-ink' : 'bg-surface-soft'
               }`}
             >
@@ -176,7 +176,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                   onPress={() => setSelectedCategory(category.id)}
                   accessibilityRole="button"
                   accessibilityState={{ selected }}
-                  className={`min-h-10 justify-center rounded-full px-4 ${
+                  className={`min-h-12 justify-center rounded-full px-4 ${
                     selected ? 'bg-primary' : 'bg-surface-soft'
                   }`}
                 >
