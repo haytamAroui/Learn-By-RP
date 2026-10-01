@@ -167,13 +167,13 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
                   accessibilityRole="radio"
                   accessibilityState={{ selected: isActive }}
                   accessibilityLabel={option.label}
-                  className={`flex-1 flex-row items-center justify-center gap-2 rounded-xl border p-3 ${
+                  className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-xl border p-3 focus:border-2 focus:border-focus ${
                     isActive ? 'border-primary bg-card-warm' : 'border-border-subtle bg-surface'
                   }`}
                 >
                   <option.Icon
                     size={16}
-                    color={isActive ? 'rgb(var(--color-brand))' : 'rgb(var(--color-muted))'}
+                    color={isActive ? iconColor('brand') : iconColor('muted')}
                   />
                   <Text
                     className={`text-xs font-medium ${
@@ -364,11 +364,11 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
               {importNotice.success ? (
                 <CheckCircle2 size={14} color={iconColor('success')} />
               ) : (
-                <AlertTriangle size={14} color="#ef4444" />
+                <AlertTriangle size={14} color={iconColor('danger')} />
               )}
               <Text
                 className={`flex-1 text-xs font-medium ${
-                  importNotice.success ? 'text-accent-sage' : 'text-red-500'
+                  importNotice.success ? 'text-accent-sage' : 'text-danger'
                 }`}
               >
                 {importNotice.text}
@@ -376,16 +376,16 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             </View>
           ) : null}
 
-          <View className="gap-2 rounded-2xl border border-red-500/20 bg-red-500/10 p-4">
-            <Text className="text-xs font-medium text-red-500">{t.settings.eraseTitle}</Text>
-            <Text className="text-xs text-red-400">{t.settings.eraseDesc}</Text>
+          <View className="gap-2 rounded-2xl border border-danger/20 bg-danger-soft p-4">
+            <Text className="text-xs font-medium text-danger">{t.settings.eraseTitle}</Text>
+            <Text className="text-xs text-danger">{t.settings.eraseDesc}</Text>
             <Button
               label={t.settings.eraseButton}
               onPress={() => setConfirmClear(true)}
               variant="danger"
               size="sm"
               className="self-start"
-              icon={<Trash2 size={14} color="#ef4444" />}
+              icon={<Trash2 size={14} color={iconColor('danger')} />}
             />
           </View>
         </View>
@@ -425,7 +425,7 @@ const ToggleRow: React.FC<ToggleRowProps> = ({ label, description, value, onChan
     <Switch
       value={value}
       onValueChange={onChange}
-      trackColor={{ false: 'rgb(var(--color-border-subtle))', true: 'rgb(var(--color-brand))' }}
+      trackColor={{ false: iconColor('borderSubtle'), true: iconColor('brandButton') }}
       thumbColor="#ffffff"
       accessibilityLabel={label}
     />
