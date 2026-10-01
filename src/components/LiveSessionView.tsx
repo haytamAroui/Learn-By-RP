@@ -58,7 +58,6 @@ interface LiveSessionViewProps {
   mission: MissionDefinition | null;
   initialSession: SessionRecord;
   onEndSession: (session: SessionRecord) => void;
-  onCancel: () => void;
 }
 
 /**
@@ -215,7 +214,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   mission,
   initialSession,
   onEndSession,
-  onCancel,
 }) => {
   const { t, language } = useI18n();
   const insets = useSafeAreaInsets();
@@ -1162,7 +1160,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       <SafeAreaView edges={['top']} className="bg-canvas">
         <View className="w-full self-center flex-row items-center gap-3 px-3 py-2" style={{ maxWidth: 900 }}>
           <Pressable
-            onPress={onCancel}
+            onPress={() => void handleFinishConversation('user_ended')}
             accessibilityRole="button"
             accessibilityLabel={t.common.close}
             className="h-12 w-12 items-center justify-center rounded-full border border-transparent bg-surface-soft hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
