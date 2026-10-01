@@ -192,24 +192,6 @@ function normalizeSkillItems(
     }));
 }
 
-/** Plain-language recap copy. Never implies a level, and never implies failure. */
-function buildHonestSummary(
-  assessmentUnavailable: boolean,
-  observationCount: number,
-  hasLearnerSpeech: boolean
-): string {
-  if (!hasLearnerSpeech) {
-    return 'No speech was captured in this conversation, so there is nothing to assess yet.';
-  }
-  if (assessmentUnavailable) {
-    return 'Your conversation is saved. Automated review is unavailable right now, so phrases were matched directly against your transcript.';
-  }
-  if (observationCount > 0) {
-    return 'You communicated your goals clearly in this conversation.';
-  }
-  return 'Your conversation is saved. No target phrases could be confirmed from what you said.';
-}
-
 export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   mission,
   initialSession,
@@ -217,6 +199,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 }) => {
   const { t, language } = useI18n();
   const insets = useSafeAreaInsets();
+
+  const buildHonestSummary = (
+    assessmentUnavailable: boolean,
+    observationCount: number,
+    hasLearnerSpeech: boolean
+  ): string => {
+    if (!hasLearnerSpeech) return t.live.summaryNoSpeech;
+    if (assessmentUnavailable) return t.live.summaryAssessmentUnavailable;
+    if (observationCount > 0) return t.live.summaryGoalsClear;
+    return t.live.summaryNoTargetPhrases;
+  };
 
   const sessionId = initialSession.id;
   const mode = initialSession.mode;
@@ -681,7 +674,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       );
 
       if (!result) {
-        setSceneEventNotice('Could not reach the scene director. Scene state is unchanged.');
+        setSceneEventNotice(t.live.sceneDirectorUnavailable);
         setTimeout(() => setSceneEventNotice(null), 4000);
         return;
       }
@@ -689,8 +682,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       if (!result.accepted) {
         setSceneEventNotice(
           result.reason
-            ? `Not applied: ${result.reason}`
-            : 'That action was not permitted here.'
+            ? `${t.live.actionNotApplied}: ${result.reason}`
+            : t.live.actionNotPermitted
         );
         setTimeout(() => setSceneEventNotice(null), 4000);
         return;
@@ -705,15 +698,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
       if (proposedAction.name === 'offer_alternative') {
         setSceneEventNotice(
-          `${mission?.character.name} checked: oat milk is out, offering almond milk.`
+          t.live.sceneAlternativeUpdated
         );
       } else if (proposedAction.name === 'confirm_takeaway') {
-        setSceneEventNotice('Order confirmed for takeaway ("para llevar").');
+        setSceneEventNotice(t.live.sceneTakeawayConfirmed);
       }
 
       setTimeout(() => setSceneEventNotice(null), 4000);
     },
-    [attemptId, mission?.character.name]
+    [attemptId, mission?.character.name, t.live]
   );
 
   const requestCoachHint = useCallback(
@@ -921,7 +914,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     setIsSceneFrozen(false);
     setActiveCoachAdvice(null);
     setSceneEventNotice(
-      'Checkpoint restored. This is a rehearsal, so the turn will not count as independent recall.'
+t.live.rehearsalRestored
     );
     setTimeout(() => setSceneEventNotice(null), 4000);
     voiceTransportRef.current?.startListening();
@@ -1122,9 +1115,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, finalObservations.length, hasLearnerSpeech),
       actionableFeedback: proposal?.actionableFeedback ?? [
         ...(finalObservations.length > 0
-          ? ['Good engagement! Practising in real-time builds fluency.']
+          ? [t.live.feedbackGoodEngagement]
           : []),
-        'Review phrases due in your Progress tab to keep retention high.',
+        t.live.feedbackReviewDue,
       ],
     });
   }, [
@@ -1134,6 +1127,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     mission,
     mode,
     onEndSession,
+    t.live,
     sessionId,
     supportExposures,
   ]);
