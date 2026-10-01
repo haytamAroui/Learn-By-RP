@@ -164,8 +164,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
-           policy_version, state, end_reason, started_at, ended_at, usage_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.missionVersion,
@@ -178,7 +178,51 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.endReason ?? null,
         session.startedAt,
         session.endedAt ?? null,
-        null
+        null,
+        session.coldAttempt ? 1 : 0
+      );
+
+      await txn.runAsync(
+        `INSERT OR IGNORE INTO attempts
+          (id, session_id, parent_attempt_id, checkpoint_id, rehearsal, created_at)
+         VALUES (?, ?, ?, ?, ?, ?)`,
+        'attempt-1',
+        session.id,
+        null,
+        'cp-start',
+        0,
+        session.startedAt
+      );
+
+      for (const exposure of session.supportExposures ?? []) {
+        await txn.runAsync(
+          `INSERT OR REPLACE INTO support_exposures
+            (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
+             exposure, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          exposure.id,
+          exposure.sessionId,
+          exposure.attemptId,
+          exposure.turnId ?? null,
+          exposure.source,
+          exposure.kind,
+          JSON.stringify(exposure.targetItemIds ?? []),
+          exposure.exposure,
+          exposure.recordedAt
+        );
+      }
+
+      await txn.runAsync(
+        `INSERT OR REPLACE INTO scene_state
+          (session_id, mission_id, revision, facts, checkpoints, is_finished, outcome)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        session.id,
+        session.missionId,
+        session.sceneState?.revision ?? 1,
+        JSON.stringify(session.sceneState?.facts ?? {}),
+        JSON.stringify(session.sceneState?.checkpoints ?? []),
+        session.sceneState?.isFinished ? 1 : 0,
+        session.sceneState?.outcome ?? 'unknown'
       );
     });
   }
@@ -202,8 +246,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
-           policy_version, state, end_reason, started_at, ended_at, usage_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.missionVersion,
@@ -216,7 +260,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.endReason ?? null,
         session.startedAt,
         session.endedAt ?? new Date().toISOString(),
-        null
+        null,
+        session.coldAttempt ? 1 : 0
       );
 
       await txn.runAsync(
@@ -449,7 +494,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         missionVersion: Number(row.mission_version),
         language: String(row.language) as LanguageCode,
         mode: String(row.mode) as Mode,
-        coldAttempt: true,
+        coldAttempt: bool(row.cold_attempt),
         state: String(row.state) as SessionState,
         startedAt: String(row.started_at),
         endedAt: row.ended_at ? String(row.ended_at) : undefined,
@@ -546,7 +591,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         state: String(row.state),
         startedAt: String(row.started_at),
         endedAt: row.ended_at ? String(row.ended_at) : undefined,
-        coldAttempt: true,
+        coldAttempt: bool(row.cold_attempt),
         turnCount: turns?.count ?? 0,
         observationCount: observations?.count ?? 0,
       });

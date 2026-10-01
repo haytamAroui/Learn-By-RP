@@ -270,13 +270,13 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
                     accessibilityRole="button"
                     accessibilityLabel={isListening ? t.live.listening : t.live.tapToSpeak}
                     className={`h-16 w-16 items-center justify-center rounded-full ${
-                      isListening ? 'bg-red-600' : 'bg-primary'
+                      isListening ? 'bg-action-pressed' : 'bg-action'
                     } active:opacity-80`}
                   >
                     {isListening ? (
-                      <MicOff size={28} color="#ffffff" />
+                      <MicOff size={28} color={iconColor('brandText')} />
                     ) : (
-                      <Mic size={28} color="#ffffff" />
+                      <Mic size={28} color={iconColor('brandText')} />
                     )}
                   </Pressable>
                   <Text className="text-xs text-muted">
@@ -376,7 +376,7 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
                     <Button
                       label={t.common.recalledClearly}
                       onPress={() => recordEvaluation('remembered')}
-                      icon={<Check size={16} color="#ffffff" />}
+                      icon={<Check size={16} color={iconColor('brandText')} />}
                     />
                   </View>
                 </View>

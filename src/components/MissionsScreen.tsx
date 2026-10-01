@@ -1,9 +1,20 @@
 import React, { useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
-import { ArrowRight, Compass, MapPin, Repeat, Route, Search } from 'lucide-react-native';
+import {
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
+import {
+  ChevronRight,
+  Compass,
+  MapPin,
+  Route,
+  Search,
+} from 'lucide-react-native';
 import { MissionDefinition } from '../types';
 import { useI18n } from '../features/i18n';
-import { Button, Card, ChipRow, EmptyState, Field, Segmented } from './ui';
 import { iconColor } from '../design/iconColor';
 
 interface MissionsScreenProps {
@@ -11,10 +22,7 @@ interface MissionsScreenProps {
   onSelectMission: (mission: MissionDefinition) => void;
 }
 
-const NEIGHBORHOOD_LOOP_TITLES: Record<
-  string,
-  Record<string, string>
-> = {
+const NEIGHBORHOOD_LOOP_TITLES: Record<string, Record<string, string>> = {
   es: {
     en: 'Calle del Sol — Connected Neighborhood Loop (Madrid)',
     fr: 'Calle del Sol — Boucle de quartier connectée (Madrid)',
@@ -53,8 +61,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
 }) => {
   const { t, language: uiLang } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState<string>('all');
-  const [selectedLevel, setSelectedLevel] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState('all');
   const [activeView, setActiveView] = useState<'catalog' | 'route'>('catalog');
 
   const categories = [
@@ -67,15 +74,16 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
   ];
 
   const query = searchQuery.trim().toLowerCase();
-  const filteredMissions = missions.filter(m => {
+  const filteredMissions = missions.filter(mission => {
     const matchesSearch =
       !query ||
-      m.title.toLowerCase().includes(query) ||
-      m.setting.toLowerCase().includes(query) ||
-      m.character.name.toLowerCase().includes(query);
-    const matchesCat = selectedCategory === 'all' || m.category === selectedCategory;
-    const matchesLvl = selectedLevel === 'all' || m.levelRange === selectedLevel;
-    return matchesSearch && matchesCat && matchesLvl;
+      mission.title.toLowerCase().includes(query) ||
+      mission.setting.toLowerCase().includes(query) ||
+      mission.character.name.toLowerCase().includes(query);
+    const matchesCategory =
+      selectedCategory === 'all' || mission.category === selectedCategory;
+
+    return matchesSearch && matchesCategory;
   });
 
   const activeLanguage = missions[0]?.language || 'es';
@@ -87,200 +95,202 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
   return (
     <ScrollView
       className="flex-1 bg-canvas"
-      contentContainerStyle={{ padding: 14, paddingBottom: 28, gap: 18 }}
+      showsVerticalScrollIndicator={false}
       keyboardShouldPersistTaps="handled"
+      contentContainerStyle={{
+        width: '100%',
+        maxWidth: 760,
+        alignSelf: 'center',
+        paddingHorizontal: 16,
+        paddingTop: 6,
+        paddingBottom: 36,
+        gap: 22,
+      }}
     >
-      <View className="gap-1">
-        <Text className="font-display text-2xl font-medium tracking-tight text-ink">
-          {t.missions.heading}
-        </Text>
-        <Text className="text-xs text-body">{t.missions.subheading}</Text>
+      <Text className="max-w-[620px] text-[15px] leading-[22px] text-body">
+        {t.missions.subheading}
+      </Text>
+
+      <View className="flex-row gap-2">
+        {[
+          { id: 'catalog' as const, label: t.missions.tabCatalog, Icon: Compass },
+          { id: 'route' as const, label: t.missions.tabRoute, Icon: Route },
+        ].map(item => {
+          const selected = activeView === item.id;
+          const Icon = item.Icon;
+
+          return (
+            <Pressable
+              key={item.id}
+              onPress={() => setActiveView(item.id)}
+              accessibilityRole="tab"
+              accessibilityState={{ selected }}
+              className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border px-4 hover:bg-surface-hover focus:border-2 focus:border-focus ${
+                selected ? 'border-ink bg-ink' : 'border-transparent bg-surface-soft'
+              }`}
+            >
+              <Icon
+                size={17}
+                color={selected ? iconColor('surface') : iconColor('muted')}
+              />
+              <Text
+                className={`text-sm font-semibold ${
+                  selected ? 'text-surface' : 'text-body'
+                }`}
+                numberOfLines={1}
+              >
+                {item.label}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
-      <Segmented
-        accessibilityLabel="Missions view"
-        value={activeView}
-        onChange={setActiveView}
-        options={[
-          {
-            id: 'catalog',
-            label: `${t.missions.tabCatalog} (${filteredMissions.length})`,
-            icon: <Compass size={14} color={iconColor('muted')} />,
-          },
-          {
-            id: 'route',
-            label: `${t.missions.tabRoute} (${missions.length})`,
-            icon: <Route size={14} color={iconColor('muted')} />,
-          },
-        ]}
-      />
-
-      {activeView === 'route' ? (
-        <View className="gap-4">
-          <Card className="gap-2 p-5">
-            <View className="flex-row items-center gap-2">
-              <MapPin size={16} color={iconColor('brand')} />
-              <Text className="flex-1 text-xs font-semibold uppercase tracking-wider text-primary">
-                {currentLoopTitle}
-              </Text>
-            </View>
-            <Text className="text-xs leading-relaxed text-body">{t.missions.routeSubtitle}</Text>
-          </Card>
-
-          {missions.map((mission, index) => (
-            <View key={mission.id} className="flex-row gap-3">
-              <View className="items-center">
-                <View className="h-7 w-7 items-center justify-center rounded-full border-2 border-primary bg-surface">
-                  <Text className="text-xs font-bold text-primary">{index + 1}</Text>
-                </View>
-                {index < missions.length - 1 ? (
-                  <View className="mt-1 w-0.5 flex-1 bg-border" />
-                ) : null}
-              </View>
-
-              <Card className="flex-1 gap-2" onPress={() => onSelectMission(mission)}>
-                <View className="flex-row flex-wrap items-center justify-between gap-2">
-                  <Text className="text-xs font-semibold text-ink">{mission.neighborhood}</Text>
-                  <Text className="text-xs text-muted">
-                    {t.common.level} {mission.levelRange} · ~{mission.estimatedMinutes}{' '}
-                    {t.common.minutes}
-                  </Text>
-                </View>
-
-                <Text className="font-display text-lg font-semibold text-ink">
-                  {mission.title}
-                </Text>
-                <Text className="text-xs leading-relaxed text-body" numberOfLines={2}>
-                  {mission.setting}
-                </Text>
-
-                <View className="flex-row flex-wrap items-center gap-1.5 pt-1">
-                  <Text className="text-xs font-medium text-ink">{t.common.speakingWith}</Text>
-                  <Text className="text-xs text-body">
-                    {mission.character.name} ({mission.character.role})
-                  </Text>
-                </View>
-
-                {mission.transferPattern ? (
-                  <View className="mt-1 flex-row items-start gap-2 rounded-xl border border-primary/10 bg-card-warm p-2.5">
-                    <Repeat
-                      size={14}
-                      color={iconColor('brand')}
-                      style={{ marginTop: 1 }}
-                    />
-                    <View className="flex-1">
-                      <Text className="text-xs text-primary-dark dark:text-primary">
-                        <Text className="font-semibold">{t.common.transferPattern} </Text>
-                        {mission.transferPattern}
-                      </Text>
-                      {mission.transferReason ? (
-                        <Text className="mt-0.5 text-xs text-muted">
-                          {mission.transferReason}
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
-                ) : null}
-              </Card>
-            </View>
-          ))}
-        </View>
-      ) : (
-        <View className="gap-3.5">
-          <Field
-            placeholder={t.missions.searchPlaceholder}
-            value={searchQuery}
-            onChangeText={setSearchQuery}
-            autoCorrect={false}
-            returnKeyType="search"
-            accessibilityLabel={t.missions.searchPlaceholder}
-          />
+      {activeView === 'catalog' ? (
+        <View className="gap-5">
+          <View className="h-12 flex-row items-center gap-3 rounded-2xl bg-surface-soft px-4">
+            <Search size={19} color={iconColor('muted')} />
+            <TextInput
+              value={searchQuery}
+              onChangeText={setSearchQuery}
+              placeholder={t.missions.searchPlaceholder}
+              placeholderTextColor={iconColor('muted')}
+              autoCorrect={false}
+              returnKeyType="search"
+              accessibilityLabel={t.missions.searchPlaceholder}
+              className="h-full flex-1 text-[15px] text-ink"
+            />
+          </View>
 
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 6, paddingRight: 4 }}
+            contentContainerStyle={{ gap: 8, paddingRight: 12 }}
           >
-            {categories.map(cat => {
-              const isActive = selectedCategory === cat.id;
+            {categories.map(category => {
+              const selected = selectedCategory === category.id;
+
               return (
-                <Button
-                  key={cat.id}
-                  label={cat.label}
-                  onPress={() => setSelectedCategory(cat.id)}
-                  size="sm"
-                  variant="secondary"
-                  className={isActive ? 'border-primary bg-primary/10' : ''}
-                  textClassName={isActive ? 'text-primary' : 'text-muted'}
-                />
+                <Pressable
+                  key={category.id}
+                  onPress={() => setSelectedCategory(category.id)}
+                  accessibilityRole="button"
+                  accessibilityState={{ selected }}
+                  className={`min-h-12 justify-center rounded-full border px-4 hover:bg-surface-hover focus:border-2 focus:border-focus ${
+                    selected ? 'border-action bg-action' : 'border-transparent bg-surface-soft'
+                  }`}
+                >
+                  <Text
+                    className={`text-sm font-semibold ${
+                      selected ? 'text-action-text' : 'text-body'
+                    }`}
+                  >
+                    {category.label}
+                  </Text>
+                </Pressable>
               );
             })}
           </ScrollView>
 
-          <ChipRow
-            value={selectedLevel}
-            onChange={setSelectedLevel}
-            options={[
-              { id: 'all', label: t.missions.filterAll },
-              { id: 'A1', label: 'A1' },
-              { id: 'A2', label: 'A2' },
-            ]}
-          />
-
-          {filteredMissions.map(mission => (
-            <Card key={mission.id} className="gap-3" onPress={() => onSelectMission(mission)}>
-              <View className="gap-2">
-                <View className="flex-row flex-wrap items-center gap-1.5">
-                  <Text className="text-xs font-semibold text-ink">
-                    {mission.neighborhood}
-                  </Text>
-                  <Text className="text-muted">·</Text>
-                  <Text className="text-xs text-muted">
-                    {mission.estimatedMinutes} {t.common.minutes}
-                  </Text>
-                  <Text className="text-muted">·</Text>
-                  <Text className="text-xs text-muted">
-                    {t.common.level} {mission.levelRange}
-                  </Text>
-                </View>
-
-                <Text className="font-display text-xl font-semibold text-ink">
-                  {mission.title}
-                </Text>
-
-                <Text className="text-xs leading-relaxed text-body" numberOfLines={2}>
-                  {mission.setting}
-                </Text>
-
-                <View className="flex-row flex-wrap items-baseline gap-1 pt-1">
-                  <Text className="text-xs font-semibold text-ink">{t.common.goal} </Text>
-                  <Text className="text-xs text-body">{mission.learnerGoal}</Text>
-                </View>
-              </View>
-
-              <View className="flex-row items-center justify-between gap-3 border-t border-border-subtle pt-3">
-                <View className="flex-1">
-                  <Text className="text-xs text-muted">
-                    {t.common.speakingWith}{' '}
-                    <Text className="font-medium text-ink">{mission.character.name}</Text>
-                  </Text>
-                  <Text className="text-xs text-muted">{mission.character.role}</Text>
-                </View>
-
-                <Button
-                  label={t.missions.briefingButton}
+          <View>
+            {filteredMissions.map((mission, index) => (
+              <React.Fragment key={mission.id}>
+                <Pressable
                   onPress={() => onSelectMission(mission)}
-                  size="sm"
-                  variant="secondary"
-                  icon={<ArrowRight size={14} color={iconColor('muted')} />}
-                />
-              </View>
-            </Card>
-          ))}
+                  accessibilityRole="button"
+                  accessibilityLabel={mission.title}
+                  className="min-h-[104px] flex-row items-center gap-3 rounded-2xl border border-transparent py-4 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
+                >
+                  <View className="h-12 w-12 items-center justify-center rounded-2xl bg-card-warm">
+                    <Compass size={21} color={iconColor('brand')} />
+                  </View>
 
-          {filteredMissions.length === 0 ? (
-            <EmptyState message={t.missions.noMissionsFound} />
-          ) : null}
+                  <View className="flex-1">
+                    <Text className="text-[17px] font-semibold leading-[22px] text-ink">
+                      {mission.title}
+                    </Text>
+                    <Text className="mt-1 text-[13px] leading-[18px] text-muted" numberOfLines={1}>
+                      {mission.neighborhood} · {mission.levelRange} · {mission.estimatedMinutes}{' '}
+                      {t.common.minutes}
+                    </Text>
+                    <Text className="mt-1 text-[14px] leading-5 text-body" numberOfLines={1}>
+                      {mission.setting}
+                    </Text>
+                  </View>
+
+                  <ChevronRight size={21} color={iconColor('muted')} />
+                </Pressable>
+                {index < filteredMissions.length - 1 ? (
+                  <View className="h-px bg-border-subtle" />
+                ) : null}
+              </React.Fragment>
+            ))}
+
+            {filteredMissions.length === 0 ? (
+              <View className="items-center px-6 py-14">
+                <Text className="text-center text-sm leading-5 text-muted">
+                  {t.missions.noMissionsFound}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+        </View>
+      ) : (
+        <View className="gap-5">
+          <View className="rounded-[24px] bg-surface-soft p-4">
+            <View className="flex-row items-start gap-3">
+              <View className="h-11 w-11 items-center justify-center rounded-2xl bg-card-warm">
+                <MapPin size={20} color={iconColor('brand')} />
+              </View>
+              <View className="flex-1">
+                <Text className="text-[16px] font-semibold leading-[21px] text-ink">
+                  {currentLoopTitle}
+                </Text>
+                <Text className="mt-1 text-[13px] leading-[19px] text-body">
+                  {t.missions.routeSubtitle}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          <View>
+            {missions.map((mission, index) => (
+              <View key={mission.id} className="flex-row gap-3">
+                <View className="items-center">
+                  <View className="h-9 w-9 items-center justify-center rounded-full bg-action">
+                    <Text className="text-sm font-bold text-action-text">{index + 1}</Text>
+                  </View>
+                  {index < missions.length - 1 ? (
+                    <View className="my-1 w-px flex-1 bg-border-subtle" />
+                  ) : null}
+                </View>
+
+                <Pressable
+                  onPress={() => onSelectMission(mission)}
+                  accessibilityRole="button"
+                  accessibilityLabel={mission.title}
+                  className="mb-5 min-h-[92px] flex-1 rounded-[22px] border border-transparent bg-surface-soft p-4 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
+                >
+                  <View className="flex-row items-start gap-3">
+                    <View className="flex-1">
+                      <Text className="text-[16px] font-semibold leading-[21px] text-ink">
+                        {mission.title}
+                      </Text>
+                      <Text className="mt-1 text-[13px] text-muted">
+                        {mission.levelRange} · {mission.estimatedMinutes} {t.common.minutes}
+                      </Text>
+                      {mission.transferReason ? (
+                        <Text className="mt-2 text-[13px] leading-[18px] text-body" numberOfLines={2}>
+                          {mission.transferReason}
+                        </Text>
+                      ) : null}
+                    </View>
+                    <ChevronRight size={20} color={iconColor('muted')} />
+                  </View>
+                </Pressable>
+              </View>
+            ))}
+          </View>
         </View>
       )}
     </ScrollView>

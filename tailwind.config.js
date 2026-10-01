@@ -22,7 +22,7 @@ module.exports = {
         // Platform UI font. The display face is editorial and never used for
         // dense UI or target-language conversation.
         sans: ['System', 'system-ui', 'sans-serif'],
-        display: ['serif'],
+        display: ['System', 'system-ui', 'sans-serif'],
         serif: ['serif'],
         mono: ['monospace'],
       },

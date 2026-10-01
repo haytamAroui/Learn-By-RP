@@ -1,6 +1,6 @@
 {
   "expo": {
-    "name": "Mission Coach",
+    "name": "LearnByRP",
     "slug": "learn-by-rp",
     "version": "1.0.0",
     "orientation": "portrait",
@@ -9,7 +9,7 @@
     "newArchEnabled": true,
     "splash": {
       "resizeMode": "contain",
-      "backgroundColor": "#faf9f5"
+      "backgroundColor": "#F2EDE4"
     },
     "assetBundlePatterns": ["**/*"],
     "ios": {
@@ -24,7 +24,7 @@
     "android": {
       "package": "com.haytaroui.missioncoach",
       "adaptiveIcon": {
-        "backgroundColor": "#faf9f5"
+        "backgroundColor": "#F2EDE4"
       },
       "permissions": ["android.permission.RECORD_AUDIO", "android.permission.INTERNET"],
       "edgeToEdgeEnabled": true

@@ -1,15 +1,13 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
 import {
   KeyboardAvoidingView,
-  Modal,
   Platform,
   Pressable,
   ScrollView,
   Text,
-  TextInput,
   View,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import { categoriseProviderError, type ProviderError } from '../features/voice/lifecycle';
 import {
   beginGeneration,
@@ -52,16 +50,14 @@ import {
 import { api } from '../lib/api';
 import { SceneMirror } from '../features/roleplay/SceneMirror';
 import { SceneActionName } from '../contracts/scene';
-import { Button, Field, SectionLabel } from './ui';
+import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
 
 interface LiveSessionViewProps {
   mission: MissionDefinition | null;
-  mode: Mode;
-  coldAttempt: boolean;
+  initialSession: SessionRecord;
   onEndSession: (session: SessionRecord) => void;
-  onCancel: () => void;
 }
 
 /**
@@ -87,7 +83,7 @@ type VoiceState =
 
 const VOICE_DOT: Record<VoiceState, string> = {
   connecting: 'bg-muted',
-  listening: 'bg-primary',
+  listening: 'bg-action',
   speaking: 'bg-accent-sage',
   muted: 'bg-muted',
   paused: 'bg-warning',
@@ -216,30 +212,23 @@ function buildHonestSummary(
 
 export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   mission,
-  mode,
-  coldAttempt,
+  initialSession,
   onEndSession,
-  onCancel,
 }) => {
   const { t, language } = useI18n();
   const insets = useSafeAreaInsets();
 
-  const [sessionId] = useState(() => `session-${Date.now()}`);
-  const [attemptId, setAttemptId] = useState('attempt-1');
-  const [passages, setPassages] = useState<Passage[]>([]);
-  const [supportExposures, setSupportExposures] = useState<SupportExposure[]>([]);
-  const [sceneState, setSceneState] = useState<SceneState>(() => ({
-    sceneId: mission?.id ?? 'unknown',
-    revision: 1,
-    facts: { ...(mission?.character ?? {}) },
-    learnerKnows: mission ? [mission.learnerGoal] : [],
-    characterKnows: mission?.character.knowledgeBoundary ?? [],
-    checkpoints: [
-      { id: 'cp-start', description: 'Session start', timestamp: new Date().toISOString() },
-    ],
-    isFinished: false,
-    outcome: 'unknown',
-  }));
+  const sessionId = initialSession.id;
+  const mode = initialSession.mode;
+  const coldAttempt = initialSession.coldAttempt;
+  const [attemptId, setAttemptId] = useState(
+    () => initialSession.passages.at(-1)?.attemptId ?? 'attempt-1'
+  );
+  const [passages, setPassages] = useState<Passage[]>(() => initialSession.passages);
+  const [supportExposures, setSupportExposures] = useState<SupportExposure[]>(
+    () => initialSession.supportExposures
+  );
+  const [sceneState, setSceneState] = useState<SceneState>(() => initialSession.sceneState);
 
   const [voiceState, setVoiceState] = useState<VoiceState>('connecting');
   const [audioLevel, setAudioLevel] = useState(0);
@@ -791,25 +780,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       sceneMirrorRef.current = null;
     }
 
-    // Support is recorded from the briefing, not just from inside the session.
-    // If the learner saw the target wording here, later use of it is assisted —
-    // that is what makes the cold-attempt choice meaningful.
-    if (!coldAttempt) {
-      setSupportExposures([
-        {
-          id: `exp-briefing-${Date.now()}`,
-          sessionId,
-          attemptId: 'attempt-1',
-          source: 'briefing',
-          kind: 'full_form',
-          targetItemIds: mission.usefulPhrases.map(p => p.id),
-          exposure: 'visible',
-          recordedAt: new Date().toISOString(),
-        },
-      ]);
-    } else {
-      setSupportExposures([]);
-    }
+    // Briefing support is already persisted before this route mounts. Keep that
+    // exact ledger: do not infer or broaden exposure from coldAttempt.
 
     const transport = new NativeVoiceTransport();
     transport.setLanguage(mission.language);
@@ -915,13 +887,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     return () => clearTimeout(timer);
   }, [passages, interimUserText]);
 
+  useEffect(() => {
+    setShowMeaningLine(false);
+  }, [passages.length]);
+
+
   const toggleFreezeScene = () => {
     if (!isSceneFrozen) {
       voiceTransportRef.current?.stopPlayback();
       voiceTransportRef.current?.stopListening();
       setIsSceneFrozen(true);
       setVoiceState('paused');
-      void requestCoachHint('intent_hint');
     } else {
       setIsSceneFrozen(false);
       setActiveCoachAdvice(null);
@@ -1131,7 +1107,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       mode,
       coldAttempt,
       state: 'recap_ready',
-      startedAt: finalPassages[0]?.startedAt || new Date().toISOString(),
+      startedAt: initialSession.startedAt,
       endedAt: new Date().toISOString(),
       endReason,
       passages: finalPassages,
@@ -1154,6 +1130,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   }, [
     attemptId,
     coldAttempt,
+    initialSession.startedAt,
     mission,
     mode,
     onEndSession,
@@ -1164,176 +1141,153 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   if (!mission) return null;
 
   const latestAssistantPassage = [...passages].reverse().find(p => p.speaker === 'assistant');
+  const olderPassages = latestAssistantPassage
+    ? passages.filter(passage => passage.id !== latestAssistantPassage.id).slice(-6)
+    : passages.slice(-6);
   const voiceLabel = isSceneFrozen ? t.live.pausedTag : voiceState;
 
+  const requestSupport = (kind: 'intent_hint' | 'partial_form' | 'full_form') => {
+    voiceTransportRef.current?.stopPlayback();
+    voiceTransportRef.current?.stopListening();
+    setIsSceneFrozen(true);
+    setVoiceState('paused');
+    void requestCoachHint(kind);
+    setShowHelpSheet(false);
+  };
+
   return (
-    <Modal visible transparent animationType="slide" onRequestClose={onCancel} statusBarTranslucent>
-      <View className="flex-1 bg-canvas" style={{ paddingTop: insets.top }}>
-        <View className="flex-row items-center justify-between gap-2 border-b border-border-subtle bg-surface px-3.5 py-2.5">
-          <View className="flex-1 min-w-0">
-            <View className="flex-row items-center gap-1.5">
-              <Text className="text-xs font-semibold text-ink" numberOfLines={1}>
-                {mission.title}
-              </Text>
-              <Text className="text-xs text-muted">·</Text>
-              <Text className="text-xs text-muted" numberOfLines={1}>
-                {mission.character.name}
-              </Text>
-            </View>
-            <Text className="mt-0.5 text-xs text-body" numberOfLines={1}>
-              <Text className="font-medium text-ink">{t.common.goal}</Text> {mission.learnerGoal}
+    <View className="flex-1 bg-canvas">
+      <SafeAreaView edges={['top']} className="bg-canvas">
+        <View className="w-full self-center flex-row items-center gap-3 px-3 py-2" style={{ maxWidth: 900 }}>
+          <Pressable
+            onPress={() => void handleFinishConversation('user_ended')}
+            accessibilityRole="button"
+            accessibilityLabel={t.common.close}
+            className="h-12 w-12 items-center justify-center rounded-full border border-transparent bg-surface-soft hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
+          >
+            <X size={21} color={iconColor('ink')} />
+          </Pressable>
+
+          <View className="min-w-0 flex-1 items-center">
+            <Text className="text-sm font-semibold text-ink" numberOfLines={1}>
+              {mission.character.name}
+            </Text>
+            <Text className="mt-0.5 text-xs text-muted" numberOfLines={1}>
+              {mission.title}
             </Text>
           </View>
 
-          <View className="flex-row items-center gap-1.5">
-            <Pressable
-              onPress={toggleFreezeScene}
-              accessibilityRole="button"
-              accessibilityLabel={isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
-              className={`h-8 flex-row items-center gap-1 rounded-xl border px-2.5 ${
-                isSceneFrozen
-                  ? 'border-primary bg-card-warm'
-                  : 'border-border-subtle bg-surface-sunken'
-              }`}
-            >
-              {isSceneFrozen ? (
-                <Play size={14} color={iconColor('brand')} fill="rgb(var(--color-brand))" />
-              ) : (
-                <Pause size={14} color={iconColor('ink')} />
-              )}
-              <Text
-                className={`text-xs font-medium ${
-                  isSceneFrozen ? 'text-primary' : 'text-ink'
-                }`}
-              >
-                {isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={() => void handleFinishConversation()}
-              accessibilityRole="button"
-              accessibilityLabel={t.common.endConversation}
-              className="h-8 items-center justify-center rounded-xl bg-primary px-3 active:opacity-80"
-            >
-              <Text className="text-xs font-semibold text-white">
-                {t.common.endConversation}
-              </Text>
-            </Pressable>
-          </View>
+          <Pressable
+            onPress={toggleFreezeScene}
+            accessibilityRole="button"
+            accessibilityLabel={isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
+            className={`h-12 w-12 items-center justify-center rounded-full border ${
+              isSceneFrozen
+                ? 'border-primary bg-card-warm'
+                : 'border-transparent bg-surface-soft'
+            } hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus`}
+          >
+            {isSceneFrozen ? (
+              <Play size={20} color={iconColor('brand')} fill={iconColor('brand')} />
+            ) : (
+              <Pause size={20} color={iconColor('ink')} />
+            )}
+          </Pressable>
         </View>
+      </SafeAreaView>
 
-        {/*
-          Announcements sit at the top of the session so a screen reader reaches them
-          without the learner having to hunt. `liveRegion` matters because the countdown
-          changes every second: without it the value is announced once and never
-          updated, which is the opposite of what a countdown is for.
-        */}
-        {/*
-          `allowFontScaling` is left at its default on purpose. It is the only thing
-          that keeps the countdown readable at large text sizes, and clamping it is the
-          usual shortcut when a layout breaks at 200%. The banner grows with the text
-          instead: no fixed height, and the number is on its own line so it cannot be
-          squeezed out by a longer translation.
-        */}
-        <View accessibilityLiveRegion="polite" accessible={false}>
-          {inactivityCountdown !== null ? (
-            <View className="border-b border-warning/40 bg-surface-sunken px-4 py-2">
-              <Text className="text-center text-sm font-semibold text-ink">
-                {t.live.sessionEndingSoon}
-              </Text>
-              <Text
-                className="text-center text-2xl font-semibold text-ink"
-                accessibilityLabel={`${t.live.sessionEndingSoon} ${inactivityCountdown}`}
-              >
-                {inactivityCountdown}
-              </Text>
-            </View>
-          ) : null}
-        </View>
-
-        {sceneEventNotice ? (
-          <View className="border-b border-primary/20 bg-card-warm px-4 py-2">
-            <Text className="text-center text-xs font-medium text-primary">{sceneEventNotice}</Text>
+      <View accessibilityLiveRegion="polite" accessible={false}>
+        {inactivityCountdown !== null ? (
+          <View className="bg-warning-soft px-4 py-2">
+            <Text className="text-center text-sm font-semibold text-ink">
+              {t.live.sessionEndingSoon} · {inactivityCountdown}
+            </Text>
           </View>
         ) : null}
+      </View>
 
-        <ScrollView
-          ref={scrollRef}
-          className="flex-1"
-          contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 20 }}
-          keyboardShouldPersistTaps="handled"
-          onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
-        >
-          {latestAssistantPassage ? (
-            <View className="gap-3 rounded-2xl border border-border-subtle bg-surface p-5">
-              <View className="flex-row items-center justify-between gap-3">
-                <Text className="flex-1 text-xs font-medium text-ink">
-                  {mission.character.name}
-                </Text>
+      {sceneEventNotice ? (
+        <View className="bg-card-warm px-4 py-2">
+          <Text className="text-center text-xs font-medium text-primary">{sceneEventNotice}</Text>
+        </View>
+      ) : null}
+
+      <ScrollView
+        ref={scrollRef}
+        className="flex-1"
+        contentContainerStyle={{
+          width: '100%',
+          maxWidth: 720,
+          alignSelf: 'center',
+          paddingHorizontal: 16,
+          paddingTop: 28,
+          paddingBottom: 28,
+          gap: 24,
+        }}
+        keyboardShouldPersistTaps="handled"
+        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
+      >
+        {latestAssistantPassage ? (
+          <View className="gap-4">
+            <View className="flex-row items-center justify-between gap-3">
+              <Text className="text-sm font-semibold text-primary">
+                {mission.character.name}
+              </Text>
+              {latestAssistantPassage.meaning ? (
                 <Pressable
                   onPress={handleToggleMeaning}
                   accessibilityRole="button"
-                  accessibilityState={{ expanded: showMeaningLine }}
-                  accessibilityLabel={
-                    showMeaningLine
-                      ? t.common.hideTranslation
-                      : `${t.common.showTranslation}: ${latestAssistantPassage.meaning ?? ''}`
-                  }
+                  accessibilityLabel={t.common.showTranslation}
+                  className="min-h-12 justify-center rounded-full border border-transparent px-3 hover:bg-surface-hover focus:border-2 focus:border-focus"
                 >
-                  <Text className="text-xs font-medium text-primary">
-                    {showMeaningLine ? t.common.hideTranslation : t.common.showTranslation}
+                  <Text className="text-xs font-semibold text-primary">
+                    {t.common.showTranslation}
                   </Text>
                 </Pressable>
-              </View>
-
-              <Text className="font-display text-2xl font-medium leading-snug text-ink">
-                "{latestAssistantPassage.text}"
-              </Text>
-
-              {showMeaningLine && latestAssistantPassage.meaning ? (
-                <View className="rounded-xl border border-border-subtle bg-surface-sunken p-3">
-                  <Text className="text-xs text-body">
-                    <Text className="font-medium text-ink">{t.common.meaning} </Text>
-                    {latestAssistantPassage.meaning}
-                  </Text>
-                </View>
               ) : null}
             </View>
-          ) : null}
 
-          {interimUserText ? (
-            <View className="rounded-xl border border-dashed border-primary/40 bg-card-warm p-4">
-              <Text className="text-sm italic text-ink">
-                {t.common.hearingYou} "{interimUserText}..."
-              </Text>
-            </View>
-          ) : null}
+            <Text className="text-[26px] font-medium leading-[35px] tracking-tight text-ink">
+              {latestAssistantPassage.text}
+            </Text>
+          </View>
+        ) : null}
 
-          <View className="gap-3 pt-1">
-            <SectionLabel>{t.recap.transcriptTitle}</SectionLabel>
-            {passages.map(passage => {
+        {interimUserText ? (
+          <View className="self-end max-w-[88%] rounded-[22px] bg-card-warm px-4 py-3">
+            <Text className="text-xs font-semibold text-primary">{t.common.hearingYou}</Text>
+            <Text className="mt-1 text-[15px] italic leading-[22px] text-ink">
+              {interimUserText}…
+            </Text>
+          </View>
+        ) : null}
+
+        {olderPassages.length > 0 ? (
+          <View className="gap-3 pt-4">
+            {olderPassages.map(passage => {
               const isUser = passage.speaker === 'user';
               return (
                 <View
                   key={passage.id}
-                  className={`${isUser ? 'items-end' : 'items-start'} flex-row`}
+                  className={isUser ? 'items-end' : 'items-start'}
                 >
                   <View
-                    className={`max-w-[85%] rounded-2xl px-4 py-2.5 ${
-                      isUser
-                        ? 'rounded-br-xs bg-primary'
-                        : 'rounded-bl-xs border border-border-subtle bg-surface'
+                    className={`max-w-[84%] rounded-[20px] px-4 py-3 ${
+                      isUser ? 'bg-action' : 'bg-surface-soft'
                     }`}
                   >
                     <Text
-                      className={`mb-0.5 text-xs ${
-                        isUser ? 'text-white/80' : 'text-muted'
+                      className={`text-xs font-medium ${
+                        isUser ? 'text-action-text/80' : 'text-muted'
                       }`}
                     >
-                      {isUser ? `${t.common.you} (${passage.modality})` : mission.character.name}
+                      {isUser ? t.common.you : mission.character.name}
                     </Text>
-                    <Text className={`text-sm ${isUser ? 'text-white' : 'text-ink'}`}>
+                    <Text
+                      className={`mt-1 text-sm leading-5 ${
+                        isUser ? 'text-action-text' : 'text-ink'
+                      }`}
+                    >
                       {passage.text}
                     </Text>
                   </View>
@@ -1341,67 +1295,60 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               );
             })}
           </View>
-        </ScrollView>
+        ) : null}
+      </ScrollView>
 
-        {isSceneFrozen ? (
-          <View className="border-t border-primary/20 bg-card-warm p-4">
-            <View className="gap-3">
-              <View className="gap-1">
-                <View className="flex-row items-center gap-1.5">
-                  <Pause size={14} color={iconColor('brand')} />
-                  <Text className="text-xs font-semibold text-primary">{t.live.frozenTag}</Text>
-                </View>
-                <Text className="text-xs leading-relaxed text-ink">
+      {isSceneFrozen ? (
+        <View className="border-t border-primary/20 bg-card-warm px-4 py-3">
+          <View className="w-full self-center gap-3" style={{ maxWidth: 720 }}>
+            <View className="flex-row items-start gap-2">
+              <Pause size={17} color={iconColor('brand')} style={{ marginTop: 2 }} />
+              <View className="flex-1">
+                <Text className="text-sm font-semibold text-primary">{t.live.frozenTag}</Text>
+                <Text className="mt-1 text-sm leading-5 text-ink">
                   {isCoachLoading
                     ? t.live.coachAsking
-                    : activeCoachAdvice || t.live.coachStepIntent}
+                    : activeCoachAdvice || t.live.pausedTag}
                 </Text>
               </View>
+            </View>
 
-              <View className="flex-row items-center gap-2">
-                <View className="flex-1">
-                  <Button
-                    label={t.live.coachStepPartial}
-                    onPress={() => requestCoachHint('partial_form')}
-                    variant="secondary"
-                    size="sm"
-                    className="border-primary/30"
-                    textClassName="text-primary"
-                  />
-                </View>
-                <View className="flex-1">
-                  <Button
-                    label={t.common.retryTurn}
-                    onPress={handleRetryCheckpoint}
-                    variant="secondary"
-                    size="sm"
-                    icon={<RotateCcw size={14} color={iconColor('muted')} />}
-                  />
-                </View>
+            <View className="flex-row gap-2">
+              <View className="flex-1">
+                <Button
+                  label={t.common.resumeScene}
+                  onPress={toggleFreezeScene}
+                  variant="secondary"
+                />
+              </View>
+              <View className="flex-1">
+                <Button
+                  label={t.common.retryTurn}
+                  onPress={handleRetryCheckpoint}
+                  variant="secondary"
+                  icon={<RotateCcw size={16} color={iconColor('muted')} />}
+                />
               </View>
             </View>
           </View>
-        ) : null}
+        </View>
+      ) : null}
 
-        <KeyboardAvoidingView
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-          keyboardVerticalOffset={insets.top}
-        >
-          {showTypedInput ? (
-            <View className="border-t border-border-subtle bg-surface p-3">
-              {/*
-                Sustained-failure recovery. Surfaced rather than left implicit,
-                because "nothing is happening" is indistinguishable from "the app has
-                stopped working", and a learner who cannot tell will conclude the
-                latter.
-              */}
-              {lastAssistantError && (
-                <View className="mb-2 gap-2 rounded-xl border border-warning/40 bg-surface-sunken p-3">
-                  <Text className="text-xs font-semibold text-ink">
+      <KeyboardAvoidingView
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        keyboardVerticalOffset={insets.top}
+      >
+        {showTypedInput ? (
+          <View className="border-t border-border-subtle bg-surface px-4 py-3">
+            <View className="w-full self-center gap-2" style={{ maxWidth: 720 }}>
+              {lastAssistantError ? (
+                <View className="gap-2 rounded-2xl bg-warning-soft p-3">
+                  <Text className="text-sm font-medium text-ink">
                     {lastAssistantError.userMessage}
                   </Text>
-                  {lastAssistantError.retryable && (
-                    <Pressable
+                  {lastAssistantError.retryable ? (
+                    <Button
+                      label={t.live.retryConnection}
                       onPress={() => {
                         setLastAssistantError(null);
                         setVoiceState('connecting');
@@ -1412,18 +1359,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                           setVoiceState('listening');
                         }
                       }}
-                      accessibilityRole="button"
-                      accessibilityLabel={t.live.retryConnection}
-                      className="h-10 w-full flex-row items-center justify-center gap-2 rounded-lg bg-primary px-3"
-                    >
-                      <RotateCcw size={14} color="#ffffff" />
-                      <Text className="text-xs font-semibold text-white">
-                        {t.live.retryConnection}
-                      </Text>
-                    </Pressable>
-                  )}
+                      size="sm"
+                      className="self-start"
+                    />
+                  ) : null}
                 </View>
-              )}
+              ) : null}
 
               <View className="flex-row items-end gap-2">
                 <View className="flex-1">
@@ -1433,181 +1374,155 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                     onChangeText={setTypedMessage}
                     autoCapitalize="none"
                     returnKeyType="send"
-                    onSubmitEditing={() => {
-                      void submitTypedMessage(mission);
-                    }}
+                    onSubmitEditing={() => void submitTypedMessage(mission)}
                     accessibilityLabel={t.live.typePlaceholder}
                   />
                 </View>
                 <Pressable
-                  onPress={() => {
-                    void submitTypedMessage(mission);
-                  }}
+                  onPress={() => void submitTypedMessage(mission)}
                   disabled={!typedMessage.trim()}
                   accessibilityRole="button"
+                  accessibilityState={{ disabled: !typedMessage.trim() }}
                   accessibilityLabel="Send"
-                  className={`h-11 w-11 items-center justify-center rounded-xl bg-primary ${
+                  className={`h-12 w-12 items-center justify-center rounded-xl bg-action ${
                     typedMessage.trim() ? '' : 'opacity-40'
-                  }`}
+                  } focus:border-2 focus:border-brand-on`}
                 >
-                  <Send size={16} color="#ffffff" />
+                  <Send size={17} color={iconColor('brandText')} />
                 </Pressable>
               </View>
             </View>
-          ) : null}
+          </View>
+        ) : null}
 
-          <View
-            className="border-t border-border-subtle bg-surface px-3.5 py-2.5"
-            style={{ paddingBottom: Math.max(insets.bottom, 10) }}
-          >
-            <View className="flex-row items-center gap-2">
-              <Pressable
-                onPress={() => {
-                  const nextMuted = !isMuted;
-                  setIsMuted(nextMuted);
-                  voiceTransportRef.current?.setMuted(nextMuted);
+        <View
+          className="border-t border-border-subtle bg-surface px-4 pt-3"
+          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+        >
+          <View className="w-full self-center gap-3" style={{ maxWidth: 720 }}>
+            <View className="flex-row items-center justify-center gap-2">
+              <View className={`h-2.5 w-2.5 rounded-full ${VOICE_DOT[voiceState]}`} />
+              <Text className="text-xs font-semibold capitalize text-muted">
+                {voiceLabel}
+              </Text>
+            </View>
+
+            <Pressable
+              onPress={() => {
+                if (VOICE_BLOCKED.has(voiceState)) return;
+                if (voiceState === 'listening') {
+                  voiceTransportRef.current?.stopListening();
+                } else {
+                  voiceTransportRef.current?.startListening();
+                }
+              }}
+              disabled={VOICE_BLOCKED.has(voiceState)}
+              accessibilityRole="button"
+              accessibilityState={{ disabled: VOICE_BLOCKED.has(voiceState) }}
+              accessibilityLabel={
+                voiceState === 'listening'
+                  ? t.live.listening
+                  : voiceState === 'reconnecting'
+                    ? t.live.reconnecting
+                    : voiceState === 'error'
+                      ? t.live.voiceFailed
+                      : t.live.tapToSpeak
+              }
+              className={`min-h-14 w-full flex-row items-center justify-center gap-2 rounded-2xl bg-action px-4 ${
+                VOICE_BLOCKED.has(voiceState) ? 'opacity-40' : ''
+              } active:bg-action-pressed focus:border-2 focus:border-brand-on`}
+            >
+              <View
+                className="h-2.5 w-2.5 rounded-full bg-action-text/60"
+                style={{
+                  opacity: voiceState === 'listening' ? 0.4 + audioLevel * 0.6 : 0.3,
+                  transform: [{ scale: 1 + audioLevel * 0.6 }],
                 }}
-                accessibilityRole="button"
-                accessibilityLabel={isMuted ? 'Unmute microphone' : 'Mute microphone'}
-                className={`h-10 w-10 shrink-0 items-center justify-center rounded-full border ${
-                  isMuted
-                    ? 'border-red-300 bg-red-500/10'
-                    : 'border-border-subtle bg-surface-sunken'
-                }`}
-              >
-                {isMuted ? (
-                  <MicOff size={16} color="#ef4444" />
-                ) : (
-                  <Mic size={16} color={iconColor('ink')} />
-                )}
-              </Pressable>
+              />
+              {voiceState === 'error' ? (
+                <MicOff size={19} color={iconColor('brandText')} />
+              ) : (
+                <Mic size={19} color={iconColor('brandText')} />
+              )}
+              <Text className="text-sm font-semibold text-action-text" numberOfLines={1}>
+                {voiceState === 'listening'
+                  ? t.live.listening
+                  : voiceState === 'reconnecting'
+                    ? t.live.reconnecting
+                    : voiceState === 'error'
+                      ? t.live.voiceFailed
+                      : t.live.tapToSpeak}
+              </Text>
+            </Pressable>
 
-              <View className="flex-row items-center gap-1.5">
-                <View className={`h-2.5 w-2.5 rounded-full ${VOICE_DOT[voiceState]}`} />
-                <Text className="text-xs font-medium capitalize text-muted">
-                  {voiceLabel}
-                </Text>
-              </View>
-
-              <View className="flex-1">
-                <Pressable
-                  onPress={() => {
-                    // Guarded: tapping while reconnecting or after a failure used to
-                    // call into a transport that could not accept it, which surfaced
-                    // as an unhandled rejection rather than a visible reason.
-                    if (VOICE_BLOCKED.has(voiceState)) return;
-
-                    if (voiceState === 'listening') {
-                      voiceTransportRef.current?.stopListening();
-                    } else {
-                      voiceTransportRef.current?.startListening();
-                    }
-                  }}
-                  accessibilityRole="button"
-                  accessibilityState={{ disabled: VOICE_BLOCKED.has(voiceState) }}
-                  accessibilityLabel={
-                    voiceState === 'listening'
-                      ? t.live.listening
-                      : voiceState === 'reconnecting'
-                        ? t.live.reconnecting
-                        : voiceState === 'error'
-                          ? t.live.voiceFailed
-                          : t.live.tapToSpeak
-                  }
-                  className={`h-11 w-full flex-row items-center justify-center gap-2 rounded-xl px-3 ${
-                    VOICE_BLOCKED.has(voiceState) ? 'bg-muted' : 'bg-primary'
-                  } active:opacity-80`}
-                >
-                  <View
-                    className="h-2 w-2 rounded-full bg-white/60"
-                    style={{
-                      opacity: voiceState === 'listening' ? 0.4 + audioLevel * 0.6 : 0.3,
-                      transform: [{ scale: 1 + audioLevel * 0.6 }],
-                    }}
-                  />
-                  {voiceState === 'error' ? (
-                    <MicOff size={16} color="#ffffff" />
-                  ) : (
-                    <Mic size={16} color="#ffffff" />
-                  )}
-                  <Text className="text-xs font-semibold text-white" numberOfLines={1}>
-                    {voiceState === 'listening'
-                      ? t.live.listening
-                      : voiceState === 'reconnecting'
-                        ? t.live.reconnecting
-                        : voiceState === 'error'
-                          ? t.live.voiceFailed
-                          : t.live.tapToSpeak}
-                  </Text>
-                </Pressable>
-              </View>
-
+            <View className="flex-row gap-2">
               <Pressable
-                onPress={() => setShowHelpSheet(prev => !prev)}
+                onPress={() => setShowHelpSheet(true)}
                 accessibilityRole="button"
                 accessibilityLabel={t.common.help}
-                className="h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-border-subtle bg-surface"
+                className="min-h-12 flex-1 items-center justify-center rounded-xl border border-border-interactive bg-surface hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
               >
-                <HelpCircle size={16} color={iconColor('brand')} />
+                <HelpCircle size={18} color={iconColor('brand')} />
+                <Text className="mt-1 text-xs font-semibold text-ink">{t.common.help}</Text>
               </Pressable>
 
               <Pressable
                 onPress={() => setShowTypedInput(prev => !prev)}
                 accessibilityRole="button"
+                accessibilityState={{ selected: showTypedInput }}
                 accessibilityLabel={t.live.typeInstead}
-                className={`h-10 w-10 shrink-0 items-center justify-center rounded-xl border ${
+                className={`min-h-12 flex-1 items-center justify-center rounded-xl border ${
                   showTypedInput
                     ? 'border-primary bg-card-warm'
-                    : 'border-border-subtle bg-surface'
-                }`}
+                    : 'border-border-interactive bg-surface'
+                } hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus`}
               >
-                <Keyboard
-                  size={16}
-                  color={
-                    showTypedInput
-                      ? 'rgb(var(--color-brand))'
-                      : 'rgb(var(--color-muted))'
-                  }
-                />
+                <Keyboard size={18} color={showTypedInput ? iconColor('brand') : iconColor('ink')} />
+                <Text className="mt-1 text-xs font-semibold text-ink" numberOfLines={1}>
+                  {t.live.typeInstead}
+                </Text>
+              </Pressable>
+
+              <Pressable
+                onPress={() => void handleFinishConversation()}
+                accessibilityRole="button"
+                accessibilityLabel={t.common.endConversation}
+                className="min-h-12 flex-1 items-center justify-center rounded-xl border border-danger/30 bg-danger-soft hover:opacity-90 active:opacity-75 focus:border-2 focus:border-focus"
+              >
+                <X size={18} color={iconColor('danger')} />
+                <Text className="mt-1 text-xs font-semibold text-danger" numberOfLines={1}>
+                  {t.common.endConversation}
+                </Text>
               </Pressable>
             </View>
           </View>
-        </KeyboardAvoidingView>
+        </View>
+      </KeyboardAvoidingView>
 
-        <Sheet
-          visible={showHelpSheet}
-          onClose={() => setShowHelpSheet(false)}
-          title={t.live.coachDrawerTitle}
-        >
+      <Sheet
+        visible={showHelpSheet}
+        onClose={() => setShowHelpSheet(false)}
+        title={t.live.coachDrawerTitle}
+        size="compact"
+      >
+        <Text className="text-sm leading-6 text-body">
+          {t.live.coachStepIntent}
+        </Text>
+        <View className="gap-2">
           <Button
             label={t.live.coachStepIntent}
-            onPress={() => {
-              void requestCoachHint('intent_hint');
-              setShowHelpSheet(false);
-              setIsSceneFrozen(true);
-            }}
+            onPress={() => requestSupport('intent_hint')}
             variant="secondary"
-            className="items-start"
           />
           <Button
             label={t.live.coachStepPartial}
-            onPress={() => {
-              void requestCoachHint('partial_form');
-              setShowHelpSheet(false);
-              setIsSceneFrozen(true);
-            }}
+            onPress={() => requestSupport('partial_form')}
             variant="secondary"
-            className="items-start"
           />
           <Button
             label={t.live.coachStepFull}
-            onPress={() => {
-              void requestCoachHint('full_form');
-              setShowHelpSheet(false);
-              setIsSceneFrozen(true);
-            }}
+            onPress={() => requestSupport('full_form')}
             variant="secondary"
-            className="items-start"
           />
           <Button
             label={t.settings.speedSlower}
@@ -1620,11 +1535,21 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               }
               setShowHelpSheet(false);
             }}
-            variant="secondary"
-            className="items-start"
+            variant="ghost"
           />
-        </Sheet>
-      </View>
-    </Modal>
+        </View>
+      </Sheet>
+
+      <Sheet
+        visible={showMeaningLine && Boolean(latestAssistantPassage?.meaning)}
+        onClose={() => setShowMeaningLine(false)}
+        title={t.common.meaning}
+        size="compact"
+      >
+        <Text className="text-lg font-medium leading-7 text-ink">
+          {latestAssistantPassage?.meaning}
+        </Text>
+      </Sheet>
+    </View>
   );
 };

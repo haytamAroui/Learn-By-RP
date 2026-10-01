@@ -153,6 +153,18 @@ const colors: Record<string, ColorSpec> = {
     soft: alias('brandSoft'),
     on: alias('brandText'),
     button: alias('brandButton'),
+    buttonHover: alias('brandButtonHover'),
+    buttonPressed: alias('brandButtonPressed'),
+  },
+
+  // Filled actions intentionally do not use the foreground brand token. In dark
+  // mode the foreground brand is light for readability, while the CTA stays dark
+  // enough to carry white text.
+  action: {
+    DEFAULT: alias('brandButton'),
+    hover: alias('brandButtonHover'),
+    pressed: alias('brandButtonPressed'),
+    text: alias('brandText'),
   },
 
   // Retained during the component migration so screens can be reworked one at a

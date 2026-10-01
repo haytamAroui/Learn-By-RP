@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { ScrollView, Text, View } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useArchive } from '../features/archive/ArchiveProvider';
 import { Button, Card, SectionLabel } from '../components/ui';
@@ -20,14 +21,14 @@ export default function RecoveryScreen() {
 
   if (interrupted.length === 0) {
     return (
-      <View className="flex-1 items-center justify-center bg-canvas p-6">
+      <SafeAreaView className="flex-1 items-center justify-center bg-canvas p-6" edges={['top', 'bottom']}>
         <Text className="text-center text-sm text-muted">
           Nothing was left unfinished.
         </Text>
         <View className="mt-4">
           <Button label="Back" onPress={() => router.back()} variant="secondary" size="sm" />
         </View>
-      </View>
+      </SafeAreaView>
     );
   }
 
@@ -38,9 +39,9 @@ export default function RecoveryScreen() {
         void archive.savePreferences({ ...archive.preferences, explanationLanguage: lang })
       }
     >
-      <View className="flex-1 bg-canvas">
-        <View className="border-b border-border-subtle px-4 py-3" style={{ paddingTop: 52 }}>
-          <Text className="font-display text-lg font-semibold text-ink">
+      <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
+        <View className="px-4 py-3">
+          <Text className="text-lg font-semibold text-ink">
             Unfinished conversation
           </Text>
           <Text className="mt-0.5 text-xs text-body">
@@ -48,7 +49,18 @@ export default function RecoveryScreen() {
           </Text>
         </View>
 
-        <View className="gap-3 p-4">
+        <ScrollView
+          className="flex-1"
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={{
+            width: '100%',
+            maxWidth: 720,
+            alignSelf: 'center',
+            padding: 16,
+            paddingBottom: 40,
+            gap: 12,
+          }}
+        >
           <SectionLabel>Sessions to review</SectionLabel>
 
           {interrupted.map(item => {
@@ -99,8 +111,8 @@ export default function RecoveryScreen() {
             size="sm"
             className="mt-2 self-start"
           />
-        </View>
-      </View>
+        </ScrollView>
+      </SafeAreaView>
     </I18nProvider>
   );
 }

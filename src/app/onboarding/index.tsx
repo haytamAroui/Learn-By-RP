@@ -1,12 +1,12 @@
 import React, { useState } from 'react';
-import { View } from 'react-native';
+import { ScrollView, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { CONSENT_VERSION } from '../../features/archive/schema';
 import { getTranslations } from '../../features/i18n';
 import { LanguageCode, UiLanguage, UserPreferences } from '../../types';
-import { Button, Card, ChipRow, Field, SectionLabel } from '../../components/ui';
+import { Button, Card, ChipRow, SectionLabel } from '../../components/ui';
 import { Text } from 'react-native';
 
 const TARGET_LANGUAGES: Array<{ id: LanguageCode; label: string }> = [
@@ -47,11 +47,7 @@ export default function OnboardingScreen() {
 
   const t = getTranslations(explanationLanguage);
 
-  const canContinue = voiceConsent && analysisConsent;
-
   const handleContinue = async () => {
-    if (!canContinue) return;
-
     await savePreferences({
       ...preferences,
       learningLanguage,
@@ -70,14 +66,25 @@ export default function OnboardingScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
-      <View className="flex-1">
-        <View className="gap-5 p-5">
+      <ScrollView
+        className="flex-1"
+        keyboardShouldPersistTaps="handled"
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{
+          width: '100%',
+          maxWidth: 720,
+          alignSelf: 'center',
+          padding: 20,
+          paddingBottom: 40,
+          gap: 20,
+        }}
+      >
           <View className="gap-1.5">
-            <Text className="font-display text-2xl font-semibold tracking-tight text-ink">
+            <Text className="text-2xl font-semibold tracking-tight text-ink">
               {t.nav.brandTitle}
             </Text>
             <Text className="text-sm leading-relaxed text-body">
-              Set up two things, then start your first conversation. No placement test.
+              Choose your language, comfort level, goal, and privacy options. No placement test.
             </Text>
           </View>
 
@@ -155,13 +162,11 @@ export default function OnboardingScreen() {
           </Card>
 
           <Button
-            label={canContinue ? 'Start practising' : 'Choose both to continue'}
+            label="Start practising"
             onPress={handleContinue}
-            disabled={!canContinue}
             size="lg"
           />
-        </View>
-      </View>
+      </ScrollView>
     </SafeAreaView>
   );
 }

@@ -25,6 +25,7 @@ interface ArchiveContextValue {
   refresh: () => Promise<void>;
 
   beginSession: (session: SessionRecord) => Promise<void>;
+  getSessionById: (id: string) => Promise<SessionRecord | null>;
   completeSession: (session: SessionRecord, rejected?: { reason: string }[]) => Promise<void>;
 
   hideObservation: (id: string) => Promise<void>;
@@ -139,6 +140,7 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
       refresh,
 
       beginSession,
+      getSessionById: id => archiveRepository.getSessionById(id),
       completeSession,
 
       hideObservation: async id => {

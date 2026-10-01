@@ -5,7 +5,7 @@ import { useArchive } from '../../features/archive/ArchiveProvider';
 import { I18nProvider } from '../../features/i18n';
 import { LiveSessionView } from '../../components/LiveSessionView';
 import { MISSION_CATALOG } from '../../data/missions';
-import { MissionDefinition, Mode, SessionRecord } from '../../types';
+import { MissionDefinition, SessionRecord } from '../../types';
 import { useSessionCoordinator } from '../../features/session/SessionProvider';
 
 export default function SessionScreen() {
@@ -22,17 +22,45 @@ export default function SessionScreen() {
   const [mission] = useState<MissionDefinition | undefined>(() =>
     MISSION_CATALOG.find(m => m.id === params.missionId)
   );
+  const [persistedSession, setPersistedSession] = useState<SessionRecord | null>(null);
+  const [sessionLoading, setSessionLoading] = useState(true);
 
   useEffect(() => {
+    let cancelled = false;
+
     if (params.sessionId) {
       coordinator.start(params.sessionId);
       coordinator.dispatch('PREFLIGHT');
     }
-    // Only on mount for this route instance.
+
+    (async () => {
+      if (!params.sessionId) {
+        if (!cancelled) setSessionLoading(false);
+        return;
+      }
+
+      const found = await archive.getSessionById(params.sessionId);
+      if (cancelled) return;
+      setPersistedSession(found);
+      setSessionLoading(false);
+    })();
+
+    return () => {
+      cancelled = true;
+    };
+    // This route instance owns one durable session id.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.sessionId]);
 
-  if (!mission) {
+  if (sessionLoading) {
+    return (
+      <View className="flex-1 items-center justify-center bg-canvas">
+        <Text className="text-xs text-muted">Opening conversation…</Text>
+      </View>
+    );
+  }
+
+  if (!mission || !persistedSession) {
     return (
       <View className="flex-1 items-center justify-center bg-canvas p-6">
         <Text className="text-center text-sm text-muted">That mission is no longer available.</Text>
@@ -65,15 +93,8 @@ export default function SessionScreen() {
       <View className="flex-1 bg-canvas">
         <LiveSessionView
           mission={mission}
-          mode={(params.mode as Mode) ?? archive.preferences.modeDefault}
-          coldAttempt={params.coldAttempt !== 'false'}
+          initialSession={persistedSession}
           onEndSession={handleEndSession}
-          onCancel={async () => {
-            // Cancelling preserves the transcript; the session is marked ended
-            // so it is not offered as a live recovery candidate.
-            coordinator.dispatch('END');
-            router.back();
-          }}
         />
       </View>
     </I18nProvider>

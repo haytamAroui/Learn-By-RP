@@ -48,6 +48,8 @@ export const LIGHT = {
    * dark mode.
    */
   brandButton: '#A7442F',
+  brandButtonHover: '#8F3826',
+  brandButtonPressed: '#7A3021',
 
   language: '#246B63',
   languageHover: '#1E5D56',
@@ -99,6 +101,8 @@ export const DARK = {
   brandPressed: '#D98263',
   brandSoft: '#3B251E',
   brandButton: '#A7442F',
+  brandButtonHover: '#8F3826',
+  brandButtonPressed: '#7A3021',
   brandText: '#FFFFFF',
 
   language: '#7CC7BE',
@@ -275,27 +279,23 @@ export const MOTION = {
  * labels, so "expanded" means the same thing on a tablet and a desktop.
  */
 export const BREAKPOINTS = {
-  compact: { min: 0, max: 599 },
-  medium: { min: 600, max: 839 },
-  expanded: { min: 840, max: 1199 },
-  large: { min: 1200, max: 1599 },
-  xl: { min: 1600, max: Number.POSITIVE_INFINITY },
+  phone: { min: 0, max: 599 },
+  tablet: { min: 600, max: 1023 },
+  desktop: { min: 1024, max: Number.POSITIVE_INFINITY },
 } as const;
 
 export type LayoutTier = keyof typeof BREAKPOINTS;
 
 export function layoutForWidth(width: number): LayoutTier {
-  if (width >= BREAKPOINTS.xl.min) return 'xl';
-  if (width >= BREAKPOINTS.large.min) return 'large';
-  if (width >= BREAKPOINTS.expanded.min) return 'expanded';
-  if (width >= BREAKPOINTS.medium.min) return 'medium';
-  return 'compact';
+  if (width >= BREAKPOINTS.desktop.min) return 'desktop';
+  if (width >= BREAKPOINTS.tablet.min) return 'tablet';
+  return 'phone';
 }
 
 /** Content must not stretch indefinitely on very wide displays. */
 export const MAX_WIDTH = {
-  app: 1180,
+  app: 1200,
   conversation: 720,
-  reading: 760,
-  catalog: 1320,
+  reading: 720,
+  catalog: 1200,
 } as const;

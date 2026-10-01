@@ -53,17 +53,14 @@ function MotionAwareStack() {
       <Stack.Screen name="(tabs)" />
       <Stack.Screen name="onboarding" options={{ presentation: "modal" }} />
       <Stack.Screen name="recovery" options={{ presentation: "modal" }} />
+      <Stack.Screen name="mission/[missionId]" />
       <Stack.Screen
         name="session/[sessionId]"
         options={{
-          presentation: "fullScreenModal",
-          animation: reduced ? "none" : "slide_from_bottom",
+          animation: reduced ? "none" : "default",
         }}
       />
-      <Stack.Screen
-        name="recap/[sessionId]"
-        options={{ presentation: "modal" }}
-      />
+      <Stack.Screen name="recap/[sessionId]" />
       <Stack.Screen
         name="phrase/[phraseId]"
         options={{ presentation: "modal" }}
