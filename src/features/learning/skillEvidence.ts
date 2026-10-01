@@ -6,6 +6,7 @@ import {
   EvidenceSource,
   LearningObservation,
   MissionDefinition,
+  OpportunityInstance,
   Passage,
   RetrievalType,
   SkillLapse,
@@ -35,6 +36,8 @@ export interface SkillEvidenceCandidate {
   quote: string;
   modality: 'spoken' | 'typed';
   retrievalProposal: RetrievalType;
+  /** Runtime opportunity this demonstration belongs to, when already tracked. */
+  opportunityInstanceId?: string;
   supportExposureIds?: string[];
 }
 
@@ -59,6 +62,13 @@ export interface SkillValidationContext {
   mission: MissionDefinition;
   passages: Passage[];
   supportExposures: SupportExposure[];
+  /**
+   * Runtime opportunities are authoritative for failure semantics.
+   *
+   * If none are supplied, the validator may still accept grounded positive
+   * demonstrations for backward compatibility, but it will derive no lapse.
+   */
+  opportunityInstances?: OpportunityInstance[];
   isRehearsalAttempt?: boolean;
   /**
    * How the session ended, when known.
@@ -87,7 +97,9 @@ export interface SkillValidationRejection {
     | 'support_reference_unknown'
     | 'support_contradicts_retrieval'
     | 'rehearsal_not_independent'
-    | 'outcome_incompatible';
+    | 'opportunity_unknown'
+    | 'opportunity_skill_mismatch'
+    | 'opportunity_not_taken';
   reason: string;
 }
 
@@ -130,6 +142,9 @@ export function validateSkillEvidenceProposal(
   const { primary, secondary } = missionSkillIds(context.mission);
   const passagesById = new Map(context.passages.map(p => [p.id, p]));
   const exposuresById = new Map(context.supportExposures.map(e => [e.id, e]));
+  const opportunitiesById = new Map(
+    (context.opportunityInstances ?? []).map(opportunity => [opportunity.id, opportunity])
+  );
 
   // Support that was on screen, with timestamps, so a claim of independent recall
   // can be contradicted by the ledger.
@@ -158,6 +173,35 @@ export function validateSkillEvidenceProposal(
           `(primary: ${[...primary].join(', ') || 'none'}; secondary: ${[...secondary].join(', ') || 'none'})`
       );
       continue;
+    }
+
+    // If the live runtime supplied an opportunity link, validate it. During the
+    // migration period an older assessor may omit the link; that can still create
+    // positive evidence, but never a lapse.
+    let opportunity: OpportunityInstance | undefined;
+    if (candidate.opportunityInstanceId) {
+      opportunity = opportunitiesById.get(candidate.opportunityInstanceId);
+      if (!opportunity || opportunity.attemptId !== context.attemptId) {
+        reject(
+          'opportunity_unknown',
+          `Opportunity ${candidate.opportunityInstanceId} is not a validated runtime opportunity for this attempt`
+        );
+        continue;
+      }
+      if (opportunity.skillId !== candidate.skillId) {
+        reject(
+          'opportunity_skill_mismatch',
+          `Opportunity ${opportunity.id} belongs to ${opportunity.skillId}, not ${candidate.skillId}`
+        );
+        continue;
+      }
+      if (opportunity.status !== 'taken') {
+        reject(
+          'opportunity_not_taken',
+          `Opportunity ${opportunity.id} was ${opportunity.status}, not taken`
+        );
+        continue;
+      }
     }
 
     // 3. Does the cited passage exist?
@@ -238,19 +282,17 @@ export function validateSkillEvidenceProposal(
       continue;
     }
 
-    // 10. A failed task cannot be evidence of a successful demonstration.
+    // 10. Scene outcome and skill demonstration are separate facts.
+    //
+    // A learner may demonstrate a useful capability inside a scene that is later
+    // not achieved for an unrelated authored-world reason. Conversely, completing
+    // a scene does not prove every declared skill. Grounding, mission membership,
+    // support and opportunity checks decide the skill claim.
     const outcome = deriveOutcome({
       proposed: proposal.taskOutcome,
       retrieval,
       modality: candidate.modality,
     });
-    if (!isCompatibleOutcome(outcome, retrieval)) {
-      reject(
-        'outcome_incompatible',
-        `Outcome "${outcome}" cannot evidence a skill demonstrated with retrieval "${retrieval}"`
-      );
-      continue;
-    }
 
     validated.push({
       id: `skill-obs-${context.sessionId}-${candidate.skillId}-${candidate.sourcePassageId}`,
@@ -275,6 +317,8 @@ export function validateSkillEvidenceProposal(
       modality: candidate.modality,
       retrieval,
       taskOutcome: outcome,
+      demonstration: 'demonstrated',
+      opportunityInstanceId: opportunity?.id,
 
       supportExposureIds: supportReferenceIds,
       evidenceSource,
@@ -303,47 +347,81 @@ export function validateSkillEvidenceProposal(
  * the session was actually attempting.
  */
 export function deriveLapses(
-  proposal: SkillEvidenceProposal,
+  _proposal: SkillEvidenceProposal,
   context: SkillValidationContext
 ): SkillLapse[] {
-  if (proposal.taskOutcome !== 'not_achieved') return [];
   if (context.isRehearsalAttempt) return [];
 
-  // A session that ended early did not demonstrate a failure to recall. Silence is
-  // not a lapse, and neither is a network drop or a learner who simply left.
-  if (
-    context.sessionEndReason &&
-    context.sessionEndReason !== 'completed'
-  ) {
+  // A session that ended because the learner left, time expired, or the runtime
+  // failed is not a language failure.
+  if (context.sessionEndReason && context.sessionEndReason !== 'completed') {
     return [];
   }
-
-  const learnerPassages = context.passages.filter(p => p.speaker === 'user');
-  if (learnerPassages.length === 0) return [];
-
-  // Support anywhere in the session means this was not a cold attempt.
-  if (context.supportExposures.length > 0) return [];
 
   const primary = missionSkillIds(context.mission).primary;
   if (primary.size === 0) return [];
 
-  // The most recent learner passage is where the failure landed.
-  const passage = [...learnerPassages].sort((a, b) =>
-    (a.endedAt ?? a.startedAt ?? '').localeCompare(b.endedAt ?? b.startedAt ?? '')
-  )[learnerPassages.length - 1];
+  const passagesById = new Map(context.passages.map(passage => [passage.id, passage]));
+  const lapses: SkillLapse[] = [];
 
-  return [...primary].map(skillId => ({
-    id: `skill-lapse-${context.sessionId}-${skillId}`,
-    skillId,
-    sessionId: context.sessionId,
-    attemptId: context.attemptId,
-    sourcePassageId: passage.id,
-    sourceRevision: passage.revisionKey,
-    domainId: context.mission.category,
-    scenarioId: context.mission.sceneId,
-    basis: 'cold_attempt_failed' as const,
-    recordedAt: passage.endedAt ?? passage.startedAt ?? new Date().toISOString(),
-  }));
+  for (const opportunity of context.opportunityInstances ?? []) {
+    // A declared or merely presented opportunity is not a failed attempt.
+    if (opportunity.attemptId !== context.attemptId) continue;
+    if (opportunity.detection !== 'validated') continue;
+    if (opportunity.status !== 'taken') continue;
+    if (opportunity.demonstration !== 'attempted_not_demonstrated') continue;
+    if (!primary.has(opportunity.skillId)) continue;
+
+    // Technical uncertainty must never become a pedagogical weakness signal.
+    if (opportunity.failureReason) continue;
+
+    const passageId = opportunity.learnerAttemptPassageId;
+    if (!passageId) continue;
+
+    const passage = passagesById.get(passageId);
+    if (!passage || passage.speaker !== 'user') continue;
+    if (passage.attemptId !== context.attemptId) continue;
+    if (
+      opportunity.learnerAttemptRevision &&
+      opportunity.learnerAttemptRevision !== passage.revisionKey
+    ) {
+      continue;
+    }
+
+    // Until the scoped support matrix lands, use the existing conservative
+    // passage-time rule: any support relevant to this exact attempt/passage means
+    // the failure was not cold.
+    const relevantSupport = context.supportExposures.filter(exposure =>
+      isRelevantToPassage(exposure, passage, context.attemptId)
+    );
+    if (relevantSupport.length > 0) continue;
+
+    lapses.push({
+      id: `skill-lapse-${context.sessionId}-${opportunity.id}`,
+      skillId: opportunity.skillId,
+      sessionId: context.sessionId,
+      attemptId: context.attemptId,
+      sourcePassageId: passage.id,
+      sourceRevision: passage.revisionKey,
+      contextKey: {
+        domainId: context.mission.category,
+        scenarioFamilyId: context.mission.scenarioFamilyId,
+        scenarioId: context.mission.sceneId,
+      },
+      domainId: context.mission.category,
+      scenarioId: context.mission.sceneId,
+      opportunityInstanceId: opportunity.id,
+      demonstration: 'attempted_not_demonstrated',
+      basis: 'cold_attempt_failed',
+      recordedAt:
+        opportunity.recordedAt ??
+        passage.endedAt ??
+        passage.startedAt ??
+        new Date().toISOString(),
+    });
+  }
+
+  return lapses;
 }
 
 /**
@@ -429,35 +507,22 @@ function deriveOutcome(input: {
   return input.proposed;
 }
 
-/**
- * Whether this outcome can stand as a demonstration of the skill.
- *
- * `not_achieved` is compatible only with nothing: a failed exchange is evidence
- * that the task did not succeed, not that the capability was absent or present.
- */
-function isCompatibleOutcome(outcome: TaskOutcome, retrieval: RetrievalType): boolean {
-  if (outcome === 'not_achieved') return false;
-  if (outcome === 'unknown') return false;
-  return true;
-}
 
 /** True when an observation counts as independent, successful use. */
 export function isIndependentSuccess(observation: SkillObservation): boolean {
   return (
+    observation.demonstration === 'demonstrated' &&
     observation.retrieval === 'unassisted' &&
-    observation.modality === 'spoken' &&
-    observation.taskOutcome !== 'not_achieved' &&
-    observation.taskOutcome !== 'unknown'
+    observation.modality === 'spoken'
   );
 }
 
-/** True when an observation records a genuine failed cold attempt. */
-export function isLapse(observation: SkillObservation): boolean {
-  return (
-    observation.retrieval === 'unassisted' &&
-    observation.taskOutcome === 'not_achieved' &&
-    observation.supportExposureIds.length === 0
-  );
+/**
+ * Positive SkillObservation rows never represent lapses. Failed opportunities are
+ * stored as SkillLapse records so scene outcome cannot be misread as competence.
+ */
+export function isLapse(_observation: SkillObservation): boolean {
+  return false;
 }
 
 /** The calendar day an observation falls on, in UTC. */
