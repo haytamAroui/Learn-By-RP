@@ -409,18 +409,19 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO skill_observations
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-           domain_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
+           domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
            task_outcome, support_exposure_ids, evidence_source, quote, policy_version,
            hidden, user_disputed, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
         observation.id,
         observation.skillId,
         observation.sessionId,
         observation.attemptId,
         observation.sourcePassageId,
         observation.sourceRevision,
-        observation.domainId ?? null,
-        observation.scenarioId ?? null,
+        observation.contextKey.domainId,
+        observation.contextKey.scenarioFamilyId,
+        observation.contextKey.scenarioId ?? observation.scenarioId ?? null,
         observation.examProgramId ?? null,
         observation.examTaskId ?? null,
         observation.modality,
@@ -626,18 +627,19 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO skill_observations
             (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-             domain_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
+             domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
              task_outcome, support_exposure_ids, evidence_source, quote, policy_version,
              hidden, user_disputed, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
           observation.id,
           observation.skillId,
           observation.sessionId,
           observation.attemptId,
           observation.sourcePassageId,
           observation.sourceRevision,
-          observation.domainId ?? null,
-          observation.scenarioId ?? null,
+          observation.contextKey.domainId,
+          observation.contextKey.scenarioFamilyId,
+          observation.contextKey.scenarioId ?? observation.scenarioId ?? null,
           observation.examProgramId ?? null,
           observation.examTaskId ?? null,
           observation.modality,
@@ -666,6 +668,14 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       attemptId: String(row.attempt_id),
       sourcePassageId: String(row.source_passage_id),
       sourceRevision: String(row.source_revision),
+      contextKey: {
+        domainId: row.domain_id ? String(row.domain_id) : 'legacy',
+        scenarioFamilyId: row.scenario_family_id
+          ? String(row.scenario_family_id)
+          : 'legacy-unknown',
+        scenarioId: row.scenario_id ? String(row.scenario_id) : undefined,
+        examTaskId: row.exam_task_id ? String(row.exam_task_id) : undefined,
+      },
       domainId: row.domain_id ? String(row.domain_id) : undefined,
       scenarioId: row.scenario_id ? String(row.scenario_id) : undefined,
       examProgramId: row.exam_program_id ? String(row.exam_program_id) : undefined,
