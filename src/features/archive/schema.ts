@@ -270,6 +270,13 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE sessions ADD COLUMN cold_attempt INTEGER NOT NULL DEFAULT 1;`,
     ],
   },
+  {
+    version: 3,
+    name: 'persist_skill_scenario_family',
+    statements: [
+      `ALTER TABLE skill_observations ADD COLUMN scenario_family_id TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
