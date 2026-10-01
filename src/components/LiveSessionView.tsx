@@ -12,6 +12,11 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { categoriseProviderError, type ProviderError } from '../features/voice/lifecycle';
 import {
+  beginGeneration,
+  invalidate as invalidateGeneration,
+  isCurrent as isGenerationCurrent,
+} from '../features/voice/generation';
+import {
   HelpCircle,
   Keyboard,
   Mic,
@@ -309,6 +314,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     session just going quiet. Null means no failure is outstanding.
   */
   const [lastAssistantError, setLastAssistantError] = useState<ProviderError | null>(null);
+  /*
+    Seconds left before an inactivity end, or null when no countdown is running.
+
+    Null rather than 0 because 0 is a real countdown value: the last second before the
+    session ends. Treating "no countdown" as 0 would make the banner flash on every
+    tick for a session that is perfectly healthy.
+  */
+  const [inactivityCountdown, setInactivityCountdown] = useState<number | null>(null);
   const [interimUserText, setInterimUserText] = useState('');
   const [sceneEventNotice, setSceneEventNotice] = useState<string | null>(null);
 
@@ -483,6 +496,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       const trimmed = text.trim();
       if (!trimmed || isEndingRef.current) return;
 
+      // Every turn takes a token. If the session ends or a newer turn begins while
+      // this reply is in flight, the response is dropped rather than committed.
+      const generation = beginGeneration();
+
       const userPassageId = `p-${Date.now()}`;
       const userPassage: Passage = {
         id: userPassageId,
@@ -521,6 +538,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           targetLanguage: target.language,
           explanationLanguage,
         });
+
+        /*
+          Checked here, after the await, not before the request.
+
+          The session can end while this is in flight, and a response that arrives
+          afterwards would otherwise append to passages that are no longer displayed
+          and write this session's words into the next one's transcript.
+        */
+        if (!isGenerationCurrent(generation) || isEndingRef.current) return;
 
         if (response.proposedAction) {
           void applyProposedSceneAction(
@@ -920,6 +946,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     if (!mission || isEndingRef.current) return;
     isEndingRef.current = true;
 
+    /*
+      Invalidate anything already in flight before writing the transcript.
+
+      A reply that is on its way right now still holds a reference to this session's
+      passages. Without this it can land after the record has been written, appending
+      to a list that is no longer rendered and, worse, writing this session's words
+      into the next one's transcript. The check belongs at commit time for exactly
+      that reason: a request valid five seconds ago can be invalid now.
+    */
+    invalidateGeneration();
+
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
     setVoiceState('ending');
@@ -1166,6 +1203,35 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               </Text>
             </Pressable>
           </View>
+        </View>
+
+        {/*
+          Announcements sit at the top of the session so a screen reader reaches them
+          without the learner having to hunt. `liveRegion` matters because the countdown
+          changes every second: without it the value is announced once and never
+          updated, which is the opposite of what a countdown is for.
+        */}
+        {/*
+          `allowFontScaling` is left at its default on purpose. It is the only thing
+          that keeps the countdown readable at large text sizes, and clamping it is the
+          usual shortcut when a layout breaks at 200%. The banner grows with the text
+          instead: no fixed height, and the number is on its own line so it cannot be
+          squeezed out by a longer translation.
+        */}
+        <View accessibilityLiveRegion="polite" accessible={false}>
+          {inactivityCountdown !== null ? (
+            <View className="border-b border-warning/40 bg-surface-sunken px-4 py-2">
+              <Text className="text-center text-sm font-semibold text-ink">
+                {t.live.sessionEndingSoon}
+              </Text>
+              <Text
+                className="text-center text-2xl font-semibold text-ink"
+                accessibilityLabel={`${t.live.sessionEndingSoon} ${inactivityCountdown}`}
+              >
+                {inactivityCountdown}
+              </Text>
+            </View>
+          ) : null}
         </View>
 
         {sceneEventNotice ? (

@@ -150,6 +150,8 @@ export interface Translations {
     voiceFailed: string;
     /** R3: recover the connection without losing the transcript. */
     retryConnection: string;
+    /** R3: inactivity countdown. */
+    sessionEndingSoon: string;
     finishButton: string;
     coachDrawerTitle: string;
     coachStepIntent: string;
@@ -425,6 +427,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       reconnecting: "Reconnecting...",
       voiceFailed: "Voice unavailable",
       retryConnection: "Retry connection",
+      sessionEndingSoon: "Ending in",
       tapToSpeak: "Tap to speak",
       finishButton: "Finish & View Receipt",
       coachDrawerTitle: "Language Coach Assistance",
@@ -704,6 +707,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       reconnecting: "Reconnexion...",
       voiceFailed: "Voix indisponible",
       retryConnection: "Réessayer",
+      sessionEndingSoon: "Fin dans",
       tapToSpeak: "Appuyez pour parler",
       finishButton: "Terminer et voir le reçu",
       coachDrawerTitle: "Aide du coach linguistique",
@@ -982,6 +986,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       reconnecting: "Reconectando...",
       voiceFailed: "Voz no disponible",
       retryConnection: "Reintentar",
+      sessionEndingSoon: "Termina en",
       tapToSpeak: "Toca para hablar",
       finishButton: "Finalizar y ver recibo",
       coachDrawerTitle: "Asistencia del Coach Lingüístico",
@@ -1260,6 +1265,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       reconnecting: "Opnieuw verbinden...",
       voiceFailed: "Stem niet beschikbaar",
       retryConnection: "Opnieuw proberen",
+      sessionEndingSoon: "Eindigt over",
       tapToSpeak: "Tik om te spreken",
       finishButton: "Afronden & Bewijs bekijken",
       coachDrawerTitle: "Hulp van de taalcoach",

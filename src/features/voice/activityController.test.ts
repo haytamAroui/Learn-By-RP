@@ -123,6 +123,31 @@ describe('evaluateInactivity', () => {
     expect(escalated.shouldPrompt).toBe(true);
   });
 
+  /*
+  The countdown has to survive large text. That is a rendering concern rather than a
+  controller one, so what the controller owes is a plain integer with no formatting
+  baked in - the number is rendered as a separate element precisely so it cannot be
+  squeezed out by a longer translation, and clamping font scaling is the usual
+  shortcut that makes a layout break at 200% for everyone else.
+*/
+  it('reports a plain integer the UI can render independently', () => {
+    const decision = evaluateInactivity(at(DEFAULT_INACTIVITY.warnAfterMs));
+
+    expect(typeof decision.secondsRemaining).toBe('number');
+    expect(Number.isInteger(decision.secondsRemaining)).toBe(true);
+    expect(String(decision.secondsRemaining)).not.toMatch(/[^0-9]/);
+  });
+
+  it('stays positive for the whole warning window', () => {
+    // A countdown that reaches 0 during the warning phase reads as "ended" while the
+    // session is still running.
+    for (let quiet = DEFAULT_INACTIVITY.warnAfterMs; quiet < DEFAULT_INACTIVITY.endAfterMs; quiet += 250) {
+      const decision = evaluateInactivity(at(quiet));
+      expect(decision.phase).toBe('warning');
+      expect(decision.secondsRemaining).toBeGreaterThan(0);
+    }
+  });
+
   it('never counts down a muted session', () => {
     const decision = evaluateInactivity(at(DEFAULT_INACTIVITY.endAfterMs * 10, true));
     expect(decision.phase).toBe('wait');
