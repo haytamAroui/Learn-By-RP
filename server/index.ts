@@ -1,5 +1,4 @@
 import express, { Request, Response } from 'express';
-import { GoogleGenAI } from '@google/genai';
 import dotenv from 'dotenv';
 import cors from 'cors';
 // Shared with the client: one matching implementation, so the offline fallback
@@ -9,6 +8,7 @@ import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/data/missions';
 import { allowedSkillsForMission } from '../src/features/learning/skillMembership';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
+import { createProviderRuntime } from './providers/runtime';
 
 dotenv.config();
 
@@ -21,20 +21,10 @@ app.use(express.json({ limit: '10mb' }));
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
-// Server-side Gemini client
-const apiKey = process.env.GEMINI_API_KEY;
-const ai = apiKey
-  ? new GoogleGenAI({
-      apiKey,
-      httpOptions: {
-        headers: {
-          'User-Agent': 'aistudio-build'
-        }
-      }
-    })
-  : null;
+// Provider choice is centralized. Routes never depend on a vendor SDK directly.
+const providers = createProviderRuntime();
 
-console.log(`[Server] Gemini API Key present: ${Boolean(apiKey)}`);
+console.log('[Server] Provider runtime:', providers.descriptor());
 
 /**
  * Health check
@@ -42,9 +32,43 @@ console.log(`[Server] Gemini API Key present: ${Boolean(apiKey)}`);
 app.get('/api/health', (_req: Request, res: Response) => {
   res.json({
     status: 'ok',
-    hasApiKey: Boolean(apiKey),
+    hasApiKey: Boolean(process.env.GEMINI_API_KEY),
+    providers: providers.descriptor(),
     timestamp: new Date().toISOString()
   });
+});
+
+app.get('/api/providers', (_req: Request, res: Response) => {
+  res.json(providers.descriptor());
+});
+
+app.post('/api/realtime/session', async (req: Request, res: Response) => {
+  try {
+    if (!providers.realtime) {
+      res.status(503).json({ error: 'OpenAI Realtime is not configured' });
+      return;
+    }
+
+    const {
+      targetLanguage = 'auto',
+      explanationLanguage = 'auto',
+      instructions = 'Roleplay conversation session.',
+      voice,
+      safetyIdentifier,
+    } = req.body ?? {};
+
+    const session = await providers.realtime.createSession(
+      { targetLanguage, explanationLanguage, instructions, voice },
+      typeof safetyIdentifier === 'string' ? safetyIdentifier : undefined
+    );
+
+    res.json(session);
+  } catch (err: any) {
+    console.error('Error creating Realtime session:', err);
+    res.status(502).json({
+      error: err?.message || 'Realtime session creation failed',
+    });
+  }
 });
 
 /**
@@ -70,7 +94,7 @@ app.post('/api/actor/respond', async (req: Request, res: Response) => {
       return;
     }
 
-    if (!ai) {
+    if (!providers.structured) {
       // Offline / fallback intelligent actor
       const fallbackReply = generateFallbackActorReply(character?.name, userMessage, sceneFacts, targetLanguage);
       res.json(fallbackReply);
@@ -109,27 +133,14 @@ Learner: "${userMessage}"
 
 Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        temperature: 0.7
-      }
+    const response = await providers.structured.generateJson({
+      task: 'actor',
+      systemInstruction,
+      input: prompt,
+      temperature: 0.7,
     });
 
-    const text = response.text || '';
-    try {
-      const parsed = JSON.parse(text);
-      res.json(parsed);
-    } catch {
-      res.json({
-        replyText: text.replace(/[{}"]/g, '').trim(),
-        meaning: 'Character response',
-        proposedAction: null
-      });
-    }
+    res.json(response);
   } catch (err: any) {
     console.error('Error in /api/actor/respond:', err);
     const { character, userMessage = '', sceneFacts, targetLanguage = 'Spanish' } = req.body || {};
@@ -161,7 +172,7 @@ app.post('/api/coach/hint', async (req: Request, res: Response) => {
       learnerGoal = 'Order a drink'
     } = req.body;
 
-    if (!ai) {
+    if (!providers.structured) {
       const fallbackHints: Record<string, string> = {
         intent_hint: `Try telling ${characterName} what you would like to drink, or ask if they have a plant milk.`,
         partial_form: `Start with: "Un café con..." or "¿Tiene leche de...?"`,
@@ -185,17 +196,13 @@ Requested Hint Step: "${step}".
 
 Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "..."}`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: `Provide step '${step}' hint:`,
-      config: {
-        systemInstruction,
-        responseMimeType: 'application/json',
-        temperature: 0.4
-      }
+    const parsed = await providers.structured.generateJson({
+      task: 'coach',
+      systemInstruction,
+      input: `Provide step '${step}' hint:`,
+      temperature: 0.4,
     });
 
-    const parsed = JSON.parse(response.text || '{"hint": "Try stating your request clearly."}');
     res.json(parsed);
   } catch (err: any) {
     console.error('Error in /api/coach/hint:', err);
@@ -226,7 +233,7 @@ app.post('/api/assessment', async (req: Request, res: Response) => {
       return;
     }
 
-    if (!ai) {
+    if (!providers.structured) {
       res.json(generateDeterministicAssessment(sessionId, attemptId, userPassages, usefulPhrases));
       return;
     }
@@ -292,16 +299,12 @@ Return JSON matching:
   "actionableFeedback": ["at most 2 short, actionable notes"]
 }`;
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash',
-      contents: prompt,
-      config: {
-        responseMimeType: 'application/json',
-        temperature: 0.2
-      }
+    const parsed = await providers.structured.generateJson({
+      task: 'assessment',
+      input: prompt,
+      temperature: 0.2,
     });
 
-    const parsed = JSON.parse(response.text || '{}');
     res.json(parsed);
   } catch (err: any) {
     console.error('Error in /api/assessment, falling back to deterministic receipt:', err);
@@ -368,61 +371,62 @@ function generateDeterministicAssessment(
 }
 
 /**
- * 5. Gemini TTS (Natural Character Voice)
+ * 5. Speech synthesis.
+ *
+ * Provider-neutral endpoint. /api/tts remains as a compatibility alias.
  */
-app.post('/api/tts', async (req: Request, res: Response) => {
+const handleSpeechSynthesis = async (req: Request, res: Response) => {
   try {
-    const { text, voiceName = 'Puck', speed = 1.0 } = req.body;
+    const {
+      text,
+      language = 'es',
+      locale,
+      voice,
+      voiceName,
+      speed = 1.0,
+      style,
+    } = req.body ?? {};
 
     if (!text || typeof text !== 'string') {
       res.status(400).json({ error: 'text is required' });
       return;
     }
 
-    if (!ai) {
-      res.status(503).json({ error: 'Gemini TTS unavailable without API key' });
+    if (!providers.speech) {
+      res.status(503).json({
+        error: 'Cloud TTS is not configured',
+        audio: null,
+        fallback: 'native',
+      });
       return;
     }
 
-    const response = await ai.models.generateContent({
-      model: 'gemini-3.8-flash-lite-tts',
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              text: speed < 0.9 ? `Speak slowly and clearly: ${text}` : text,
-              speechMetadata: {
-                style: 'Natural conversational speaker'
-              }
-            }
-          ]
-        }
-      ],
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName }
-          }
-        }
-      }
+    const result = await providers.speech.synthesize({
+      text,
+      language,
+      locale,
+      voice: voice || voiceName,
+      speed,
+      style,
     });
 
-    const base64Audio = response.candidates?.[0]?.content?.parts?.[0]?.inlineData?.data;
-    if (base64Audio) {
-      res.json({
-        audioBase64: base64Audio,
-        mimeType: 'audio/wav'
-      });
-    } else {
-      res.status(500).json({ error: 'No audio returned' });
-    }
+    res.json({
+      ...result,
+      audioBase64: result.audio?.base64,
+      mimeType: result.audio?.mimeType,
+    });
   } catch (err: any) {
-    console.error('Error in /api/tts:', err);
-    res.status(500).json({ error: err.message || 'TTS generation failed' });
+    console.error('Error in speech synthesis:', err);
+    res.status(502).json({
+      error: err?.message || 'Speech generation failed',
+      audio: null,
+      fallback: 'native',
+    });
   }
-});
+};
+
+app.post('/api/speech/synthesize', handleSpeechSynthesis);
+app.post('/api/tts', handleSpeechSynthesis);
 
 function generateFallbackActorReply(
   characterName: string = 'Mateo',
@@ -849,5 +853,5 @@ app.use(roleplayRouter);
 
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`Mission Coach API listening on http://0.0.0.0:${PORT}`);
-  console.log(`Gemini API key present: ${Boolean(apiKey)}`);
+  console.log('Provider runtime:', providers.descriptor());
 });
