@@ -151,9 +151,58 @@ export function cssVarName(token: keyof typeof LIGHT): string {
 }
 
 /** The `vars()` payload for a theme, used on native. */
+/**
+ * Converts a hex token to the space-separated channel form.
+ *
+ * The colour utilities are generated as `rgb(<variable> / <alpha-value>)`,
+ * which only parses when the variable holds channels - `rgb(232 224 210 / 1)`.
+ * Handing it hex instead gives `rgb(#E8E0D2 / 1)`, which is invalid, so the
+ * browser drops the whole declaration and the element silently falls back to
+ * transparent.
+ *
+ * This matters because the same variables are declared twice: global.css emits
+ * channels, and the theme provider writes inline values for native. When the two
+ * disagreed the inline one won, so a background that looked correct in the
+ * stylesheet rendered as nothing at runtime.
+ *
+ * The channels must also be bare. Wrapping them again gives a nested function,
+ * which is equally invalid, so the value is `232 224 210` and never `rgb(...)`.
+ */
+function hexToChannels(value: string): string {
+  const hex = value.trim();
+
+  // Already channels (e.g. "232 224 210") or a function such as rgb().
+  if (!hex.startsWith('#')) return value;
+
+  const body = hex.slice(1);
+  const full =
+    body.length === 3 || body.length === 4
+      ? body
+          .split('')
+          .map(c => c + c)
+          .join('')
+      : body;
+
+  if (full.length !== 6 && full.length !== 8) return value;
+
+  const r = parseInt(full.slice(0, 2), 16);
+  const g = parseInt(full.slice(2, 4), 16);
+  const b = parseInt(full.slice(4, 6), 16);
+
+  if ([r, g, b].some(n => Number.isNaN(n))) return value;
+
+  // Bare channels, never wrapped in rgb(): the utility supplies the function, and
+  // `rgb(rgb(232 224 210) / 1)` is as invalid as the hex form it replaced.
+  const alpha = full.length === 8 ? ` / ${parseInt(full.slice(6, 8), 16) / 255}` : '';
+  return `${r} ${g} ${b}${alpha}`;
+}
+
 export function cssVariables(theme: ThemeName): Record<string, string> {
   return Object.fromEntries(
-    Object.entries(TOKENS[theme]).map(([token, value]) => [cssVarName(token as keyof typeof LIGHT), value])
+    Object.entries(TOKENS[theme]).map(([token, value]) => [
+      cssVarName(token as keyof typeof LIGHT),
+      hexToChannels(value),
+    ])
   );
 }
 

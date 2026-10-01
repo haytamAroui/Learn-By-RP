@@ -295,10 +295,21 @@ describe('token shape', () => {
     expect(cssVarName('surfaceSoft')).toBe('--color-surface-soft');
   });
 
-  it('cssVariables exposes every token', () => {
+  it('cssVariables exposes every token as channels, not hex', () => {
     const vars = cssVariables('dark');
     expect(Object.keys(vars)).toHaveLength(Object.keys(DARK).length);
-    expect(vars['--color-canvas']).toBe(DARK.canvas);
+
+    /*
+      The generated utilities are `rgb(var(--color-x) / <alpha-value>)`, which only
+      parses when the variable holds channels. Asserting the raw hex here would let
+      the two definitions drift apart again, and the symptom is a background that
+      silently renders as nothing rather than an error.
+    */
+    expect(vars['--color-canvas']).toMatch(/^\d+ \d+ \d+$/);
+
+    const hex = DARK.canvas.replace('#', '');
+    const channels = hex.match(/../g)!.map(h => parseInt(h, 16));
+    expect(vars['--color-canvas']).toBe(channels.join(' '));
   });
 
   it('resolves to the requested theme', () => {
