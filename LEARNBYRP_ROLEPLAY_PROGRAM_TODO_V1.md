@@ -124,7 +124,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 
 Current code still counts `sessionId` as an independent context in `skillProjection.ts`. This must be removed before Transfer or Steady can be trusted.
 
-- [ ] Introduce required `scenarioFamilyId`.
+- [x] Introduce required `scenarioFamilyId`. (`MissionDefinition.scenarioFamilyId`)
 - [ ] Define:
 
 ```ts
@@ -136,16 +136,16 @@ interface SkillContextKey {
 }
 ```
 
-- [ ] Distinct context only when domain differs OR scenarioFamilyId differs.
-- [ ] Retry does not create a new context.
-- [ ] Pressure variant does not create a new context.
-- [ ] Regional/locale variant does not create a new context.
-- [ ] Same-family mission variant does not create a new context.
+- [x] Distinct context only when domain differs OR scenarioFamilyId differs. (`skillContextIdentity`)
+- [x] Retry does not create a new context. (session/attempt excluded from context identity)
+- [x] Pressure variant does not create a new context. (variant metadata excluded from context identity)
+- [x] Regional/locale variant does not create a new context. (locale excluded from context identity)
+- [x] Same-family mission variant does not create a new context.
 - [ ] Add family definition/reviewer metadata.
-- [ ] Update `SkillObservation` to carry `contextKey`.
-- [ ] Update `SkillProjection` to derive contexts from `contextKey`, never `sessionId`.
-- [ ] Add regression test: Café A → Café B in same family adds no transfer context.
-- [ ] Add regression test: Café → station → work meeting can add distinct contexts when families differ.
+- [x] Update `SkillObservation` to carry required `contextKey`; persisted in SQLite schema v3.
+- [x] Update `SkillProjection` to derive contexts from `contextKey`, never `sessionId`.
+- [x] Add regression test: Café A → Café B in same family adds no transfer context. (`skillContext.test.ts`)
+- [x] Add regression test: different families add distinct transfer contexts. (`skillContext.test.ts`)
 
 ---
 
@@ -753,8 +753,8 @@ A program must pass:
 
 ## P0.5 — learning correctness lock
 
-- [ ] Required scenarioFamilyId/contextKey.
-- [ ] Fix sessionId-as-context in `skillProjection.ts`.
+- [x] Required scenarioFamilyId/contextKey.
+- [x] Fix sessionId-as-context in `skillProjection.ts`.
 - [ ] Canonical skill hierarchy/catalog.
 - [ ] taskOutcome vs demonstration.
 - [ ] OpportunityInstance.
@@ -857,7 +857,7 @@ And the system can prove:
 
 Confirmed from current `main` during this TODO update:
 
-- [ ] `src/features/learning/skillProjection.ts` still derives independent contexts from `sessionId`.
+- [x] `src/features/learning/skillProjection.ts` derives independent contexts from required domain + scenario family, not `sessionId`.
 - [ ] Coach support in `LiveSessionView` still needs exact skill/opportunity/phrase targeting rather than mission-wide phrase targeting.
 - [ ] Current scene reducer still uses broad `Record<string, unknown>` facts/mutations; finite fact schemas and model checking remain open.
 - [x] Hosted roleplay routes already document server ownership of scene truth.

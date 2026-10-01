@@ -73,6 +73,13 @@ export interface MissionDefinition {
   /** The authored SceneDefinition this mission runs, if one is released. */
   sceneId?: string;
   /**
+   * Reviewer-defined pedagogical context family.
+   *
+   * Transfer is counted across families, never across session ids or cosmetic
+   * mission variants. Language/locale/pressure variants may share the same family.
+   */
+  scenarioFamilyId: string;
+  /**
    * Skills this mission exists to practise. Explicit, curated membership.
    *
    * This is the only way a skill can gain validated evidence: the assessor may
@@ -234,8 +241,24 @@ export type CommunicativeSkillId = string;
 
 export type DomainId = string;
 export type ScenarioId = string;
+export type ScenarioFamilyId = string;
 export type ExamProgramId = string;
 export type ExamTaskId = string;
+
+/**
+ * Stable pedagogical context identity for communicative-skill evidence.
+ *
+ * A new session, retry, locale variant or pressure variant is not a new context.
+ * Transfer requires a different domain and/or reviewer-defined scenario family.
+ */
+export interface SkillContextKey {
+  domainId: DomainId;
+  scenarioFamilyId: ScenarioFamilyId;
+  /** Informational provenance only; it does not create transfer credit by itself. */
+  scenarioId?: ScenarioId;
+  /** Exam tasks may supply a specific task id while still belonging to a family. */
+  examTaskId?: ExamTaskId;
+}
 
 /**
  * How an observation came to exist.
@@ -272,6 +295,13 @@ export interface SkillObservation {
   /** The transcript revision that passage had when it was read. */
   sourceRevision: string;
 
+  /** Required context identity used by transfer/status projection. */
+  contextKey: SkillContextKey;
+
+  /**
+   * Legacy provenance retained during migration. Projection must never use these
+   * fields directly for context counting.
+   */
   domainId?: DomainId;
   scenarioId?: ScenarioId;
 
@@ -340,7 +370,7 @@ export interface SkillProjectionV2 {
 
   status: SkillStatus;
 
-  /** Sessions with qualifying independent evidence. */
+  /** Canonical domain + scenario-family identities with qualifying independent evidence. */
   independentContexts: string[];
   /** Distinct calendar days with qualifying independent evidence. */
   independentDays: string[];

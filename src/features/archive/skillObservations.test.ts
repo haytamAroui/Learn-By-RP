@@ -28,13 +28,18 @@ afterEach(() => {
 });
 
 function observation(overrides: Partial<SkillObservation> = {}): SkillObservation {
-  return {
+  const base: SkillObservation = {
     id: 'so-1',
     skillId: 'skill-request-substitution',
     sessionId: 'session-1',
     attemptId: 'attempt-1',
     sourcePassageId: 'p-1',
     sourceRevision: 'rev-1',
+    contextKey: {
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.es.cafe.breakfast',
+    },
     domainId: 'cafes',
     scenarioId: 'scene.es.cafe.breakfast',
     modality: 'spoken',
@@ -44,7 +49,11 @@ function observation(overrides: Partial<SkillObservation> = {}): SkillObservatio
     evidenceSource: 'validated_explicit',
     quote: '¿Tiene leche de avena?',
     recordedAt: '2026-09-20T09:00:00.000Z',
+  };
+  return {
+    ...base,
     ...overrides,
+    contextKey: overrides.contextKey ?? base.contextKey,
   };
 }
 
@@ -68,6 +77,11 @@ describe('saveSkillObservations / getSkillObservations', () => {
       sourceRevision: 'rev-1',
       domainId: 'cafes',
       scenarioId: 'scene.es.cafe.breakfast',
+      contextKey: {
+        domainId: 'cafes',
+        scenarioFamilyId: 'counter-ordering',
+        scenarioId: 'scene.es.cafe.breakfast',
+      },
       modality: 'spoken',
       retrieval: 'unassisted',
       taskOutcome: 'achieved',
@@ -105,13 +119,26 @@ describe('saveSkillObservations / getSkillObservations', () => {
     expect(loaded[0].examTaskId).toBe('interaction-1');
   });
 
-  it('leaves absent optional context undefined rather than empty strings', async () => {
+  it('keeps the required context domain while leaving optional scenario undefined', async () => {
     await archiveRepository.saveSkillObservations([
-      observation({ domainId: undefined, scenarioId: undefined }),
+      observation({
+        contextKey: {
+          domainId: 'cafes',
+          scenarioFamilyId: 'counter-ordering',
+        },
+        domainId: undefined,
+        scenarioId: undefined,
+      }),
     ]);
 
     const loaded = await archiveRepository.getSkillObservations();
-    expect(loaded[0].domainId).toBeUndefined();
+    expect(loaded[0].contextKey).toEqual({
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: undefined,
+      examTaskId: undefined,
+    });
+    expect(loaded[0].domainId).toBe('cafes');
     expect(loaded[0].scenarioId).toBeUndefined();
   });
 

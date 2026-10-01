@@ -42,6 +42,19 @@ function hasRecentLapse(
   });
 }
 
+
+/**
+ * Canonical transfer identity.
+ *
+ * scenarioId, sessionId, locale and pressure variants are deliberately excluded:
+ * they may describe different executions without representing a genuinely new
+ * communicative situation.
+ */
+export function skillContextIdentity(observation: SkillObservation): string {
+  const { domainId, scenarioFamilyId } = observation.contextKey;
+  return `${domainId}::${scenarioFamilyId}`;
+}
+
 export function projectSkill(
   skillId: CommunicativeSkillId,
   observations: SkillObservation[],
@@ -55,7 +68,7 @@ export function projectSkill(
     o => o.retrieval === 'assisted' || o.retrieval === 'unknown'
   );
 
-  const independentContexts = [...new Set(independent.map(o => o.sessionId))];
+  const independentContexts = [...new Set(independent.map(skillContextIdentity))];
   const independentDays = [...new Set(independent.map(observationDay))].sort();
 
   const validatedIndependent = independent.filter(
@@ -182,6 +195,13 @@ export function inferLegacySkillEvidence(
         attemptId: observation.attemptId,
         sourcePassageId: observation.sourceTurnId,
         sourceRevision: observation.sourceRevision,
+        // Historical phrase observations did not persist a reviewed scenario
+        // family. Keep them in one conservative legacy context rather than
+        // manufacturing transfer from different session ids.
+        contextKey: {
+          domainId: 'legacy',
+          scenarioFamilyId: 'legacy-unknown',
+        },
         modality: observation.modality,
         retrieval: observation.retrieval,
         taskOutcome: observation.taskOutcome,
