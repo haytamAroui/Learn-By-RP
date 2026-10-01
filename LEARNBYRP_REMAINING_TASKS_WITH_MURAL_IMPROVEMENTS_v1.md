@@ -4,7 +4,7 @@
 **Date:** 2026-10-01  
 **Status:** Implementation plan for the current codebase  
 **Product:** LearnByRP / Mission Coach  
-**Baseline:** 332 tests passing  
+**Baseline:** 380 passing · 36 passing visual · iOS and Android bundles clean  
 **Scope:** Finish the current remaining tasks without rewriting the completed skill-evidence architecture, while adopting the best product/runtime ideas identified from the full Mural codebase audit.
 
 ---
@@ -204,8 +204,10 @@ Current baseline:
 
 ```text
 TypeScript: clean
-Tests:      332 passing
-iOS bundle: clean
+Unit tests:  380 passing (15 files)
+Visual:      36 passing (6 screens x 3 widths x 2 themes)
+iOS bundle:  clean
+Android:     clean
 ```
 
 The deterministic no-provider fallback correctly returns:
@@ -248,16 +250,19 @@ Do not:
 The remaining current work is:
 
 ```text
-R0  Patch UI/UX Design System v2
-R1  Remove all essential sub-12px text
-R2  Navigation: remove Vocabulary + add Settings access
-R3  Voice lifecycle: reconnecting/error + recovery UI
-R4  Reduced-motion foundation
-R5  IndexedDB web repository
-R6  Progress IA: ReadyToPractise above tabs
+R0  Patch UI/UX Design System v2                          DONE
+R1  Remove all essential sub-12px text                    DONE
+R2  Navigation: remove Vocabulary + add Settings access   DONE
+R3  Voice lifecycle: reconnecting/error + recovery UI     REMAINING
+R4  Reduced-motion foundation                             DONE
+R5  IndexedDB web repository                              DONE
+R6  Progress IA: ReadyToPractise above tabs               DONE
 ```
 
-Because web export is currently broken, `R5` must be completed before considering Progress/data-management work production-ready.
+Only `R3` remains. Its twelve acceptance criteria are listed in §12.
+
+Web export is no longer broken, so the sequencing note that gated `R5` before
+Progress work no longer applies.
 
 Mural-inspired improvements are embedded into these tasks where relevant.
 
@@ -1702,8 +1707,9 @@ C7 exam-preparation vertical
 Keep the current baseline:
 
 ```text
-332 tests
-```
+380 passing unit tests
+36 passing visual snapshots
+``````
 
 Each phase adds coverage.
 
