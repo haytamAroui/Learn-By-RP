@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { readFileSync, globSync } from 'node:fs';
+import { existsSync, readFileSync, globSync } from 'node:fs';
 import {
   LIGHT,
   DARK,
@@ -624,5 +624,35 @@ describe('layout and targets', () => {
     expect(ui).toContain('bg-action');
     expect(ui).toContain('text-action-text');
     expect(ui).not.toMatch(/primary:\s*'[^']*bg-primary\b/);
+  });
+});
+
+describe('mobile-first learner route architecture', () => {
+  it('uses route screens for briefing and recap instead of the legacy modal components', () => {
+    expect(existsSync('src/app/mission/[missionId].tsx')).toBe(true);
+    expect(existsSync('src/components/MissionBriefingScreen.tsx')).toBe(true);
+    expect(existsSync('src/components/RecapScreen.tsx')).toBe(true);
+
+    expect(existsSync('src/components/MissionBriefingModal.tsx')).toBe(false);
+    expect(existsSync('src/components/RecapModal.tsx')).toBe(false);
+    expect(existsSync('src/components/SettingsModal.tsx')).toBe(false);
+  });
+
+  it('routes Talk and Missions through the governed briefing screen', () => {
+    const talk = readFileSync('src/app/(tabs)/index.tsx', 'utf8');
+    const missions = readFileSync('src/app/(tabs)/missions.tsx', 'utf8');
+
+    expect(talk).toContain("pathname: '/mission/[missionId]'");
+    expect(missions).toContain("pathname: '/mission/[missionId]'");
+    expect(talk).not.toContain('MissionBriefingModal');
+    expect(missions).not.toContain('MissionBriefingModal');
+  });
+
+  it('keeps meaning and coaching support secondary in the live conversation', () => {
+    const live = readFileSync('src/components/LiveSessionView.tsx', 'utf8');
+
+    expect(live).toContain('size="compact"');
+    expect(live).toContain('visible={showHelpSheet}');
+    expect(live).toContain('visible={showMeaningLine && Boolean(latestAssistantPassage?.meaning)}');
   });
 });
