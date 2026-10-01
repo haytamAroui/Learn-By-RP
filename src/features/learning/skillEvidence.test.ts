@@ -461,13 +461,17 @@ describe('projectSkill', () => {
   const now = Date.parse('2026-10-01T12:00:00.000Z');
 
   function skillObservation(overrides: Partial<SkillObservation> = {}): SkillObservation {
-    return {
+    const base: SkillObservation = {
       id: 'so-1',
       skillId: SKILL,
       sessionId: 's-1',
       attemptId: 'attempt-1',
       sourcePassageId: 'p-1',
       sourceRevision: 'rev-1',
+      contextKey: {
+        domainId: 'cafes',
+        scenarioFamilyId: 'family-1',
+      },
       modality: 'spoken',
       retrieval: 'unassisted',
       taskOutcome: 'achieved',
@@ -475,7 +479,11 @@ describe('projectSkill', () => {
       evidenceSource: 'validated_explicit',
       quote: '¿Tiene leche de avena?',
       recordedAt: '2026-09-20T09:00:00.000Z',
+    };
+    return {
+      ...base,
       ...overrides,
+      contextKey: overrides.contextKey ?? base.contextKey,
     };
   }
 
@@ -496,8 +504,8 @@ describe('projectSkill', () => {
   // Two contexts on one day is one session with two chances in it.
   it('does not reach growing from two contexts on a single day', () => {
     const observations = [
-      skillObservation({ id: 'a', sessionId: 's-1', recordedAt: '2026-09-20T09:00:00.000Z' }),
-      skillObservation({ id: 'b', sessionId: 's-2', recordedAt: '2026-09-20T15:00:00.000Z' }),
+      skillObservation({ id: 'a', sessionId: 's-1', contextKey: { domainId: 'test', scenarioFamilyId: 'family-1' }, recordedAt: '2026-09-20T09:00:00.000Z' }),
+      skillObservation({ id: 'b', sessionId: 's-2', contextKey: { domainId: 'test', scenarioFamilyId: 'family-2' }, recordedAt: '2026-09-20T15:00:00.000Z' }),
     ];
 
     const projection = projectSkill(SKILL, observations, [], now);
@@ -508,8 +516,8 @@ describe('projectSkill', () => {
 
   it('reaches growing at 2 contexts across 2 days', () => {
     const observations = [
-      skillObservation({ id: 'a', sessionId: 's-1', recordedAt: '2026-09-20T09:00:00.000Z' }),
-      skillObservation({ id: 'b', sessionId: 's-2', recordedAt: '2026-09-21T09:00:00.000Z' }),
+      skillObservation({ id: 'a', sessionId: 's-1', contextKey: { domainId: 'test', scenarioFamilyId: 'family-1' }, recordedAt: '2026-09-20T09:00:00.000Z' }),
+      skillObservation({ id: 'b', sessionId: 's-2', contextKey: { domainId: 'test', scenarioFamilyId: 'family-2' }, recordedAt: '2026-09-21T09:00:00.000Z' }),
     ];
 
     expect(projectSkill(SKILL, observations, [], now).status).toBe('growing');
@@ -517,10 +525,10 @@ describe('projectSkill', () => {
 
   it('does not reach steady at 4 contexts but only 2 days', () => {
     const observations = [
-      skillObservation({ id: 'a', sessionId: 's-1', recordedAt: '2026-09-20T09:00:00.000Z' }),
-      skillObservation({ id: 'b', sessionId: 's-2', recordedAt: '2026-09-20T15:00:00.000Z' }),
-      skillObservation({ id: 'c', sessionId: 's-3', recordedAt: '2026-09-21T09:00:00.000Z' }),
-      skillObservation({ id: 'd', sessionId: 's-4', recordedAt: '2026-09-21T15:00:00.000Z' }),
+      skillObservation({ id: 'a', sessionId: 's-1', contextKey: { domainId: 'test', scenarioFamilyId: 'family-1' }, recordedAt: '2026-09-20T09:00:00.000Z' }),
+      skillObservation({ id: 'b', sessionId: 's-2', contextKey: { domainId: 'test', scenarioFamilyId: 'family-2' }, recordedAt: '2026-09-20T15:00:00.000Z' }),
+      skillObservation({ id: 'c', sessionId: 's-3', contextKey: { domainId: 'test', scenarioFamilyId: 'family-3' }, recordedAt: '2026-09-21T09:00:00.000Z' }),
+      skillObservation({ id: 'd', sessionId: 's-4', contextKey: { domainId: 'test', scenarioFamilyId: 'family-4' }, recordedAt: '2026-09-21T15:00:00.000Z' }),
     ];
 
     const projection = projectSkill(SKILL, observations, [], now);
@@ -533,10 +541,10 @@ describe('projectSkill', () => {
 
   it('reaches steady at 4 contexts across 3 days with validated evidence', () => {
     const observations = [
-      skillObservation({ id: 'a', sessionId: 's-1', recordedAt: '2026-09-20T09:00:00.000Z' }),
-      skillObservation({ id: 'b', sessionId: 's-2', recordedAt: '2026-09-21T09:00:00.000Z' }),
-      skillObservation({ id: 'c', sessionId: 's-3', recordedAt: '2026-09-22T09:00:00.000Z' }),
-      skillObservation({ id: 'd', sessionId: 's-4', recordedAt: '2026-09-22T15:00:00.000Z' }),
+      skillObservation({ id: 'a', sessionId: 's-1', contextKey: { domainId: 'test', scenarioFamilyId: 'family-1' }, recordedAt: '2026-09-20T09:00:00.000Z' }),
+      skillObservation({ id: 'b', sessionId: 's-2', contextKey: { domainId: 'test', scenarioFamilyId: 'family-2' }, recordedAt: '2026-09-21T09:00:00.000Z' }),
+      skillObservation({ id: 'c', sessionId: 's-3', contextKey: { domainId: 'test', scenarioFamilyId: 'family-3' }, recordedAt: '2026-09-22T09:00:00.000Z' }),
+      skillObservation({ id: 'd', sessionId: 's-4', contextKey: { domainId: 'test', scenarioFamilyId: 'family-4' }, recordedAt: '2026-09-22T15:00:00.000Z' }),
     ];
 
     expect(projectSkill(SKILL, observations, [], now).status).toBe('steady');
@@ -548,15 +556,14 @@ describe('projectSkill', () => {
       skillObservation({
         id: `legacy-${i}`,
         sessionId: `s-${i}`,
+        contextKey: { domainId: 'legacy', scenarioFamilyId: 'legacy-unknown' },
         recordedAt: new Date(Date.parse('2026-09-01T09:00:00.000Z') + i * day).toISOString(),
         evidenceSource: 'legacy_inferred',
       })
     );
 
     const projection = projectSkill(SKILL, observations, [], now);
-    expect(projection.independentContexts.length).toBeGreaterThanOrEqual(
-      SKILL_POLICY.steadyMinContexts
-    );
+    expect(projection.independentContexts).toEqual(['legacy::legacy-unknown']);
     expect(projection.independentDays.length).toBeGreaterThanOrEqual(SKILL_POLICY.steadyMinDays);
     expect(projection.status).not.toBe('steady');
   });
@@ -587,10 +594,10 @@ describe('projectSkill', () => {
   }
 
   const steadyHistory = () => [
-    skillObservation({ id: 'a', sessionId: 's-1', recordedAt: '2026-09-20T09:00:00.000Z' }),
-    skillObservation({ id: 'b', sessionId: 's-2', recordedAt: '2026-09-21T09:00:00.000Z' }),
-    skillObservation({ id: 'c', sessionId: 's-3', recordedAt: '2026-09-22T09:00:00.000Z' }),
-    skillObservation({ id: 'd', sessionId: 's-4', recordedAt: '2026-09-22T15:00:00.000Z' }),
+    skillObservation({ id: 'a', sessionId: 's-1', contextKey: { domainId: 'test', scenarioFamilyId: 'family-1' }, recordedAt: '2026-09-20T09:00:00.000Z' }),
+    skillObservation({ id: 'b', sessionId: 's-2', contextKey: { domainId: 'test', scenarioFamilyId: 'family-2' }, recordedAt: '2026-09-21T09:00:00.000Z' }),
+    skillObservation({ id: 'c', sessionId: 's-3', contextKey: { domainId: 'test', scenarioFamilyId: 'family-3' }, recordedAt: '2026-09-22T09:00:00.000Z' }),
+    skillObservation({ id: 'd', sessionId: 's-4', contextKey: { domainId: 'test', scenarioFamilyId: 'family-4' }, recordedAt: '2026-09-22T15:00:00.000Z' }),
   ];
 
   it('keeps a steady skill steady when a lapse follows', () => {
