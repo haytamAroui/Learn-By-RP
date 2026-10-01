@@ -33,6 +33,7 @@ import {
   SupportExposure,
   SceneState,
   LearningObservation,
+  OpportunityInstance,
   TaskOutcome,
 } from '../types';
 import { createVoiceTransport } from '../providers/voice';
@@ -322,6 +323,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const scrollRef = useRef<ScrollView | null>(null);
   const sceneStateRef = useRef(sceneState);
   const passagesRef = useRef(passages);
+  const opportunityInstancesRef = useRef<OpportunityInstance[]>(
+    initialSession.opportunityInstances ?? []
+  );
   const isMutedRef = useRef(isMuted);
   const isSceneFrozenRef = useRef(isSceneFrozen);
   const isEndingRef = useRef(false);
@@ -1056,6 +1060,7 @@ t.live.rehearsalRestored
       mission,
       passages: finalPassages,
       supportExposures,
+      opportunityInstances: opportunityInstancesRef.current,
       isRehearsalAttempt: wasRehearsal,
       sessionEndReason: endReason,
       // A live session only ever writes validated evidence. `legacy_inferred` is
@@ -1137,6 +1142,7 @@ t.live.rehearsalRestored
       endReason,
       passages: finalPassages,
       supportExposures,
+      opportunityInstances: opportunityInstancesRef.current,
       observations: finalObservations,
       // Only validated evidence reaches the archive, written in the same
       // transaction as the transcript it cites.

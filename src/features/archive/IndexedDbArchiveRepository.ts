@@ -280,6 +280,8 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
           session.supportExposures.length > 0
             ? session.supportExposures
             : existing?.supportExposures ?? [],
+        opportunityInstances:
+          session.opportunityInstances ?? existing?.opportunityInstances ?? [],
         observations:
           session.observations.length > 0 ? session.observations : existing?.observations ?? [],
       };
@@ -898,6 +900,7 @@ function toSessionRecord(stored: StoredSession): SessionRecord {
     taskOutcome: stored.taskOutcome ?? 'unknown',
     passages: stored.passages ?? [],
     supportExposures: stored.supportExposures ?? [],
+    opportunityInstances: stored.opportunityInstances ?? [],
     observations: stored.observations ?? [],
   } as SessionRecord;
 }

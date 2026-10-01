@@ -14,6 +14,7 @@ import { COMMUNICATIVE_SKILLS_CATALOG, MISSION_CATALOG as MISSIONS } from '../..
 import {
   LearningObservation,
   MissionDefinition,
+  OpportunityInstance,
   Passage,
   SkillLapse,
   SkillObservation,
@@ -91,6 +92,22 @@ function proposal(skillItems: SkillEvidenceCandidate[], taskOutcome: 'achieved' 
   };
 }
 
+function opportunity(overrides: Partial<OpportunityInstance> = {}): OpportunityInstance {
+  return {
+    id: 'opp-1',
+    attemptId: 'attempt-1',
+    opportunityId: 'opportunity-request-substitution',
+    skillId: SKILL,
+    status: 'taken',
+    detection: 'validated',
+    demonstration: 'attempted_not_demonstrated',
+    learnerAttemptPassageId: 'p-1',
+    learnerAttemptRevision: 'rev-1',
+    recordedAt: '2026-09-20T09:00:04.000Z',
+    ...overrides,
+  };
+}
+
 const context = (
   overrides: Partial<Parameters<typeof validateSkillEvidenceProposal>[1]> = {}
 ) => ({
@@ -99,6 +116,8 @@ const context = (
   mission: mission(),
   passages: [passage()],
   supportExposures: [] as SupportExposure[],
+  opportunityInstances: [] as OpportunityInstance[],
+  sessionEndReason: 'completed' as const,
   ...overrides,
 } as Parameters<typeof validateSkillEvidenceProposal>[1]);
 
@@ -109,6 +128,7 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.rejected).toEqual([]);
     expect(result.validated).toHaveLength(1);
     expect(result.validated[0].skillId).toBe(SKILL);
+    expect(result.validated[0].demonstration).toBe('demonstrated');
     expect(result.validated[0].evidenceSource).toBe('validated_explicit');
   });
 
@@ -142,6 +162,41 @@ describe('validateSkillEvidenceProposal', () => {
 
     expect(result.rejected).toEqual([]);
     expect(result.validated).toHaveLength(1);
+  });
+
+  it('links a demonstrated skill to a validated taken opportunity when supplied', () => {
+    const instance = opportunity({ demonstration: 'demonstrated' });
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate({ opportunityInstanceId: instance.id })]),
+      context({ opportunityInstances: [instance] })
+    );
+
+    expect(result.rejected).toEqual([]);
+    expect(result.validated[0].opportunityInstanceId).toBe(instance.id);
+  });
+
+  it('rejects an invented opportunity id', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate({ opportunityInstanceId: 'opp-invented' })]),
+      context({ opportunityInstances: [opportunity()] })
+    );
+
+    expect(result.validated).toHaveLength(0);
+    expect(result.rejected[0].check).toBe('opportunity_unknown');
+  });
+
+  it('rejects an opportunity for a different skill', () => {
+    const instance = opportunity({
+      skillId: 'skill-propose-alternative',
+      demonstration: 'demonstrated',
+    });
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate({ opportunityInstanceId: instance.id })]),
+      context({ opportunityInstances: [instance] })
+    );
+
+    expect(result.validated).toHaveLength(0);
+    expect(result.rejected[0].check).toBe('opportunity_skill_mismatch');
   });
 
   it('rejects a quote that is not in the cited passage', () => {
@@ -211,13 +266,16 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.rejected[0].check).toBe('rehearsal_not_independent');
   });
 
-  it('refuses to evidence a skill from a failed task', () => {
+  it('keeps a grounded skill demonstration even when the scene task failed', () => {
     const result = validateSkillEvidenceProposal(
       proposal([candidate()], 'not_achieved'),
       context()
     );
 
-    expect(result.rejected[0].check).toBe('outcome_incompatible');
+    expect(result.rejected).toEqual([]);
+    expect(result.validated).toHaveLength(1);
+    expect(result.validated[0].taskOutcome).toBe('not_achieved');
+    expect(result.validated[0].demonstration).toBe('demonstrated');
   });
 
   it('does not treat spoken typing as spoken production', () => {
@@ -251,82 +309,200 @@ describe('validateSkillEvidenceProposal', () => {
 });
 
 describe('deriveLapses', () => {
-  const failing = () => proposal([candidate()], 'not_achieved');
+  const proposalWithoutFailureClaim = () => proposal([], 'not_achieved');
 
-  it('records a lapse when a cold attempt failed', () => {
-    const result = validateSkillEvidenceProposal(failing(), context());
+  it('records a lapse only from a validated taken cold opportunity that was attempted but not demonstrated', () => {
+    const result = validateSkillEvidenceProposal(
+      proposalWithoutFailureClaim(),
+      context({ opportunityInstances: [opportunity()] })
+    );
 
-    expect(result.lapses.length).toBeGreaterThan(0);
-    expect(result.lapses[0].basis).toBe('cold_attempt_failed');
-    expect(result.lapses[0].skillId).toBe('skill-request-substitution');
+    expect(result.lapses).toHaveLength(1);
+    expect(result.lapses[0]).toMatchObject({
+      basis: 'cold_attempt_failed',
+      skillId: SKILL,
+      opportunityInstanceId: 'opp-1',
+      demonstration: 'attempted_not_demonstrated',
+    });
   });
 
-  it('attaches lapses only to the mission primary skills', () => {
-    const result = validateSkillEvidenceProposal(failing(), context());
-    const primary = new Set(mission().primarySkillIds);
+  it('scene failure alone creates no lapse', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({ opportunityInstances: [] })
+    );
 
-    expect(result.lapses.every(l => primary.has(l.skillId))).toBe(true);
-  });
-
-  it('records no lapse when the task succeeded', () => {
-    const result = validateSkillEvidenceProposal(proposal([candidate()], 'achieved'), context());
     expect(result.lapses).toEqual([]);
   });
 
-  it('records no lapse when the outcome is merely unknown', () => {
-    const result = validateSkillEvidenceProposal(proposal([candidate()], 'unknown'), context());
+  it('scene success does not erase a real failed skill opportunity', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'achieved'),
+      context({ opportunityInstances: [opportunity()] })
+    );
+
+    expect(result.lapses).toHaveLength(1);
+  });
+
+  it('records no lapse when the opportunity was not presented', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({
+        opportunityInstances: [
+          opportunity({
+            status: 'not_presented',
+            demonstration: 'unknown',
+            learnerAttemptPassageId: undefined,
+          }),
+        ],
+      })
+    );
+
     expect(result.lapses).toEqual([]);
   });
 
-  // The distinction that keeps lapse meaning something: a failed attempt after
-  // help was shown is not a failure to recall.
-  it('records no lapse when support was shown', () => {
-    const result = validateSkillEvidenceProposal(failing(), context({
-      supportExposures: [exposure()],
-    }));
+  it('records no lapse from a provisional semantic detection', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({ opportunityInstances: [opportunity({ detection: 'provisional' })] })
+    );
+
+    expect(result.lapses).toEqual([]);
+  });
+
+  it('records no lapse when the learner actually demonstrated the skill', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({
+        opportunityInstances: [opportunity({ demonstration: 'demonstrated' })],
+      })
+    );
+
+    expect(result.lapses).toEqual([]);
+  });
+
+  it('records no lapse when support was relevant to the failed attempt', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({
+        opportunityInstances: [opportunity()],
+        supportExposures: [exposure()],
+      })
+    );
 
     expect(result.lapses).toEqual([]);
   });
 
   it('records no lapse when the learner stayed silent', () => {
-    const result = validateSkillEvidenceProposal(failing(), context({
-      passages: [passage({ speaker: 'assistant' })],
-    }));
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({
+        passages: [passage({ speaker: 'assistant' })],
+        opportunityInstances: [opportunity()],
+      })
+    );
 
     expect(result.lapses).toEqual([]);
   });
 
   it('records no lapse during a rehearsal', () => {
-    const result = validateSkillEvidenceProposal(failing(), context({
-      isRehearsalAttempt: true,
-    }));
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({
+        opportunityInstances: [opportunity()],
+        isRehearsalAttempt: true,
+      })
+    );
 
     expect(result.lapses).toEqual([]);
   });
 
-  it('points the lapse at the revision that was actually spoken', () => {
-    const result = validateSkillEvidenceProposal(failing(), context({
-      passages: [passage({ revisionKey: 'rev-7' })],
-    }));
+  it('records no lapse for technical or recognition failure', () => {
+    for (const failureReason of [
+      'noise',
+      'disconnect',
+      'provider_failure',
+      'asr_failure',
+      'language_mismatch',
+    ] as const) {
+      const result = validateSkillEvidenceProposal(
+        proposal([], 'not_achieved'),
+        context({
+          opportunityInstances: [opportunity({ failureReason })],
+        })
+      );
+
+      expect(result.lapses, failureReason).toEqual([]);
+    }
+  });
+
+  it('records no lapse when the session ended for a non-learning reason', () => {
+    for (const sessionEndReason of ['user_ended', 'time_limit', 'error'] as const) {
+      const result = validateSkillEvidenceProposal(
+        proposal([], 'not_achieved'),
+        context({
+          opportunityInstances: [opportunity()],
+          sessionEndReason,
+        })
+      );
+
+      expect(result.lapses, sessionEndReason).toEqual([]);
+    }
+  });
+
+  it('points the lapse at the validated learner passage revision', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'unknown'),
+      context({
+        passages: [passage({ revisionKey: 'rev-7' })],
+        opportunityInstances: [
+          opportunity({ learnerAttemptRevision: 'rev-7' }),
+        ],
+      })
+    );
 
     expect(result.lapses[0].sourceRevision).toBe('rev-7');
     expect(result.lapses[0].sourcePassageId).toBe('p-1');
   });
 
-  it('records a lapse even when the model proposed no skill at all', () => {
-    // A failure the model failed to report is still a failure.
+  it('rejects a stale opportunity passage revision as lapse evidence', () => {
     const result = validateSkillEvidenceProposal(
       proposal([], 'not_achieved'),
-      context()
+      context({
+        passages: [passage({ revisionKey: 'rev-7' })],
+        opportunityInstances: [
+          opportunity({ learnerAttemptRevision: 'rev-old' }),
+        ],
+      })
     );
 
-    expect(result.lapses.length).toBeGreaterThan(0);
+    expect(result.lapses).toEqual([]);
   });
 
-  it('never lets a lapse become positive evidence', () => {
-    const result = validateSkillEvidenceProposal(failing(), context());
+  it('only lapses mission primary skills', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({
+        opportunityInstances: [
+          opportunity({
+            skillId: 'skill-communicative-repair',
+            opportunityId: 'repair-opportunity',
+          }),
+        ],
+      })
+    );
+
+    expect(result.lapses).toEqual([]);
+  });
+
+  it('never lets a failed opportunity become positive evidence', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({ opportunityInstances: [opportunity()] })
+    );
 
     expect(result.validated).toHaveLength(0);
+    expect(result.lapses).toHaveLength(1);
   });
 });
 
@@ -480,6 +656,7 @@ describe('projectSkill', () => {
       modality: 'spoken',
       retrieval: 'unassisted',
       taskOutcome: 'achieved',
+      demonstration: 'demonstrated',
       supportExposureIds: [],
       evidenceSource: 'validated_explicit',
       quote: '¿Tiene leche de avena?',
@@ -592,6 +769,12 @@ describe('projectSkill', () => {
       attemptId: 'attempt-1',
       sourcePassageId: 'p-9',
       sourceRevision: 'rev-1',
+      contextKey: {
+        domainId: 'test',
+        scenarioFamilyId: 'family-lapse',
+      },
+      opportunityInstanceId: 'opp-lapse-1',
+      demonstration: 'attempted_not_demonstrated',
       basis: 'cold_attempt_failed',
       recordedAt: new Date(now - day).toISOString(),
       ...overrides,

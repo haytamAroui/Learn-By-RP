@@ -2,6 +2,7 @@ import {
   LearningObservation,
   LanguageCode,
   Mode,
+  OpportunityInstance,
   Passage,
   PhraseItem,
   RetrievalType,
@@ -212,6 +213,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         );
       }
 
+      await this.writeOpportunityInstances(txn, session.id, session.opportunityInstances ?? []);
+
       await txn.runAsync(
         `INSERT OR REPLACE INTO scene_state
           (session_id, mission_id, revision, facts, checkpoints, is_finished, outcome)
@@ -331,6 +334,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         );
       }
 
+      await this.writeOpportunityInstances(txn, session.id, session.opportunityInstances ?? []);
+
       for (const rejection of rejectedProposals) {
         await txn.runAsync(
           `INSERT OR REPLACE INTO assessment_proposals
@@ -410,9 +415,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         `INSERT OR REPLACE INTO skill_observations
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
            domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
-           task_outcome, support_exposure_ids, evidence_source, quote, policy_version,
-           hidden, user_disputed, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+           task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
+           evidence_source, quote, policy_version, hidden, user_disputed, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
         observation.id,
         observation.skillId,
         observation.sessionId,
@@ -427,6 +432,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         observation.modality,
         observation.retrieval,
         observation.taskOutcome,
+        observation.demonstration,
+        observation.opportunityInstanceId ?? null,
         JSON.stringify(observation.supportExposureIds),
         observation.evidenceSource,
         observation.quote,
@@ -439,19 +446,52 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO skill_lapses
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-           domain_id, scenario_id, basis, policy_version, hidden, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+           domain_id, scenario_family_id, scenario_id, opportunity_instance_id,
+           demonstration, basis, policy_version, hidden, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
         lapse.id,
         lapse.skillId,
         lapse.sessionId,
         lapse.attemptId,
         lapse.sourcePassageId,
         lapse.sourceRevision,
-        lapse.domainId ?? null,
-        lapse.scenarioId ?? null,
+        lapse.contextKey.domainId,
+        lapse.contextKey.scenarioFamilyId,
+        lapse.contextKey.scenarioId ?? lapse.scenarioId ?? null,
+        lapse.opportunityInstanceId,
+        lapse.demonstration,
         lapse.basis,
         LEARNING_POLICY_VERSION,
         lapse.recordedAt
+      );
+    }
+  }
+
+  private async writeOpportunityInstances(
+    txn: Db,
+    sessionId: string,
+    opportunities: OpportunityInstance[]
+  ): Promise<void> {
+    for (const opportunity of opportunities) {
+      await txn.runAsync(
+        `INSERT OR REPLACE INTO opportunity_instances
+          (id, session_id, attempt_id, opportunity_id, skill_id, status, detection,
+           demonstration, presented_at_passage_id, learner_attempt_passage_id,
+           learner_attempt_revision, failure_reason, recorded_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        opportunity.id,
+        sessionId,
+        opportunity.attemptId,
+        opportunity.opportunityId,
+        opportunity.skillId,
+        opportunity.status,
+        opportunity.detection,
+        opportunity.demonstration,
+        opportunity.presentedAtPassageId ?? null,
+        opportunity.learnerAttemptPassageId ?? null,
+        opportunity.learnerAttemptRevision ?? null,
+        opportunity.failureReason ?? null,
+        opportunity.recordedAt
       );
     }
   }
@@ -473,6 +513,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       );
       const exposureRows = await db.getAllAsync<Record<string, unknown>>(
         'SELECT * FROM support_exposures WHERE session_id = ?',
+        sessionId
+      );
+      const opportunityRows = await db.getAllAsync<Record<string, unknown>>(
+        'SELECT * FROM opportunity_instances WHERE session_id = ? ORDER BY recorded_at ASC',
         sessionId
       );
       const observationRows = await db.getAllAsync<Record<string, unknown>>(
@@ -502,6 +546,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         endReason: (row.end_reason as SessionRecord['endReason']) ?? undefined,
         passages,
         supportExposures: exposureRows.map(mapExposureRow),
+        opportunityInstances: opportunityRows.map(mapOpportunityInstanceRow),
         observations: observationRows.map(mapObservationRow),
         taskOutcome: 'unknown',
         sceneState: {
@@ -628,9 +673,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           `INSERT OR REPLACE INTO skill_observations
             (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
              domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
-             task_outcome, support_exposure_ids, evidence_source, quote, policy_version,
-             hidden, user_disputed, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+             task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
+             evidence_source, quote, policy_version, hidden, user_disputed, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
           observation.id,
           observation.skillId,
           observation.sessionId,
@@ -645,6 +690,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           observation.modality,
           observation.retrieval,
           observation.taskOutcome,
+          observation.demonstration,
+          observation.opportunityInstanceId ?? null,
           JSON.stringify(observation.supportExposureIds),
           observation.evidenceSource,
           observation.quote,
@@ -683,6 +730,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       modality: String(row.modality) as SkillObservation['modality'],
       retrieval: String(row.retrieval) as RetrievalType,
       taskOutcome: String(row.task_outcome) as TaskOutcome,
+      demonstration: (row.demonstration
+        ? String(row.demonstration)
+        : 'demonstrated') as SkillObservation['demonstration'],
+      opportunityInstanceId: row.opportunity_instance_id
+        ? String(row.opportunity_instance_id)
+        : undefined,
       supportExposureIds: parseJson<string[]>(String(row.support_exposure_ids ?? '[]'), []),
       evidenceSource: String(row.evidence_source) as EvidenceSource,
       quote: String(row.quote),
@@ -703,8 +756,19 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       attemptId: String(row.attempt_id),
       sourcePassageId: String(row.source_passage_id),
       sourceRevision: String(row.source_revision),
+      contextKey: {
+        domainId: row.domain_id ? String(row.domain_id) : 'legacy',
+        scenarioFamilyId: row.scenario_family_id
+          ? String(row.scenario_family_id)
+          : 'legacy-unknown',
+        scenarioId: row.scenario_id ? String(row.scenario_id) : undefined,
+      },
       domainId: row.domain_id ? String(row.domain_id) : undefined,
       scenarioId: row.scenario_id ? String(row.scenario_id) : undefined,
+      opportunityInstanceId: row.opportunity_instance_id
+        ? String(row.opportunity_instance_id)
+        : 'legacy-opportunity-unknown',
+      demonstration: 'attempted_not_demonstrated',
       basis: String(row.basis) as SkillLapse['basis'],
       recordedAt: String(row.created_at),
     }));
@@ -951,6 +1015,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     await withTransaction(async txn => {
       await txn.runAsync('DELETE FROM skill_lapses WHERE session_id = ?', sessionId);
       await txn.runAsync('DELETE FROM skill_observations WHERE session_id = ?', sessionId);
+      await txn.runAsync('DELETE FROM opportunity_instances WHERE session_id = ?', sessionId);
       await txn.runAsync('DELETE FROM observations WHERE session_id = ?', sessionId);
       await txn.runAsync(
         'DELETE FROM support_exposures WHERE session_id = ?',
@@ -976,6 +1041,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     await withTransaction(async txn => {
       await txn.runAsync('DELETE FROM skill_lapses');
       await txn.runAsync('DELETE FROM skill_observations');
+      await txn.runAsync('DELETE FROM opportunity_instances');
       await txn.runAsync('DELETE FROM observations');
       await txn.runAsync('DELETE FROM fragments');
       await txn.runAsync('DELETE FROM passages');
@@ -1304,6 +1370,31 @@ function mapExposureRow(row: Record<string, unknown>): SupportExposure {
     kind: String(row.kind) as SupportExposure['kind'],
     targetItemIds: parseJson<string[]>(String(row.target_item_ids ?? '[]'), []),
     exposure: String(row.exposure) as SupportExposure['exposure'],
+    recordedAt: String(row.recorded_at),
+  };
+}
+
+function mapOpportunityInstanceRow(row: Record<string, unknown>): OpportunityInstance {
+  return {
+    id: String(row.id),
+    attemptId: String(row.attempt_id),
+    opportunityId: String(row.opportunity_id),
+    skillId: String(row.skill_id),
+    status: String(row.status) as OpportunityInstance['status'],
+    detection: String(row.detection) as OpportunityInstance['detection'],
+    demonstration: String(row.demonstration) as OpportunityInstance['demonstration'],
+    presentedAtPassageId: row.presented_at_passage_id
+      ? String(row.presented_at_passage_id)
+      : undefined,
+    learnerAttemptPassageId: row.learner_attempt_passage_id
+      ? String(row.learner_attempt_passage_id)
+      : undefined,
+    learnerAttemptRevision: row.learner_attempt_revision
+      ? String(row.learner_attempt_revision)
+      : undefined,
+    failureReason: row.failure_reason
+      ? (String(row.failure_reason) as OpportunityInstance['failureReason'])
+      : undefined,
     recordedAt: String(row.recorded_at),
   };
 }

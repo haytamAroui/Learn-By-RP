@@ -30,6 +30,34 @@ export type EvidenceCategory =
 /** What the scene task itself achieved. Independent of learner ability. */
 export type TaskOutcome = 'achieved' | 'partial' | 'not_achieved' | 'unknown';
 
+/**
+ * What happened with one communicative-skill opportunity.
+ *
+ * Deliberately separate from TaskOutcome: a learner may demonstrate a skill in a
+ * scene that ultimately fails, or complete a scene without ever demonstrating a
+ * particular skill.
+ */
+export type SkillDemonstration =
+  | 'demonstrated'
+  | 'attempted_not_demonstrated'
+  | 'unknown';
+
+export type OpportunityStatus =
+  | 'presented'
+  | 'taken'
+  | 'declined'
+  | 'not_presented';
+
+export type OpportunityDetection = 'provisional' | 'validated';
+
+export type OpportunityFailureReason =
+  | 'silence'
+  | 'noise'
+  | 'disconnect'
+  | 'provider_failure'
+  | 'asr_failure'
+  | 'language_mismatch';
+
 export type SessionState =
   | 'preflight'
   | 'connecting'
@@ -261,6 +289,35 @@ export interface SkillContextKey {
 }
 
 /**
+ * Runtime record for one concrete chance to use a communicative skill.
+ *
+ * A lapse can only be derived from a validated instance that was actually taken
+ * by the learner. Merely declaring a skill on a mission is not an opportunity.
+ */
+export interface OpportunityInstance {
+  id: string;
+  attemptId: string;
+  opportunityId: string;
+  skillId: CommunicativeSkillId;
+
+  status: OpportunityStatus;
+  detection: OpportunityDetection;
+  demonstration: SkillDemonstration;
+
+  presentedAtPassageId?: string;
+  learnerAttemptPassageId?: string;
+  learnerAttemptRevision?: string;
+
+  /**
+   * Technical/non-language reasons that invalidate a failure as learning evidence.
+   * Absence means no such runtime failure was recorded.
+   */
+  failureReason?: OpportunityFailureReason;
+
+  recordedAt: string;
+}
+
+/**
  * How an observation came to exist.
  *
  * `validated_explicit` was proposed by the model and then accepted by the
@@ -312,7 +369,14 @@ export interface SkillObservation {
 
   retrieval: RetrievalType;
 
+  /** Scene result, retained as context but never used as proof of this skill. */
   taskOutcome: TaskOutcome;
+
+  /** Positive SkillObservation rows are explicit demonstrations. */
+  demonstration: SkillDemonstration;
+
+  /** Runtime opportunity that this observation came from, when known. */
+  opportunityInstanceId?: string;
 
   supportExposureIds: string[];
 
@@ -348,8 +412,14 @@ export interface SkillLapse {
   sourcePassageId: string;
   sourceRevision: string;
 
+  /** Context where the failed opportunity occurred. */
+  contextKey: SkillContextKey;
+
   domainId?: DomainId;
   scenarioId?: ScenarioId;
+
+  opportunityInstanceId: string;
+  demonstration: 'attempted_not_demonstrated';
 
   /** Why this counts as a lapse rather than an ordinary failure. */
   basis: 'cold_attempt_failed';
@@ -443,6 +513,8 @@ export interface SessionRecord {
   endReason?: 'completed' | 'user_ended' | 'time_limit' | 'error';
   passages: Passage[];
   supportExposures: SupportExposure[];
+  /** Runtime communicative opportunities observed during this attempt/session. */
+  opportunityInstances?: OpportunityInstance[];
   observations: LearningObservation[];
   /**
    * Validated skill evidence for this session. Written by the validator, never by

@@ -261,11 +261,12 @@ Rules:
 5. If the evidence is thin, return fewer items or none. An empty list is a valid, honest answer.
 6. Do NOT assess ability, level, grammar quality, or personality. You are extracting evidence, not grading.
 7. "retrievalProposal": propose "unknown". Retrieval is derived on the client from the support-exposure ledger, which you cannot see.
-8. taskOutcome: "achieved" | "partial" | "not_achieved" | "unknown". Use "unknown" when the transcript does not settle it.
+8. taskOutcome: "achieved" | "partial" | "not_achieved" | "unknown". This describes the SCENE result only. Use "unknown" when the transcript does not settle it.
 9. "skillItems" credit communicative SKILLS, not phrases. Only propose a skillId listed below.
 10. The same quote rules apply: verbatim from a learner passage, with that passage's ID and revision.
 11. Do not propose a skill merely because its topic was mentioned. The learner must have performed it.
-12. Do not report failures. A failed cold attempt is derived deterministically on the client from taskOutcome, not by you.
+12. Scene outcome and skill demonstration are independent. A learner may demonstrate a skill even when the overall task is not achieved.
+13. Do not report skill failures. A failed cold opportunity is derived deterministically from validated runtime OpportunityInstance records, never from taskOutcome alone.
 
 Return JSON matching:
 {

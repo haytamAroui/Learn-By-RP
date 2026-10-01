@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { deriveLapses, isRelevantToPassage } from './skillEvidence';
-import { Passage, SupportExposure } from '../../types';
+import { OpportunityInstance, Passage, SupportExposure } from '../../types';
 
 /**
  * Support ledger completeness and lapse eligibility.
@@ -44,6 +44,24 @@ function exposure(overrides: Partial<SupportExposure> = {}): SupportExposure {
   };
 }
 
+function failedOpportunity(
+  overrides: Partial<OpportunityInstance> = {}
+): OpportunityInstance {
+  return {
+    id: 'opp-1',
+    attemptId: 'attempt-1',
+    opportunityId: 'opportunity-request-substitution',
+    skillId: 'skill-request-substitution',
+    status: 'taken',
+    detection: 'validated',
+    demonstration: 'attempted_not_demonstrated',
+    learnerAttemptPassageId: 'p-1',
+    learnerAttemptRevision: 'rev-1',
+    recordedAt: '2026-09-20T09:00:04.000Z',
+    ...overrides,
+  };
+}
+
 const failingProposal = {
   schemaVersion: 1,
   sessionId: 's-1',
@@ -57,11 +75,14 @@ const baseContext = {
   attemptId: 'attempt-1',
   mission: {
     id: 'mission-es-cafe-sol',
+    category: 'cafes',
+    scenarioFamilyId: 'counter-ordering',
     primarySkillIds: ['skill-request-substitution'],
     secondarySkillIds: [],
   } as never,
   passages: [passage],
   supportExposures: [] as SupportExposure[],
+  opportunityInstances: [failedOpportunity()],
 };
 
 describe('meaning reveal is support', () => {
@@ -133,10 +154,8 @@ describe('an early-ended session is not a failed attempt', () => {
     }
   );
 
-  it('records no lapse when the reason is unknown and the session did not complete', () => {
-    // An unknown reason is not licence to claim a failure.
+  it('records no lapse when the end reason is unknown', () => {
     const lapses = deriveLapses(failingProposal, { ...baseContext });
-    // Unknown/absent reason preserves the historical behaviour of the check.
-    expect(Array.isArray(lapses)).toBe(true);
+    expect(lapses).toEqual([]);
   });
 });

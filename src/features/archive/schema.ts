@@ -277,6 +277,34 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE skill_observations ADD COLUMN scenario_family_id TEXT;`,
     ],
   },
+  {
+    version: 4,
+    name: 'persist_skill_demonstration_and_opportunities',
+    statements: [
+      `ALTER TABLE skill_observations ADD COLUMN demonstration TEXT NOT NULL DEFAULT 'demonstrated';`,
+      `ALTER TABLE skill_observations ADD COLUMN opportunity_instance_id TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN scenario_family_id TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN opportunity_instance_id TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN demonstration TEXT NOT NULL DEFAULT 'attempted_not_demonstrated';`,
+      `CREATE TABLE IF NOT EXISTS opportunity_instances (
+        id TEXT PRIMARY KEY,
+        session_id TEXT NOT NULL,
+        attempt_id TEXT NOT NULL,
+        opportunity_id TEXT NOT NULL,
+        skill_id TEXT NOT NULL,
+        status TEXT NOT NULL,
+        detection TEXT NOT NULL,
+        demonstration TEXT NOT NULL,
+        presented_at_passage_id TEXT,
+        learner_attempt_passage_id TEXT,
+        learner_attempt_revision TEXT,
+        failure_reason TEXT,
+        recorded_at TEXT NOT NULL
+      );`,
+      `CREATE INDEX IF NOT EXISTS idx_opportunity_instance_session
+        ON opportunity_instances (session_id, attempt_id);`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

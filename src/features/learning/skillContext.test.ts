@@ -27,6 +27,7 @@ function observation(input: {
     modality: 'spoken',
     retrieval: 'unassisted',
     taskOutcome: 'achieved',
+    demonstration: 'demonstrated',
     supportExposureIds: [],
     evidenceSource: 'validated_explicit',
     quote: 'Could I have another option?',
