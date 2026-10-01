@@ -500,30 +500,48 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       // this reply is in flight, the response is dropped rather than committed.
       const generation = beginGeneration();
 
-      const userPassageId = `p-${Date.now()}`;
-      const userPassage: Passage = {
-        id: userPassageId,
-        sessionId,
-        attemptId,
-        speaker: 'user',
-        revisionKey: 'rev-1',
-        assemblyVersion: 1,
-        status: 'final',
-        text: trimmed,
-        modality,
-        startedAt: new Date().toISOString(),
-        fragments: [
-          {
-            id: `f-${Date.now()}`,
-            passageId: userPassageId,
-            origin: modality === 'spoken' ? 'asr' : 'typed',
-            text: trimmed,
-          },
-        ],
-      };
+      /*
+        If the last passage in the transcript is already this user turn awaiting
+        a response (e.g. from a dropped connection that is now being retried),
+        reuse it rather than appending a duplicate entry. This keeps retries
+        from polluting the transcript and corrupting evidence counts.
+      */
+      const lastPassage = passagesRef.current[passagesRef.current.length - 1];
+      const isRetryOfLastUnansweredTurn =
+        lastPassage?.speaker === 'user' &&
+        lastPassage.text.trim().toLowerCase() === trimmed.toLowerCase();
 
-      const updatedPassages = [...passagesRef.current, userPassage];
-      setPassages(updatedPassages);
+      let userPassageId: string;
+      let updatedPassages: Passage[];
+
+      if (isRetryOfLastUnansweredTurn) {
+        userPassageId = lastPassage.id;
+        updatedPassages = passagesRef.current;
+      } else {
+        userPassageId = `p-${Date.now()}`;
+        const userPassage: Passage = {
+          id: userPassageId,
+          sessionId,
+          attemptId,
+          speaker: 'user',
+          revisionKey: 'rev-1',
+          assemblyVersion: 1,
+          status: 'final',
+          text: trimmed,
+          modality,
+          startedAt: new Date().toISOString(),
+          fragments: [
+            {
+              id: `f-${Date.now()}`,
+              passageId: userPassageId,
+              origin: modality === 'spoken' ? 'asr' : 'typed',
+              text: trimmed,
+            },
+          ],
+        };
+        updatedPassages = [...passagesRef.current, userPassage];
+        setPassages(updatedPassages);
+      }
       setVoiceState('connecting');
 
       try {
