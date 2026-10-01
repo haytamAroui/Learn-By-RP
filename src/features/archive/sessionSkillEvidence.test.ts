@@ -346,6 +346,7 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       modality: 'spoken' as const,
       retrieval: 'unassisted' as const,
       taskOutcome: 'achieved' as const,
+      demonstration: 'demonstrated' as const,
       supportExposureIds: [],
       evidenceSource: 'validated_explicit' as const,
       quote: 'la leche de avena',
@@ -359,6 +360,12 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       attemptId: 'attempt-1',
       sourcePassageId: 'p-9',
       sourceRevision: 'rev-1',
+      contextKey: {
+        domainId: 'test',
+        scenarioFamilyId: 'family-lapse',
+      },
+      opportunityInstanceId: 'opp-lapse-1',
+      demonstration: 'attempted_not_demonstrated' as const,
       basis: 'cold_attempt_failed' as const,
       recordedAt: new Date(now - day).toISOString(),
     };
