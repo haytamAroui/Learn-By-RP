@@ -59,7 +59,7 @@ export default function RecapScreen() {
     >
       <RecapContent
         session={session}
-        onClose={() => router.replace('/(tabs)')}
+        onClose={() => router.back()}
         onRetryMission={mission =>
           router.replace({
             pathname: '/mission/[missionId]',
