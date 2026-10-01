@@ -34,11 +34,11 @@ interface ProgressScreenProps {
 type ProgressTab = 'skills' | 'phrases' | 'history';
 
 const STATUS_SURFACE = {
-  steady: 'bg-card-sage text-accent-sage',
-  growing: 'bg-card-sky text-accent-sky',
-  supported: 'bg-card-warm text-primary',
-  new: 'bg-surface-soft text-muted',
-  review: 'bg-warning-soft text-warning',
+  steady: { container: 'bg-card-sage', text: 'text-accent-sage' },
+  growing: { container: 'bg-card-sky', text: 'text-accent-sky' },
+  supported: { container: 'bg-card-warm', text: 'text-primary' },
+  new: { container: 'bg-surface-soft', text: 'text-muted' },
+  review: { container: 'bg-warning-soft', text: 'text-warning' },
 } as const;
 
 export const ProgressScreen: React.FC<ProgressScreenProps> = ({
@@ -148,7 +148,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                   {t.progress.readyToPractise}
                 </Text>
                 <Text className="mt-1 text-[20px] font-semibold leading-[26px] text-ink">
-                  {duePhrases.length} {duePhrases.length === 1 ? 'phrase' : 'phrases'}
+                  {t.talk.reviewButton.replace('{count}', String(duePhrases.length))}
                 </Text>
                 <Text className="mt-1 text-sm leading-5 text-body">
                   {t.talk.practiseDueTitle} · ~{Math.max(2, duePhrases.length)} {t.common.minutes}
@@ -214,8 +214,11 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                     </View>
 
                     <View className="items-end gap-2">
-                      <View className={`rounded-full px-2.5 py-1 ${statusTone(projection)}`}>
-                        <Text className="text-xs font-semibold" numberOfLines={1}>
+                      <View className={`rounded-full px-2.5 py-1 ${statusTone(projection).container}`}>
+                        <Text
+                          className={`text-xs font-semibold ${statusTone(projection).text}`}
+                          numberOfLines={1}
+                        >
                           {statusLabel(projection)}
                         </Text>
                       </View>
