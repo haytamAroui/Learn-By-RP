@@ -50,7 +50,7 @@ import {
 import { api } from '../lib/api';
 import { SceneMirror } from '../features/roleplay/SceneMirror';
 import { SceneActionName } from '../contracts/scene';
-import { Button, Field, SectionLabel } from './ui';
+import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
 
