@@ -106,7 +106,7 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
             onPress={() => onStartMission(featuredMission)}
             size="lg"
             className="mt-5 min-h-14 w-full"
-            icon={<ArrowRight size={18} color="#ffffff" strokeWidth={2.2} />}
+            icon={<ArrowRight size={18} color={iconColor('brandText')} strokeWidth={2.2} />}
           />
         </View>
 
