@@ -21,6 +21,22 @@ The model **proposes**. The product **validates**. `src/features/learning/learni
 is the only thing that writes an `observation`, and `src/features/roleplay/sceneReducer.ts`
 is the only thing that changes a scene fact.
 
+## Authority
+
+These documents are not equal, and the order matters when they disagree.
+
+| Document | Status |
+| -------- | ------ |
+| `Mission Coach — Master Product Architecture Specification.md` | Product and runtime authority |
+| `MISSION_COACH_UI_UX_DESIGN_SYSTEM_v2.md` | UI authority. Generated tables come from `src/design/tokens.ts` |
+| `MISSION_COACH_COMPLETE_UI_UX_DESIGN_SYSTEM_2026_v1 (1).md` | **Superseded.** Kept for history; do not copy values from it |
+| `ADOPE_APP_AUDIT_AND_FRAMEWORK_DECISION.md` | Provenance for the stack: why this stayed on NativeWind and the 4,299-line spec was not treated as authority |
+| `LEARNBYRP_REMAINING_TASKS_WITH_MURAL_IMPROVEMENTS_v1.md` | Remaining-work plan, in canonical order |
+
+The v2 spec exists because the v1 one could not be implemented as written: several
+semantic colour pairs failed contrast, and `src/design/tokens.ts` is now the source
+that generates the spec's tables rather than the other way round.
+
 ## Layout
 
 ```
