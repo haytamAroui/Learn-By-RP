@@ -151,7 +151,7 @@ interface SkillContextKey {
 
 # 4. Separate scene outcome from skill demonstration
 
-- [ ] Extend SkillObservation with:
+- [x] Extend SkillObservation with:
 
 ```ts
 taskOutcome:
@@ -166,13 +166,13 @@ demonstration:
   | 'unknown';
 ```
 
-- [ ] Scene completion never implies skill demonstration.
-- [ ] Scene failure never implies skill failure.
+- [x] Scene completion never implies skill demonstration. (`SkillObservation.demonstration`)
+- [x] Scene failure never implies skill failure. (scene `taskOutcome` is context only)
 - [ ] Assessor may propose a demonstration classification only for a declared opportunity.
-- [ ] Deterministic validator decides whether the proposal is admissible.
+- [x] Deterministic validator decides whether the proposal is admissible.
 - [ ] Add reason codes for demonstration/evidence decisions.
 - [ ] Add test: scene achieved without target skill → no skill demonstration.
-- [ ] Add test: scene not achieved for authored world reason → no lapse.
+- [x] Add test: scene not achieved for authored world reason → no lapse.
 
 ---
 
@@ -190,7 +190,7 @@ demonstration:
 
 ## Runtime instance
 
-- [ ] Add:
+- [x] Add:
 
 ```ts
 interface OpportunityInstance {
@@ -203,8 +203,8 @@ interface OpportunityInstance {
 }
 ```
 
-- [ ] `not_presented` is never weakness.
-- [ ] Live semantic detection is provisional only.
+- [x] `not_presented` is never weakness.
+- [x] Live semantic detection is provisional only for lapse eligibility; only `validated` opportunities can lapse.
 - [ ] Checkpoints may only reference deterministic/validated scene state, not provisional semantic judgments.
 - [ ] Author explicit communication challenges for repair skills instead of waiting for accidental confusion.
 - [ ] Add tests for presented/taken/declined/not-presented lifecycle.
@@ -283,14 +283,14 @@ Current `LiveSessionView` still creates coach support targeted to every useful p
 
 ## Strict lapse requirements — all required
 
-- [ ] opportunity was actually presented.
-- [ ] learner made a relevant attempt.
-- [ ] demonstration = attempted_not_demonstrated.
+- [x] opportunity was actually presented/taken and runtime-validated.
+- [x] learner made a relevant attempt linked to a learner passage.
+- [x] demonstration = attempted_not_demonstrated.
 - [ ] target was cold under the relevance matrix.
-- [ ] attempt was not rehearsal.
-- [ ] transcript/revision is valid.
-- [ ] no silence/noise/disconnect/provider failure.
-- [ ] no ASR failure/language mismatch masquerading as a language failure.
+- [x] attempt was not rehearsal.
+- [x] transcript/revision is valid.
+- [x] no silence/noise/disconnect/provider failure.
+- [x] no ASR failure/language mismatch masquerading as a language failure.
 
 ## V1 projection behavior
 
@@ -756,12 +756,12 @@ A program must pass:
 - [x] Required scenarioFamilyId/contextKey.
 - [x] Fix sessionId-as-context in `skillProjection.ts`.
 - [ ] Canonical skill hierarchy/catalog.
-- [ ] taskOutcome vs demonstration.
-- [ ] OpportunityInstance.
+- [x] taskOutcome vs demonstration.
+- [x] OpportunityInstance.
 - [ ] scoped support relevance matrix.
 - [ ] accommodations.
 - [ ] support high-water mark.
-- [ ] strict lapse/revisit semantics.
+- [ ] strict lapse/revisit semantics. (strict lapse eligibility complete; revisit policy remains)
 - [ ] consent/privacy/security G0 confirmations.
 
 ## P1 — scene/mission runtime hardening
@@ -778,8 +778,8 @@ A program must pass:
 
 ## P2 — evidence loop V1
 
-- [ ] demonstration validator.
-- [ ] opportunity-linked evidence.
+- [ ] demonstration validator. (positive demonstration contract landed; authored opportunity requirement for all positive evidence remains)
+- [ ] opportunity-linked evidence. (contracts/persistence landed; runtime generation/linkage remains)
 - [ ] reason codes.
 - [ ] revisit + last independent use.
 - [ ] learner dispute flow.
@@ -845,7 +845,7 @@ And the system can prove:
 - [ ] model never directly persisted learning evidence.
 - [ ] support was target-scoped and window-limited.
 - [ ] accommodations were not penalized.
-- [ ] provider/session failures created no lapse.
+- [x] provider/session failures created no lapse.
 - [ ] same-family variants did not fake transfer.
 - [ ] retry never masqueraded as transfer.
 - [ ] scene completion is reachable and deadlock-free.
@@ -858,6 +858,9 @@ And the system can prove:
 Confirmed from current `main` during this TODO update:
 
 - [x] `src/features/learning/skillProjection.ts` derives independent contexts from required domain + scenario family, not `sessionId`.
+- [x] Scene `taskOutcome` is independent from `SkillObservation.demonstration`; a failed scene alone cannot create a lapse.
+- [x] `OpportunityInstance` is persisted and strict lapse derivation requires a validated, taken, failed opportunity tied to a learner passage.
+- [ ] Authored `SkillOpportunityDefinition` and deterministic runtime opportunity generation remain open.
 - [ ] Coach support in `LiveSessionView` still needs exact skill/opportunity/phrase targeting rather than mission-wide phrase targeting.
 - [ ] Current scene reducer still uses broad `Record<string, unknown>` facts/mutations; finite fact schemas and model checking remain open.
 - [x] Hosted roleplay routes already document server ownership of scene truth.
