@@ -1138,7 +1138,25 @@ t.live.rehearsalRestored
   const olderPassages = latestAssistantPassage
     ? passages.filter(passage => passage.id !== latestAssistantPassage.id).slice(-6)
     : passages.slice(-6);
-  const voiceLabel = isSceneFrozen ? t.live.pausedTag : voiceState;
+  const voiceLabel = isSceneFrozen
+    ? t.live.pausedTag
+    : voiceState === 'connecting'
+      ? t.live.connecting
+      : voiceState === 'listening'
+        ? t.live.listening
+        : voiceState === 'speaking'
+          ? t.live.characterSpeaking
+          : voiceState === 'muted'
+            ? t.live.voiceMuted
+            : voiceState === 'paused'
+              ? t.live.pausedTag
+              : voiceState === 'ending'
+                ? t.live.ending
+                : voiceState === 'reconnecting'
+                  ? t.live.reconnecting
+                  : voiceState === 'error'
+                    ? t.live.voiceFailed
+                    : t.live.tapToSpeak;
 
   const requestSupport = (kind: 'intent_hint' | 'partial_form' | 'full_form') => {
     voiceTransportRef.current?.stopPlayback();
@@ -1377,7 +1395,7 @@ t.live.rehearsalRestored
                   disabled={!typedMessage.trim()}
                   accessibilityRole="button"
                   accessibilityState={{ disabled: !typedMessage.trim() }}
-                  accessibilityLabel="Send"
+                  accessibilityLabel={t.live.send}
                   className={`h-12 w-12 items-center justify-center rounded-xl bg-action ${
                     typedMessage.trim() ? '' : 'opacity-40'
                   } focus:border-2 focus:border-brand-on`}
