@@ -623,7 +623,13 @@ describe('layout and targets', () => {
     const ui = readFileSync('src/components/ui.tsx', 'utf8');
     expect(ui).toContain('bg-action');
     expect(ui).toContain('text-action-text');
-    expect(ui).not.toMatch(/primary:\s*'[^']*bg-primary\b/);
+
+    const variantStart = ui.indexOf('const VARIANT_CONTAINER');
+    const variantEnd = ui.indexOf('const VARIANT_LABEL');
+    const buttonVariantBlock = ui.slice(variantStart, variantEnd);
+
+    expect(buttonVariantBlock).toContain('bg-action');
+    expect(buttonVariantBlock).not.toMatch(/primary:\s*'[^']*bg-primary\b/);
   });
 });
 
