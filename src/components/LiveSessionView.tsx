@@ -10,6 +10,7 @@ import {
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { categoriseProviderError, type ProviderError } from '../features/voice/lifecycle';
 import {
   HelpCircle,
   Keyboard,
@@ -303,6 +304,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
   const [showTypedInput, setShowTypedInput] = useState(false);
   const [typedMessage, setTypedMessage] = useState('');
+  /*
+    The last assistant failure, kept so recovery can be offered rather than the
+    session just going quiet. Null means no failure is outstanding.
+  */
+  const [lastAssistantError, setLastAssistantError] = useState<ProviderError | null>(null);
   const [interimUserText, setInterimUserText] = useState('');
   const [sceneEventNotice, setSceneEventNotice] = useState<string | null>(null);
 
@@ -571,10 +577,54 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         }
       } catch (err) {
         console.error('Actor respond error', err);
-        setVoiceState('idle');
+
+        /*
+          A failed assistant turn must not look like a failed learner turn.
+
+          The learner passage is already in the transcript - they did say it, and
+          deleting it would erase evidence of something they actually did. What
+          failed is the reply. So the transcript stands, the typed draft is returned
+          so it can be offered back, and the voice state explains the gap.
+        */
+        setLastAssistantError(categoriseProviderError({
+          message: err instanceof Error ? err.message : String(err),
+          code: (err as { status?: number })?.status,
+          isNetworkFailure: err instanceof Error && /fetch|network|abort/i.test(err.message),
+        }));
+
+        if (modality === 'typed') {
+          // Hand the text back rather than leaving the field empty, which is
+          // indistinguishable from losing what they typed.
+          setTypedMessage(text);
+          setShowTypedInput(true);
+        }
+
+        setVoiceState('reconnecting');
       }
     },
     [audioPlaybackEnabled, attemptId, explanationLanguage, mode, sessionId]
+  );
+
+  /*
+    Submitting a typed turn.
+
+    The field is cleared only on the way out, and a failed send puts the text back.
+    Clearing it optimistically - which is what both call sites did - meant a network
+    blip silently deleted something the learner had just typed and retyped, with no
+    indication it had ever been sent.
+  */
+  const submitTypedMessage = useCallback(
+    async (target: MissionDefinition) => {
+      const text = typedMessage.trim();
+      if (!text || isEndingRef.current) return;
+
+      // Cleared here because the transcript now owns the turn; the catch in
+      // handleUserMessage restores it if the assistant turn fails.
+      setTypedMessage('');
+      setLastAssistantError(null);
+      await handleUserMessage(target, text, 'typed');
+    },
+    [handleUserMessage, typedMessage]
   );
 
   /**
@@ -1255,6 +1305,42 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         >
           {showTypedInput ? (
             <View className="border-t border-border-subtle bg-surface p-3">
+              {/*
+                Sustained-failure recovery. Surfaced rather than left implicit,
+                because "nothing is happening" is indistinguishable from "the app has
+                stopped working", and a learner who cannot tell will conclude the
+                latter.
+              */}
+              {lastAssistantError && (
+                <View className="mb-2 gap-2 rounded-xl border border-warning/40 bg-surface-sunken p-3">
+                  <Text className="text-xs font-semibold text-ink">
+                    {lastAssistantError.userMessage}
+                  </Text>
+                  {lastAssistantError.retryable && (
+                    <Pressable
+                      onPress={() => {
+                        setLastAssistantError(null);
+                        setVoiceState('connecting');
+                        if (typedMessage.trim()) {
+                          void submitTypedMessage(mission);
+                        } else {
+                          voiceTransportRef.current?.startListening();
+                          setVoiceState('listening');
+                        }
+                      }}
+                      accessibilityRole="button"
+                      accessibilityLabel={t.live.retryConnection}
+                      className="h-10 w-full flex-row items-center justify-center gap-2 rounded-lg bg-primary px-3"
+                    >
+                      <RotateCcw size={14} color="#ffffff" />
+                      <Text className="text-xs font-semibold text-white">
+                        {t.live.retryConnection}
+                      </Text>
+                    </Pressable>
+                  )}
+                </View>
+              )}
+
               <View className="flex-row items-end gap-2">
                 <View className="flex-1">
                   <Field
@@ -1264,16 +1350,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                     autoCapitalize="none"
                     returnKeyType="send"
                     onSubmitEditing={() => {
-                      void handleUserMessage(mission, typedMessage, 'typed');
-                      setTypedMessage('');
+                      void submitTypedMessage(mission);
                     }}
                     accessibilityLabel={t.live.typePlaceholder}
                   />
                 </View>
                 <Pressable
                   onPress={() => {
-                    void handleUserMessage(mission, typedMessage, 'typed');
-                    setTypedMessage('');
+                    void submitTypedMessage(mission);
                   }}
                   disabled={!typedMessage.trim()}
                   accessibilityRole="button"
