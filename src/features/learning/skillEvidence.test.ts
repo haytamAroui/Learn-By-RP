@@ -417,6 +417,11 @@ describe('the model offer and the validator agree', () => {
 });
 
 describe('mission skill membership is curated', () => {
+  it('every mission declares a non-empty scenario family', () => {
+    const missing = MISSIONS.filter(m => !m.scenarioFamilyId.trim());
+    expect(missing.map(m => m.id)).toEqual([]);
+  });
+
   it('every mission declares at least one primary skill', () => {
     const bare = MISSIONS.filter(m => m.primarySkillIds.length === 0);
     expect(bare.map(m => m.id)).toEqual([]);
