@@ -147,21 +147,32 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   const recordEvaluation = (result: 'remembered' | 'supported') => {
     if (!currentPhrase) return;
 
-    const quote = userTranscript || typedAnswer || currentPhrase.form;
-    const isUnassisted = result === 'remembered';
+    // Never substitute the displayed target form for learner production. Show
+    // answer / Listen can reveal the form, but without an actual spoken/typed
+    // attempt there is no learner evidence to persist.
+    const learnerQuote = (userTranscript || typedAnswer).trim();
+    const effectiveResult = learnerQuote ? result : 'supported';
 
-    // The archive owns the write, so the projection is recomputed inside the
-    // same transaction as the observation itself.
-    void onRecordReview({
-      phrase: currentPhrase,
-      quote,
-      modality: modalityUsed,
-      unassisted: isUnassisted,
-    });
+    if (learnerQuote) {
+      // The archive owns the write and validates the quote/form again before
+      // persistence. A post-attempt Listen does not retroactively contaminate
+      // the already captured attempt; reveal-before-attempt yields no write.
+      void onRecordReview({
+        phrase: currentPhrase,
+        quote: learnerQuote,
+        modality: modalityUsed,
+        unassisted: effectiveResult === 'remembered',
+      });
+    }
 
     setReviewedItems(prev => [
       ...prev,
-      { phrase: currentPhrase, result, quote, modality: modalityUsed },
+      {
+        phrase: currentPhrase,
+        result: effectiveResult,
+        quote: learnerQuote,
+        modality: modalityUsed,
+      },
     ]);
 
     if (currentIndex + 1 < duePhrases.length) {
