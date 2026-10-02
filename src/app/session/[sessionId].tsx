@@ -98,6 +98,8 @@ export default function SessionScreen() {
         <LiveSessionView
           mission={mission}
           initialSession={persistedSession}
+          accommodations={archive.preferences.accommodations}
+          preferredSpeechRate={archive.preferences.speechRate ?? 1}
           onEndSession={handleEndSession}
         />
       </View>
