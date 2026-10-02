@@ -1,4 +1,8 @@
-import { SceneActionResult, SceneStateSnapshot } from '../../contracts/scene';
+import {
+  SceneActionProposal,
+  SceneActionResult,
+  SceneStateSnapshot,
+} from '../../contracts/scene';
 
 /**
  * Durable storage for hosted scene truth (§13.4).
@@ -12,7 +16,11 @@ export interface SceneStore {
   get(sessionId: string): Promise<HostedSessionRecord | null>;
   put(record: HostedSessionRecord): Promise<void>;
   getResult(sessionId: string, actionId: string): Promise<SceneActionResult | null>;
-  putResult(sessionId: string, result: SceneActionResult): Promise<void>;
+  putResult(
+    sessionId: string,
+    proposal: SceneActionProposal,
+    result: SceneActionResult
+  ): Promise<void>;
   listAbandoned(olderThanMs: number): Promise<AbandonedSession[]>;
   markReconciled(sessionId: string): Promise<void>;
 }
@@ -124,18 +132,23 @@ export class SqliteSceneStore implements SceneStore {
     return row ? (JSON.parse(row.result_json) as SceneActionResult) : null;
   }
 
-  async putResult(sessionId: string, result: SceneActionResult): Promise<void> {
-    if (!result.accepted) return;
-
+  async putResult(
+    sessionId: string,
+    proposal: SceneActionProposal,
+    result: SceneActionResult
+  ): Promise<void> {
+    // Accepted and rejected proposals share the same idempotency log. This makes
+    // retries deterministic across HTTP/realtime channels: the first reducer
+    // verdict for an actionId is the only verdict that can ever be observed.
     await this.db.runAsync(
       `INSERT OR IGNORE INTO scene_events
         (session_id, action_id, attempt_id, action_name, payload_json, result_json, revision, applied_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       sessionId,
       result.actionId,
-      '',
-      '',
-      null,
+      proposal.attemptId,
+      proposal.action,
+      JSON.stringify(proposal.payload ?? {}),
       JSON.stringify(result),
       result.revision,
       result.appliedAt
