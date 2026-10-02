@@ -1,4 +1,5 @@
-import { MISSION_CATALOG, COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import { MISSION_CATALOG } from '../../data/missions';
+import { COMMUNICATIVE_SKILLS_CATALOG, isDirectlyEvidencedSkill } from '../../content/skills';
 import { CommunicativeSkillId, MissionDefinition } from '../../types';
 
 /**
@@ -14,10 +15,11 @@ export function missionFor(missionId: string | undefined): MissionDefinition | u
   return MISSION_CATALOG.find(m => m.id === missionId);
 }
 
-/** Ids the mission declares, primary first. */
+/** Evidence-eligible ids the mission declares, primary first. Derived families are excluded. */
 export function allowedSkillIds(mission: MissionDefinition | undefined): CommunicativeSkillId[] {
   if (!mission) return [];
-  return [...new Set([...mission.primarySkillIds, ...mission.secondarySkillIds])];
+  return [...new Set([...mission.primarySkillIds, ...mission.secondarySkillIds])]
+    .filter(isDirectlyEvidencedSkill);
 }
 
 /** The catalogue entries a model is permitted to propose, with enough to identify them. */
