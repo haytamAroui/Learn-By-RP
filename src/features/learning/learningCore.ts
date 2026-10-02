@@ -10,6 +10,7 @@ import {
 import { LEARNING_POLICY } from './policy';
 import { matchPhraseInText, normalizeText } from './matching';
 import { classifyEvidence, countsAsIndependentEvidence } from './evidence';
+import { isPhraseProductionSupportRelevant } from './supportScope';
 
 export interface AssessmentCandidate {
   itemId?: string;
@@ -123,10 +124,9 @@ export function validateAssessmentProposal(
 
     // 3. Exposure ledger reclassification. The model may propose; the ledger
     //    decides. Support downgrades independent use, it never upgrades it.
-    const relevantExposures = supportExposures.filter(exp => {
-      if (exp.targetItemIds.length === 0) return true;
-      return exp.targetItemIds.includes(candidate.itemId!);
-    });
+    const relevantExposures = supportExposures.filter(exp =>
+      isPhraseProductionSupportRelevant(exp, candidate.itemId!)
+    );
 
     // 4. Retrieval is derived, never taken from the proposal. The model is not
     //    allowed to claim the learner recalled something unaided.
@@ -240,8 +240,8 @@ export function buildLocalObservations(input: {
 
       seen.add(`${passage.id}:${phrase.id}`);
 
-      const relevantExposures = supportExposures.filter(
-        exp => exp.targetItemIds.length === 0 || exp.targetItemIds.includes(phrase.id)
+      const relevantExposures = supportExposures.filter(exp =>
+        isPhraseProductionSupportRelevant(exp, phrase.id)
       );
 
       const isSpoken = passage.modality === 'spoken';
