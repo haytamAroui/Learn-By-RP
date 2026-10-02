@@ -115,7 +115,7 @@ function assertCheckpointMetadata(
     'passageIndex',
     'supportLedgerHighWaterMark',
   ]);
-  const unsupportedFields = Object.keys(checkpoint as Record<string, unknown>)
+  const unsupportedFields = Object.keys(checkpoint as unknown as Record<string, unknown>)
     .filter(field => !allowedFields.has(field));
   if (unsupportedFields.length > 0) {
     throw new Error(
