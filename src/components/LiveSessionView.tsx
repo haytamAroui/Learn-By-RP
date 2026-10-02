@@ -69,6 +69,7 @@ import {
   mergeAttemptPassages,
 } from '../features/learning/retrySupport';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
+import { negotiateRoleplayCapabilities } from '../features/roleplay/capabilities';
 import { SceneActionName } from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
@@ -733,7 +734,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             } else {
               await speakWithBestAvailable(transport, response.replyText, {
                 language: target.language,
-                speed: effectiveSpeechRate,
+                speed: negotiatedCapabilities.useSlowSpeech ? effectiveSpeechRate : preferredSpeechRate,
                 style: target.character.voiceStyle,
               });
             }
@@ -920,7 +921,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     // Without one the session still runs; the client just does not mirror
     // server scene truth, and no action is proposed.
     if (mission.sceneId) {
-      const mirror = new SceneMirror(sessionId, mission.sceneId, mission.id);
+      const scene = getScene(mission.sceneId);
+      const mirror = new SceneMirror(
+        sessionId,
+        mission.sceneId,
+        scene?.version ?? 1,
+        mission.id,
+        mission.version
+      );
       sceneMirrorRef.current = mirror;
       void mirror.begin('attempt-1').then(snapshot => {
         if (!snapshot || !mountedRef.current) return;
@@ -941,6 +949,23 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     const transport = createVoiceTransport();
     transport.setLanguage(mission.language);
     voiceTransportRef.current = transport;
+
+    const negotiatedCapabilities = negotiateRoleplayCapabilities(
+      transport.capabilities,
+      {
+        wantsSlowSpeech: slowerSpeechDefault,
+        wantsLongThinkingTime: false,
+        wantsScriptedLineInjection: true,
+        requiresBlockingToolCalls: Boolean(mission.sceneId),
+        needsTranscriptRevisions: true,
+      }
+    );
+    for (const degradation of negotiatedCapabilities.degradations) {
+      console.info('Roleplay capability degradation', {
+        transportId: transport.id,
+        ...degradation,
+      });
+    }
 
     const conversationProvider = createConversationProvider();
     conversationProviderRef.current = conversationProvider;
@@ -1052,6 +1077,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     buildInitialGreeting,
     cueLearnerTurn,
     effectiveSpeechRate,
+    preferredSpeechRate,
+    slowerSpeechDefault,
     handleUserMessage,
   ]);
 
