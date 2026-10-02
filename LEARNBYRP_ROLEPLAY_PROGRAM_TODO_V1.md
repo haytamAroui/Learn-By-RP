@@ -168,7 +168,7 @@ demonstration:
 
 - [x] Scene completion never implies skill demonstration. (`SkillObservation.demonstration`)
 - [x] Scene failure never implies skill failure. (scene `taskOutcome` is context only)
-- [ ] Assessor may propose a demonstration classification only for a declared opportunity.
+- [x] Assessor may propose a demonstration classification only for a declared opportunity. (`server/index.ts` + `skillEvidence.ts` require an exact runtime `opportunityInstanceId`)
 - [x] Deterministic validator decides whether the proposal is admissible.
 - [ ] Add reason codes for demonstration/evidence decisions.
 - [ ] Add test: scene achieved without target skill → no skill demonstration.
@@ -180,13 +180,13 @@ demonstration:
 
 ## Definition
 
-- [ ] Add `SkillOpportunityDefinition` with:
-  - [ ] stable opportunity ID
-  - [ ] one CommunicativeSkill ID
-  - [ ] scene conditions
-  - [ ] positive examples
-  - [ ] negative examples
-  - [ ] relevant action/intent IDs where applicable
+- [x] Add `SkillOpportunityDefinition` with: (`src/contracts/scene.ts`; authored examples in `src/content/scenes.ts`)
+  - [x] stable opportunity ID
+  - [x] one CommunicativeSkill ID
+  - [x] scene conditions
+  - [x] positive examples
+  - [x] negative examples
+  - [x] relevant action/intent IDs where applicable
 
 ## Runtime instance
 
@@ -207,7 +207,7 @@ interface OpportunityInstance {
 - [x] Live semantic detection is provisional only for lapse eligibility; only `validated` opportunities can lapse.
 - [ ] Checkpoints may only reference deterministic/validated scene state, not provisional semantic judgments.
 - [ ] Author explicit communication challenges for repair skills instead of waiting for accidental confusion.
-- [ ] Add tests for presented/taken/declined/not-presented lifecycle.
+- [x] Add tests for presented/taken/declined/not-presented lifecycle. (`src/features/roleplay/opportunityRuntime.test.ts`; includes retry isolation and validated-assessment commit)
 
 ---
 
@@ -860,7 +860,7 @@ Confirmed from current `main` during this TODO update:
 - [x] `src/features/learning/skillProjection.ts` derives independent contexts from required domain + scenario family, not `sessionId`.
 - [x] Scene `taskOutcome` is independent from `SkillObservation.demonstration`; a failed scene alone cannot create a lapse.
 - [x] `OpportunityInstance` is persisted and strict lapse derivation requires a validated, taken, failed opportunity tied to a learner passage.
-- [ ] Authored `SkillOpportunityDefinition` and deterministic runtime opportunity generation remain open.
+- [x] Authored `SkillOpportunityDefinition` and deterministic runtime opportunity generation are wired through live assessment. (`scene.ts`, `opportunityRuntime.ts`, `LiveSessionView.tsx`, `server/index.ts`)
 - [ ] Coach support in `LiveSessionView` still needs exact skill/opportunity/phrase targeting rather than mission-wide phrase targeting.
 - [ ] Current scene reducer still uses broad `Record<string, unknown>` facts/mutations; finite fact schemas and model checking remain open.
 - [x] Hosted roleplay routes already document server ownership of scene truth.
