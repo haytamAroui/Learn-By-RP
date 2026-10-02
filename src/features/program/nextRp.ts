@@ -4,6 +4,7 @@ import type {
   SkillLapse,
   SkillObservation,
   SupportExposure,
+  UiLanguage,
 } from '../../types';
 import type {
   ProgramGoalInput,
@@ -258,16 +259,67 @@ export function recommendNextRp(input: NextRpInput): NextRpRecommendation {
   };
 }
 
-export const NEXT_RP_REASON_TEXT: Record<NextRpReasonCode, string> = {
-  PROGRAM_NEXT_READY: 'Continue with the next reviewed mission in your program.',
-  INDEPENDENT_SUCCESS_TRANSFER:
-    'You used this skill independently; try it in a different situation.',
-  SUPPORTED_SUCCESS_COLD_TRANSFER:
-    'You completed this with support; try the same skill cold in another situation.',
-  STRICT_LAPSE_RECOVERY:
-    'A recent cold opportunity was attempted but not demonstrated; use a manageable recovery scenario.',
-  REPEATED_SUCCESS_CHALLENGE:
-    'Repeated independent success makes an optional harder variant available.',
-  PROGRAM_CORE_COMPLETE:
-    'The current reviewed program missions are complete; an integrated simulation can be offered.',
+export const NEXT_RP_REASON_TEXT: Record<
+  UiLanguage,
+  Record<NextRpReasonCode, string>
+> = {
+  en: {
+    PROGRAM_NEXT_READY: 'Continue with the next reviewed mission in your program.',
+    INDEPENDENT_SUCCESS_TRANSFER:
+      'You used this skill independently; try it in a different situation.',
+    SUPPORTED_SUCCESS_COLD_TRANSFER:
+      'You completed this with support; try the same skill cold in another situation.',
+    STRICT_LAPSE_RECOVERY:
+      'A recent cold opportunity was attempted but not demonstrated; use a manageable recovery scenario.',
+    REPEATED_SUCCESS_CHALLENGE:
+      'Repeated independent success makes an optional harder variant available.',
+    PROGRAM_CORE_COMPLETE:
+      'The current reviewed program missions are complete; an integrated simulation can be offered.',
+  },
+  fr: {
+    PROGRAM_NEXT_READY: 'Continuez avec la prochaine mission validée de votre programme.',
+    INDEPENDENT_SUCCESS_TRANSFER:
+      'Vous avez utilisé cette compétence de façon autonome ; essayez-la dans une autre situation.',
+    SUPPORTED_SUCCESS_COLD_TRANSFER:
+      'Vous avez réussi avec de l’aide ; essayez la même compétence sans aide dans une autre situation.',
+    STRICT_LAPSE_RECOVERY:
+      'Une opportunité sans aide a été tentée sans démonstration ; utilisez un scénario de récupération gérable.',
+    REPEATED_SUCCESS_CHALLENGE:
+      'Des réussites autonomes répétées permettent de proposer une variante plus difficile.',
+    PROGRAM_CORE_COMPLETE:
+      'Les missions validées du programme sont terminées ; une simulation intégrée peut être proposée.',
+  },
+  es: {
+    PROGRAM_NEXT_READY: 'Continúa con la siguiente misión revisada de tu programa.',
+    INDEPENDENT_SUCCESS_TRANSFER:
+      'Usaste esta habilidad de forma independiente; pruébala en otra situación.',
+    SUPPORTED_SUCCESS_COLD_TRANSFER:
+      'Lo completaste con apoyo; prueba la misma habilidad sin ayuda en otra situación.',
+    STRICT_LAPSE_RECOVERY:
+      'Se intentó una oportunidad sin ayuda sin demostrarla; usa un escenario de recuperación manejable.',
+    REPEATED_SUCCESS_CHALLENGE:
+      'Los éxitos independientes repetidos permiten ofrecer una variante más difícil.',
+    PROGRAM_CORE_COMPLETE:
+      'Las misiones revisadas del programa están completas; se puede ofrecer una simulación integrada.',
+  },
+  nl: {
+    PROGRAM_NEXT_READY: 'Ga verder met de volgende beoordeelde missie in je programma.',
+    INDEPENDENT_SUCCESS_TRANSFER:
+      'Je gebruikte deze vaardigheid zelfstandig; probeer ze in een andere situatie.',
+    SUPPORTED_SUCCESS_COLD_TRANSFER:
+      'Je voltooide dit met hulp; probeer dezelfde vaardigheid zonder hulp in een andere situatie.',
+    STRICT_LAPSE_RECOVERY:
+      'Een kans zonder hulp werd geprobeerd maar niet aangetoond; gebruik een haalbaar herstelscenario.',
+    REPEATED_SUCCESS_CHALLENGE:
+      'Herhaald zelfstandig succes maakt een optionele moeilijkere variant beschikbaar.',
+    PROGRAM_CORE_COMPLETE:
+      'De beoordeelde programmamissies zijn voltooid; een geïntegreerde simulatie kan worden aangeboden.',
+  },
 };
+
+export function renderNextRpReason(
+  reasonCode: NextRpReasonCode,
+  language: UiLanguage
+): string {
+  return NEXT_RP_REASON_TEXT[language][reasonCode];
+}
