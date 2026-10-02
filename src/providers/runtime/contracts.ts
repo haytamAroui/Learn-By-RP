@@ -50,6 +50,7 @@ export interface SpeechSynthesisResponse {
 }
 
 export interface RealtimeSessionRequest {
+  missionId: string;
   targetLanguage: string;
   explanationLanguage: string;
   instructions: string;
