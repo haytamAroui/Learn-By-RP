@@ -1,16 +1,28 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-const mocks = vi.hoisted(() => ({
-  addListener: vi.fn(() => ({ remove: vi.fn() })),
-  requestPermissionsAsync: vi.fn(async () => ({ granted: true })),
-  startRecognition: vi.fn(),
-  stopRecognition: vi.fn(),
-  setAudioModeAsync: vi.fn(async () => undefined),
-  createAudioPlayer: vi.fn(),
-  speechStop: vi.fn(),
-  speechSpeak: vi.fn(),
-  getAvailableVoicesAsync: vi.fn(async () => []),
-}));
+const mocks = vi.hoisted(() => {
+  const subscriptionRemove = vi.fn();
+  return {
+    subscriptionRemove,
+    addListener: vi.fn(() => ({ remove: subscriptionRemove })),
+    requestPermissionsAsync: vi.fn(async () => ({ granted: true })),
+    startRecognition: vi.fn(),
+    stopRecognition: vi.fn(),
+    setAudioModeAsync: vi.fn(async () => undefined),
+    createAudioPlayer: vi.fn(),
+    playerPause: vi.fn(),
+    playerRemove: vi.fn(),
+    playerPlay: vi.fn(),
+    playerListenerRemove: vi.fn(),
+    playerStatusCallback: null as null | ((status: { didJustFinish?: boolean }) => void),
+    fileCreate: vi.fn(),
+    fileWrite: vi.fn(),
+    fileDelete: vi.fn(),
+    speechStop: vi.fn(),
+    speechSpeak: vi.fn(),
+    getAvailableVoicesAsync: vi.fn(async () => []),
+  };
+});
 
 vi.mock('react-native', () => ({
   Platform: { OS: 'ios' },
@@ -31,7 +43,12 @@ vi.mock('expo-audio', () => ({
 }));
 
 vi.mock('expo-file-system', () => ({
-  File: class {},
+  File: class {
+    uri = 'file:///tmp/learnbyrp-test.wav';
+    create = mocks.fileCreate;
+    write = mocks.fileWrite;
+    delete = mocks.fileDelete;
+  },
   Paths: { cache: '/tmp' },
   EncodingType: { Base64: 'base64' },
 }));
@@ -47,7 +64,21 @@ import { NativeVoiceTransport } from './nativeVoiceTransport';
 describe('NativeVoiceTransport playback/listening lifecycle', () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mocks.playerStatusCallback = null;
     mocks.requestPermissionsAsync.mockResolvedValue({ granted: true });
+    mocks.createAudioPlayer.mockImplementation(() => ({
+      volume: 1,
+      playbackRate: 1,
+      pause: mocks.playerPause,
+      remove: mocks.playerRemove,
+      play: mocks.playerPlay,
+      addListener: vi.fn(
+        (_event: string, callback: (status: { didJustFinish?: boolean }) => void) => {
+          mocks.playerStatusCallback = callback;
+          return { remove: mocks.playerListenerRemove };
+        }
+      ),
+    }));
   });
 
   it('does not manufacture playback_end when listening starts from idle', async () => {
@@ -100,5 +131,51 @@ describe('NativeVoiceTransport playback/listening lifecycle', () => {
 
     unsubscribe();
     transport.dispose();
+  });
+
+  it('stops a requested microphone capture even before a native start event arrives', async () => {
+    const transport = new NativeVoiceTransport();
+
+    await transport.startListening();
+    expect(mocks.startRecognition).toHaveBeenCalledTimes(1);
+
+    transport.dispose();
+
+    expect(mocks.stopRecognition).toHaveBeenCalledTimes(1);
+    expect(mocks.subscriptionRemove).toHaveBeenCalled();
+  });
+
+  it('settles native fallback speech when the session is disposed mid-playback', async () => {
+    const transport = new NativeVoiceTransport();
+    const playback = transport.playSpeech('Hola');
+
+    await vi.waitFor(() => {
+      expect(mocks.speechSpeak).toHaveBeenCalledTimes(1);
+    });
+
+    transport.dispose();
+
+    await expect(playback).resolves.toBeUndefined();
+    expect(mocks.speechStop).toHaveBeenCalled();
+  });
+
+  it('releases player, listener and temp file when base64 playback is interrupted', async () => {
+    const transport = new NativeVoiceTransport();
+    const playback = transport.playSpeech('Hola', {
+      audioBase64: 'ZmFrZS1hdWRpbw==',
+      mimeType: 'audio/wav',
+    });
+
+    await vi.waitFor(() => {
+      expect(mocks.playerPlay).toHaveBeenCalledTimes(1);
+    });
+
+    transport.dispose();
+
+    await expect(playback).resolves.toBeUndefined();
+    expect(mocks.playerPause).toHaveBeenCalledTimes(1);
+    expect(mocks.playerRemove).toHaveBeenCalledTimes(1);
+    expect(mocks.playerListenerRemove).toHaveBeenCalledTimes(1);
+    expect(mocks.fileDelete).toHaveBeenCalledTimes(1);
   });
 });
