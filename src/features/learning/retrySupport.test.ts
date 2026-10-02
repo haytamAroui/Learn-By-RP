@@ -5,6 +5,7 @@ import {
   EMPTY_VALIDATED_SKILL_EVIDENCE,
   mergeValidatedSkillEvidence,
 } from './skillEvidence';
+import { EMPTY_VALIDATED_PHRASE_EVIDENCE } from './learningCore';
 
 const EXPOSURE: SupportExposure = {
   id: 'exp-1',
@@ -209,6 +210,7 @@ describe('mergeFinalizedAttemptEvidence', () => {
           validatedSkillEvidence: mergeValidatedSkillEvidence([
             EMPTY_VALIDATED_SKILL_EVIDENCE,
           ]),
+          validatedPhraseEvidence: EMPTY_VALIDATED_PHRASE_EVIDENCE,
         },
       ],
       current: {
@@ -218,6 +220,7 @@ describe('mergeFinalizedAttemptEvidence', () => {
         validatedSkillEvidence: mergeValidatedSkillEvidence([
           EMPTY_VALIDATED_SKILL_EVIDENCE,
         ]),
+        validatedPhraseEvidence: EMPTY_VALIDATED_PHRASE_EVIDENCE,
       },
     });
 
@@ -231,5 +234,6 @@ describe('mergeFinalizedAttemptEvidence', () => {
     ]);
     expect(merged.validatedSkillEvidence.observations).toEqual([]);
     expect(merged.validatedSkillEvidence.lapses).toEqual([]);
+    expect(merged.validatedPhraseEvidence.observations).toEqual([]);
   });
 });
