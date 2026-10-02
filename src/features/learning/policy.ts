@@ -76,6 +76,12 @@ export const SKILL_POLICY = {
   lapseReviewWindowDays: 14,
 
   /**
+   * Recent strict lapses required before a skill gets the stronger revisit flag.
+   * One lapse may schedule ordinary review, but never demotes status.
+   */
+  revisitMinRecentLapses: 2,
+
+  /**
    * Minimum number of validated observations needed before steady is reachable.
    *
    * Legacy substring inference cannot satisfy this on its own, so a history
