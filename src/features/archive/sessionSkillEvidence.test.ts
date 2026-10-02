@@ -213,6 +213,41 @@ describe('a live session persists validated skill evidence', () => {
     });
   });
 
+  it('ignores raw SessionRecord skill rows without a validator bundle', async () => {
+    const result = validateSkillEvidenceProposal(
+      modelProposal() as any,
+      runtimeFacts()
+    );
+
+    await archiveRepository.completeSession(
+      sessionWith({
+        observations: result.validated,
+        lapses: result.lapses,
+      })
+    );
+
+    expect(await archiveRepository.getSkillObservations()).toEqual([]);
+    expect(await archiveRepository.getSkillLapses()).toEqual([]);
+  });
+
+  it('rejects a forged evidence bundle at runtime', async () => {
+    const result = validateSkillEvidenceProposal(
+      modelProposal() as any,
+      runtimeFacts()
+    );
+
+    await expect(
+      archiveRepository.completeSession(
+        sessionWith({ observations: [], lapses: [] }),
+        [],
+        {
+          observations: result.validated,
+          lapses: result.lapses,
+        } as any
+      )
+    ).rejects.toThrow(/validator-issued evidence bundle required/i);
+  });
+
   // 2. Replaying completion must not duplicate it.
   it('does not duplicate the observation when completion is replayed', async () => {
     const result = validateSkillEvidenceProposal(modelProposal() as any, runtimeFacts());
