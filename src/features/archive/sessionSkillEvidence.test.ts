@@ -197,6 +197,9 @@ describe('a live session persists validated skill evidence', () => {
       sourcePassageId: 'p-1',
       sourceRevision: 'rev-1',
       evidenceSource: 'validated_explicit',
+      dayKey: '2026-09-20',
+      reasonCode: 'validated_demonstration',
+      policyVersion: 3,
     });
   });
 
@@ -372,7 +375,12 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
 
     const lapses = await archiveRepository.getSkillLapses();
     expect(lapses.length).toBeGreaterThan(0);
-    expect(lapses[0].basis).toBe('cold_attempt_failed');
+    expect(lapses[0]).toMatchObject({
+      basis: 'cold_attempt_failed',
+      dayKey: '2026-09-20',
+      reasonCode: 'cold_taken_opportunity_not_demonstrated',
+      policyVersion: 3,
+    });
     expect(await archiveRepository.getSkillObservations()).toHaveLength(0);
   });
 
