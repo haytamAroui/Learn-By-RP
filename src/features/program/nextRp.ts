@@ -21,7 +21,7 @@ import type {
   NegotiatedRoleplayCapabilities,
 } from '../roleplay/capabilities';
 
-export const NEXT_RP_POLICY_VERSION = 1;
+export const NEXT_RP_POLICY_VERSION = 2;
 
 export type NextRpKind =
   | 'continue'
