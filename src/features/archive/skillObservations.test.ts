@@ -4,7 +4,12 @@ import { __setDatabaseForTesting, migrate } from './database';
 import { archiveRepository } from './SqliteArchiveRepository';
 import { MIGRATIONS } from './schema';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
-import { EvidenceSource, SkillObservation } from '../../types';
+import {
+  EvidenceSource,
+  SkillObservation,
+  ValidatedLearningObservation,
+  ValidatedSkillObservation,
+} from '../../types';
 
 /**
  * Skill evidence persistence.
@@ -58,6 +63,41 @@ function observation(overrides: Partial<SkillObservation> = {}): SkillObservatio
   };
 }
 
+
+async function persistSkillObservations(
+  observations: SkillObservation[]
+): Promise<void> {
+  await archiveRepository.completeSession({
+    id: 'session-1',
+    missionId: 'mission-es-cafe-sol',
+    missionVersion: 1,
+    language: 'es',
+    mode: 'guided',
+    coldAttempt: true,
+    state: 'recap_ready',
+    startedAt: '2026-09-20T09:00:00.000Z',
+    endedAt: '2026-09-20T09:05:00.000Z',
+    passages: [],
+    supportExposures: [],
+    observations: [],
+    // Storage fixtures deliberately cross the opaque boundary here. Product
+    // callers cannot do this without an explicit cast; live evidence is minted
+    // by validateSkillEvidenceProposal.
+    skillObservations: observations as ValidatedSkillObservation[],
+    taskOutcome: 'completed',
+    sceneState: {
+      sceneId: 'scene.es.cafe.breakfast',
+      revision: 1,
+      facts: {},
+      learnerKnows: [],
+      characterKnows: [],
+      checkpoints: [],
+      isFinished: false,
+      outcome: 'unknown',
+    },
+  });
+}
+
 describe('skill observation schema', () => {
   it('has a migration for the table', () => {
     const ddl = MIGRATIONS.flatMap(m => m.statements).join('\n');
@@ -65,9 +105,9 @@ describe('skill observation schema', () => {
   });
 });
 
-describe('saveSkillObservations / getSkillObservations', () => {
+describe('session write boundary / getSkillObservations', () => {
   it('round-trips a validated observation', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
+    await persistSkillObservations([observation()]);
     const loaded = await archiveRepository.getSkillObservations();
 
     expect(loaded).toHaveLength(1);
@@ -93,7 +133,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
 
   // The provenance distinction is the whole reason this table exists.
   it('preserves the legacy inferred marker', async () => {
-    await archiveRepository.saveSkillObservations([
+    await persistSkillObservations([
       observation({ id: 'so-old', evidenceSource: 'legacy_inferred' }),
     ]);
 
@@ -102,7 +142,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('round-trips support exposure references', async () => {
-    await archiveRepository.saveSkillObservations([
+    await persistSkillObservations([
       observation({ supportExposureIds: ['exp-1', 'exp-2'] }),
     ]);
 
@@ -111,7 +151,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('round-trips the exam context when present', async () => {
-    await archiveRepository.saveSkillObservations([
+    await persistSkillObservations([
       observation({ examProgramId: 'delf-b1', examTaskId: 'interaction-1' }),
     ]);
 
@@ -121,7 +161,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('keeps the required context domain while leaving optional scenario undefined', async () => {
-    await archiveRepository.saveSkillObservations([
+    await persistSkillObservations([
       observation({
         contextKey: {
           domainId: 'cafes',
@@ -144,7 +184,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('stamps the current policy version', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
+    await persistSkillObservations([observation()]);
 
     const row = await driver.db.getFirstAsync<{ policy_version: number }>(
       'SELECT policy_version FROM skill_observations WHERE id = ?',
@@ -157,15 +197,15 @@ describe('saveSkillObservations / getSkillObservations', () => {
   // A replayed action must not be able to manufacture a second observation and
   // therefore a second independent context.
   it('deduplicates the same skill in the same passage revision', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
-    await archiveRepository.saveSkillObservations([observation()]);
+    await persistSkillObservations([observation()]);
+    await persistSkillObservations([observation()]);
 
     expect(await archiveRepository.getSkillObservations()).toHaveLength(1);
   });
 
   it('keeps a different revision of the same passage as distinct', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
-    await archiveRepository.saveSkillObservations([
+    await persistSkillObservations([observation()]);
+    await persistSkillObservations([
       observation({ id: 'so-2', sourceRevision: 'rev-2' }),
     ]);
 
@@ -173,7 +213,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('stores several skills from one passage', async () => {
-    await archiveRepository.saveSkillObservations([
+    await persistSkillObservations([
       observation({ id: 'so-a', skillId: 'skill-request-substitution' }),
       observation({ id: 'so-b', skillId: 'skill-communicative-repair' }),
     ]);
@@ -183,14 +223,14 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('writes nothing for an empty list', async () => {
-    await archiveRepository.saveSkillObservations([]);
+    await persistSkillObservations([]);
     expect(await archiveRepository.getSkillObservations()).toEqual([]);
   });
 });
 
 describe('hiding and disputing skill evidence', () => {
   it('removes a hidden observation from the projection input', async () => {
-    await archiveRepository.saveSkillObservations([
+    await persistSkillObservations([
       observation({ id: 'so-1' }),
       observation({ id: 'so-2', skillId: 'skill-communicative-repair' }),
     ]);
@@ -202,7 +242,7 @@ describe('hiding and disputing skill evidence', () => {
   });
 
   it('marks a disputed observation as both hidden and disputed', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
+    await persistSkillObservations([observation()]);
     await archiveRepository.disputeSkillObservation('so-1');
 
     const row = await driver.db.getFirstAsync<{
@@ -216,7 +256,7 @@ describe('hiding and disputing skill evidence', () => {
   });
 
   it('does not touch phrase observations', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
+    await persistSkillObservations([observation()]);
     await archiveRepository.disputeSkillObservation('so-1');
 
     const phrases = await driver.db.getAllAsync<Record<string, unknown>>(
@@ -257,7 +297,7 @@ describe('skill and phrase evidence stay separate', () => {
           rehearsal: false,
           supportExposureIds: [],
           recordedAt: '2026-09-20T09:00:00.000Z',
-        },
+        } as ValidatedLearningObservation,
       ],
       taskOutcome: 'completed',
       sceneState: {
