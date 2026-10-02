@@ -282,29 +282,6 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
   async beginSession(session: SessionRecord): Promise<void> {
     await this.transaction(async tx => {
-      if (trustedRestore !== TRUSTED_ARCHIVE_RESTORE) {
-        const markers = await this.request(
-          tx.objectStore(STORE.deletions).getAll() as IDBRequest<
-            Array<{
-              scope: string;
-              targetId: string | null;
-              createdAt: string;
-            }>
-          >
-        );
-        const sessionStartedAt = Date.parse(session.startedAt);
-        const blocked = markers.some(marker => {
-          if (marker.targetId === session.id) return true;
-          if (marker.scope !== 'all') return false;
-          const deletedAt = Date.parse(marker.createdAt);
-          if (!Number.isFinite(deletedAt) || !Number.isFinite(sessionStartedAt)) {
-            return true;
-          }
-          return deletedAt >= sessionStartedAt;
-        });
-        if (blocked) return;
-      }
-
       const existing = await this.loadSessionIn(tx, session.id);
       const merged: StoredSession = {
         ...(existing ?? session),
@@ -348,6 +325,29 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     const now = new Date().toISOString();
 
     await this.transaction(async tx => {
+      if (trustedRestore !== TRUSTED_ARCHIVE_RESTORE) {
+        const markers = await this.request(
+          tx.objectStore(STORE.deletions).getAll() as IDBRequest<
+            Array<{
+              scope: string;
+              targetId: string | null;
+              createdAt: string;
+            }>
+          >
+        );
+        const sessionStartedAt = Date.parse(session.startedAt);
+        const blocked = markers.some(marker => {
+          if (marker.targetId === session.id) return true;
+          if (marker.scope !== 'all') return false;
+          const deletedAt = Date.parse(marker.createdAt);
+          if (!Number.isFinite(deletedAt) || !Number.isFinite(sessionStartedAt)) {
+            return true;
+          }
+          return deletedAt >= sessionStartedAt;
+        });
+        if (blocked) return;
+      }
+
       const existing = await this.loadSessionIn(tx, session.id);
 
       const stored: StoredSession = {
