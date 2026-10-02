@@ -6,7 +6,7 @@
  * Bump SCENE_CONTRACT_VERSION when a shape changes incompatibly.
  */
 
-export const SCENE_CONTRACT_VERSION = 5;
+export const SCENE_CONTRACT_VERSION = 6;
 
 /** Allowlisted action names. Anything else is rejected without being evaluated. */
 export type SceneActionName =
@@ -91,6 +91,13 @@ export interface CompletionPredicate {
  * interpretation may later classify what the learner did with the opportunity,
  * but it may never invent the opportunity itself.
  */
+export type CommunicationChallengeType =
+  | 'fast_speech'
+  | 'unknown_word'
+  | 'unclear_detail'
+  | 'scripted_mishearing'
+  | 'unexpected_followup';
+
 export interface SkillOpportunityDefinition {
   /** Stable content id; never reuse a retired id for a different challenge. */
   id: string;
@@ -105,6 +112,37 @@ export interface SkillOpportunityDefinition {
   relevantActionIds?: SceneActionName[];
   /** Mission/actor semantic intents relevant to this opportunity. */
   relevantIntentIds?: string[];
+  /**
+   * Explicit authored repair challenge that owns presentation of this
+   * opportunity. Challenge-linked opportunities are never auto-presented from
+   * scene facts alone.
+   */
+  communicationChallengeId?: string;
+}
+
+/**
+ * Deliberate, opt-in communication variation that creates a repair opportunity.
+ *
+ * A challenge is content, not evidence. It may make an opportunity available,
+ * but only a real learner passage linked to the resulting OpportunityInstance
+ * can establish a demonstration or lapse.
+ */
+export interface CommunicationChallengeDefinition {
+  /** Stable reviewed content id. */
+  id: string;
+  type: CommunicationChallengeType;
+  /** Exactly one most-specific repair child skill. */
+  targetSkillId: string;
+  /** Opportunity presented only after this challenge is actually delivered. */
+  opportunityId: string;
+  /** Authoritative scene state in which the challenge may be offered. */
+  trigger: Predicate;
+  /** Reviewed actor/director instruction; not learner evidence. */
+  actorInstruction: string;
+  /** Repair practice is explicit and may never be sprung on the learner. */
+  requiresLearnerOptIn: true;
+  /** Skipping the twist has no learning penalty. */
+  skippable: true;
 }
 
 export interface Complication {
@@ -140,6 +178,12 @@ export interface SceneDefinition {
   allowedActions: AllowedAction[];
   actionSchemas: Record<string, PayloadSchema>;
   complication?: Complication;
+  /**
+   * Authored repair variations. Director/provider execution is responsible for
+   * delivering one selected compatible challenge; ordinary opportunity sync
+   * must not manufacture these from scene facts.
+   */
+  communicationChallenges: CommunicationChallengeDefinition[];
   completion: CompletionPredicate[];
   checkpoints: Array<{ id: string; description: string; after: Predicate }>;
   /** Curated mappings only. Never model-generated. */
