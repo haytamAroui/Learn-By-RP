@@ -245,7 +245,10 @@ describe('DirectorCadence', () => {
         sourceTurnIds: ['p-1'],
       },
     });
-    state = applyResult(CAFE_SCENE, state, result);
+    state = {
+      ...applyResult(CAFE_SCENE, state, result),
+      firedComplications: [CAFE_SCENE.complication!.id],
+    };
 
     expect(
       cadence.evaluate({
@@ -255,5 +258,43 @@ describe('DirectorCadence', () => {
         opportunities: [],
       })
     ).not.toBeNull();
+  });
+
+  it('does not re-emit the same authored directive after a later revision', () => {
+    const cadence = new DirectorCadence();
+    let state = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+
+    expect(
+      cadence.evaluate({
+        event: { type: 'actor_turn_completed', turnId: 'p-0' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: [],
+      })
+    ).toMatchObject({ kind: 'trigger_complication' });
+
+    const result = reduceSceneAction({
+      scene: CAFE_SCENE,
+      state,
+      proposal: {
+        actionId: 'confirm-2',
+        sessionId: SESSION,
+        attemptId: ATTEMPT,
+        expectedSceneRevision: state.revision,
+        action: 'confirm_order_item',
+        payload: { item: 'café' },
+        sourceTurnIds: ['p-1'],
+      },
+    });
+    state = applyResult(CAFE_SCENE, state, result);
+
+    expect(
+      cadence.evaluate({
+        event: { type: 'scene_action_accepted', actionId: 'confirm-2' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: [],
+      })
+    ).toBeNull();
   });
 });
