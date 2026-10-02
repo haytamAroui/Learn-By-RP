@@ -36,6 +36,28 @@ describe('governed mission session handoff', () => {
     expect(nativeRepo).toContain('coldAttempt: bool(row.cold_attempt)');
   });
 
+  it('re-arms the mounted guard whenever the live lifecycle effect restarts', () => {
+    const live = readFileSync('src/components/LiveSessionView.tsx', 'utf8');
+
+    const setup = live.indexOf('mountedRef.current = true;');
+    const begin = live.indexOf('void mirror.begin(attemptId)');
+    const cleanup = live.indexOf('mountedRef.current = false;');
+
+    expect(setup).toBeGreaterThan(-1);
+    expect(begin).toBeGreaterThan(setup);
+    expect(cleanup).toBeGreaterThan(begin);
+  });
+
+  it('reads freeze/mute/retry decisions from refs that track current runtime state', () => {
+    const live = readFileSync('src/components/LiveSessionView.tsx', 'utf8');
+
+    expect(live).toContain('isMutedRef.current = isMuted');
+    expect(live).toContain('isSceneFrozenRef.current = isSceneFrozen');
+    expect(live).toContain('const currentPassages = passagesRef.current');
+    expect(live).toContain('authoritative?.revision ?? sceneStateRef.current.revision');
+    expect(live).toContain('!isSceneFrozenRef.current && !isMutedRef.current && !isEndingRef.current');
+  });
+
   it('treats intentional close as user-ended rather than interrupted recovery', () => {
     const live = readFileSync('src/components/LiveSessionView.tsx', 'utf8');
 
