@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { SupportExposure } from '../../types';
-import { inheritSupportForRetry } from './retrySupport';
+import { Passage, SupportExposure } from '../../types';
+import { inheritSupportForRetry, mergeAttemptPassages } from './retrySupport';
 
 const EXPOSURE: SupportExposure = {
   id: 'exp-1',
@@ -51,5 +51,33 @@ describe('inheritSupportForRetry', () => {
     });
 
     expect(second.filter(item => item.attemptId === 'attempt-2')).toHaveLength(1);
+  });
+});
+
+
+describe('mergeAttemptPassages', () => {
+  const passage = (id: string, attemptId: string, startedAt: string): Passage => ({
+    id,
+    sessionId: 's-1',
+    attemptId,
+    speaker: 'user',
+    revisionKey: 'rev-1',
+    assemblyVersion: 1,
+    status: 'final',
+    text: id,
+    modality: 'spoken',
+    startedAt,
+    fragments: [],
+  });
+
+  it('preserves old attempts while deduplicating replayed passages', () => {
+    const p1 = passage('p-1', 'attempt-1', '2026-10-02T10:00:00.000Z');
+    const p2 = passage('p-2', 'attempt-2', '2026-10-02T10:01:00.000Z');
+
+    const merged = mergeAttemptPassages([p1], [p1, p2]);
+    expect(merged.map(item => item.id)).toEqual(['p-1', 'p-2']);
+    expect(new Set(merged.map(item => item.attemptId))).toEqual(
+      new Set(['attempt-1', 'attempt-2'])
+    );
   });
 });
