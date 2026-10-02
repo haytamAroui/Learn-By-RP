@@ -538,6 +538,15 @@ export interface CommunicativeSkill {
   status: 'emerging' | 'demonstrated' | 'steady';
 }
 
+export interface OperationalTelemetryEvent {
+  id: string;
+  kind: 'capability_degradation';
+  providerId: string;
+  capability: string;
+  fallback: string;
+  recordedAt: string;
+}
+
 export interface SessionRecord {
   id: string;
   missionId: string;
@@ -565,6 +574,8 @@ export interface SessionRecord {
   sceneState: SceneState;
   summary?: string;
   actionableFeedback?: string[];
+  /** Operational diagnostics only; never used for learning evidence or projection. */
+  operationalTelemetry?: OperationalTelemetryEvent[];
 }
 
 export type UiLanguage = 'en' | 'fr' | 'es' | 'nl';
