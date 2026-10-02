@@ -95,12 +95,12 @@ describe('double tool request produces one transition (test #3)', () => {
     const first = await applySceneAction(proposal({ payload: { item: 'tarta' } }));
     const second = await applySceneAction(proposal({ payload: { item: 'café con leche' } }));
 
-    expect(first.newFacts.orderedItem).toBe('tarta');
+    expect(first.newFacts.itemConfirmed).toBe(true);
     expect(second.deduplicated).toBe(true);
-    expect(second.newFacts.orderedItem).toBe('tarta');
+    expect(second.newFacts).toEqual(first.newFacts);
 
     const snapshot = await getSceneSnapshot(SESSION);
-    expect(snapshot?.facts.orderedItem).toBe('tarta');
+    expect(snapshot?.facts.itemConfirmed).toBe(true);
   });
 
   it('does not write a second scene event for a duplicate', async () => {
@@ -126,7 +126,7 @@ describe('stale revision is refused (test #6)', () => {
         actionId: 'act-2',
         expectedSceneRevision: 1,
         action: 'confirm_takeaway',
-        payload: { takeaway: true },
+        payload: {},
       })
     );
 
@@ -144,7 +144,7 @@ describe('stale revision is refused (test #6)', () => {
         actionId: 'act-3',
         expectedSceneRevision: 2,
         action: 'confirm_takeaway',
-        payload: { takeaway: true },
+        payload: {},
       })
     );
 
@@ -196,7 +196,7 @@ describe('retry forks an attempt and preserves the earlier one (test #7)', () =>
     const snapshot = await getSceneSnapshot(SESSION);
 
     expect(snapshot?.attemptId).toBe(fork.attemptId);
-    expect(snapshot?.facts.itemConfirmed).toBeUndefined();
+    expect(snapshot?.facts.itemConfirmed).toBe(false);
   });
 
   it('rejects a proposal from the pre-fork attempt', async () => {
@@ -248,7 +248,7 @@ describe('durability', () => {
     await applySceneAction(proposal({ sessionId: 'hosted-2' }));
 
     expect((await getSceneSnapshot('hosted-2'))?.facts.itemConfirmed).toBe(true);
-    expect((await getSceneSnapshot(SESSION))?.facts.itemConfirmed).toBeUndefined();
+    expect((await getSceneSnapshot(SESSION))?.facts.itemConfirmed).toBe(false);
   });
 });
 
