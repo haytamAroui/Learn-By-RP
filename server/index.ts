@@ -11,6 +11,10 @@ import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
+import {
+  createGuestAccessRegistry,
+  readBearerToken,
+} from './security/guestAccess';
 
 dotenv.config();
 
@@ -25,6 +29,7 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Provider choice is centralized. Routes never depend on a vendor SDK directly.
 const providers = createProviderRuntime();
+const guestAccess = createGuestAccessRegistry();
 
 console.log('[Server] Provider runtime:', providers.descriptor());
 
@@ -44,7 +49,43 @@ app.get('/api/providers', (_req: Request, res: Response) => {
   res.json(providers.descriptor());
 });
 
-app.post('/api/realtime/session', async (req: Request, res: Response) => {
+app.post('/api/access/guest', (_req: Request, res: Response) => {
+  res.status(201).json(guestAccess.createGuest());
+});
+
+app.post('/api/access/consent', guestAccess.requireGuest, (req: Request, res: Response) => {
+  const { scope, granted, version } = req.body ?? {};
+  if (scope !== 'voice' && scope !== 'saved_analysis') {
+    res.status(400).json({ error: 'invalid_consent_scope' });
+    return;
+  }
+  if (typeof granted !== 'boolean') {
+    res.status(400).json({ error: 'granted_must_be_boolean' });
+    return;
+  }
+  if (typeof version !== 'string' || !version.trim()) {
+    res.status(400).json({ error: 'consent_version_required' });
+    return;
+  }
+
+  const token = readBearerToken(req);
+  const record = token
+    ? guestAccess.recordConsent(token, {
+        scope,
+        granted,
+        version: version.trim(),
+      })
+    : null;
+
+  if (!record) {
+    res.status(401).json({ error: 'guest_access_invalid_or_expired' });
+    return;
+  }
+
+  res.json(record);
+});
+
+app.post('/api/realtime/session', guestAccess.requireConsent('voice'), async (req: Request, res: Response) => {
   try {
     if (!providers.realtime) {
       res.status(503).json({ error: 'OpenAI Realtime is not configured' });
@@ -96,7 +137,7 @@ function sanitizeActorResponse(
   };
 }
 
-app.post('/api/actor/respond', async (req: Request, res: Response) => {
+app.post('/api/actor/respond', guestAccess.requireGuest, async (req: Request, res: Response) => {
   try {
     const {
       character,
@@ -200,7 +241,7 @@ Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`
 
 // 3. Coach Hint Ladder (Separate Private Coach Surface)
 // Ladder: intent_hint -> partial_form -> full_form -> explanation
-app.post('/api/coach/hint', async (req: Request, res: Response) => {
+app.post('/api/coach/hint', guestAccess.requireGuest, async (req: Request, res: Response) => {
   try {
     const {
       step = 'intent_hint',
@@ -283,7 +324,7 @@ Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "
  * 4. Bounded Structured Assessment (Recap / Evidence Extractor)
  * Extracts quotes from user transcript and matches to candidate useful phrases.
  */
-app.post('/api/assessment', async (req: Request, res: Response) => {
+app.post('/api/assessment', guestAccess.requireConsent('saved_analysis'), async (req: Request, res: Response) => {
   try {
     const {
       sessionId,
@@ -529,8 +570,8 @@ const handleSpeechSynthesis = async (req: Request, res: Response) => {
   }
 };
 
-app.post('/api/speech/synthesize', handleSpeechSynthesis);
-app.post('/api/tts', handleSpeechSynthesis);
+app.post('/api/speech/synthesize', guestAccess.requireGuest, handleSpeechSynthesis);
+app.post('/api/tts', guestAccess.requireGuest, handleSpeechSynthesis);
 
 function generateFallbackActorReply(
   characterName: string = 'Mateo',
