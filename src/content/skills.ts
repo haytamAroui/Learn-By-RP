@@ -575,6 +575,20 @@ export function isDirectlyEvidencedSkill(skillId: CommunicativeSkillId): boolean
   return Boolean(skill && skill.evidencePolicy === 'direct' && skill.deprecated === null);
 }
 
+/**
+ * Whether the skill currently has reviewed mission content behind it.
+ *
+ * The canonical catalog may contain future direct skills before launch content is
+ * authored. Progress/discovery should not expose empty skills merely because the
+ * stable id already exists.
+ */
+export function isLaunchVisibleCommunicativeSkill(
+  skillId: CommunicativeSkillId
+): boolean {
+  const skill = communicativeSkillFor(skillId);
+  return Boolean(skill && skill.deprecated === null && skill.associatedMissions.length > 0);
+}
+
 export function isAncestorSkill(
   possibleAncestorId: CommunicativeSkillId,
   possibleDescendantId: CommunicativeSkillId
