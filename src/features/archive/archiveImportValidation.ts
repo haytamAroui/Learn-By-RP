@@ -1,4 +1,8 @@
-import { normalizeText } from '../learning/matching';
+import { matchPhraseInText, normalizeText } from '../learning/matching';
+import {
+  isPhraseProductionSupportRelevant,
+  isSkillProductionSupportRelevant,
+} from '../learning/supportScope';
 import type {
   LearningObservation,
   OpportunityInstance,
@@ -68,13 +72,13 @@ function learnerPassageFor(
 function validatePhraseObservation(
   session: Record<string, any>,
   observation: unknown,
-  phraseIds: ReadonlySet<string>
+  phraseMap: ReadonlyMap<string, PhraseItem>
 ): ValidatedLearningObservation | null {
   if (!isRecord(observation)) return null;
   if (observation.sessionId !== session.id) return null;
-  if (typeof observation.itemId !== 'string' || !phraseIds.has(observation.itemId)) {
-    return null;
-  }
+  if (typeof observation.itemId !== 'string') return null;
+  const phrase = phraseMap.get(observation.itemId);
+  if (!phrase) return null;
   if (
     typeof observation.observationId !== 'string' ||
     typeof observation.candidateForm !== 'string' ||
@@ -93,6 +97,29 @@ function validatePhraseObservation(
     quote: observation.quote,
   });
   if (!passage) return null;
+
+  const semanticMatch = matchPhraseInText(phrase.form, passage.text);
+  if (semanticMatch.verdict === 'none' || semanticMatch.verdict === 'ambiguous') {
+    return null;
+  }
+  if (observation.modality === 'typed' && observation.retrieval === 'unassisted') {
+    return null;
+  }
+
+  const supportExposures = Array.isArray(session.supportExposures)
+    ? session.supportExposures
+    : [];
+  const relevantSupport = supportExposures.filter((exposure: any) =>
+    isPhraseProductionSupportRelevant({
+      exposure,
+      phraseId: observation.itemId,
+      passage,
+      attemptId: observation.attemptId,
+    })
+  );
+  if (observation.retrieval === 'unassisted' && relevantSupport.length > 0) {
+    return null;
+  }
 
   const exposureIds = new Set(
     (Array.isArray(session.supportExposures) ? session.supportExposures : [])
@@ -155,6 +182,25 @@ function validateSkillObservation(
     quote: observation.quote,
   });
   if (!passage) return null;
+  if (observation.modality === 'typed' && observation.retrieval === 'unassisted') {
+    return null;
+  }
+
+  const relevantSupport = (Array.isArray(session.supportExposures)
+    ? session.supportExposures
+    : []
+  ).filter((exposure: any) =>
+    isSkillProductionSupportRelevant({
+      exposure,
+      passage,
+      attemptId: observation.attemptId,
+      skillId: observation.skillId,
+      opportunityInstanceId: observation.opportunityInstanceId,
+    })
+  );
+  if (observation.retrieval === 'unassisted' && relevantSupport.length > 0) {
+    return null;
+  }
 
   if (observation.evidenceSource === 'validated_explicit') {
     const opportunity = opportunityById(session, observation.opportunityInstanceId);
@@ -267,7 +313,7 @@ export function prepareArchiveImport(parsed: unknown): ArchiveImportValidation {
   }
 
   const phrases: PhraseItem[] = [];
-  const phraseIds = new Set<string>();
+  const phraseMap = new Map<string, PhraseItem>();
   for (const phrase of parsed.phrases) {
     if (
       !isRecord(phrase) ||
@@ -277,8 +323,9 @@ export function prepareArchiveImport(parsed: unknown): ArchiveImportValidation {
     ) {
       return { ok: false, message: 'Archive contains a malformed phrase' };
     }
-    phraseIds.add(phrase.id);
-    phrases.push(phrase as PhraseItem);
+    const typedPhrase = phrase as PhraseItem;
+    phraseMap.set(phrase.id, typedPhrase);
+    phrases.push(typedPhrase);
   }
 
   const sessions: PersistableSessionRecord[] = [];
@@ -305,9 +352,25 @@ export function prepareArchiveImport(parsed: unknown): ArchiveImportValidation {
       }
     }
 
+    for (const exposure of rawSession.supportExposures) {
+      if (
+        !isRecord(exposure) ||
+        typeof exposure.id !== 'string' ||
+        typeof exposure.attemptId !== 'string' ||
+        typeof exposure.kind !== 'string' ||
+        typeof exposure.recordedAt !== 'string' ||
+        !Array.isArray(exposure.targetItemIds)
+      ) {
+        return {
+          ok: false,
+          message: `Archive session ${rawSession.id} contains malformed support evidence`,
+        };
+      }
+    }
+
     const observations: ValidatedLearningObservation[] = [];
     for (const observation of rawSession.observations) {
-      const validated = validatePhraseObservation(rawSession, observation, phraseIds);
+      const validated = validatePhraseObservation(rawSession, observation, phraseMap);
       if (!validated) {
         return {
           ok: false,
