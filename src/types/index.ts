@@ -414,6 +414,14 @@ export interface SkillObservation {
   /** The words the learner actually produced, kept as provenance. */
   quote: string;
 
+  /** Stable calendar key used by projection/rebuild without timezone re-derivation. */
+  dayKey?: string;
+  /** Deterministic reason code; localized prose is rendered separately. */
+  reasonCode?: 'validated_demonstration' | 'legacy_inferred_demonstration';
+  policyVersion?: number;
+  hidden?: boolean;
+  userDisputed?: boolean;
+
   recordedAt: string;
 }
 
@@ -452,6 +460,10 @@ export interface SkillLapse {
 
   /** Why this counts as a lapse rather than an ordinary failure. */
   basis: 'cold_attempt_failed';
+  dayKey?: string;
+  reasonCode?: 'cold_taken_opportunity_not_demonstrated';
+  policyVersion?: number;
+  hidden?: boolean;
 
   recordedAt: string;
 }
