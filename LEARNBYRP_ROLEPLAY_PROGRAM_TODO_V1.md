@@ -34,7 +34,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 - [x] Confirm mute/freeze/retry state is read from current runtime state. (`isMutedRef`, `isSceneFrozenRef`, `passagesRef`, `sceneStateRef`; regression assertion in `session-flow.test.ts`)
 - [x] Confirm reconnect/error/mic-denied states are explicit. (`voice/lifecycle.ts`, `lifecycle.test.ts`, `LiveSessionView` transport event handling)
 - [x] Confirm typed draft survives provider errors/reconnects where intended. (`voice/draft.test.ts`; failed typed assistant turn restores `typedMessage`)
-- [ ] Confirm audio resources close on every end path.
+- [x] Confirm audio resources close on every end path. (`NativeVoiceTransport.dispose/stopPlayback`; pending capture + native TTS + base64 player/listener/temp-file interruption covered by `nativeVoiceTransport.test.ts`)
 - [ ] Physical Android native voice/STT pass.
 - [ ] Physical iPhone native voice/STT pass.
 - [ ] Physical cloud → native TTS fallback pass.
