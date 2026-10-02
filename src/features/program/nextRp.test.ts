@@ -145,7 +145,21 @@ describe('deterministic next-RP policy', () => {
       kind: 'recovery',
       missionId: 'mission-es-farmacia-sol',
       reasonCode: 'STRICT_LAPSE_RECOVERY',
+      pressureCeiling: 'manageable',
     });
+  });
+
+  it('never raises recovery above manageable pressure', () => {
+    const result = recommendNextRp({
+      ...BASE,
+      observations: [],
+      lapses: [lapse('1', '2026-10-01T10:00:00.000Z')],
+    });
+
+    expect(result.kind).toBe('recovery');
+    expect(result.pressureCeiling).toBe('manageable');
+    expect(result.pressureCeiling).not.toBe('standard');
+    expect(result.pressureCeiling).not.toBe('stretch');
   });
 
   it('caps consecutive recoveries and takes the deterministic off-ramp', () => {
@@ -207,7 +221,7 @@ describe('deterministic next-RP policy', () => {
     });
 
     expect(result).toEqual({
-      policyVersion: 2,
+      policyVersion: 3,
       kind: 'final_simulation',
       reasonCode: 'PROGRAM_CORE_COMPLETE',
       requiresLearnerConfirmation: true,

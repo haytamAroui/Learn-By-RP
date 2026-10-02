@@ -1,5 +1,7 @@
 import {
   CommunicationChallengeType,
+  PressureVariantKind,
+  RoleplayPressureLevel,
   SceneDefinition,
   SceneStateSnapshot,
 } from '../../contracts/scene';
@@ -28,6 +30,14 @@ export type DirectorDecision =
       reason: 'authored_opportunity_available';
     }
   | {
+      kind: 'present_pressure_branch';
+      pressureBranchId: string;
+      variantKind: PressureVariantKind;
+      pressureLevel: RoleplayPressureLevel;
+      actorInstruction: string;
+      reason: 'authored_pressure_branch_available';
+    }
+  | {
       kind: 'prepare_completion';
       reason: 'scene_partial_or_achieved';
     }
@@ -53,6 +63,11 @@ export function decideDirector(input: {
   opportunities: OpportunityInstance[];
   availableCommunicationChallenges?: readonly CommunicationChallengeType[];
   targetChallengeSkillId?: string;
+  pressurePolicy?: {
+    enabled: boolean;
+    allowedLevels: readonly RoleplayPressureLevel[];
+    allowedVariantKinds?: readonly PressureVariantKind[];
+  };
 }): DirectorDecision {
   const {
     scene,
@@ -60,6 +75,7 @@ export function decideDirector(input: {
     opportunities,
     availableCommunicationChallenges = [],
     targetChallengeSkillId,
+    pressurePolicy,
   } = input;
 
   if (state.sceneId !== scene.id) {
@@ -150,6 +166,36 @@ export function decideDirector(input: {
     }
   }
 
+  if (pressurePolicy?.enabled) {
+    const allowedLevels = new Set(pressurePolicy.allowedLevels);
+    const allowedKinds = pressurePolicy.allowedVariantKinds
+      ? new Set(pressurePolicy.allowedVariantKinds)
+      : null;
+
+    for (const branch of scene.pressureBranches) {
+      if (!allowedLevels.has(branch.level)) continue;
+      if (allowedKinds && !allowedKinds.has(branch.variantKind)) continue;
+      if (
+        !evaluatePredicate(
+          branch.trigger,
+          state.facts,
+          state.actionCounts
+        )
+      ) {
+        continue;
+      }
+
+      return {
+        kind: 'present_pressure_branch',
+        pressureBranchId: branch.id,
+        variantKind: branch.variantKind,
+        pressureLevel: branch.level,
+        actorInstruction: branch.actorInstruction,
+        reason: 'authored_pressure_branch_available',
+      };
+    }
+  }
+
   if (state.outcome === 'partial' || state.outcome === 'achieved') {
     return {
       kind: 'prepare_completion',
@@ -225,6 +271,11 @@ export class DirectorCadence {
     opportunities: OpportunityInstance[];
     availableCommunicationChallenges?: readonly CommunicationChallengeType[];
     targetChallengeSkillId?: string;
+    pressurePolicy?: {
+      enabled: boolean;
+      allowedLevels: readonly RoleplayPressureLevel[];
+      allowedVariantKinds?: readonly PressureVariantKind[];
+    };
   }): DirectorDecision | null {
     if (!isDirectorBoundaryEvent(input.event)) return null;
 
@@ -240,6 +291,7 @@ export class DirectorCadence {
       availableCommunicationChallenges:
         input.availableCommunicationChallenges,
       targetChallengeSkillId: input.targetChallengeSkillId,
+      pressurePolicy: input.pressurePolicy,
     });
 
     const directiveKey =
@@ -249,9 +301,11 @@ export class DirectorCadence {
           ? `challenge:${decision.challengeId}`
           : decision.kind === 'present_opportunity'
             ? `opportunity:${decision.opportunityId}`
-            : decision.kind === 'prepare_completion'
-              ? 'completion'
-              : null;
+            : decision.kind === 'present_pressure_branch'
+              ? `pressure:${decision.pressureBranchId}`
+              : decision.kind === 'prepare_completion'
+                ? 'completion'
+                : null;
 
     if (directiveKey) {
       const attemptDirectiveKey =

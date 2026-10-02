@@ -6,7 +6,7 @@
  * Bump SCENE_CONTRACT_VERSION when a shape changes incompatibly.
  */
 
-export const SCENE_CONTRACT_VERSION = 6;
+export const SCENE_CONTRACT_VERSION = 7;
 
 /** Allowlisted action names. Anything else is rejected without being evaluated. */
 export type SceneActionName =
@@ -98,6 +98,15 @@ export type CommunicationChallengeType =
   | 'scripted_mishearing'
   | 'unexpected_followup';
 
+export type RoleplayPressureLevel = 'manageable' | 'standard' | 'stretch';
+
+export type PressureVariantKind =
+  | 'faster_speech'
+  | 'more_concise'
+  | 'one_interruption'
+  | 'unexpected_followup'
+  | 'time_pressure';
+
 export interface SkillOpportunityDefinition {
   /** Stable content id; never reuse a retired id for a different challenge. */
   id: string;
@@ -155,6 +164,23 @@ export interface Complication {
   practiceVariation?: boolean;
 }
 
+/**
+ * Optional authored conversation-pressure variation.
+ *
+ * Pressure is never model-generated and never creates a new context identity.
+ * Branches are opt-in/skippable content instructions; they do not mutate facts
+ * or create learning evidence by themselves.
+ */
+export interface PressureBranchDefinition {
+  id: string;
+  variantKind: PressureVariantKind;
+  level: RoleplayPressureLevel;
+  trigger: Predicate;
+  actorInstruction: string;
+  requiresLearnerOptIn: true;
+  skippable: true;
+}
+
 export interface SceneDefinition {
   id: string;
   version: number;
@@ -184,6 +210,8 @@ export interface SceneDefinition {
    * must not manufacture these from scene facts.
    */
   communicationChallenges: CommunicationChallengeDefinition[];
+  /** Reviewed optional pressure variants; empty means no pressure branch. */
+  pressureBranches: PressureBranchDefinition[];
   completion: CompletionPredicate[];
   checkpoints: Array<{ id: string; description: string; after: Predicate }>;
   /** Curated mappings only. Never model-generated. */

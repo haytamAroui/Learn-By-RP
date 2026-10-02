@@ -153,6 +153,115 @@ describe('deterministic director', () => {
     expect(decision.kind).not.toBe('present_opportunity');
   });
 
+  it('does not emit pressure without explicit learner opt-in policy', () => {
+    const state = {
+      ...createInitialScene(CAFE_SCENE, SESSION, ATTEMPT),
+      firedComplications: [CAFE_SCENE.complication!.id],
+      facts: {
+        ...createInitialScene(CAFE_SCENE, SESSION, ATTEMPT).facts,
+        itemConfirmed: true,
+      },
+    };
+
+    const decision = decideDirector({
+      scene: CAFE_SCENE,
+      state,
+      opportunities: CAFE_SCENE.opportunityDefinitions
+        .filter(item => !item.communicationChallengeId)
+        .map(item => ({
+          id: `existing:${item.id}`,
+          attemptId: ATTEMPT,
+          opportunityId: item.id,
+          skillId: item.skillId,
+          status: 'presented' as const,
+          detection: 'validated' as const,
+          demonstration: 'unknown' as const,
+          recordedAt: '2026-10-02T00:00:00.000Z',
+        })),
+    });
+
+    expect(decision.kind).not.toBe('present_pressure_branch');
+  });
+
+  it('selects only an authored pressure branch allowed by the pressure policy', () => {
+    const initial = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+    const state = {
+      ...initial,
+      firedComplications: [CAFE_SCENE.complication!.id],
+      facts: {
+        ...initial.facts,
+        itemConfirmed: true,
+      },
+    };
+    const existing = CAFE_SCENE.opportunityDefinitions
+      .filter(item => !item.communicationChallengeId)
+      .map(item => ({
+        id: `existing:${item.id}`,
+        attemptId: ATTEMPT,
+        opportunityId: item.id,
+        skillId: item.skillId,
+        status: 'presented' as const,
+        detection: 'validated' as const,
+        demonstration: 'unknown' as const,
+        recordedAt: '2026-10-02T00:00:00.000Z',
+      }));
+
+    const decision = decideDirector({
+      scene: CAFE_SCENE,
+      state,
+      opportunities: existing,
+      pressurePolicy: {
+        enabled: true,
+        allowedLevels: ['manageable'],
+      },
+    });
+
+    expect(decision).toMatchObject({
+      kind: 'present_pressure_branch',
+      pressureBranchId: 'pressure.es.cafe.concise-followup',
+      variantKind: 'more_concise',
+      pressureLevel: 'manageable',
+      reason: 'authored_pressure_branch_available',
+    });
+  });
+
+  it('does not let a recovery-like manageable policy select a stretch pressure branch', () => {
+    const initial = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+    const state = {
+      ...initial,
+      firedComplications: [CAFE_SCENE.complication!.id],
+      facts: {
+        ...initial.facts,
+        alternativeOffered: true,
+      },
+    };
+    const existing = CAFE_SCENE.opportunityDefinitions
+      .filter(item => !item.communicationChallengeId)
+      .map(item => ({
+        id: `existing:${item.id}`,
+        attemptId: ATTEMPT,
+        opportunityId: item.id,
+        skillId: item.skillId,
+        status: 'presented' as const,
+        detection: 'validated' as const,
+        demonstration: 'unknown' as const,
+        recordedAt: '2026-10-02T00:00:00.000Z',
+      }));
+
+    const decision = decideDirector({
+      scene: CAFE_SCENE,
+      state,
+      opportunities: existing,
+      pressurePolicy: {
+        enabled: true,
+        allowedLevels: ['manageable'],
+        allowedVariantKinds: ['one_interruption'],
+      },
+    });
+
+    expect(decision.kind).not.toBe('present_pressure_branch');
+  });
+
   it('never turns a semantic unknown into an executable mutation', () => {
     expect(
       acceptSemanticCandidate({ intentId: 'something', unknown: true })
@@ -246,6 +355,62 @@ describe('DirectorCadence', () => {
         opportunities: [],
       })
     ).not.toBeNull();
+  });
+
+  it('dedupes an authored pressure branch across later revisions', () => {
+    const cadence = new DirectorCadence();
+    const initial = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+    let state = {
+      ...initial,
+      firedComplications: [CAFE_SCENE.complication!.id],
+      facts: {
+        ...initial.facts,
+        itemConfirmed: true,
+      },
+    };
+    const existing = CAFE_SCENE.opportunityDefinitions
+      .filter(item => !item.communicationChallengeId)
+      .map(item => ({
+        id: `existing:${item.id}`,
+        attemptId: ATTEMPT,
+        opportunityId: item.id,
+        skillId: item.skillId,
+        status: 'presented' as const,
+        detection: 'validated' as const,
+        demonstration: 'unknown' as const,
+        recordedAt: '2026-10-02T00:00:00.000Z',
+      }));
+
+    expect(
+      cadence.evaluate({
+        event: { type: 'actor_turn_completed', turnId: 'p-pressure-1' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: existing,
+        pressurePolicy: {
+          enabled: true,
+          allowedLevels: ['manageable'],
+        },
+      })
+    ).toMatchObject({
+      kind: 'present_pressure_branch',
+      pressureBranchId: 'pressure.es.cafe.concise-followup',
+    });
+
+    state = { ...state, revision: state.revision + 1 };
+
+    expect(
+      cadence.evaluate({
+        event: { type: 'scene_action_accepted', actionId: 'advance-pressure' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: existing,
+        pressurePolicy: {
+          enabled: true,
+          allowedLevels: ['manageable'],
+        },
+      })
+    ).toBeNull();
   });
 
   it('does not re-emit the same authored directive after a later revision', () => {

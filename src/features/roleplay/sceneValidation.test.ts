@@ -83,6 +83,38 @@ describe('finite scene definition validation', () => {
     );
   });
 
+  it('rejects a pressure branch whose trigger references undeclared scene state', () => {
+    const scene: SceneDefinition = {
+      ...CAFE_SCENE,
+      pressureBranches: [
+        {
+          ...CAFE_SCENE.pressureBranches[0],
+          trigger: { op: 'eq', fact: 'inventedPressureFact', value: true },
+        },
+      ],
+    };
+
+    expect(validateSceneDefinition(scene).errors.join('\n')).toMatch(
+      /pressureBranches\[0\]\.trigger: references undeclared fact inventedPressureFact/i
+    );
+  });
+
+  it('rejects a pressure branch without a reviewed actor instruction', () => {
+    const scene: SceneDefinition = {
+      ...CAFE_SCENE,
+      pressureBranches: [
+        {
+          ...CAFE_SCENE.pressureBranches[0],
+          actorInstruction: '   ',
+        },
+      ],
+    };
+
+    expect(validateSceneDefinition(scene).errors.join('\n')).toMatch(
+      /pressureBranches\[0\]: actorInstruction must not be empty/i
+    );
+  });
+
   it('rejects a communication challenge whose opportunity binding is broken', () => {
     const scene: SceneDefinition = {
       ...CAFE_SCENE,
