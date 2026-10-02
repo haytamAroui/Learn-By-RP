@@ -189,7 +189,7 @@ export function validateAssessmentProposal(
       // Retained together when the learner's wording differed from the curated
       // form, so both are available without losing the original.
       originalForm: match.verdict === 'paraphrase' ? match.matchedText || undefined : undefined,
-    } as ValidatedLearningObservation;
+    } as unknown as ValidatedLearningObservation;
 
     validatedObservations.push(observation);
   }
