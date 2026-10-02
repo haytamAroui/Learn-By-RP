@@ -167,6 +167,7 @@ export class NativeVoiceTransport implements VoiceTransport {
 
     this.stopPlayback();
     await this.ensureAudioMode();
+    if (this.disposed || this.isMuted) return false;
 
     try {
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -174,6 +175,7 @@ export class NativeVoiceTransport implements VoiceTransport {
         this.emit({ type: 'error', payload: 'mic_denied' });
         return false;
       }
+      if (this.disposed || this.isMuted) return false;
     } catch (e) {
       console.warn('Microphone permission check failed:', e);
       this.emit({ type: 'error', payload: 'mic_denied' });
@@ -233,11 +235,20 @@ export class NativeVoiceTransport implements VoiceTransport {
 
   public stopPlayback() {
     const hadActivePlayback = this.isPlaybackActive;
+    const cancelActivePlayback = this.cancelActivePlayback;
+    this.cancelActivePlayback = null;
+
     if (hadActivePlayback) {
       // Invalidate callbacks from the interrupted playback before stopping the
       // underlying player/speech engine. Native callbacks may arrive afterwards.
       this.isPlaybackActive = false;
       this.playbackGeneration += 1;
+    }
+
+    try {
+      cancelActivePlayback?.();
+    } catch {
+      // Best effort; the generic cleanup below still runs.
     }
 
     if (this.player) {
@@ -248,11 +259,9 @@ export class NativeVoiceTransport implements VoiceTransport {
         // ignore
       }
       this.player = null;
-      this.cleanupTempAudio();
-      if (hadActivePlayback) {
-        this.emit({ type: 'interrupted' });
-      }
     }
+    this.cleanupTempAudio();
+
     try {
       Speech.stop();
     } catch {
@@ -263,6 +272,7 @@ export class NativeVoiceTransport implements VoiceTransport {
     // stop must not manufacture playback_end, because the session's playback_end
     // handler starts listening again.
     if (hadActivePlayback) {
+      this.emit({ type: 'interrupted' });
       this.emit({ type: 'playback_end' });
     }
   }
@@ -322,10 +332,16 @@ export class NativeVoiceTransport implements VoiceTransport {
       await new Promise<void>(resolve => {
         let settled = false;
         const subscription = player.addListener('playbackStatusUpdate', status => {
-          if (settled || !status?.didJustFinish) return;
+          if (!status?.didJustFinish) return;
+          settle(true);
+        });
+
+        const settle = (naturalEnd: boolean) => {
+          if (settled) return;
           settled = true;
           subscription.remove();
           try {
+            if (!naturalEnd) player.pause();
             player.remove();
           } catch {
             // ignore
@@ -334,10 +350,16 @@ export class NativeVoiceTransport implements VoiceTransport {
             this.player = null;
           }
           this.cleanupTempAudio();
-          this.finishPlayback(playbackGeneration);
+          if (this.playbackGeneration === playbackGeneration) {
+            this.cancelActivePlayback = null;
+          }
+          if (naturalEnd) {
+            this.finishPlayback(playbackGeneration);
+          }
           resolve();
-        });
+        };
 
+        this.cancelActivePlayback = () => settle(false);
         player.play();
       });
 
@@ -362,21 +384,37 @@ export class NativeVoiceTransport implements VoiceTransport {
         const audio = new AudioCtor(`data:${mimeType};base64,${base64}`);
         audio.playbackRate = speed;
         const playbackGeneration = this.beginPlayback();
-        const done = () => {
-          this.finishPlayback(playbackGeneration);
-          resolve(true);
+        let settled = false;
+
+        const settle = (played: boolean, naturalEnd: boolean) => {
+          if (settled) return;
+          settled = true;
+          audio.onended = null;
+          audio.onerror = null;
+          if (!naturalEnd) {
+            try {
+              audio.pause?.();
+              audio.src = '';
+            } catch {
+              // ignore
+            }
+          }
+          if (this.playbackGeneration === playbackGeneration) {
+            this.cancelActivePlayback = null;
+          }
+          if (naturalEnd) {
+            this.finishPlayback(playbackGeneration);
+          }
+          resolve(played);
         };
-        audio.onended = done;
-        audio.onerror = () => {
-          this.finishPlayback(playbackGeneration);
-          resolve(false);
-        };
+
+        audio.onended = () => settle(true, true);
+        audio.onerror = () => settle(false, true);
+        this.cancelActivePlayback = () => settle(true, false);
+
         const attempt = audio.play();
         if (attempt && typeof attempt.catch === 'function') {
-          attempt.catch(() => {
-            this.finishPlayback(playbackGeneration);
-            resolve(false);
-          });
+          attempt.catch(() => settle(false, true));
         }
       });
     } catch (e) {
@@ -423,6 +461,21 @@ export class NativeVoiceTransport implements VoiceTransport {
 
     return new Promise(resolve => {
       const playbackGeneration = this.beginPlayback();
+      let settled = false;
+
+      const settle = (naturalEnd: boolean) => {
+        if (settled) return;
+        settled = true;
+        if (this.playbackGeneration === playbackGeneration) {
+          this.cancelActivePlayback = null;
+        }
+        if (naturalEnd) {
+          this.finishPlayback(playbackGeneration);
+        }
+        resolve();
+      };
+
+      this.cancelActivePlayback = () => settle(false);
 
       Speech.speak(text, {
         language: locale,
@@ -430,18 +483,9 @@ export class NativeVoiceTransport implements VoiceTransport {
         rate: speed,
         pitch: 1.0,
         useApplicationAudioSession: true,
-        onDone: () => {
-          this.finishPlayback(playbackGeneration);
-          resolve();
-        },
-        onStopped: () => {
-          this.finishPlayback(playbackGeneration);
-          resolve();
-        },
-        onError: () => {
-          this.finishPlayback(playbackGeneration);
-          resolve();
-        },
+        onDone: () => settle(true),
+        onStopped: () => settle(true),
+        onError: () => settle(true),
       });
     });
   }
