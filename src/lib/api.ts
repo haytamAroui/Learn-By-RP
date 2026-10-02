@@ -157,6 +157,14 @@ export const api = {
     supportExposures: any[];
     usefulPhrases: any[];
     language: string;
+    /** Runtime-created opportunities the assessor may reference. */
+    opportunityInstances?: Array<{
+      id: string;
+      opportunityId: string;
+      skillId: string;
+      status: string;
+      detection: string;
+    }>;
   }) => request<any>('/api/assessment', body, 60000),
 
   providers: () =>
