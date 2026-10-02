@@ -8,6 +8,7 @@ import {
   SupportExposure,
   UserPreferences,
 } from '../../types';
+import type { ValidatedSkillEvidence } from '../learning/skillEvidence';
 
 /**
  * A consent decision for one processing scope.
@@ -54,7 +55,8 @@ export interface ArchiveRepository {
   saveSessionState(sessionId: string, state: SessionState): Promise<void>;
   completeSession(
     session: SessionRecord,
-    rejectedProposals?: { reason: string }[]
+    rejectedProposals?: { reason: string }[],
+    skillEvidence?: ValidatedSkillEvidence
   ): Promise<void>;
   getSessions(): Promise<SessionRecord[]>;
   getSessionById(id: string): Promise<SessionRecord | null>;
@@ -87,7 +89,6 @@ export interface ArchiveRepository {
   disputeObservation(observationId: string): Promise<void>;
 
   getSkillObservations(): Promise<SkillObservation[]>;
-  saveSkillObservations(observations: SkillObservation[]): Promise<void>;
   hideSkillObservation(observationId: string): Promise<void>;
   disputeSkillObservation(observationId: string): Promise<void>;
 
