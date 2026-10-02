@@ -1051,7 +1051,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         if (exposure.sessionId !== sessionId) continue;
 
         await txn.runAsync(
-          `INSERT OR REPLACE INTO support_exposures
+          `INSERT OR IGNORE INTO support_exposures
             (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
              target_skill_id, target_opportunity_id, target_phrase_id, policy_version, exposure, recorded_at)
            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
