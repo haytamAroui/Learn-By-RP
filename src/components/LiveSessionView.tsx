@@ -86,10 +86,15 @@ import {
 } from '../features/learning/supportSurfaces';
 import { negotiateRoleplayCapabilities } from '../features/roleplay/capabilities';
 import { mayCommitActorReply } from '../features/roleplay/actorContract';
+import {
+  DirectorCadence,
+  type DirectorRuntimeEvent,
+} from '../features/roleplay/director';
 import type {
   RoleplayCheckpoint,
   SceneActionName,
   SceneCheckpointSnapshot,
+  SceneStateSnapshot,
 } from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
@@ -449,6 +454,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const voiceTransportRef = useRef<VoiceTransport | null>(null);
   const conversationProviderRef = useRef<ConversationProvider | null>(null);
   const sceneMirrorRef = useRef<SceneMirror | null>(null);
+  const directorCadenceRef = useRef(new DirectorCadence());
   const scrollRef = useRef<ScrollView | null>(null);
   const sceneStateRef = useRef(sceneState);
   const passagesRef = useRef(passages);
@@ -472,6 +478,53 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   supportExposuresRef.current = supportExposures;
   isMutedRef.current = isMuted;
   isSceneFrozenRef.current = isSceneFrozen;
+
+  const runDirectorCadence = useCallback(
+    (
+      event: DirectorRuntimeEvent,
+      stateOverride?: SceneStateSnapshot | null
+    ) => {
+      if (!mission?.sceneId) return null;
+      const scene = getScene(mission.sceneId);
+      if (!scene) return null;
+
+      const state =
+        stateOverride ??
+        sceneMirrorRef.current?.snapshot ?? {
+          sceneId: sceneStateRef.current.sceneId,
+          sessionId,
+          attemptId,
+          revision: sceneStateRef.current.revision,
+          facts: sceneStateRef.current.facts,
+          actionCounts: sceneStateRef.current.actionCounts ?? {},
+          checkpoints: toRuntimeCheckpoints(sceneStateRef.current.checkpoints),
+          isFinished: sceneStateRef.current.isFinished,
+          outcome: sceneStateRef.current.outcome,
+          firedComplications: [],
+        };
+
+      if (state.sceneId !== scene.id) return null;
+
+      const decision = directorCadenceRef.current.evaluate({
+        event,
+        scene,
+        state,
+        opportunities: opportunityInstancesRef.current,
+      });
+
+      if (decision) {
+        console.debug('Director boundary decision', {
+          event: event.type,
+          attemptId: state.attemptId,
+          revision: state.revision,
+          kind: decision.kind,
+        });
+      }
+
+      return decision;
+    },
+    [attemptId, mission?.sceneId, sessionId]
+  );
 
   useEffect(() => {
     const latestAssistant = [...passages]
@@ -726,6 +779,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         updatedPassages = [...passagesRef.current, userPassage];
         setPassages(updatedPassages);
       }
+      runDirectorCadence({
+        type: 'learner_turn_completed',
+        turnId: userPassageId,
+      });
       setVoiceState('connecting');
 
       try {
@@ -797,6 +854,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         };
 
         setPassages([...updatedPassages, characterPassage]);
+        runDirectorCadence({
+          type: 'actor_turn_completed',
+          turnId: characterPassage.id,
+        });
 
         if (audioPlaybackEnabled && !isSceneFrozenRef.current) {
           setVoiceState('speaking');
@@ -856,6 +917,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       slowerSpeechDefault,
       explanationLanguage,
       mode,
+      runDirectorCadence,
       sessionId,
     ]
   );
@@ -919,6 +981,13 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       }
 
       const authoritative = await mirror.reconcile();
+      runDirectorCadence(
+        {
+          type: 'scene_action_accepted',
+          actionId: result.actionId,
+        },
+        authoritative
+      );
       setSceneState(prev => ({
         ...prev,
         sceneId: authoritative?.sceneId ?? prev.sceneId,
@@ -942,7 +1011,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       setTimeout(() => setSceneEventNotice(null), 4000);
       return result;
     },
-    [attemptId, mission?.character.name, t.live]
+    [attemptId, mission?.character.name, runDirectorCadence, t.live]
   );
 
   const requestCoachHint = useCallback(
@@ -1188,6 +1257,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       };
 
       setPassages([initialPassage]);
+      runDirectorCadence({
+        type: 'actor_turn_completed',
+        turnId: initialPassage.id,
+      });
       setVoiceState('speaking');
 
       await speakWithBestAvailable(transport, greeting, {
@@ -1222,6 +1295,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     preferredSpeechRate,
     slowerSpeechDefault,
     handleUserMessage,
+    runDirectorCadence,
   ]);
 
   useEffect(() => {
@@ -1497,6 +1571,13 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
     const forkState = mirror.snapshot;
     if (forkState) {
+      runDirectorCadence(
+        {
+          type: 'checkpoint_restored',
+          checkpointId: checkpoint.id,
+        },
+        forkState
+      );
       setSceneState(prev => ({
         ...prev,
         sceneId: forkState.sceneId,
