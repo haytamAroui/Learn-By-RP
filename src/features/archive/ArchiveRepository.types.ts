@@ -9,6 +9,7 @@ import {
   UserPreferences,
 } from '../../types';
 import type { ValidatedSkillEvidence } from '../learning/skillEvidence';
+import type { ValidatedPhraseEvidence } from '../learning/learningCore';
 
 /**
  * A consent decision for one processing scope.
@@ -56,7 +57,8 @@ export interface ArchiveRepository {
   completeSession(
     session: SessionRecord,
     rejectedProposals?: { reason: string }[],
-    skillEvidence?: ValidatedSkillEvidence
+    skillEvidence?: ValidatedSkillEvidence,
+    phraseEvidence?: ValidatedPhraseEvidence
   ): Promise<void>;
   getSessions(): Promise<SessionRecord[]>;
   getSessionById(id: string): Promise<SessionRecord | null>;
@@ -108,9 +110,7 @@ export interface ArchiveRepository {
   // -------------------------------------------------------------------- review
   recordDrillReview(input: {
     phrase: PhraseItem;
-    quote: string;
-    modality: 'spoken' | 'typed';
-    unassisted: boolean;
+    evidence: ValidatedPhraseEvidence;
   }): Promise<void>;
 
   // ----------------------------------------------------------------------- jobs
