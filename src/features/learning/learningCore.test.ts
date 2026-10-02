@@ -212,6 +212,72 @@ describe('validateAssessmentProposal', () => {
       expect(result.validatedObservations[0].retrieval).toBe('assisted');
     });
 
+    it('downgrades a phrase revealed in the briefing before the attempt', () => {
+      const exposures: SupportExposure[] = [
+        {
+          id: 'exp-briefing',
+          sessionId: 's-1',
+          attemptId: 'attempt-1',
+          source: 'briefing',
+          kind: 'briefing_exposure',
+          targetPhraseId: PHRASE.id,
+          targetItemIds: [PHRASE.id],
+          exposure: 'visible',
+          recordedAt: '2026-01-01T09:59:30.000Z',
+        },
+      ];
+
+      const result = validateAssessmentProposal(makeProposal(), [makePassage()], exposures);
+
+      expect(result.validatedObservations[0].retrieval).toBe('assisted');
+      expect(result.validatedObservations[0].supportExposureIds).toContain('exp-briefing');
+    });
+
+    it('downgrades target-phrase audio heard before the learner attempt', () => {
+      const exposures: SupportExposure[] = [
+        {
+          id: 'exp-model-audio',
+          sessionId: 's-1',
+          attemptId: 'attempt-1',
+          source: 'coach',
+          kind: 'model_phrase_audio',
+          targetPhraseId: PHRASE.id,
+          targetItemIds: [PHRASE.id],
+          exposure: 'played',
+          policyVersion: 3,
+          recordedAt: '2026-01-01T09:59:30.000Z',
+        },
+      ];
+
+      const result = validateAssessmentProposal(makeProposal(), [makePassage()], exposures);
+
+      expect(result.validatedObservations[0].retrieval).toBe('assisted');
+    });
+
+    it('does not retroactively downgrade an attempt when target audio is played afterwards', () => {
+      const passage = makePassage({
+        endedAt: '2026-01-01T10:00:05.000Z',
+      });
+      const exposures: SupportExposure[] = [
+        {
+          id: 'exp-after',
+          sessionId: 's-1',
+          attemptId: 'attempt-1',
+          source: 'coach',
+          kind: 'model_phrase_audio',
+          targetPhraseId: PHRASE.id,
+          targetItemIds: [PHRASE.id],
+          exposure: 'played',
+          policyVersion: 3,
+          recordedAt: '2026-01-01T10:00:06.000Z',
+        },
+      ];
+
+      const result = validateAssessmentProposal(makeProposal(), [passage], exposures);
+
+      expect(result.validatedObservations[0].retrieval).toBe('unassisted');
+    });
+
     it('downgrades unassisted when a coach showed the full form', () => {
       const exposures: SupportExposure[] = [
         {
