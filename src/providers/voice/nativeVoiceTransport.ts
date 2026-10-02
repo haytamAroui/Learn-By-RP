@@ -42,6 +42,15 @@ export class NativeVoiceTransport implements VoiceTransport {
   private player: AudioPlayer | null = null;
   private tempAudioFile: File | null = null;
   private audioConfigured = false;
+  /**
+   * True only between a real playback_start and its matching playback_end.
+   *
+   * startListening() calls stopPlayback() defensively. stopPlayback must therefore
+   * stay silent when nothing is playing; otherwise playback_end causes the session
+   * UI to call startListening() again and the transport recurses synchronously.
+   */
+  private isPlaybackActive = false;
+  private playbackGeneration = 0;
   private disposed = false;
 
   constructor() {
@@ -197,7 +206,28 @@ export class NativeVoiceTransport implements VoiceTransport {
     }
   }
 
+  private beginPlayback(): number {
+    this.playbackGeneration += 1;
+    this.isPlaybackActive = true;
+    this.emit({ type: 'playback_start' });
+    return this.playbackGeneration;
+  }
+
+  private finishPlayback(generation: number) {
+    if (!this.isPlaybackActive || generation !== this.playbackGeneration) return;
+    this.isPlaybackActive = false;
+    this.emit({ type: 'playback_end' });
+  }
+
   public stopPlayback() {
+    const hadActivePlayback = this.isPlaybackActive;
+    if (hadActivePlayback) {
+      // Invalidate callbacks from the interrupted playback before stopping the
+      // underlying player/speech engine. Native callbacks may arrive afterwards.
+      this.isPlaybackActive = false;
+      this.playbackGeneration += 1;
+    }
+
     if (this.player) {
       try {
         this.player.pause();
@@ -207,14 +237,22 @@ export class NativeVoiceTransport implements VoiceTransport {
       }
       this.player = null;
       this.cleanupTempAudio();
-      this.emit({ type: 'interrupted' });
+      if (hadActivePlayback) {
+        this.emit({ type: 'interrupted' });
+      }
     }
     try {
       Speech.stop();
     } catch {
       // ignore
     }
-    this.emit({ type: 'playback_end' });
+
+    // Critical recursion guard: startListening() calls stopPlayback(). An idle
+    // stop must not manufacture playback_end, because the session's playback_end
+    // handler starts listening again.
+    if (hadActivePlayback) {
+      this.emit({ type: 'playback_end' });
+    }
   }
 
   public async playSpeech(
@@ -262,7 +300,7 @@ export class NativeVoiceTransport implements VoiceTransport {
       file.write(base64, { encoding: EncodingType.Base64 });
       this.tempAudioFile = file;
 
-      this.emit({ type: 'playback_start' });
+      const playbackGeneration = this.beginPlayback();
 
       const player = createAudioPlayer({ uri: file.uri });
       player.volume = 1.0;
@@ -284,7 +322,7 @@ export class NativeVoiceTransport implements VoiceTransport {
             this.player = null;
           }
           this.cleanupTempAudio();
-          this.emit({ type: 'playback_end' });
+          this.finishPlayback(playbackGeneration);
           resolve();
         });
 
@@ -311,20 +349,20 @@ export class NativeVoiceTransport implements VoiceTransport {
       return new Promise<boolean>(resolve => {
         const audio = new AudioCtor(`data:${mimeType};base64,${base64}`);
         audio.playbackRate = speed;
-        this.emit({ type: 'playback_start' });
+        const playbackGeneration = this.beginPlayback();
         const done = () => {
-          this.emit({ type: 'playback_end' });
+          this.finishPlayback(playbackGeneration);
           resolve(true);
         };
         audio.onended = done;
         audio.onerror = () => {
-          this.emit({ type: 'playback_end' });
+          this.finishPlayback(playbackGeneration);
           resolve(false);
         };
         const attempt = audio.play();
         if (attempt && typeof attempt.catch === 'function') {
           attempt.catch(() => {
-            this.emit({ type: 'playback_end' });
+            this.finishPlayback(playbackGeneration);
             resolve(false);
           });
         }
@@ -372,7 +410,7 @@ export class NativeVoiceTransport implements VoiceTransport {
     const voice = await this.resolveNativeVoice(locale);
 
     return new Promise(resolve => {
-      this.emit({ type: 'playback_start' });
+      const playbackGeneration = this.beginPlayback();
 
       Speech.speak(text, {
         language: locale,
@@ -381,15 +419,15 @@ export class NativeVoiceTransport implements VoiceTransport {
         pitch: 1.0,
         useApplicationAudioSession: true,
         onDone: () => {
-          this.emit({ type: 'playback_end' });
+          this.finishPlayback(playbackGeneration);
           resolve();
         },
         onStopped: () => {
-          this.emit({ type: 'playback_end' });
+          this.finishPlayback(playbackGeneration);
           resolve();
         },
         onError: () => {
-          this.emit({ type: 'playback_end' });
+          this.finishPlayback(playbackGeneration);
           resolve();
         },
       });
