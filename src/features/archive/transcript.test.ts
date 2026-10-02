@@ -262,7 +262,7 @@ describe('a corrected passage invalidates the skill evidence that cited it', () 
       evidenceSource: 'validated_explicit',
       quote: 'la leche de avena',
       recordedAt: new Date().toISOString(),
-    } as ValidatedSkillObservation;
+    } as unknown as ValidatedSkillObservation;
 
     await archiveRepository.completeSession({
       id: 'session-1',
