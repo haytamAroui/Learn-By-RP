@@ -317,8 +317,6 @@ describe('native and web agree on the same archive', () => {
       expect(parsed.sessions).toHaveLength(1);
     }
 
-    expect('saveSkillObservations' in native).toBe(false);
-    expect('saveSkillObservations' in webRepo).toBe(false);
   });
 });
 
@@ -367,5 +365,8 @@ describe('the contract is enforced at compile time', () => {
       expect(typeof native[method], `native.${method}`).toBe('function');
       expect(typeof webRepo[method], `web.${method}`).toBe('function');
     }
+
+    expect('saveSkillObservations' in native).toBe(false);
+    expect('saveSkillObservations' in webRepo).toBe(false);
   });
 });
