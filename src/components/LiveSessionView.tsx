@@ -42,7 +42,10 @@ import {
 import { createVoiceTransport } from '../providers/voice';
 import type { VoiceEvent, VoiceTransport } from '../providers/voice';
 import { createConversationProvider } from '../providers/conversation';
-import type { ConversationProvider } from '../providers/conversation/types';
+import type {
+  ConversationProvider,
+  ConversationProviderEvent,
+} from '../providers/conversation/types';
 import { speakWithBestAvailable } from '../providers/voice/speechOutput';
 import { useI18n } from '../features/i18n';
 import {
@@ -1001,6 +1004,21 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
     const conversationProvider = createConversationProvider();
     conversationProviderRef.current = conversationProvider;
+    const unsubscribeConversation = conversationProvider.subscribe(
+      (event: ConversationProviderEvent) => {
+        if (isEndingRef.current) return;
+        switch (event.type) {
+          case 'response_started':
+            setVoiceState('connecting');
+            break;
+          case 'disconnected':
+            setVoiceState('reconnecting');
+            break;
+          default:
+            break;
+        }
+      }
+    );
     void conversationProvider.connect?.().catch(error => {
       console.warn('Conversation provider preconnect failed:', error);
     });
@@ -1095,6 +1113,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       isEndingRef.current = true;
       mountedRef.current = false;
       unsubscribe();
+      unsubscribeConversation();
       transport.dispose();
       voiceTransportRef.current = null;
       conversationProvider.dispose();
