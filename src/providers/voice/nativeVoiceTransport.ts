@@ -39,6 +39,7 @@ export class NativeVoiceTransport implements VoiceTransport {
   private nativeVoiceCache = new Map<string, string | null>();
   private isMuted = false;
   private isRecording = false;
+  private listeningRequested = false;
   private player: AudioPlayer | null = null;
   private tempAudioFile: File | null = null;
   private audioConfigured = false;
@@ -51,6 +52,8 @@ export class NativeVoiceTransport implements VoiceTransport {
    */
   private isPlaybackActive = false;
   private playbackGeneration = 0;
+  /** Resolves/tears down the currently awaited playback when it is interrupted. */
+  private cancelActivePlayback: (() => void) | null = null;
   private disposed = false;
 
   constructor() {
@@ -67,11 +70,13 @@ export class NativeVoiceTransport implements VoiceTransport {
     };
 
     on('start', () => {
+      this.listeningRequested = true;
       this.isRecording = true;
       this.emit({ type: 'listening_start' });
     });
 
     on('end', () => {
+      this.listeningRequested = false;
       this.isRecording = false;
       this.emit({ type: 'listening_end' });
     });
@@ -103,14 +108,18 @@ export class NativeVoiceTransport implements VoiceTransport {
     on('error', (event: ExpoSpeechRecognitionErrorEvent) => {
       const code = event?.error ?? 'unknown';
       if (code === 'no-speech' || code === 'aborted') {
+        this.listeningRequested = false;
         this.isRecording = false;
         this.emit({ type: 'listening_end' });
         return;
       }
       if (code === 'not-allowed' || code === 'service-not-allowed') {
+        this.listeningRequested = false;
+        this.isRecording = false;
         this.emit({ type: 'error', payload: 'mic_denied' });
         return;
       }
+      this.listeningRequested = false;
       this.isRecording = false;
       this.emit({ type: 'error', payload: code });
       this.emit({ type: 'listening_end' });
@@ -172,6 +181,7 @@ export class NativeVoiceTransport implements VoiceTransport {
     }
 
     try {
+      this.listeningRequested = true;
       ExpoSpeechRecognitionModule.start({
         lang: this.targetLocale,
         interimResults: true,
@@ -182,6 +192,7 @@ export class NativeVoiceTransport implements VoiceTransport {
       });
       return true;
     } catch (e) {
+      this.listeningRequested = false;
       console.warn('Could not start speech recognition:', e);
       this.emit({ type: 'error', payload: 'unknown' });
       return false;
@@ -189,12 +200,13 @@ export class NativeVoiceTransport implements VoiceTransport {
   }
 
   public stopListening() {
-    if (!this.isRecording) return;
+    if (!this.isRecording && !this.listeningRequested) return;
     try {
       ExpoSpeechRecognitionModule.stop();
     } catch {
       // ignore
     }
+    this.listeningRequested = false;
     this.isRecording = false;
   }
 
@@ -202,7 +214,7 @@ export class NativeVoiceTransport implements VoiceTransport {
     this.isMuted = muted;
     if (muted) {
       this.stopListening();
-      Speech.stop();
+      this.stopPlayback();
     }
   }
 
