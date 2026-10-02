@@ -49,6 +49,9 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   autoPlaySpeech: true,
   speechRate: 1.0,
   accommodations: { enabled: [] },
+  programPreferences: [],
+  programGoals: [],
+  continuityProfile: { facts: [] },
 };
 
 function parseJson<T>(raw: string | null | undefined, fallback: T): T {
@@ -1087,6 +1090,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async clearAllLearningData(): Promise<void> {
     const db = await getDatabase();
+    const current = await this.getPreferences();
+    const clearedPreferences: UserPreferences = {
+      ...current,
+      programPreferences: [],
+      programGoals: [],
+      continuityProfile: { facts: [] },
+    };
 
     await this.markDeleted('all');
 
@@ -1104,6 +1114,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync('DELETE FROM attempts');
       await txn.runAsync('DELETE FROM sessions');
       await txn.runAsync('DELETE FROM phrases');
+      await txn.runAsync('DELETE FROM pending_jobs');
+      await txn.runAsync(
+        `INSERT OR REPLACE INTO preferences (id, payload, updated_at) VALUES (?, ?, ?)`,
+        PREFERENCES_ID,
+        JSON.stringify(clearedPreferences),
+        new Date().toISOString()
+      );
 
       // The catalog is seeded again on the next read, so a cleared archive still
       // has a working Progress screen rather than an empty one.
