@@ -482,7 +482,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Target language + locale.
 - [x] Optional deadline is contractually an ordering constraint only.
 - [x] No readiness prediction field/derivation exists in goal contract.
-- [ ] Personal profile fields local-only by default.
+- [x] Personal profile fields local-only by default; `toExecutableProgramGoalInput` strips `personalProfile` and local retention metadata before execution/provider boundaries (`contracts/program.ts`, contract test).
 - [x] Free-text goal is rejected by `isExecutableGoalInput`.
 
 ---

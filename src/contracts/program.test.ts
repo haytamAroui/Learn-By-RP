@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   isExecutableGoalInput,
+  toExecutableProgramGoalInput,
   RoleplayProgram,
   validateRoleplayProgram,
   validateTargetLocale,
@@ -94,6 +95,34 @@ describe('roleplay program contract', () => {
         deadline: '2026-11-15',
       })
     ).toBe(true);
+  });
+
+  it('keeps personal profile fields local at the execution boundary', () => {
+    const localGoal = {
+      targetLanguage: 'es' as const,
+      targetLocale: 'es-ES',
+      domain: 'work' as const,
+      contextId: 'job-interview',
+      deadline: '2026-11-15',
+      personalProfile: {
+        displayName: 'Local learner alias',
+        notes: 'Private local note',
+      },
+      recordedAt: '2026-10-02T05:00:00.000Z',
+    };
+
+    const executable = toExecutableProgramGoalInput(localGoal);
+
+    expect(executable).toEqual({
+      targetLanguage: 'es',
+      targetLocale: 'es-ES',
+      domain: 'work',
+      contextId: 'job-interview',
+      deadline: '2026-11-15',
+    });
+    expect('personalProfile' in executable).toBe(false);
+    expect('recordedAt' in executable).toBe(false);
+    expect(localGoal.personalProfile.notes).toBe('Private local note');
   });
 
   it('rejects free text as directly executable input', () => {

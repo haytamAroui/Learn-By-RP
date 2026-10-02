@@ -616,11 +616,15 @@ export interface ProgramGoalInput {
   domain: ProgramGoalDomain;
   contextId: string;
   deadline?: string;
+  /**
+   * Learner-owned profile context. This is local archive data only and must be
+   * removed before a goal crosses an execution/provider boundary.
+   */
   personalProfile?: {
     displayName?: string;
     notes?: string;
   };
-  /** Local archive timestamp used for retention cleanup. */
+  /** Local archive timestamp used for retention cleanup; never execution input. */
   recordedAt?: string;
 }
 

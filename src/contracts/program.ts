@@ -12,6 +12,29 @@ export type {
 
 export const ROLEPLAY_PROGRAM_CONTRACT_VERSION = 1;
 
+export type ExecutableProgramGoalInput = Omit<
+  ProgramGoalInput,
+  'personalProfile' | 'recordedAt'
+>;
+
+/**
+ * The execution boundary intentionally excludes learner-owned profile fields.
+ *
+ * Personal display names/notes and local retention timestamps may inform the
+ * local UI, but they are not part of the goal sent to authoring/provider logic.
+ */
+export function toExecutableProgramGoalInput(
+  goal: ProgramGoalInput
+): ExecutableProgramGoalInput {
+  const {
+    personalProfile: _personalProfile,
+    recordedAt: _recordedAt,
+    ...executable
+  } = goal;
+
+  return executable;
+}
+
 export interface ProgramMissionRef {
   missionId: string;
   missionVersion: number;
