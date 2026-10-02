@@ -873,7 +873,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   );
 
   const requestCoachHint = useCallback(
-    async (step: 'intent_hint' | 'partial_form' | 'full_form') => {
+    async (
+      step: 'intent_hint' | 'partial_form' | 'full_form' | 'explanation'
+    ) => {
       if (!mission) return;
       setIsCoachLoading(true);
 
@@ -1517,7 +1519,9 @@ t.live.rehearsalRestored
     [mission.character.voiceStyle, mission.language, recordAssistantAudioExposure]
   );
 
-  const requestSupport = (kind: 'intent_hint' | 'partial_form' | 'full_form') => {
+  const requestSupport = (
+    kind: 'intent_hint' | 'partial_form' | 'full_form' | 'explanation'
+  ) => {
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
     setIsSceneFrozen(true);
@@ -1893,6 +1897,11 @@ t.live.rehearsalRestored
           <Button
             label={t.live.coachStepFull}
             onPress={() => requestSupport('full_form')}
+            variant="secondary"
+          />
+          <Button
+            label={t.live.coachStepExpl}
+            onPress={() => requestSupport('explanation')}
             variant="secondary"
           />
           <Button
