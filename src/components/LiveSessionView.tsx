@@ -64,7 +64,10 @@ import {
 } from '../features/roleplay/opportunityRuntime';
 import { getScene } from '../content/scenes';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
-import { inheritSupportForRetry } from '../features/learning/retrySupport';
+import {
+  inheritSupportForRetry,
+  mergeAttemptPassages,
+} from '../features/learning/retrySupport';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import { SceneActionName } from '../contracts/scene';
 import { Button, Field } from './ui';
@@ -399,6 +402,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const scrollRef = useRef<ScrollView | null>(null);
   const sceneStateRef = useRef(sceneState);
   const passagesRef = useRef(passages);
+  const priorAttemptPassagesRef = useRef<Passage[]>([]);
   const opportunityInstancesRef = useRef<OpportunityInstance[]>(
     initialSession.opportunityInstances ?? []
   );
@@ -1087,6 +1091,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     const nextAttemptId = forkedAttemptId ?? `attempt-${Date.now()}`;
 
     const retryRecordedAt = new Date().toISOString();
+    priorAttemptPassagesRef.current = mergeAttemptPassages(
+      priorAttemptPassagesRef.current,
+      passagesRef.current
+    );
     setSupportExposures(prev =>
       inheritSupportForRetry({
         exposures: prev,
@@ -1135,7 +1143,13 @@ t.live.rehearsalRestored
     voiceTransportRef.current?.stopListening();
     setVoiceState('ending');
 
+    // Assessment only sees the current attempt. The archive keeps every prior
+    // attempt so retry never erases learner evidence or transcript provenance.
     const finalPassages = passagesRef.current;
+    const archivedPassages = mergeAttemptPassages(
+      priorAttemptPassagesRef.current,
+      finalPassages
+    );
     const finalSceneState = sceneStateRef.current;
     const wasRehearsal = attemptId !== 'attempt-1';
 
@@ -1260,7 +1274,7 @@ t.live.rehearsalRestored
       sessionId,
       attemptId,
       mission,
-      passages: finalPassages,
+      passages: archivedPassages,
       supportExposures,
       opportunityInstances: opportunityAssessmentView,
       isRehearsalAttempt: wasRehearsal,
