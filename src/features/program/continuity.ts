@@ -1,28 +1,7 @@
-export type CarryForwardSensitivity = 'low' | 'medium' | 'high';
-
-export interface CarryForwardFact {
-  id: string;
-  key: string;
-  value: string | boolean | number;
-  sensitivity: CarryForwardSensitivity;
-  source: {
-    sessionId: string;
-    missionId: string;
-    recordedAt: string;
-  };
-  /** Explicit destination allowlist. Empty means it carries nowhere. */
-  allowedMissionIds: string[];
-  expiresAt?: string;
-  /** V1 continuity facts never leave the local learner archive. */
-  localOnly: true;
-  learnerEditable: true;
-}
-
-export interface LearnerContinuityProfile {
-  /** Alias shown inside fictional worlds; real name is never required. */
-  alias?: string;
-  facts: CarryForwardFact[];
-}
+import type {
+  CarryForwardFact,
+  LearnerContinuityProfile,
+} from '../../types';
 
 export function canCarryFactToMission(input: {
   fact: CarryForwardFact;
