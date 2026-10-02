@@ -211,6 +211,60 @@ describe('validateAssessmentProposal', () => {
       expect(result.validatedObservations[0].retrieval).toBe('assisted');
     });
 
+    it('never records a revealed briefing phrase as unassisted', () => {
+      const exposures: SupportExposure[] = [
+        {
+          id: 'exp-briefing-reveal',
+          sessionId: 's-1',
+          attemptId: 'attempt-1',
+          source: 'briefing',
+          kind: 'briefing_exposure',
+          targetPhraseId: PHRASE.id,
+          targetItemIds: [PHRASE.id],
+          exposure: 'visible',
+          recordedAt: '2026-01-01T09:59:30.000Z',
+        },
+      ];
+
+      const result = validateAssessmentProposal(
+        makeProposal(),
+        [makePassage()],
+        exposures
+      );
+
+      expect(result.validatedObservations[0].retrieval).toBe('assisted');
+      expect(result.validatedObservations[0].supportExposureIds).toContain(
+        'exp-briefing-reveal'
+      );
+    });
+
+    it('never records a listened model phrase as unassisted', () => {
+      const exposures: SupportExposure[] = [
+        {
+          id: 'exp-model-listen',
+          sessionId: 's-1',
+          attemptId: 'attempt-1',
+          source: 'coach',
+          kind: 'model_phrase_audio',
+          targetPhraseId: PHRASE.id,
+          targetItemIds: [PHRASE.id],
+          exposure: 'played',
+          recordedAt: '2026-01-01T09:59:30.000Z',
+        },
+      ];
+
+      const result = validateAssessmentProposal(
+        makeProposal(),
+        [makePassage()],
+        exposures
+      );
+
+      expect(result.validatedObservations[0].retrieval).toBe('assisted');
+      expect(result.validatedObservations[0].supportExposureIds).toContain(
+        'exp-model-listen'
+      );
+    });
+
     it('downgrades unassisted when a coach showed the full form', () => {
       const exposures: SupportExposure[] = [
         {
@@ -337,6 +391,47 @@ describe('buildLocalObservations', () => {
     });
 
     expect(observations[0].retrieval).toBe('assisted');
+  });
+
+  it('keeps a cold attempt assisted after reveal or listen of the exact phrase', () => {
+    for (const exposure of [
+      {
+        id: 'exp-local-briefing',
+        sessionId: 's-1',
+        attemptId: 'attempt-1',
+        source: 'briefing' as const,
+        kind: 'briefing_exposure' as const,
+        targetPhraseId: PHRASE.id,
+        targetItemIds: [PHRASE.id],
+        exposure: 'visible' as const,
+        recordedAt: '2026-01-01T09:59:30.000Z',
+      },
+      {
+        id: 'exp-local-listen',
+        sessionId: 's-1',
+        attemptId: 'attempt-1',
+        source: 'coach' as const,
+        kind: 'model_phrase_audio' as const,
+        targetPhraseId: PHRASE.id,
+        targetItemIds: [PHRASE.id],
+        exposure: 'played' as const,
+        recordedAt: '2026-01-01T09:59:30.000Z',
+      },
+    ]) {
+      const { observations } = buildLocalObservations({
+        sessionId: 's-1',
+        attemptId: 'attempt-1',
+        passages: [makePassage()],
+        supportExposures: [exposure],
+        candidates,
+        isColdAttempt: true,
+        isRehearsalAttempt: false,
+      });
+
+      expect(observations).toHaveLength(1);
+      expect(observations[0].retrieval).toBe('assisted');
+      expect(observations[0].supportExposureIds).toContain(exposure.id);
+    }
   });
 
   it('records nothing and reports ambiguity for a wrong item', () => {
