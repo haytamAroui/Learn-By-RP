@@ -705,6 +705,13 @@ function generateFallbackActorReply(
   const lower = userMessage.toLowerCase();
   const lang = (targetLanguage || '').toLowerCase();
 
+  if (['Camille', 'Stefan', 'Aoi', 'Elena'].includes(characterName)) {
+    return {
+      ...regulatedHealthBoundaryReply(lang),
+      proposedAction: null,
+    };
+  }
+
   // 1. French Characters
   if (characterName === 'Laurent' || lang.includes('french') || lang === 'fr') {
     if (lower.includes('croissant') || lower.includes('chocolat') || lower.includes('café') || lower.includes('cafe')) {
@@ -724,28 +731,6 @@ function generateFallbackActorReply(
     return {
       replyText: 'Bonjour ! Bienvenue à la boulangerie. Qu’est-ce qui vous ferait plaisir ce matin ?',
       meaning: 'Good morning! Welcome to the bakery. What would you like this morning?',
-      proposedAction: null
-    };
-  }
-
-  if (characterName === 'Camille') {
-    if (lower.includes('gorge') || lower.includes('mal') || lower.includes('toux') || lower.includes('pastille')) {
-      return {
-        replyText: 'Pour la gorge, je vous conseille ces pastilles au miel et citron. Elles ne font pas dormir et calment vite.',
-        meaning: 'For the throat, I recommend these honey-lemon pastilles. They do not cause drowsiness and soothe quickly.',
-        proposedAction: { name: 'offer_alternative', payload: { item: 'pastilles sans somnolence' } }
-      };
-    }
-    if (lower.includes('combien de fois') || lower.includes('posologie') || lower.includes('jour')) {
-      return {
-        replyText: 'Vous pouvez en sucer une toutes les quatre heures, jusqu’à six pastilles par jour maximum.',
-        meaning: 'You can suck one every four hours, up to six lozenges a day maximum.',
-        proposedAction: null
-      };
-    }
-    return {
-      replyText: 'Bonjour, bienvenue à la pharmacie. Qu’avez-vous comme symptômes ?',
-      meaning: 'Good morning, welcome to the pharmacy. What symptoms do you have?',
       proposedAction: null
     };
   }
@@ -813,28 +798,6 @@ function generateFallbackActorReply(
     return {
       replyText: 'Guten Morgen! Herzlich willkommen in der Bäckerei. Was darf es heute Schönes sein?',
       meaning: 'Good morning! Welcome to the bakery. What can I get for you today?',
-      proposedAction: null
-    };
-  }
-
-  if (characterName === 'Stefan') {
-    if (lower.includes('heuschnupfen') || lower.includes('allergie') || lower.includes('augen') || lower.includes('müde')) {
-      return {
-        replyText: 'Gegen die Allergie habe ich diese Loratadin-Tabletten. Sie machen nicht müde und wirken den ganzen Tag.',
-        meaning: 'For the allergy I have these Loratadine tablets. They do not cause drowsiness and work all day.',
-        proposedAction: { name: 'offer_alternative', payload: { item: 'Allergietabletten' } }
-      };
-    }
-    if (lower.includes('wie oft') || lower.includes('nehmen') || lower.includes('tag')) {
-      return {
-        replyText: 'Nehmen Sie einfach eine Tablette täglich abends mit etwas Wasser ein.',
-        meaning: 'Simply take one tablet daily in the evening with some water.',
-        proposedAction: null
-      };
-    }
-    return {
-      replyText: 'Guten Tag! Willkommen in der Apotheke. Welche Beschwerden haben Sie denn?',
-      meaning: 'Good day! Welcome to the pharmacy. What symptoms do you have?',
       proposedAction: null
     };
   }
@@ -951,28 +914,6 @@ function generateFallbackActorReply(
     };
   }
 
-  if (characterName === 'Aoi') {
-    if (lower.includes('頭痛') || lower.includes('zutsuu') || lower.includes('薬') || lower.includes('眠く')) {
-      return {
-        replyText: '頭痛ですね。こちらのイブプロフェンのお薬は眠くなる成分が入っておらず、胃にも優しいですよ。',
-        meaning: 'A headache. This ibuprofen medicine does not contain drowsy ingredients and is gentle on the stomach.',
-        proposedAction: { name: 'offer_alternative', payload: { item: 'zutsuu-yaku' } }
-      };
-    }
-    if (lower.includes('食後') || lower.includes('何錠') || lower.includes('飲み方')) {
-      return {
-        replyText: '一回二錠、なるべく空腹時を避けて食後に水で服用してくださいね。お大事に！',
-        meaning: 'Take two tablets per dose after meals with water, avoiding an empty stomach. Take care!',
-        proposedAction: null
-      };
-    }
-    return {
-      replyText: 'こんにちは！薬局へようこそ。どのような症状でお困りですか？',
-      meaning: 'Hello! Welcome to the pharmacy. What kind of symptoms are troubling you?',
-      proposedAction: null
-    };
-  }
-
   if (characterName === 'Tanaka-san') {
     if (lower.includes('suica') || lower.includes('チャージ') || lower.includes('chaaji')) {
       return {
@@ -1043,21 +984,6 @@ function generateFallbackActorReply(
     return {
       replyText: '¡Hola! ¿En qué puedo ayudarte con el metro hoy?',
       meaning: 'Hello! How can I help you with the metro today?',
-      proposedAction: null
-    };
-  }
-
-  if (characterName === 'Elena') {
-    if (lower.includes('alergia') || lower.includes('ojos') || lower.includes('pican') || lower.includes('nariz')) {
-      return {
-        replyText: 'Para la alergia tengo estas pastillas de cetirizina. No dan sueño y se toma una al día por la mañana.',
-        meaning: 'For allergies I have these cetirizine tablets. They do not cause drowsiness, take one a day in the morning.',
-        proposedAction: { name: 'offer_alternative', payload: { item: 'antihistamínico sin sueño' } }
-      };
-    }
-    return {
-      replyText: 'Buenos días, bienvenido a la farmacia. ¿Qué síntomas tienes?',
-      meaning: 'Good morning, welcome to the pharmacy. What symptoms do you have?',
       proposedAction: null
     };
   }
