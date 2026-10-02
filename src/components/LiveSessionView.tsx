@@ -54,6 +54,13 @@ import {
 } from '../features/learning/skillEvidence';
 import { api } from '../lib/api';
 import { SceneMirror } from '../features/roleplay/SceneMirror';
+import {
+  commitValidatedOpportunityDemonstrations,
+  finalizeNotPresentedOpportunities,
+  prepareOpportunityAssessmentView,
+  syncAuthoredOpportunities,
+} from '../features/roleplay/opportunityRuntime';
+import { getScene } from '../content/scenes';
 import { SceneActionName } from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
@@ -191,6 +198,8 @@ function normalizeSkillItems(
       )
         ? item.retrievalProposal
         : ('unknown' as const),
+      opportunityInstanceId:
+        typeof item.opportunityInstanceId === 'string' ? item.opportunityInstanceId : undefined,
       supportExposureIds: Array.isArray(item.supportExposureIds)
         ? item.supportExposureIds.filter((id: unknown): id is string => typeof id === 'string')
         : [],
@@ -335,6 +344,39 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   passagesRef.current = passages;
   isMutedRef.current = isMuted;
   isSceneFrozenRef.current = isSceneFrozen;
+
+  useEffect(() => {
+    if (!mission?.sceneId) return;
+    const scene = getScene(mission.sceneId);
+    if (!scene || sceneState.sceneId !== scene.id) return;
+
+    opportunityInstancesRef.current = syncAuthoredOpportunities({
+      scene,
+      state: {
+        sceneId: sceneState.sceneId,
+        sessionId,
+        attemptId,
+        revision: sceneState.revision,
+        facts: sceneState.facts,
+        checkpoints: sceneState.checkpoints,
+        isFinished: sceneState.isFinished,
+        outcome: sceneState.outcome,
+        firedComplications: [],
+      },
+      existing: opportunityInstancesRef.current,
+      recordedAt: new Date().toISOString(),
+    });
+  }, [
+    attemptId,
+    mission?.sceneId,
+    sceneState.checkpoints,
+    sceneState.facts,
+    sceneState.isFinished,
+    sceneState.outcome,
+    sceneState.revision,
+    sceneState.sceneId,
+    sessionId,
+  ]);
 
   const explanationLanguage = EXPLANATION_LANGUAGE_NAMES[language] ?? 'English';
 
@@ -988,6 +1030,36 @@ t.live.rehearsalRestored
     const finalSceneState = sceneStateRef.current;
     const wasRehearsal = attemptId !== 'attempt-1';
 
+    let finalOpportunityInstances = opportunityInstancesRef.current;
+    const authoredScene = mission.sceneId ? getScene(mission.sceneId) : undefined;
+    if (authoredScene && finalSceneState.sceneId === authoredScene.id) {
+      const authoritativeSnapshot = {
+        sceneId: finalSceneState.sceneId,
+        sessionId,
+        attemptId,
+        revision: finalSceneState.revision,
+        facts: finalSceneState.facts,
+        checkpoints: finalSceneState.checkpoints,
+        isFinished: finalSceneState.isFinished,
+        outcome: finalSceneState.outcome,
+        firedComplications: [] as string[],
+      };
+
+      finalOpportunityInstances = syncAuthoredOpportunities({
+        scene: authoredScene,
+        state: authoritativeSnapshot,
+        existing: finalOpportunityInstances,
+        recordedAt: new Date().toISOString(),
+      });
+      finalOpportunityInstances = finalizeNotPresentedOpportunities({
+        scene: authoredScene,
+        state: authoritativeSnapshot,
+        existing: finalOpportunityInstances,
+        recordedAt: new Date().toISOString(),
+      });
+      opportunityInstancesRef.current = finalOpportunityInstances;
+    }
+
     // The assessor proposes; the deterministic core decides. If the model is
     // unreachable we fall back to the same local rules rather than a looser
     // path, so a network failure can never overstate what was produced.
@@ -1008,6 +1080,20 @@ t.live.rehearsalRestored
         supportExposures,
         usefulPhrases: mission.usefulPhrases,
         language: mission.language,
+        opportunityInstances: finalOpportunityInstances
+          .filter(
+            opportunity =>
+              opportunity.attemptId === attemptId &&
+              opportunity.detection === 'validated' &&
+              (opportunity.status === 'presented' || opportunity.status === 'taken')
+          )
+          .map(opportunity => ({
+            id: opportunity.id,
+            opportunityId: opportunity.opportunityId,
+            skillId: opportunity.skillId,
+            status: opportunity.status,
+            detection: opportunity.detection,
+          })),
       });
       lastAssessmentResponse = response;
       proposal = normalizeAssessmentResponse(response, sessionId, attemptId);
@@ -1046,13 +1132,20 @@ t.live.rehearsalRestored
      * learner was never in.
      */
     const missionSkillIds = [...mission.primarySkillIds, ...mission.secondarySkillIds];
+    const normalizedSkillItems = normalizeSkillItems(lastAssessmentResponse, missionSkillIds);
     const skillProposal: SkillEvidenceProposal = {
       schemaVersion: proposal?.schemaVersion ?? 1,
       sessionId,
       attemptId,
       taskOutcome: proposedOutcome,
-      skillItems: normalizeSkillItems(lastAssessmentResponse, missionSkillIds),
+      skillItems: normalizedSkillItems,
     };
+
+    const opportunityAssessmentView = prepareOpportunityAssessmentView({
+      existing: finalOpportunityInstances,
+      candidates: normalizedSkillItems,
+      passages: finalPassages,
+    });
 
     const skillValidation = validateSkillEvidenceProposal(skillProposal, {
       sessionId,
@@ -1060,7 +1153,7 @@ t.live.rehearsalRestored
       mission,
       passages: finalPassages,
       supportExposures,
-      opportunityInstances: opportunityInstancesRef.current,
+      opportunityInstances: opportunityAssessmentView,
       isRehearsalAttempt: wasRehearsal,
       sessionEndReason: endReason,
       // A live session only ever writes validated evidence. `legacy_inferred` is
@@ -1071,6 +1164,13 @@ t.live.rehearsalRestored
     const validatedSkillObservations = skillValidation.validated;
     const skillEvidenceIssues = skillValidation.rejected;
     const skillLapses = skillValidation.lapses;
+
+    finalOpportunityInstances = commitValidatedOpportunityDemonstrations({
+      existing: finalOpportunityInstances,
+      validated: validatedSkillObservations,
+      passages: finalPassages,
+    });
+    opportunityInstancesRef.current = finalOpportunityInstances;
 
     if (skillEvidenceIssues.length > 0) {
       console.warn(
@@ -1142,7 +1242,7 @@ t.live.rehearsalRestored
       endReason,
       passages: finalPassages,
       supportExposures,
-      opportunityInstances: opportunityInstancesRef.current,
+      opportunityInstances: finalOpportunityInstances,
       observations: finalObservations,
       // Only validated evidence reaches the archive, written in the same
       // transaction as the transcript it cites.
