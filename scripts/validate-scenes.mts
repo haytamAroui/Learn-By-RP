@@ -48,6 +48,9 @@ for (const scene of Object.values(SCENES)) {
   console.log(
     `  reachable opportunities: ${model!.reachableOpportunityIds.join(', ') || '(none)'}`
   );
+  console.log(
+    `  reachable pressure branches: ${model!.reachablePressureBranchIds.join(', ') || '(none)'}`
+  );
 
   if (model!.achievedPath) {
     console.log(
