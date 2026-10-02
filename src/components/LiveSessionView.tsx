@@ -1548,14 +1548,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
     // Assessment only sees the current attempt. The archive keeps every prior
     // attempt so retry never erases learner evidence or transcript provenance.
-    const finalPassages = passagesRef.current;
+    const visiblePassages = passagesRef.current;
+    const currentAttemptPassages = visiblePassages.filter(
+      passage => passage.attemptId === attemptId
+    );
     const evidenceSupportExposures = [
       ...historicalSupportExposures,
       ...supportExposures,
     ];
     const archivedPassages = mergeAttemptPassages(
       priorAttemptPassagesRef.current,
-      finalPassages
+      visiblePassages
     );
     const finalSceneState = sceneStateRef.current;
     const wasRehearsal = attemptId !== 'attempt-1';
@@ -1607,7 +1610,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         // Lets the server tell the model which skills are creditable. Membership is
         // still validated client-side; this only narrows what is offered.
         missionId: mission.id,
-        passages: finalPassages,
+        passages: currentAttemptPassages,
         supportExposures: evidenceSupportExposures,
         usefulPhrases: mission.usefulPhrases,
         language: mission.language,
@@ -1641,7 +1644,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     if (proposal) {
       const validated = validateAssessmentProposal(
         proposal,
-        finalPassages,
+        currentAttemptPassages,
         evidenceSupportExposures,
         wasRehearsal
       );
@@ -1675,7 +1678,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     const opportunityAssessmentView = prepareOpportunityAssessmentView({
       existing: finalOpportunityInstances,
       candidates: normalizedSkillItems,
-      passages: finalPassages,
+      passages: currentAttemptPassages,
     });
 
     const skillValidation = validateSkillEvidenceProposal(skillProposal, {
@@ -1699,7 +1702,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     finalOpportunityInstances = commitValidatedOpportunityDemonstrations({
       existing: finalOpportunityInstances,
       validated: validatedSkillObservations,
-      passages: finalPassages,
+      passages: currentAttemptPassages,
     });
     opportunityInstancesRef.current = finalOpportunityInstances;
 
@@ -1715,7 +1718,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     const local = buildLocalObservations({
       sessionId,
       attemptId,
-      passages: finalPassages,
+      passages: currentAttemptPassages,
       supportExposures: evidenceSupportExposures,
       candidates: mission.usefulPhrases,
       isColdAttempt: coldAttempt,
@@ -1735,8 +1738,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       );
     }
 
-    const userPassages = finalPassages.filter(p => p.speaker === 'user');
+    const userPassages = currentAttemptPassages.filter(p => p.speaker === 'user');
     const hasLearnerSpeech = userPassages.length > 0;
+
+    const mergedEvidence = mergeFinalizedAttemptEvidence({
+      finalizedAttempts: finalizedAttemptEvidenceRef.current,
+      current: {
+        observations: finalObservations,
+        skillObservations: validatedSkillObservations,
+        skillLapses,
+      },
+    });
 
     // Map the assessor's scene-level outcome onto the receipt's vocabulary.
     // `unknown` is preserved rather than collapsed into a flattering label.
@@ -1771,19 +1783,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       startedAt: initialSession.startedAt,
       endedAt: new Date().toISOString(),
       endReason,
-      passages: finalPassages,
+      passages: archivedPassages,
       supportExposures,
       opportunityInstances: finalOpportunityInstances,
-      observations: finalObservations,
+      observations: mergedEvidence.observations,
       // Only validated evidence reaches the archive, written in the same
       // transaction as the transcript it cites.
-      skillObservations: validatedSkillObservations,
-      skillLapses,
+      skillObservations: mergedEvidence.skillObservations,
+      skillLapses: mergedEvidence.skillLapses,
       taskOutcome: resolvedOutcome,
       sceneState: finalSceneState,
-      summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, finalObservations.length, hasLearnerSpeech),
+      summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, mergedEvidence.observations.length, hasLearnerSpeech),
       actionableFeedback: proposal?.actionableFeedback ?? [
-        ...(finalObservations.length > 0
+        ...(mergedEvidence.observations.length > 0
           ? [t.live.feedbackGoodEngagement]
           : []),
         t.live.feedbackReviewDue,
