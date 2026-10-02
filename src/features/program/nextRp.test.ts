@@ -207,7 +207,7 @@ describe('deterministic next-RP policy', () => {
     });
 
     expect(result).toEqual({
-      policyVersion: 1,
+      policyVersion: 2,
       kind: 'final_simulation',
       reasonCode: 'PROGRAM_CORE_COMPLETE',
       requiresLearnerConfirmation: true,
