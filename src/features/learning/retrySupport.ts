@@ -12,9 +12,23 @@ export function inheritSupportForRetry(input: {
   exposures: SupportExposure[];
   fromAttemptId: string;
   toAttemptId: string;
+  /**
+   * Number of ledger rows that existed when the retry began. Support after the
+   * scene checkpoint but before this mark still counts; later rows do not.
+   */
+  supportLedgerHighWaterMark: number;
   recordedAt: string;
 }): SupportExposure[] {
+  if (
+    !Number.isInteger(input.supportLedgerHighWaterMark) ||
+    input.supportLedgerHighWaterMark < 0 ||
+    input.supportLedgerHighWaterMark > input.exposures.length
+  ) {
+    throw new Error('Invalid supportLedgerHighWaterMark');
+  }
+
   const inherited = input.exposures
+    .slice(0, input.supportLedgerHighWaterMark)
     .filter(exposure => exposure.attemptId === input.fromAttemptId)
     .map(exposure => ({
       ...exposure,

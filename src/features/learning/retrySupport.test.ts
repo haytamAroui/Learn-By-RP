@@ -22,6 +22,7 @@ describe('inheritSupportForRetry', () => {
       exposures: [EXPOSURE],
       fromAttemptId: 'attempt-1',
       toAttemptId: 'attempt-2',
+      supportLedgerHighWaterMark: 1,
       recordedAt: '2026-10-02T10:01:00.000Z',
     });
 
@@ -36,17 +37,64 @@ describe('inheritSupportForRetry', () => {
     });
   });
 
+  it('inherits support shown after the scene checkpoint when it is below the retry high-water mark', () => {
+    const afterCheckpoint: SupportExposure = {
+      ...EXPOSURE,
+      id: 'exp-after-checkpoint',
+      kind: 'partial_form',
+      recordedAt: '2026-10-02T10:00:30.000Z',
+    };
+    const afterRetryStarted: SupportExposure = {
+      ...EXPOSURE,
+      id: 'exp-after-retry-started',
+      kind: 'intent_hint',
+      recordedAt: '2026-10-02T10:01:30.000Z',
+    };
+
+    const result = inheritSupportForRetry({
+      exposures: [EXPOSURE, afterCheckpoint, afterRetryStarted],
+      fromAttemptId: 'attempt-1',
+      toAttemptId: 'attempt-2',
+      supportLedgerHighWaterMark: 2,
+      recordedAt: '2026-10-02T10:01:00.000Z',
+    });
+
+    const inheritedIds = result
+      .filter(item => item.attemptId === 'attempt-2')
+      .map(item => item.id);
+
+    expect(inheritedIds).toContain('retry:attempt-2:exp-1');
+    expect(inheritedIds).toContain('retry:attempt-2:exp-after-checkpoint');
+    expect(inheritedIds).not.toContain(
+      'retry:attempt-2:exp-after-retry-started'
+    );
+  });
+
+  it('rejects an impossible high-water mark instead of silently widening support', () => {
+    expect(() =>
+      inheritSupportForRetry({
+        exposures: [EXPOSURE],
+        fromAttemptId: 'attempt-1',
+        toAttemptId: 'attempt-2',
+        supportLedgerHighWaterMark: 2,
+        recordedAt: '2026-10-02T10:01:00.000Z',
+      })
+    ).toThrow(/supportLedgerHighWaterMark/);
+  });
+
   it('does not duplicate inherited support on replay', () => {
     const first = inheritSupportForRetry({
       exposures: [EXPOSURE],
       fromAttemptId: 'attempt-1',
       toAttemptId: 'attempt-2',
+      supportLedgerHighWaterMark: 1,
       recordedAt: '2026-10-02T10:01:00.000Z',
     });
     const second = inheritSupportForRetry({
       exposures: first,
       fromAttemptId: 'attempt-1',
       toAttemptId: 'attempt-2',
+      supportLedgerHighWaterMark: 1,
       recordedAt: '2026-10-02T10:02:00.000Z',
     });
 

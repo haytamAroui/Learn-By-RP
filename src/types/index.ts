@@ -149,7 +149,13 @@ export interface SceneState {
   actionCounts?: Record<string, number>;
   learnerKnows: string[];
   characterKnows: string[];
-  checkpoints: { id: string; description: string; timestamp: string }[];
+  checkpoints: {
+    id: string;
+    description: string;
+    timestamp: string;
+    /** Optional only for archives written before scene contract v4. */
+    sceneRevision?: number;
+  }[];
   lastAction?: { name: string; actor: string; payload?: any };
   isFinished: boolean;
   outcome: TaskOutcome;

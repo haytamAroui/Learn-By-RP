@@ -75,7 +75,10 @@ import {
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import { negotiateRoleplayCapabilities } from '../features/roleplay/capabilities';
 import { mayCommitActorReply } from '../features/roleplay/actorContract';
-import { SceneActionName } from '../contracts/scene';
+import type {
+  RoleplayCheckpoint,
+  SceneActionName,
+} from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
@@ -408,6 +411,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const scrollRef = useRef<ScrollView | null>(null);
   const sceneStateRef = useRef(sceneState);
   const passagesRef = useRef(passages);
+  const supportExposuresRef = useRef(supportExposures);
   const priorAttemptPassagesRef = useRef<Passage[]>([]);
   const opportunityInstancesRef = useRef<OpportunityInstance[]>(
     initialSession.opportunityInstances ?? []
@@ -422,6 +426,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
   sceneStateRef.current = sceneState;
   passagesRef.current = passages;
+  supportExposuresRef.current = supportExposures;
   isMutedRef.current = isMuted;
   isSceneFrozenRef.current = isSceneFrozen;
 
@@ -948,13 +953,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         mission.version
       );
       sceneMirrorRef.current = mirror;
-      void mirror.begin('attempt-1').then(snapshot => {
+      void mirror.begin(attemptId).then(snapshot => {
         if (!snapshot || !mountedRef.current) return;
         setSceneState(prev => ({
           ...prev,
           sceneId: snapshot.sceneId,
           revision: snapshot.revision,
           facts: snapshot.facts,
+          actionCounts: snapshot.actionCounts,
+          checkpoints: snapshot.checkpoints,
+          isFinished: snapshot.isFinished,
+          outcome: snapshot.outcome,
         }));
       });
     } else {
@@ -1160,35 +1169,119 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   };
 
   const handleRetryCheckpoint = async () => {
-    if (passagesRef.current.length <= 1) return;
+    const currentPassages = passagesRef.current;
+    const mirror = sceneMirrorRef.current;
+    if (currentPassages.length <= 1 || !mirror) return;
+
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
 
-    // Fork a new attempt on the server too. The earlier attempt keeps its own
-    // transcript and is marked rehearsal, because the learner has seen the turn.
-    const forkedAttemptId = await sceneMirrorRef.current?.fork('cp-start', true);
-    const nextAttemptId = forkedAttemptId ?? `attempt-${Date.now()}`;
+    const authoritative = mirror.snapshot;
+    const currentRevision =
+      authoritative?.revision ?? sceneStateRef.current.revision;
+    const runtimeCheckpoints = (
+      authoritative?.checkpoints ?? sceneStateRef.current.checkpoints
+    )
+      .filter(
+        checkpoint =>
+          typeof checkpoint.sceneRevision === 'number' &&
+          checkpoint.sceneRevision < currentRevision
+      )
+      .sort(
+        (a, b) =>
+          (a.sceneRevision ?? 0) - (b.sceneRevision ?? 0)
+      );
+
+    // Never invent an authored checkpoint. If no prior checkpoint exists, the
+    // only synthetic restore point is the deterministic initial scene revision.
+    const selected = runtimeCheckpoints.at(-1);
+    let passageIndex = 0;
+    if (selected) {
+      const checkpointTime = Date.parse(selected.timestamp);
+      for (let index = 0; index < currentPassages.length; index += 1) {
+        const passageTime = Date.parse(currentPassages[index].startedAt);
+        if (
+          Number.isFinite(checkpointTime) &&
+          Number.isFinite(passageTime) &&
+          passageTime <= checkpointTime
+        ) {
+          passageIndex = index;
+        }
+      }
+    }
+
+    const retainedPassageIds = new Set(
+      currentPassages
+        .slice(0, passageIndex + 1)
+        .map(passage => passage.id)
+    );
+    const checkpoint: RoleplayCheckpoint = {
+      id: selected?.id ?? 'scene-start',
+      sceneRevision: selected?.sceneRevision ?? 1,
+      passageIndex,
+      // This is intentionally captured at retry time, not checkpoint time.
+      // Support shown after the scene checkpoint remains known to the learner.
+      supportLedgerHighWaterMark: supportExposuresRef.current.length,
+      completedOpportunityIds: opportunityInstancesRef.current
+        .filter(
+          opportunity =>
+            opportunity.attemptId === attemptId &&
+            opportunity.detection === 'validated' &&
+            opportunity.status === 'taken' &&
+            Boolean(
+              opportunity.learnerAttemptPassageId &&
+                retainedPassageIds.has(opportunity.learnerAttemptPassageId)
+            )
+        )
+        .map(opportunity => opportunity.id),
+    };
+
+    // The server verifies checkpoint id + revision against replayed parent state.
+    const forkedAttemptId = await mirror.fork(checkpoint, true);
+    if (!forkedAttemptId) {
+      setSceneEventNotice(t.live.sceneDirectorUnavailable);
+      setTimeout(() => setSceneEventNotice(null), 4000);
+      voiceTransportRef.current?.startListening();
+      return;
+    }
 
     const retryRecordedAt = new Date().toISOString();
     priorAttemptPassagesRef.current = mergeAttemptPassages(
       priorAttemptPassagesRef.current,
-      passagesRef.current
+      currentPassages
     );
-    setSupportExposures(prev =>
-      inheritSupportForRetry({
+
+    setSupportExposures(prev => {
+      const inherited = inheritSupportForRetry({
         exposures: prev,
         fromAttemptId: attemptId,
-        toAttemptId: nextAttemptId,
+        toAttemptId: forkedAttemptId,
+        supportLedgerHighWaterMark: checkpoint.supportLedgerHighWaterMark,
         recordedAt: retryRecordedAt,
-      })
-    );
-    setAttemptId(nextAttemptId);
-    setPassages(passagesRef.current.slice(0, 1));
+      });
+      supportExposuresRef.current = inherited;
+      return inherited;
+    });
+
+    const forkState = mirror.snapshot;
+    if (forkState) {
+      setSceneState(prev => ({
+        ...prev,
+        sceneId: forkState.sceneId,
+        revision: forkState.revision,
+        facts: forkState.facts,
+        actionCounts: forkState.actionCounts,
+        checkpoints: forkState.checkpoints,
+        isFinished: forkState.isFinished,
+        outcome: forkState.outcome,
+      }));
+    }
+
+    setAttemptId(forkedAttemptId);
+    setPassages(currentPassages.slice(0, checkpoint.passageIndex + 1));
     setIsSceneFrozen(false);
     setActiveCoachAdvice(null);
-    setSceneEventNotice(
-t.live.rehearsalRestored
-    );
+    setSceneEventNotice(t.live.rehearsalRestored);
     setTimeout(() => setSceneEventNotice(null), 4000);
     voiceTransportRef.current?.startListening();
   };

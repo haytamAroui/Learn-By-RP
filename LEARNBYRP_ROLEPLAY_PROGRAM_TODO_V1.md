@@ -270,7 +270,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 
 # 8. Retry support ledger must never rewind
 
-- [ ] Rename checkpoint support position to `supportLedgerHighWaterMark`.
+- [x] Retry checkpoint contract uses `supportLedgerHighWaterMark`; it is captured at retry time and is never used as a rewind point (`RoleplayCheckpoint`, `retrySupport.ts`).
 - [x] Scene may rewind/fork; support knowledge does not. (`inheritSupportForRetry`)
 - [x] Exact form seen before retry is inherited into the new attempt with exact target provenance.
 - [x] Retry after answer reveal remains rehearsal; inherited support is materialized in the retry attempt.
@@ -701,7 +701,7 @@ A program must pass:
 - [ ] hint about one phrase affects one target only.
 - [ ] meaning of character turn does not downgrade production.
 - [ ] accessibility captions do not downgrade unrelated production.
-- [ ] support shown after checkpoint still applies after retry.
+- [x] support shown after checkpoint still applies after retry (`retrySupport.test.ts`, high-water regression).
 
 ## Runtime
 
@@ -760,13 +760,13 @@ A program must pass:
 - [x] OpportunityInstance.
 - [ ] scoped support relevance matrix.
 - [ ] accommodations.
-- [ ] support high-water mark.
+- [x] support high-water mark (retry inherits every parent-attempt exposure below the captured mark, including support shown after the scene checkpoint; regression-tested).
 - [ ] strict lapse/revisit semantics. (strict lapse eligibility complete; revisit policy remains)
 - [ ] consent/privacy/security G0 confirmations.
 
 ## P1 — scene/mission runtime hardening
 
-- [ ] server-authoritative shared reducer boundary.
+- [x] server-authoritative shared reducer boundary (`features/roleplay/runtime`; hosted store executes reducer, `SceneMirror` consumes server verdicts only).
 - [x] versioned action request (mission + scene IDs/versions required at hosted ingress).
 - [x] append-only scene event log (accepted/rejected proposal + verdict persisted by actionId).
 - [x] typed finite facts (`SceneFactSchema`).

@@ -1,6 +1,7 @@
 import type {
   SceneActionProposal,
   SceneActionResult,
+  SceneForkRequest,
   SceneStateSnapshot,
 } from './runtime';
 
@@ -43,6 +44,12 @@ export interface HostedSessionRecord {
 export interface AttemptRecord {
   attemptId: string;
   parentAttemptId?: string;
+  /**
+   * Full retry checkpoint. The support high-water mark is metadata, not a
+   * rewind position; it records what the learner had already been shown.
+   */
+  checkpoint?: SceneForkRequest['checkpoint'];
+  /** Legacy field retained only so old persisted attempt JSON remains readable. */
   checkpointId?: string;
   rehearsal: boolean;
   createdAt: string;

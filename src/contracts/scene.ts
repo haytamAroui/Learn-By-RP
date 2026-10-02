@@ -6,7 +6,7 @@
  * Bump SCENE_CONTRACT_VERSION when a shape changes incompatibly.
  */
 
-export const SCENE_CONTRACT_VERSION = 3;
+export const SCENE_CONTRACT_VERSION = 4;
 
 /** Allowlisted action names. Anything else is rejected without being evaluated. */
 export type SceneActionName =
@@ -188,6 +188,14 @@ export interface SceneActionResult {
   appliedAt: string;
 }
 
+export interface SceneCheckpointSnapshot {
+  id: string;
+  description: string;
+  timestamp: string;
+  /** Authoritative revision at which the authored checkpoint became true. */
+  sceneRevision: number;
+}
+
 export interface SceneStateSnapshot {
   sceneId: string;
   sessionId: string;
@@ -195,14 +203,30 @@ export interface SceneStateSnapshot {
   revision: number;
   facts: Record<string, SceneFactValue>;
   actionCounts: Partial<Record<SceneActionName, number>>;
-  checkpoints: Array<{ id: string; description: string; timestamp: string }>;
+  checkpoints: SceneCheckpointSnapshot[];
   isFinished: boolean;
   outcome: 'achieved' | 'partial' | 'not_achieved' | 'unknown';
   firedComplications: string[];
 }
 
+/**
+ * Conversation-level checkpoint metadata supplied when a retry forks.
+ *
+ * sceneRevision is server-verifiable. Passage/support positions are learner
+ * history coordinates and are deliberately not used to mutate scene truth.
+ */
+export interface RoleplayCheckpoint {
+  id: string;
+  sceneRevision: number;
+  passageIndex: number;
+  /** Highest support-ledger position visible before the retry began. Never rewound. */
+  supportLedgerHighWaterMark: number;
+  /** Runtime opportunities completed and validated by this checkpoint. */
+  completedOpportunityIds: string[];
+}
+
 export interface SceneForkRequest {
-  checkpointId: string;
+  checkpoint: RoleplayCheckpoint;
   /** Set when the learner already saw the answer, so the attempt is rehearsal. */
   rehearsal: boolean;
 }
@@ -210,7 +234,7 @@ export interface SceneForkRequest {
 export interface SceneForkResult {
   attemptId: string;
   parentAttemptId: string;
-  checkpointId: string;
+  checkpoint: RoleplayCheckpoint;
   rehearsal: boolean;
   /** Transcripts after the checkpoint that the earlier attempt still owns. */
   supersededTurnIds: string[];

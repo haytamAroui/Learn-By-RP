@@ -42,6 +42,21 @@ function requireNumber(value: unknown, field: string): number {
   return value;
 }
 
+function requireInteger(
+  value: unknown,
+  field: string,
+  minimum = 0
+): number {
+  const number = requireNumber(value, field);
+  if (!Number.isInteger(number) || number < minimum) {
+    throw Object.assign(
+      new Error(`${field} must be an integer >= ${minimum}`),
+      { status: 400 }
+    );
+  }
+  return number;
+}
+
 /** Every handler is async; this keeps the error mapping in one place. */
 function wrap(handler: (req: Request, res: Response) => Promise<unknown>) {
   return (req: Request, res: Response) => {
@@ -212,8 +227,37 @@ roleplayRouter.post(
 roleplayRouter.post(
   '/v1/voice/sessions/:id/scene/fork',
   wrap(async (req, res) => {
+    const rawCheckpoint = req.body?.checkpoint ?? {};
+    if (
+      !Array.isArray(rawCheckpoint.completedOpportunityIds) ||
+      rawCheckpoint.completedOpportunityIds.some(
+        (id: unknown) => typeof id !== 'string' || !id
+      )
+    ) {
+      throw Object.assign(
+        new Error('checkpoint.completedOpportunityIds must be an array of ids'),
+        { status: 400 }
+      );
+    }
+
     const request: SceneForkRequest = {
-      checkpointId: requireString(req.body?.checkpointId, 'checkpointId'),
+      checkpoint: {
+        id: requireString(rawCheckpoint.id, 'checkpoint.id'),
+        sceneRevision: requireInteger(
+          rawCheckpoint.sceneRevision,
+          'checkpoint.sceneRevision',
+          1
+        ),
+        passageIndex: requireInteger(
+          rawCheckpoint.passageIndex,
+          'checkpoint.passageIndex'
+        ),
+        supportLedgerHighWaterMark: requireInteger(
+          rawCheckpoint.supportLedgerHighWaterMark,
+          'checkpoint.supportLedgerHighWaterMark'
+        ),
+        completedOpportunityIds: rawCheckpoint.completedOpportunityIds,
+      },
       rehearsal: Boolean(req.body?.rehearsal),
     };
 

@@ -2,6 +2,7 @@ import type {
   SceneActionName,
   SceneActionProposal,
   SceneActionResult,
+  SceneForkRequest,
   SceneStateSnapshot,
 } from './runtime';
 import { API_BASE_URL } from '../../lib/api';
@@ -184,14 +185,17 @@ export class SceneMirror {
   }
 
   /** Retry from a checkpoint. The earlier attempt keeps its own transcript. */
-  async fork(checkpointId: string, rehearsal: boolean): Promise<string | null> {
+  async fork(
+    checkpoint: SceneForkRequest['checkpoint'],
+    rehearsal: boolean
+  ): Promise<string | null> {
     try {
       const response = await fetch(
         `${API_BASE_URL}/v1/voice/sessions/${this.sessionId}/scene/fork`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkpointId, rehearsal }),
+          body: JSON.stringify({ checkpoint, rehearsal }),
         }
       );
       if (!response.ok) return null;

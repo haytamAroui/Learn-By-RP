@@ -319,6 +319,7 @@ export function applyResult(
         id: checkpoint.id,
         description: checkpoint.description,
         timestamp: result.appliedAt,
+        sceneRevision: result.revision,
       });
     }
   }

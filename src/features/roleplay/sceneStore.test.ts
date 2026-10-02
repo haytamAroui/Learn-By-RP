@@ -15,7 +15,10 @@ import {
 } from './sceneStore';
 import { SqliteSceneStore } from './SqliteSceneStore';
 import { CAFE_SCENE } from '../../content/scenes';
-import { SceneActionProposal } from '../../contracts/scene';
+import type {
+  RoleplayCheckpoint,
+  SceneActionProposal,
+} from '../../contracts/scene';
 
 const SESSION = 'hosted-1';
 
@@ -38,6 +41,19 @@ async function seedSession(sessionId = SESSION, attemptId = 'attempt-1') {
     missionId: CAFE_SCENE.missionId,
     attemptId,
   });
+}
+
+function retryCheckpoint(
+  overrides: Partial<RoleplayCheckpoint> = {}
+): RoleplayCheckpoint {
+  return {
+    id: 'cp-item-confirmed',
+    sceneRevision: 2,
+    passageIndex: 1,
+    supportLedgerHighWaterMark: 2,
+    completedOpportunityIds: [],
+    ...overrides,
+  };
 }
 
 function proposal(overrides: Partial<SceneActionProposal> = {}): SceneActionProposal {
@@ -209,7 +225,7 @@ describe('retry forks an attempt and preserves the earlier one (test #7)', () =>
     await seedSession();
     await applySceneAction(proposal());
 
-    const fork = await forkScene(SESSION, { checkpointId: 'cp-start', rehearsal: true });
+    const fork = await forkScene(SESSION, { checkpoint: retryCheckpoint(), rehearsal: true });
     expect(fork.attemptId).not.toBe('attempt-1');
     expect(fork.parentAttemptId).toBe('attempt-1');
     expect(fork.rehearsal).toBe(true);
@@ -219,21 +235,54 @@ describe('retry forks an attempt and preserves the earlier one (test #7)', () =>
     expect(record?.attempts[0].attemptId).toBe('attempt-1');
   });
 
-  it('rolls scene facts back to the start of the scene', async () => {
+  it('restores the exact authored checkpoint instead of resetting to scene start', async () => {
     await seedSession();
     await applySceneAction(proposal());
+    await applySceneAction(
+      proposal({
+        actionId: 'settle-1',
+        expectedSceneRevision: 2,
+        action: 'confirm_takeaway',
+        payload: {},
+      })
+    );
 
-    const fork = await forkScene(SESSION, { checkpointId: 'cp-start', rehearsal: false });
+    const fork = await forkScene(SESSION, {
+      checkpoint: retryCheckpoint(),
+      rehearsal: false,
+    });
     const snapshot = await getSceneSnapshot(SESSION);
 
     expect(snapshot?.attemptId).toBe(fork.attemptId);
-    expect(snapshot?.facts.itemConfirmed).toBe(false);
+    expect(snapshot?.revision).toBe(2);
+    expect(snapshot?.facts.itemConfirmed).toBe(true);
+    expect(snapshot?.facts.serviceMode).toBe('unset');
+    expect(snapshot?.checkpoints).toContainEqual(
+      expect.objectContaining({
+        id: 'cp-item-confirmed',
+        sceneRevision: 2,
+      })
+    );
+  });
+
+  it('rejects a forged checkpoint that is not present in the parent replay', async () => {
+    await seedSession();
+    await applySceneAction(proposal());
+
+    await expect(
+      forkScene(SESSION, {
+        checkpoint: retryCheckpoint({
+          id: 'cp-not-authored',
+        }),
+        rehearsal: true,
+      })
+    ).rejects.toThrow(/not an authored checkpoint/i);
   });
 
   it('rejects a proposal from the pre-fork attempt', async () => {
     await seedSession();
     await applySceneAction(proposal());
-    await forkScene(SESSION, { checkpointId: 'cp-start', rehearsal: true });
+    await forkScene(SESSION, { checkpoint: retryCheckpoint(), rehearsal: true });
 
     const orphaned = await applySceneAction(
       proposal({ actionId: 'act-9', attemptId: 'attempt-1', expectedSceneRevision: 1 })
@@ -323,7 +372,7 @@ describe('event-log scene recovery', () => {
     await applySceneAction(proposal());
 
     const fork = await forkScene(SESSION, {
-      checkpointId: 'cp-start',
+      checkpoint: retryCheckpoint(),
       rehearsal: true,
     });
 
@@ -331,14 +380,17 @@ describe('event-log scene recovery', () => {
       proposal({
         actionId: 'fork-act',
         attemptId: fork.attemptId,
-        expectedSceneRevision: 1,
+        expectedSceneRevision: 2,
+        action: 'confirm_takeaway',
+        payload: {},
       })
     );
 
     const rebuilt = await rebuildSceneStateFromEventLog(SESSION);
     expect(rebuilt.attemptId).toBe(fork.attemptId);
-    expect(rebuilt.revision).toBe(2);
+    expect(rebuilt.revision).toBe(3);
     expect(rebuilt.facts.itemConfirmed).toBe(true);
+    expect(rebuilt.facts.serviceMode).toBe('takeaway');
   });
 });
 
