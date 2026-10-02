@@ -4,24 +4,63 @@ export type CommunicationChallengeType =
   | 'fast_speech'
   | 'scripted_mishearing';
 
+export const COMMUNICATION_CHALLENGE_ORDER = [
+  'fast_speech',
+  'scripted_mishearing',
+] as const satisfies readonly CommunicationChallengeType[];
+
 export const COMMUNICATION_CHALLENGE_REQUIREMENTS = {
-  fast_speech: 'speechRateControl',
-  scripted_mishearing: 'scriptedLineInjection',
+  fast_speech: ['speechRateControl'],
+  scripted_mishearing: ['scriptedLineInjection'],
 } as const satisfies Record<
   CommunicationChallengeType,
-  keyof TransportCapabilities
+  readonly (keyof TransportCapabilities)[]
 >;
+
+export interface CommunicationChallengeCompatibility {
+  challengeType: CommunicationChallengeType;
+  requiredCapabilities: readonly (keyof TransportCapabilities)[];
+  missingCapabilities: (keyof TransportCapabilities)[];
+  supported: boolean;
+}
+
+/**
+ * Challenge compatibility is a deterministic transport contract.
+ *
+ * A challenge is eligible only when every required transport capability is
+ * available. Keeping requirements as arrays allows a future challenge to depend
+ * on more than one transport feature without changing the selection contract.
+ */
+export function communicationChallengeCompatibility(
+  challengeType: CommunicationChallengeType,
+  available: TransportCapabilities
+): CommunicationChallengeCompatibility {
+  const requiredCapabilities =
+    COMMUNICATION_CHALLENGE_REQUIREMENTS[challengeType];
+  const missingCapabilities = requiredCapabilities.filter(
+    capability => available[capability] !== true
+  );
+
+  return {
+    challengeType,
+    requiredCapabilities,
+    missingCapabilities,
+    supported: missingCapabilities.length === 0,
+  };
+}
+
+export function isCommunicationChallengeSupported(
+  challengeType: CommunicationChallengeType,
+  available: TransportCapabilities
+): boolean {
+  return communicationChallengeCompatibility(challengeType, available).supported;
+}
 
 export function supportedCommunicationChallenges(
   available: TransportCapabilities
 ): CommunicationChallengeType[] {
-  return (
-    Object.keys(
-      COMMUNICATION_CHALLENGE_REQUIREMENTS
-    ) as CommunicationChallengeType[]
-  ).filter(
-    challenge =>
-      available[COMMUNICATION_CHALLENGE_REQUIREMENTS[challenge]] === true
+  return COMMUNICATION_CHALLENGE_ORDER.filter(challengeType =>
+    isCommunicationChallengeSupported(challengeType, available)
   );
 }
 
