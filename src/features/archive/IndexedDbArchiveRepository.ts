@@ -73,6 +73,22 @@ interface StoredSession extends Omit<SessionRecord, 'coldAttempt'> {
   coldAttempt: boolean;
 }
 
+/**
+ * Embedded skill arrays are a read-model cache only. They may be populated from a
+ * validator-issued bundle during completion, but a caller-supplied SessionRecord
+ * must never smuggle skill truth into IndexedDB.
+ */
+function stripRawSkillEvidence(
+  session: SessionRecord
+): Omit<SessionRecord, 'skillObservations' | 'skillLapses'> {
+  const {
+    skillObservations: _skillObservations,
+    skillLapses: _skillLapses,
+    ...safe
+  } = session;
+  return safe;
+}
+
 const PREFERENCES_ID = 'current';
 
 const DEFAULT_PREFERENCES: UserPreferences = {
@@ -279,9 +295,10 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   async beginSession(session: SessionRecord): Promise<void> {
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
+      const safeSession = stripRawSkillEvidence(session);
       const merged: StoredSession = {
-        ...(existing ?? session),
-        ...session,
+        ...(existing ?? safeSession),
+        ...safeSession,
         // An interrupted session keeps the turns already recorded. Overwriting with
         // the caller's empty copy is how a recovered session loses its transcript.
         passages: session.passages.length > 0 ? session.passages : existing?.passages ?? [],
@@ -293,6 +310,10 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
           session.opportunityInstances ?? existing?.opportunityInstances ?? [],
         observations:
           session.observations.length > 0 ? session.observations : existing?.observations ?? [],
+        // Never accept these fields from the caller. Existing values can only have
+        // originated from an earlier validator-issued completion on this device.
+        skillObservations: existing?.skillObservations ?? [],
+        skillLapses: existing?.skillLapses ?? [],
       };
       this.putAll(tx, STORE.sessions, [{ key: merged.id, value: merged }]);
     });
@@ -324,8 +345,9 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
 
+      const safeSession = stripRawSkillEvidence(session);
       const stored: StoredSession = {
-        ...session,
+        ...safeSession,
         endedAt: session.endedAt ?? now,
         // Upsert, not replace: a session that began before an interrupted write
         // still needs its transcript, and so does its evidence.
@@ -336,16 +358,13 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
             : existing?.supportExposures ?? [],
         observations:
           session.observations.length > 0 ? session.observations : existing?.observations ?? [],
-        // Raw SessionRecord skill fields are read-model compatibility only.
-        // Non-empty writes require the opaque validator-issued bundle.
-        skillObservations:
-          skillEvidence?.observations.length
-            ? [...skillEvidence.observations]
-            : existing?.skillObservations ?? [],
-        skillLapses:
-          skillEvidence?.lapses.length
-            ? [...skillEvidence.lapses]
-            : existing?.skillLapses ?? [],
+        // The embedded cache mirrors only validator-issued evidence.
+        skillObservations: skillEvidence
+          ? [...skillEvidence.observations]
+          : existing?.skillObservations ?? [],
+        skillLapses: skillEvidence
+          ? [...skillEvidence.lapses]
+          : existing?.skillLapses ?? [],
       };
 
       this.putAll(tx, STORE.sessions, [{ key: stored.id, value: stored }]);
@@ -355,13 +374,22 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       const observations: LearningObservation[] = [...stored.observations, ...(existing?.observations ?? [])];
       this.putDocs(tx, STORE.observations, observations, o => this.observationKey(o));
 
-      this.putDocs(
-        tx,
-        STORE.skillObservations,
-        dedupeById(stored.skillObservations ?? []),
-        o => o.id
-      );
-      this.putDocs(tx, STORE.skillLapses, dedupeById(stored.skillLapses ?? []), l => l.id);
+      // Dedicated skill-evidence stores have exactly one write authority:
+      // the opaque bundle returned by validateSkillEvidenceProposal().
+      if (skillEvidence) {
+        this.putDocs(
+          tx,
+          STORE.skillObservations,
+          dedupeById([...skillEvidence.observations]),
+          o => o.id
+        );
+        this.putDocs(
+          tx,
+          STORE.skillLapses,
+          dedupeById([...skillEvidence.lapses]),
+          l => l.id
+        );
+      }
     });
 
     await this.reprojectPhrases();
@@ -923,7 +951,24 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
         this.putAll(tx, STORE.meta, [{ key: PREFERENCES_ID, value: { id: PREFERENCES_ID, payload: preferences } }]);
       }
       for (const session of parsed.sessions) {
-        this.putAll(tx, STORE.sessions, [{ key: session.id, value: { ...session, coldAttempt: true } as StoredSession }]);
+        const {
+          skillObservations: _skillObservations,
+          skillLapses: _skillLapses,
+          ...safeImportedSession
+        } = session;
+        this.putAll(tx, STORE.sessions, [
+          {
+            key: session.id,
+            value: {
+              ...safeImportedSession,
+              coldAttempt: true,
+              // Imported raw skill claims are not promoted into live learning
+              // truth. Dedicated skill evidence must be regenerated/validated.
+              skillObservations: [],
+              skillLapses: [],
+            } as StoredSession,
+          },
+        ]);
       }
       this.putDocs(tx, STORE.phrases, parsed.phrases as PhraseItem[], p => p.id);
     });
