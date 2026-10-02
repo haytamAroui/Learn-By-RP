@@ -199,8 +199,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO support_exposures
             (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
-             target_skill_id, target_opportunity_id, target_phrase_id, exposure, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             target_skill_id, target_opportunity_id, target_phrase_id, policy_version, exposure, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           exposure.id,
           exposure.sessionId,
           exposure.attemptId,
@@ -211,6 +211,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           exposure.targetSkillId ?? null,
           exposure.targetOpportunityId ?? null,
           exposure.targetPhraseId ?? null,
+          exposure.policyVersion ?? LEARNING_POLICY_VERSION,
           exposure.exposure,
           exposure.recordedAt
         );
@@ -323,8 +324,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO support_exposures
             (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
-             target_skill_id, target_opportunity_id, target_phrase_id, exposure, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             target_skill_id, target_opportunity_id, target_phrase_id, policy_version, exposure, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           exposure.id,
           exposure.sessionId,
           exposure.attemptId,
@@ -335,6 +336,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           exposure.targetSkillId ?? null,
           exposure.targetOpportunityId ?? null,
           exposure.targetPhraseId ?? null,
+          exposure.policyVersion ?? LEARNING_POLICY_VERSION,
           exposure.exposure,
           exposure.recordedAt
         );
@@ -1380,6 +1382,7 @@ function mapExposureRow(row: Record<string, unknown>): SupportExposure {
       ? String(row.target_opportunity_id)
       : undefined,
     targetPhraseId: row.target_phrase_id ? String(row.target_phrase_id) : undefined,
+    policyVersion: row.policy_version ? Number(row.policy_version) : undefined,
     exposure: String(row.exposure) as SupportExposure['exposure'],
     recordedAt: String(row.recorded_at),
   };
