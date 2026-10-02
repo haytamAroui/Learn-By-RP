@@ -1,6 +1,7 @@
 import type { ActorResponse } from '../../lib/api';
 
 export interface ConversationTurnInput {
+  missionId: string;
   character: any;
   setting: string;
   learnerGoal: string;
