@@ -317,6 +317,11 @@ export interface Translations {
     speedNatural: string;
     speedBrisk: string;
     autoPlayLabel: string;
+    accommodationsLabel: string;
+    captionsAlwaysLabel: string;
+    slowerSpeechDefaultLabel: string;
+    typedPreferredLabel: string;
+    hapticTurnCuesLabel: string;
     sectionPrivacy: string;
     privacyDisclosure: string;
     liveVoiceLabel: string;
@@ -695,6 +700,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedNatural: "1.0x (Natural Conversational Speed)",
       speedBrisk: "1.2x (Brisk Native Cadence)",
       autoPlayLabel: "Auto-play character speech",
+      accommodationsLabel: "Accessibility accommodations",
+      captionsAlwaysLabel: "Keep captions visible",
+      slowerSpeechDefaultLabel: "Use slower character speech by default",
+      typedPreferredLabel: "Prefer typing when a response starts",
+      hapticTurnCuesLabel: "Use haptic turn cues",
       sectionPrivacy: "AI Processing & Consent Disclosures",
       privacyDisclosure:
         "Your voice audio is converted to speech to enable natural character dialogue. Transcripts and observations are stored locally on your device in your private ledger.",
@@ -1079,6 +1089,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedNatural: "1.0x (Débit naturel conversationnel)",
       speedBrisk: "1.2x (Cadence native dynamique)",
       autoPlayLabel: "Lecture audio automatique des répliques",
+      accommodationsLabel: "Aménagements d’accessibilité",
+      captionsAlwaysLabel: "Toujours afficher les sous-titres",
+      slowerSpeechDefaultLabel: "Utiliser un débit plus lent par défaut",
+      typedPreferredLabel: "Préférer la saisie au clavier au début d’une réponse",
+      hapticTurnCuesLabel: "Utiliser des repères haptiques pour les tours",
       sectionPrivacy: "Confidentialité & Traitement IA",
       privacyDisclosure:
         "Votre audio vocal est traité pour permettre un dialogue réaliste avec les personnages. Les transcriptions et observations restent stockées localement sur votre appareil.",
@@ -1461,6 +1476,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedNatural: "1.0x (Velocidad conversacional natural)",
       speedBrisk: "1.2x (Cadencia nativa ágil)",
       autoPlayLabel: "Reproducir automáticamente el audio del personaje",
+      accommodationsLabel: "Adaptaciones de accesibilidad",
+      captionsAlwaysLabel: "Mantener los subtítulos visibles",
+      slowerSpeechDefaultLabel: "Usar voz más lenta del personaje por defecto",
+      typedPreferredLabel: "Preferir escribir al iniciar una respuesta",
+      hapticTurnCuesLabel: "Usar señales hápticas de turno",
       sectionPrivacy: "Privacidad y Procesamiento con IA",
       privacyDisclosure:
         "Tu voz se procesa para permitir diálogos naturales con los personajes. Las transcripciones y evidencias se guardan localmente en tu dispositivo en tu registro privado.",
@@ -1845,6 +1865,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedNatural: "1.0x (Natuurlijk spreektempo)",
       speedBrisk: "1.2x (Vlot moedertaaltempo)",
       autoPlayLabel: "Stem van personage automatisch afspelen",
+      accommodationsLabel: "Toegankelijkheidsaanpassingen",
+      captionsAlwaysLabel: "Ondertitels altijd zichtbaar houden",
+      slowerSpeechDefaultLabel: "Standaard langzamer spreken",
+      typedPreferredLabel: "Typen verkiezen bij het starten van een antwoord",
+      hapticTurnCuesLabel: "Haptische beurtseinen gebruiken",
       sectionPrivacy: "Privacy & AI-verwerking",
       privacyDisclosure:
         "Je spraakaudio wordt verwerkt om natuurlijke dialogen met personages mogelijk te maken. Transcripties en observaties worden lokaal op je apparaat opgeslagen in je privé-register.",
