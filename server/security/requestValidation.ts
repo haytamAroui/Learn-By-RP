@@ -127,6 +127,7 @@ export const validateActorRequest: Validator = body => {
   const errors: string[] = [];
   if (!value) return { ok: false, errors: ['body must be an object'] };
 
+  requiredString(value, 'missionId', errors, 160);
   requiredString(value, 'userMessage', errors, 4000);
   optionalString(value, 'setting', errors, 1000);
   optionalString(value, 'learnerGoal', errors, 1000);
