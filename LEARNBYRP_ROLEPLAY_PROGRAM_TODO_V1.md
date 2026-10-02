@@ -310,7 +310,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 ## Typed finite facts
 
 - [x] Replace unrestricted scene facts with per-scene finite schemas. (`SceneFactSchema`, contract v3)
-- [ ] Supported fact types:
+- [x] Supported fact types:
   - [x] boolean
   - [x] enum
   - [x] bounded integer where necessary
@@ -318,7 +318,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 
 ## Predicate DSL
 
-- [ ] Define bounded JSON predicate language:
+- [x] Define bounded JSON predicate language:
   - [x] eq
   - [x] neq
   - [x] in
@@ -330,7 +330,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
   - [x] countOf(actions)
 - [x] No arbitrary code in content predicates. Predicates are data-only discriminated unions.
 - [x] Bound predicate depth. (`MAX_PREDICATE_DEPTH = 8`)
-- [ ] Use same predicate language for:
+- [x] Use same predicate language for:
   - [x] preconditions
   - [x] completion
   - [x] complications
@@ -363,9 +363,9 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Hosted routes exist under `server/roleplay`.
 - [x] Client mirror exists.
 - [x] Reducer is pure enough to share.
-- [ ] Create explicit shared runtime package/module boundary for reducer contracts.
-- [ ] Server is the only authoritative executor in hosted mode.
-- [ ] Client reducer use, if any, is prediction/mirror only.
+- [x] Create explicit shared runtime package/module boundary for reducer contracts (`features/roleplay/runtime/index.ts` is imported by hosted store, server routes and client mirror).
+- [x] Server is the only authoritative executor in hosted mode (`sceneStore.applySceneAction` owns reducer execution and durable commit).
+- [x] Client hosted path is mirror-only: `SceneMirror` sends proposals and applies only server-returned facts; it does not execute `reduceSceneAction`.
 - [x] Add missionId + missionVersion to hosted action request. Required at HTTP ingress and pinned to hosted session.
 - [x] Add sceneId + sceneVersion to hosted action request. Required at HTTP ingress and pinned to hosted session.
 - [x] Add provider call ID to hosted action ingress (`providerCallId`).
@@ -373,7 +373,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Append accepted/rejected scene proposals and reducer verdicts to `scene_events`.
 - [ ] Rebuild revision state from event log.
 - [x] Cross-channel duplicate `actionId` → first persisted verdict is replayed; accepted and rejected actions are both idempotent.
-- [ ] Consequential tool actions block actor confirmation until reducer result.
+- [x] Consequential tool actions block actor confirmation until reducer result (`mayCommitActorReply`; Actor line suppressed on missing/rejected verdict).
 
 ---
 
@@ -767,10 +767,10 @@ A program must pass:
 ## P1 — scene/mission runtime hardening
 
 - [ ] server-authoritative shared reducer boundary.
-- [ ] versioned action request.
-- [ ] append-only scene event log.
-- [ ] typed finite facts.
-- [ ] predicate/effect DSL.
+- [x] versioned action request (mission + scene IDs/versions required at hosted ingress).
+- [x] append-only scene event log (accepted/rejected proposal + verdict persisted by actionId).
+- [x] typed finite facts (`SceneFactSchema`).
+- [x] predicate/effect DSL (bounded data-only predicates + finite set effects).
 - [ ] model checker.
 - [ ] deterministic Director.
 - [x] blocking consequential actions (`mayCommitActorReply` + authoritative reducer acceptance).

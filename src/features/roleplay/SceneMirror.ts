@@ -1,9 +1,9 @@
-import {
+import type {
   SceneActionName,
   SceneActionProposal,
   SceneActionResult,
   SceneStateSnapshot,
-} from '../../contracts/scene';
+} from './runtime';
 import { API_BASE_URL } from '../../lib/api';
 
 /**

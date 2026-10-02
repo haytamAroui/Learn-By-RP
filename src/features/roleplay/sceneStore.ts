@@ -1,6 +1,12 @@
-import { SceneActionProposal, SceneActionResult, SceneForkRequest } from '../../contracts/scene';
 import { getScene } from '../../content/scenes';
-import { applyResult, createInitialScene, reduceSceneAction } from './sceneReducer';
+import {
+  applyResult,
+  createInitialScene,
+  reduceSceneAction,
+  type SceneActionProposal,
+  type SceneActionResult,
+  type SceneForkRequest,
+} from './runtime';
 import { SceneStore, SqliteSceneStore, HostedSessionRecord, AttemptRecord } from './SqliteSceneStore';
 import { createNodeSqliteAdapter, Db } from '../archive/db';
 

@@ -12,10 +12,10 @@ import {
 import { getScene, SCENES } from '../../src/content/scenes';
 import { MISSION_CATALOG } from '../../src/data/missions';
 import {
-  SceneActionProposal,
-  SceneForkRequest,
   SCENE_CONTRACT_VERSION,
-} from '../../src/contracts/scene';
+  type SceneActionProposal,
+  type SceneForkRequest,
+} from '../../src/features/roleplay/runtime';
 
 /**
  * Hosted session + scene runtime (§11.9, §14).
