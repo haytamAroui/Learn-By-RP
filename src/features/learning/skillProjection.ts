@@ -1,4 +1,4 @@
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import { COMMUNICATIVE_SKILLS_CATALOG, isDirectlyEvidencedSkill } from '../../content/skills';
 import { SKILL_POLICY } from './policy';
 import { matchPhraseInText } from './matching';
 import { isIndependentSuccess, observationDay } from './skillEvidence';
@@ -172,9 +172,9 @@ export function projectSkillsV2(
   lapses: SkillLapse[] = [],
   now: number = Date.now()
 ): SkillProjectionV2[] {
-  return COMMUNICATIVE_SKILLS_CATALOG.map(skill =>
-    projectSkill(skill.id, observations, lapses, now)
-  );
+  return COMMUNICATIVE_SKILLS_CATALOG
+    .filter(skill => isDirectlyEvidencedSkill(skill.id))
+    .map(skill => projectSkill(skill.id, observations, lapses, now));
 }
 
 /**
@@ -195,6 +195,7 @@ export function inferLegacySkillEvidence(
     if (!quote.trim()) continue;
 
     for (const skill of COMMUNICATIVE_SKILLS_CATALOG) {
+      if (!isDirectlyEvidencedSkill(skill.id)) continue;
       if (!matchesAnySample(quote, skill.samplePhrases)) continue;
 
       inferred.push({
