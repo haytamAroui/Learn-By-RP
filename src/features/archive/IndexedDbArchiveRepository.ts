@@ -313,9 +313,8 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
             : existing?.supportExposures ?? [],
         opportunityInstances:
           session.opportunityInstances ?? existing?.opportunityInstances ?? [],
-        observations: phraseEvidence
-          ? [...phraseEvidence.observations]
-          : existing?.observations ?? [],
+        // beginSession never accepts evidence from the caller.
+        observations: existing?.observations ?? [],
         // Never accept these fields from the caller. Existing values can only have
         // originated from an earlier validator-issued completion on this device.
         skillObservations: existing?.skillObservations ?? [],
