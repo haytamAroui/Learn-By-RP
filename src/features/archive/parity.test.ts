@@ -12,6 +12,7 @@ import {
   LearningObservation,
   Passage,
   ValidatedLearningObservation,
+  ValidatedSkillObservation,
 } from '../../types';
 
 /**
@@ -297,6 +298,65 @@ describe('native and web agree on the same archive', () => {
       const parsed = JSON.parse(await repo.exportArchiveJson());
       expect(parsed.version).toBe(1);
       expect(parsed.sessions).toHaveLength(1);
+    }
+  });
+
+  it('both round-trip validated phrase and skill evidence through backup restore', async () => {
+    const skillObservation = {
+      id: 'skill-obs-1',
+      skillId: 'skill-request-substitution',
+      sessionId: 'session-1',
+      attemptId: 'attempt-1',
+      sourcePassageId: 'p-1',
+      sourceRevision: 'rev-1',
+      contextKey: {
+        domainId: 'cafes',
+        scenarioFamilyId: 'counter-ordering',
+        scenarioId: 'scene.es.cafe.breakfast',
+      },
+      modality: 'spoken',
+      retrieval: 'unassisted',
+      taskOutcome: 'achieved',
+      demonstration: 'demonstrated',
+      opportunityInstanceId: 'opp-1',
+      supportExposureIds: [],
+      evidenceSource: 'validated_explicit',
+      quote: 'café con leche',
+      recordedAt: T0,
+    } as unknown as ValidatedSkillObservation;
+
+    const restorable = session({
+      opportunityInstances: [
+        {
+          id: 'opp-1',
+          attemptId: 'attempt-1',
+          opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
+          skillId: 'skill-request-substitution',
+          status: 'taken',
+          detection: 'validated',
+          demonstration: 'demonstrated',
+          learnerAttemptPassageId: 'p-1',
+          learnerAttemptRevision: 'rev-1',
+          recordedAt: T0,
+        },
+      ],
+      skillObservations: [skillObservation],
+    });
+
+    for (const repo of [sqliteRepository, web]) {
+      await repo.completeSession(restorable);
+      const backup = await repo.exportArchiveJson();
+
+      await repo.clearAllLearningData();
+      expect(await repo.getObservations()).toHaveLength(0);
+      expect(await repo.getSkillObservations()).toHaveLength(0);
+
+      const restored = await repo.importArchiveJson(backup);
+
+      expect(restored.success).toBe(true);
+      expect(await repo.getSessions()).toHaveLength(1);
+      expect(await repo.getObservations()).toHaveLength(1);
+      expect(await repo.getSkillObservations()).toHaveLength(1);
     }
   });
 });
