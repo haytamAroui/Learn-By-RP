@@ -20,8 +20,8 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 - [x] Assessment model does not own learning truth.
 - [x] Retry is not Transfer.
 - [x] Silence/noise/disconnect/provider failure are never learning lapses.
-- [ ] Add this TODO to implementation-doc precedence notes where roleplay/program work is referenced.
-- [ ] Keep UI-specific work in V4; keep roleplay/pedagogy correctness here.
+- [x] Add this TODO to implementation-doc precedence notes where roleplay/program work is referenced. (Master Specification §0.2 + V4 authority notice)
+- [x] Keep UI-specific work in V4; keep roleplay/pedagogy correctness here. (explicit authority split in Master Specification + `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`)
 
 ---
 
@@ -29,11 +29,11 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 
 ## Voice/session baseline
 
-- [ ] Confirm recursion regression remains closed.
-- [ ] Confirm stale-state regression remains closed.
-- [ ] Confirm mute/freeze/retry state is read from current runtime state.
-- [ ] Confirm reconnect/error/mic-denied states are explicit.
-- [ ] Confirm typed draft survives provider errors/reconnects where intended.
+- [x] Confirm recursion regression remains closed. (`nativeVoiceTransport.test.ts`: idle `stopPlayback()` cannot manufacture `playback_end` and recurse into `startListening`)
+- [x] Confirm stale-state regression remains closed. (`LiveSessionView` re-arms `mountedRef` on lifecycle restart; `session-flow.test.ts`)
+- [x] Confirm mute/freeze/retry state is read from current runtime state. (`isMutedRef`, `isSceneFrozenRef`, `passagesRef`, `sceneStateRef`; regression assertion in `session-flow.test.ts`)
+- [x] Confirm reconnect/error/mic-denied states are explicit. (`voice/lifecycle.ts`, `lifecycle.test.ts`, `LiveSessionView` transport event handling)
+- [x] Confirm typed draft survives provider errors/reconnects where intended. (`voice/draft.test.ts`; failed typed assistant turn restores `typedMessage`)
 - [ ] Confirm audio resources close on every end path.
 - [ ] Physical Android native voice/STT pass.
 - [ ] Physical iPhone native voice/STT pass.
