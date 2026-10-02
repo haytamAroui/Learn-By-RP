@@ -134,6 +134,21 @@ describe('deterministic next-RP policy', () => {
     });
   });
 
+  it('caps consecutive recoveries and takes the deterministic off-ramp', () => {
+    const result = recommendNextRp({
+      ...BASE,
+      observations: [],
+      lapses: [lapse('1', '2026-10-01T10:00:00.000Z')],
+      consecutiveRecoveries: 2,
+    });
+
+    expect(result).toMatchObject({
+      kind: 'continue',
+      missionId: 'mission-es-farmacia-sol',
+      reasonCode: 'RECOVERY_CAP_OFF_RAMP',
+    });
+  });
+
   it('does not infer weakness when no strict lapse exists', () => {
     const result = recommendNextRp({
       ...BASE,
