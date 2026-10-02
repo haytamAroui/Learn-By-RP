@@ -170,14 +170,23 @@ function explain(
   }
 }
 
-/** Every launch-visible skill family/capability, including derived families. */
+/**
+ * Every launch-visible skill that can actually receive evidence.
+ *
+ * Derived/organizational parents stay in the canonical hierarchy but do not get a
+ * learner status until an explicit roll-up policy exists; otherwise a parent such
+ * as communicative repair would remain misleadingly "new" forever.
+ */
 export function projectSkillsV2(
   observations: SkillObservation[],
   lapses: SkillLapse[] = [],
   now: number = Date.now()
 ): SkillProjectionV2[] {
   return COMMUNICATIVE_SKILLS_CATALOG
-    .filter(skill => isLaunchVisibleCommunicativeSkill(skill.id))
+    .filter(skill =>
+      isLaunchVisibleCommunicativeSkill(skill.id) &&
+      isDirectlyEvidencedSkill(skill.id)
+    )
     .map(skill => projectSkill(skill.id, observations, lapses, now));
 }
 
