@@ -1,5 +1,8 @@
 import { INITIAL_PHRASE_ITEMS, MISSION_CATALOG } from '../../data/missions';
-import { projectPhraseState } from '../learning/learningCore';
+import {
+  projectPhraseState,
+  validateDrillReview,
+} from '../learning/learningCore';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
 import { CONSENT_VERSION } from './schema';
 import {
@@ -686,30 +689,12 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     modality: 'spoken' | 'typed';
     unassisted: boolean;
   }): Promise<void> {
-    const { phrase, quote, modality, unassisted } = input;
-    const now = new Date().toISOString();
-
-    const observation: LearningObservation = {
-      observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sessionId: 'drill',
-      attemptId: 'drill',
-      sourceTurnId: `drill-${Date.now()}`,
-      sourceRevision: 'rev-drill',
-      itemId: phrase.id,
-      candidateForm: phrase.form,
-      meaning: phrase.meaning,
-      quote,
-      modality,
-      retrieval: unassisted ? 'unassisted' : 'assisted',
-      taskOutcome: 'achieved',
-      rehearsal: false,
-      supportExposureIds: [],
-      recordedAt: now,
-    };
+    const observation = validateDrillReview(input);
+    if (!observation) return;
 
     const phrases = await this.getPhrases();
     const updated = phrases.map(p =>
-      p.id === phrase.id ? projectPhraseState(p, [observation]) : p
+      p.id === input.phrase.id ? projectPhraseState(p, [observation]) : p
     );
 
     await this.transaction(async tx => {
