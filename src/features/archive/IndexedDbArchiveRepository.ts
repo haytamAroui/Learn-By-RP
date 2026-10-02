@@ -21,6 +21,7 @@ import {
   SessionState,
   SkillLapse,
   SkillObservation,
+  SupportExposure,
   TaskOutcome,
   UserPreferences,
 } from '../../types';
@@ -420,6 +421,37 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
             ...existing,
             endReason: reason,
             endedAt: existing.endedAt ?? new Date().toISOString(),
+          },
+        },
+      ]);
+    });
+  }
+
+
+  async appendSupportExposures(
+    sessionId: string,
+    exposures: SupportExposure[]
+  ): Promise<void> {
+    if (exposures.length === 0) return;
+
+    await this.transaction(async tx => {
+      const existing = await this.loadSessionIn(tx, sessionId);
+      if (!existing) return;
+
+      const byId = new Map(
+        (existing.supportExposures ?? []).map(exposure => [exposure.id, exposure])
+      );
+      for (const exposure of exposures) {
+        if (exposure.sessionId !== sessionId) continue;
+        byId.set(exposure.id, exposure);
+      }
+
+      this.putAll(tx, STORE.sessions, [
+        {
+          key: sessionId,
+          value: {
+            ...existing,
+            supportExposures: [...byId.values()],
           },
         },
       ]);
