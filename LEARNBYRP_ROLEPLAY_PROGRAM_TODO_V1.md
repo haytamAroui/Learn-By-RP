@@ -171,8 +171,8 @@ demonstration:
 - [x] Scene failure never implies skill failure. (scene `taskOutcome` is context only)
 - [x] Assessor may propose a demonstration classification only for a declared opportunity. (`server/index.ts` + `skillEvidence.ts` require an exact runtime `opportunityInstanceId`)
 - [x] Deterministic validator decides whether the proposal is admissible.
-- [ ] Add reason codes for demonstration/evidence decisions.
-- [ ] Add test: scene achieved without target skill → no skill demonstration.
+- [x] Add reason codes for demonstration/evidence decisions. (`SkillEvidenceReasonCode`, deterministic derivation in `evidenceReasons.ts`, localized EN/FR/ES/NL rendering, SQLite schema v10 round-trip)
+- [x] Add test: scene achieved without target skill → no skill demonstration. (`skillEvidence.test.ts`)
 - [x] Add test: scene not achieved for authored world reason → no lapse.
 
 ---
@@ -452,7 +452,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Add `opportunityInstanceId`.
 - [x] Add required `contextKey`.
 - [x] Add `dayKey` with SQLite round-trip/backfill.
-- [x] Add deterministic reason codes with SQLite round-trip/backfill.
+- [x] Add deterministic reason codes with SQLite round-trip/backfill. (legacy audit `reasonCode` + detailed learner-facing `reasonCodes`; schema v10)
 - [x] Add policy version to skill observations/lapses.
 - [x] Preserve phrase and skill evidence separately.
 - [x] One communicative act maps to one most-specific skill. (`skillHierarchyEvidence.test.ts`)
@@ -690,7 +690,7 @@ A program must pass:
 
 ## Evidence
 
-- [ ] scene achieved without skill demonstration.
+- [x] scene achieved without skill demonstration. (`skillEvidence.test.ts`: achieved scene + no taken target opportunity produces no SkillObservation)
 - [x] scene failed without skill lapse. (`skillEvidence.test.ts`: scene failure alone creates no lapse)
 - [x] wrong passage revision rejected. (`skillEvidence.test.ts`)
 - [x] assistant quote rejected. (`skillEvidence.test.ts`)
@@ -871,6 +871,7 @@ Confirmed from `main` after squash merge `582d8c89efa88d6a8ab10a2dd8531b686919d1
 - [x] Carry-forward continuity facts have source, sensitivity, mission allowlist, TTL and local-only enforcement.
 - [x] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution implemented (`src/content/skills.ts`, `skillEvidence.ts`, scene/catalog/hierarchy regression tests; duplicate mission-owned catalog removed).
 - [x] Canonical reviewed ScenarioFamily catalog defines stable family IDs, domain boundaries, inclusion/exclusion reviewer metadata and fail-closed mission/program validation (`src/content/scenarioFamilies.ts`, `scenarioFamilies.test.ts`, `validate-scenes.mts`).
+- [x] Detailed evidence reason codes are deterministic, persisted and localized; scene success still cannot manufacture target-skill evidence (`evidenceReasons.ts`, schema v10, `skillEvidence.test.ts`).
 - [ ] Non-coach support surfaces still need complete instrumentation for model phrase audio, captions, typed examples and recap exposure.
 - [ ] Director pressure branches remain open.
 - [ ] Curated launch content, locale review and final simulation remain open.
