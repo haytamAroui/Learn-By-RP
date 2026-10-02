@@ -7,6 +7,7 @@ import { MissionBriefingScreen } from '../../components/MissionBriefingScreen';
 import { Button } from '../../components/ui';
 import { MISSION_CATALOG } from '../../data/missions';
 import { MissionDefinition, Mode, SessionRecord, SupportExposure } from '../../types';
+import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
 
 export default function MissionBriefingRoute() {
   const router = useRouter();
@@ -48,6 +49,7 @@ export default function MissionBriefingRoute() {
       targetPhraseId: phraseId,
       targetItemIds: [phraseId],
       exposure: 'visible',
+      policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: now,
     }));
 
