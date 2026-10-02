@@ -18,6 +18,14 @@ export interface RoleplayProgram {
   policyVersion: number;
   title: string;
   missionPlan: ProgramMissionRef[];
+  finalSimulation?: {
+    mission: ProgramMissionRef;
+    supportHiddenByDefault: true;
+    preserveAccommodations: true;
+    helpAvailable: true;
+    evidencePolicy: 'same_as_program';
+    scoring: 'none';
+  };
   reviewStatus: 'draft' | 'reviewed' | 'released';
 }
 
@@ -98,6 +106,25 @@ export function validateRoleplayProgram(
   }
   if (program.missionPlan.length === 0) {
     errors.push('missionPlan must contain at least one pinned mission');
+  }
+
+  if (program.finalSimulation) {
+    const final = program.finalSimulation;
+    if (final.supportHiddenByDefault !== true) {
+      errors.push('finalSimulation.supportHiddenByDefault must be true');
+    }
+    if (final.preserveAccommodations !== true) {
+      errors.push('finalSimulation.preserveAccommodations must be true');
+    }
+    if (final.helpAvailable !== true) {
+      errors.push('finalSimulation.helpAvailable must be true');
+    }
+    if (final.evidencePolicy !== 'same_as_program') {
+      errors.push('finalSimulation must use the same evidence policy');
+    }
+    if (final.scoring !== 'none') {
+      errors.push('finalSimulation scoring/readiness prediction is not allowed');
+    }
   }
 
   const missionIds = new Set<string>();
