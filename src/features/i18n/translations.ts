@@ -237,6 +237,7 @@ export interface Translations {
     communicativeSkillsTitle: string;
     samplePatterns: string;
     observedAcross: string;
+    lastIndependentUse: string;
     sessionReceiptsTitle: string;
     coldAttempt: string;
     assistedAttempt: string;
@@ -614,6 +615,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       communicativeSkillsTitle: "Communicative Skills",
       samplePatterns: "Sample patterns:",
       observedAcross: "Observed across {count} connected scenes",
+      lastIndependentUse: "Last independent use",
       sessionReceiptsTitle: "Session Receipts",
       coldAttempt: "Cold Attempt",
       assistedAttempt: "Assisted Attempt",
@@ -1003,6 +1005,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       communicativeSkillsTitle: "Compétences communicatives",
       samplePatterns: "Modèles types :",
       observedAcross: "Observé dans {count} scènes connectées",
+      lastIndependentUse: "Dernier usage autonome",
       sessionReceiptsTitle: "Reçus de session",
       coldAttempt: "Tentative à froid",
       assistedAttempt: "Tentative assistée",
@@ -1390,6 +1393,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       communicativeSkillsTitle: "Habilidades comunicativas",
       samplePatterns: "Patrones de ejemplo:",
       observedAcross: "Observado en {count} escenas conectadas",
+      lastIndependentUse: "Último uso independiente",
       sessionReceiptsTitle: "Recibos de Sesión",
       coldAttempt: "Intento en frío",
       assistedAttempt: "Intento asistido",
@@ -1779,6 +1783,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       communicativeSkillsTitle: "Communicatieve vaardigheden",
       samplePatterns: "Voorbeeldpatronen:",
       observedAcross: "Geobserveerd in {count} verbonden scènes",
+      lastIndependentUse: "Laatste zelfstandige gebruik",
       sessionReceiptsTitle: "Sessiebewijzen",
       coldAttempt: "Koude poging",
       assistedAttempt: "Ondersteunde poging",
