@@ -23,6 +23,7 @@ REGULATED HEALTH ROLEPLAY SAFETY:
 `.trim();
 
 const HIGH_CONFIDENCE_ADVICE_PATTERNS: RegExp[] = [
+  /\b(?:dosage|posology|posologie|dosierung|dosaggio|dosis)\b/i,
   /\b(?:ibuprofen|loratadin|loratadine|cetirizin|cetirizine|paracetamol|acetaminophen)\b/i,
   /\b\d+\s*(?:tablet(?:s)?|tablette(?:s)?|comprim(?:e|é|és|es)?|pastill(?:e|es|a|as)?|capsul(?:e|es|a|as)?|sprays?|doses?)\b/i,
   /(?:一回|1回|１回)?\s*[一二三四五六七八九十0-9０-９]+\s*錠/u,
