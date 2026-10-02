@@ -15,7 +15,6 @@ import { __setDatabaseForTesting, migrate } from './database';
 import {
   LearningObservation,
   Passage,
-  SkillObservation,
   ValidatedLearningObservation,
   ValidatedSkillObservation,
 } from '../../types';
@@ -241,34 +240,32 @@ describe('a corrected passage invalidates the skill evidence that cited it', () 
   const SKILL = 'skill-request-substitution';
 
   async function seedSkillEvidence(sourceRevision: string): Promise<void> {
-    await archiveRepository.saveSkillObservations([
-      {
-        id: `so-${sourceRevision}`,
-        skillId: SKILL,
-        sessionId: 'session-1',
-        attemptId: 'attempt-1',
-        sourcePassageId: 'p-1',
-        sourceRevision,
-        contextKey: {
-          domainId: 'cafes',
-          scenarioFamilyId: 'counter-ordering',
-          scenarioId: 'scene.es.cafe.breakfast',
-        },
+    const skillObservation: ValidatedSkillObservation = {
+      id: `so-${sourceRevision}`,
+      skillId: SKILL,
+      sessionId: 'session-1',
+      attemptId: 'attempt-1',
+      sourcePassageId: 'p-1',
+      sourceRevision,
+      contextKey: {
         domainId: 'cafes',
+        scenarioFamilyId: 'counter-ordering',
         scenarioId: 'scene.es.cafe.breakfast',
-        modality: 'spoken',
-        retrieval: 'unassisted',
-        taskOutcome: 'achieved',
-        demonstration: 'demonstrated',
-        supportExposureIds: [],
-        evidenceSource: 'validated_explicit',
-        quote: 'la leche de avena',
-        recordedAt: new Date().toISOString(),
       },
-    ]);
+      domainId: 'cafes',
+      scenarioId: 'scene.es.cafe.breakfast',
+      modality: 'spoken',
+      retrieval: 'unassisted',
+      taskOutcome: 'achieved',
+      demonstration: 'demonstrated',
+      supportExposureIds: [],
+      evidenceSource: 'validated_explicit',
+      quote: 'la leche de avena',
+      recordedAt: new Date().toISOString(),
+    } as ValidatedSkillObservation;
 
     await archiveRepository.completeSession({
-      id: 'session-lapse',
+      id: 'session-1',
       missionId: 'mission-es-cafe-sol',
       missionVersion: 1,
       language: 'es',
@@ -277,9 +274,10 @@ describe('a corrected passage invalidates the skill evidence that cited it', () 
       state: 'recap_ready',
       startedAt: new Date().toISOString(),
       endedAt: new Date().toISOString(),
-      passages: [],
+      passages: [makePassage('p-1', '¿Tiene leche de avena?', sourceRevision)],
       supportExposures: [],
       observations: [],
+      skillObservations: [skillObservation],
       skillLapses: [
         {
           id: `lapse-${sourceRevision}`,
