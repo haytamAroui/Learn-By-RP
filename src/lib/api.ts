@@ -223,7 +223,7 @@ async function request<T>(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...(await authenticatedHeaders(!retryAuth)),
+        ...(await authenticatedHeaders()),
       },
       body: JSON.stringify(body),
       signal: controller.signal,
