@@ -19,6 +19,7 @@ import {
   ConsentRecord,
   PersistableSessionRecord,
 } from './ArchiveRepository.types';
+import { prepareArchiveImport } from './archiveImportValidation';
 import {
   LanguageCode,
   LearningObservation,
@@ -796,76 +797,62 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     message: string;
     counts?: { sessions: number; phrases: number; observations: number };
   }> {
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(json);
     } catch (err) {
-      return { success: false, message: `Failed to import archive: ${(err as Error).message}` };
-    }
-
-    if (!parsed || typeof parsed !== 'object') {
-      return { success: false, message: 'Invalid JSON payload format' };
-    }
-
-    // Validate everything before mutating anything. A malformed archive must not
-    // be able to leave the learner with half an archive and no undo.
-    if (parsed.schemaVersion !== undefined && parsed.schemaVersion !== 1) {
       return {
         success: false,
-        message: `Unsupported archive schema version: ${parsed.schemaVersion}`,
+        message: `Failed to import archive: ${(err as Error).message}`,
       };
     }
 
-    if (!Array.isArray(parsed.sessions) || !Array.isArray(parsed.phrases)) {
-      return { success: false, message: 'Archive is missing sessions or phrases' };
+    const prepared = prepareArchiveImport(parsed);
+    if (!prepared.ok) {
+      return { success: false, message: prepared.message };
     }
 
-    for (const phrase of parsed.phrases) {
-      if (typeof phrase?.id !== 'string' || typeof phrase?.form !== 'string') {
-        return { success: false, message: 'Archive contains a malformed phrase' };
-      }
+    // Validate the entire backup before the first mutation. Rehydration then uses
+    // the same validated session write boundary as live completion, instead of a
+    // second persistence path with weaker evidence rules.
+    if (prepared.value.preferences) {
+      await this.savePreferences({
+        ...DEFAULT_PREFERENCES,
+        ...prepared.value.preferences,
+      });
     }
 
-    for (const session of parsed.sessions) {
-      if (typeof session?.id !== 'string' || typeof session?.missionId !== 'string') {
-        return { success: false, message: 'Archive contains a malformed session' };
+    await this.savePhrases(prepared.value.phrases);
+
+    for (const session of prepared.value.sessions) {
+      await this.completeSession(session);
+
+      // completeSession intentionally writes active evidence. Restore learner
+      // hide/dispute choices afterwards without allowing those flags to become a
+      // separate evidence-creation path.
+      for (const observation of session.observations) {
+        if (observation.userDisputed) {
+          await this.disputeObservation(observation.observationId);
+        } else if (observation.hidden) {
+          await this.hideObservation(observation.observationId);
+        }
       }
-      if (Array.isArray(session.observations)) {
-        for (const observation of session.observations) {
-          if (typeof observation?.quote !== 'string') {
-            return {
-              success: false,
-              message: 'Archive contains an observation without a quote',
-            };
-          }
+      for (const observation of session.skillObservations ?? []) {
+        if (observation.userDisputed) {
+          await this.disputeSkillObservation(observation.id);
+        } else if (observation.hidden) {
+          await this.hideSkillObservation(observation.id);
         }
       }
     }
 
-    const preferences = parsed.preferences
-      ? { ...DEFAULT_PREFERENCES, ...parsed.preferences }
-      : null;
-
-    // One transaction for the whole import.
-    await this.transaction(async tx => {
-      if (preferences) {
-        this.putAll(tx, STORE.meta, [{ key: PREFERENCES_ID, value: { id: PREFERENCES_ID, payload: preferences } }]);
-      }
-      for (const session of parsed.sessions) {
-        this.putAll(tx, STORE.sessions, [{ key: session.id, value: { ...session, coldAttempt: true } as StoredSession }]);
-      }
-      this.putDocs(tx, STORE.phrases, parsed.phrases as PhraseItem[], p => p.id);
-    });
-
-    await this.reprojectPhrases();
-
     return {
       success: true,
-      message: `Successfully restored ${parsed.sessions.length} sessions, ${parsed.phrases.length} phrases, and ${parsed.observations?.length ?? 0} observations.`,
+      message: `Successfully restored ${prepared.value.sessions.length} sessions, ${prepared.value.phrases.length} phrases, and ${prepared.value.observationCount} observations.`,
       counts: {
-        sessions: parsed.sessions.length,
-        phrases: parsed.phrases.length,
-        observations: parsed.observations?.length ?? 0,
+        sessions: prepared.value.sessions.length,
+        phrases: prepared.value.phrases.length,
+        observations: prepared.value.observationCount,
       },
     };
   }
