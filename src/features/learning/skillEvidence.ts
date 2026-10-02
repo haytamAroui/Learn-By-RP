@@ -161,6 +161,13 @@ function sameCommunicativeAct(
     return false;
   }
 
+  if (
+    left.opportunityInstanceId &&
+    left.opportunityInstanceId === right.opportunityInstanceId
+  ) {
+    return true;
+  }
+
   const leftQuote = normalizeText(left.quote);
   const rightQuote = normalizeText(right.quote);
   if (!leftQuote || !rightQuote) return false;
