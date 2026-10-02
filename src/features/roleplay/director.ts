@@ -1,4 +1,8 @@
-import { SceneDefinition, SceneStateSnapshot } from '../../contracts/scene';
+import {
+  CommunicationChallengeType,
+  SceneDefinition,
+  SceneStateSnapshot,
+} from '../../contracts/scene';
 import { OpportunityInstance } from '../../types';
 import { evaluatePredicate } from './sceneReducer';
 
@@ -7,6 +11,15 @@ export type DirectorDecision =
       kind: 'trigger_complication';
       complicationId: string;
       reason: 'authored_trigger_true';
+    }
+  | {
+      kind: 'present_communication_challenge';
+      challengeId: string;
+      challengeType: CommunicationChallengeType;
+      opportunityId: string;
+      skillId: string;
+      actorInstruction: string;
+      reason: 'authored_communication_challenge_available';
     }
   | {
       kind: 'present_opportunity';
@@ -29,13 +42,25 @@ export type DirectorDecision =
  * It may select only authored content already present in the scene definition.
  * It cannot mutate facts, create evidence, invent skill IDs, or interpret free
  * text. Semantic interpretation belongs to a separate bounded candidate layer.
+ *
+ * Communication challenges are additionally gated by negotiated provider
+ * capability types and optional target repair skill. At most one authored
+ * communication challenge is selected per attempt.
  */
 export function decideDirector(input: {
   scene: SceneDefinition;
   state: SceneStateSnapshot;
   opportunities: OpportunityInstance[];
+  availableCommunicationChallenges?: readonly CommunicationChallengeType[];
+  targetChallengeSkillId?: string;
 }): DirectorDecision {
-  const { scene, state, opportunities } = input;
+  const {
+    scene,
+    state,
+    opportunities,
+    availableCommunicationChallenges = [],
+    targetChallengeSkillId,
+  } = input;
 
   if (state.sceneId !== scene.id) {
     throw new Error(
@@ -60,13 +85,54 @@ export function decideDirector(input: {
     };
   }
 
+  const attemptOpportunities = opportunities.filter(
+    instance => instance.attemptId === state.attemptId
+  );
   const alreadyMaterialised = new Set(
-    opportunities
-      .filter(instance => instance.attemptId === state.attemptId)
-      .map(instance => instance.opportunityId)
+    attemptOpportunities.map(instance => instance.opportunityId)
+  );
+  const challengeOpportunityIds = new Set(
+    scene.communicationChallenges.map(challenge => challenge.opportunityId)
+  );
+  const challengeAlreadyPresented = attemptOpportunities.some(instance =>
+    challengeOpportunityIds.has(instance.opportunityId)
   );
 
+  if (!challengeAlreadyPresented && availableCommunicationChallenges.length > 0) {
+    const allowedTypes = new Set(availableCommunicationChallenges);
+    for (const challenge of scene.communicationChallenges) {
+      if (!allowedTypes.has(challenge.type)) continue;
+      if (
+        targetChallengeSkillId &&
+        challenge.targetSkillId !== targetChallengeSkillId
+      ) {
+        continue;
+      }
+      if (alreadyMaterialised.has(challenge.opportunityId)) continue;
+      if (
+        !evaluatePredicate(
+          challenge.trigger,
+          state.facts,
+          state.actionCounts
+        )
+      ) {
+        continue;
+      }
+
+      return {
+        kind: 'present_communication_challenge',
+        challengeId: challenge.id,
+        challengeType: challenge.type,
+        opportunityId: challenge.opportunityId,
+        skillId: challenge.targetSkillId,
+        actorInstruction: challenge.actorInstruction,
+        reason: 'authored_communication_challenge_available',
+      };
+    }
+  }
+
   for (const definition of scene.opportunityDefinitions) {
+    if (definition.communicationChallengeId) continue;
     if (alreadyMaterialised.has(definition.id)) continue;
     if (
       evaluatePredicate(
