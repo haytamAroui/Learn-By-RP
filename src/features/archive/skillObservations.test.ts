@@ -58,6 +58,54 @@ function observation(overrides: Partial<SkillObservation> = {}): SkillObservatio
   };
 }
 
+/**
+ * Schema tests deliberately insert rows below the repository API boundary.
+ * Production code has no raw SkillObservation write method anymore; these tests
+ * need direct SQL only to exercise legacy/backfill and round-trip decoding.
+ */
+async function insertSkillObservationsDirectly(
+  observations: SkillObservation[]
+): Promise<void> {
+  for (const item of observations) {
+    await driver.db.runAsync(
+      `INSERT OR REPLACE INTO skill_observations
+        (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
+         domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id,
+         modality, retrieval, task_outcome, demonstration, opportunity_instance_id,
+         support_exposure_ids, evidence_source, quote, day_key, reason_code,
+         reason_codes, policy_version, hidden, user_disputed, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+      item.id,
+      item.skillId,
+      item.sessionId,
+      item.attemptId,
+      item.sourcePassageId,
+      item.sourceRevision,
+      item.contextKey.domainId,
+      item.contextKey.scenarioFamilyId,
+      item.contextKey.scenarioId ?? item.scenarioId ?? null,
+      item.examProgramId ?? null,
+      item.examTaskId ?? null,
+      item.modality,
+      item.retrieval,
+      item.taskOutcome,
+      item.demonstration,
+      item.opportunityInstanceId ?? null,
+      JSON.stringify(item.supportExposureIds),
+      item.evidenceSource,
+      item.quote,
+      item.dayKey ?? item.recordedAt.slice(0, 10),
+      item.reasonCode ??
+        (item.evidenceSource === 'legacy_inferred'
+          ? 'legacy_inferred_demonstration'
+          : 'validated_demonstration'),
+      JSON.stringify(item.reasonCodes ?? []),
+      item.policyVersion ?? LEARNING_POLICY_VERSION,
+      item.recordedAt
+    );
+  }
+}
+
 describe('skill observation schema', () => {
   it('has a migration for the table', () => {
     const ddl = MIGRATIONS.flatMap(m => m.statements).join('\n');
@@ -65,9 +113,9 @@ describe('skill observation schema', () => {
   });
 });
 
-describe('saveSkillObservations / getSkillObservations', () => {
+describe('skill_observations schema / getSkillObservations', () => {
   it('round-trips a validated observation', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
+    await insertSkillObservationsDirectly([observation()]);
     const loaded = await archiveRepository.getSkillObservations();
 
     expect(loaded).toHaveLength(1);
@@ -93,7 +141,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
 
   // The provenance distinction is the whole reason this table exists.
   it('preserves the legacy inferred marker', async () => {
-    await archiveRepository.saveSkillObservations([
+    await insertSkillObservationsDirectly([
       observation({ id: 'so-old', evidenceSource: 'legacy_inferred' }),
     ]);
 
@@ -102,7 +150,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('round-trips support exposure references', async () => {
-    await archiveRepository.saveSkillObservations([
+    await insertSkillObservationsDirectly([
       observation({ supportExposureIds: ['exp-1', 'exp-2'] }),
     ]);
 
@@ -111,7 +159,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('round-trips the exam context when present', async () => {
-    await archiveRepository.saveSkillObservations([
+    await insertSkillObservationsDirectly([
       observation({ examProgramId: 'delf-b1', examTaskId: 'interaction-1' }),
     ]);
 
@@ -121,7 +169,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('keeps the required context domain while leaving optional scenario undefined', async () => {
-    await archiveRepository.saveSkillObservations([
+    await insertSkillObservationsDirectly([
       observation({
         contextKey: {
           domainId: 'cafes',
@@ -144,7 +192,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('stamps the current policy version', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
+    await insertSkillObservationsDirectly([observation()]);
 
     const row = await driver.db.getFirstAsync<{ policy_version: number }>(
       'SELECT policy_version FROM skill_observations WHERE id = ?',
@@ -157,15 +205,15 @@ describe('saveSkillObservations / getSkillObservations', () => {
   // A replayed action must not be able to manufacture a second observation and
   // therefore a second independent context.
   it('deduplicates the same skill in the same passage revision', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
-    await archiveRepository.saveSkillObservations([observation()]);
+    await insertSkillObservationsDirectly([observation()]);
+    await insertSkillObservationsDirectly([observation()]);
 
     expect(await archiveRepository.getSkillObservations()).toHaveLength(1);
   });
 
   it('keeps a different revision of the same passage as distinct', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
-    await archiveRepository.saveSkillObservations([
+    await insertSkillObservationsDirectly([observation()]);
+    await insertSkillObservationsDirectly([
       observation({ id: 'so-2', sourceRevision: 'rev-2' }),
     ]);
 
@@ -173,7 +221,7 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('stores several skills from one passage', async () => {
-    await archiveRepository.saveSkillObservations([
+    await insertSkillObservationsDirectly([
       observation({ id: 'so-a', skillId: 'skill-request-substitution' }),
       observation({ id: 'so-b', skillId: 'skill-communicative-repair' }),
     ]);
@@ -183,14 +231,14 @@ describe('saveSkillObservations / getSkillObservations', () => {
   });
 
   it('writes nothing for an empty list', async () => {
-    await archiveRepository.saveSkillObservations([]);
+    await insertSkillObservationsDirectly([]);
     expect(await archiveRepository.getSkillObservations()).toEqual([]);
   });
 });
 
 describe('hiding and disputing skill evidence', () => {
   it('removes a hidden observation from the projection input', async () => {
-    await archiveRepository.saveSkillObservations([
+    await insertSkillObservationsDirectly([
       observation({ id: 'so-1' }),
       observation({ id: 'so-2', skillId: 'skill-communicative-repair' }),
     ]);
@@ -202,7 +250,7 @@ describe('hiding and disputing skill evidence', () => {
   });
 
   it('marks a disputed observation as both hidden and disputed', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
+    await insertSkillObservationsDirectly([observation()]);
     await archiveRepository.disputeSkillObservation('so-1');
 
     const row = await driver.db.getFirstAsync<{
@@ -216,7 +264,7 @@ describe('hiding and disputing skill evidence', () => {
   });
 
   it('does not touch phrase observations', async () => {
-    await archiveRepository.saveSkillObservations([observation()]);
+    await insertSkillObservationsDirectly([observation()]);
     await archiveRepository.disputeSkillObservation('so-1');
 
     const phrases = await driver.db.getAllAsync<Record<string, unknown>>(
