@@ -7,6 +7,7 @@ import { getTranslations, I18nProvider } from '../../features/i18n';
 import { RootHeader } from '../../components/RootHeader';
 import { TalkScreen } from '../../components/TalkScreen';
 import { DuePhrasesPracticeModal } from '../../components/DuePhrasesPracticeModal';
+import { validateDrillReview } from '../../features/learning/learningCore';
 
 export default function TalkTab() {
   const router = useRouter();
@@ -60,7 +61,11 @@ export default function TalkTab() {
           const { archiveRepository } = await import(
             '../../features/archive/archiveRepository'
           );
-          await archiveRepository.recordDrillReview(input);
+          const evidence = validateDrillReview(input);
+          await archiveRepository.recordDrillReview({
+            phrase: input.phrase,
+            evidence,
+          });
           await archive.refresh();
         }}
       />
