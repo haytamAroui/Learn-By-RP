@@ -135,10 +135,13 @@ export async function applySceneAction(
     appliedResults,
   });
 
+  // Persist the first verdict for every actionId, accepted or rejected. A retry
+  // on any channel returns this exact result before re-running validation.
+  await store.putResult(proposal.sessionId, proposal, result);
+
   if (result.accepted) {
     record.state = applyResult(scene, record.state, result);
     await store.put(record);
-    await store.putResult(proposal.sessionId, result);
   }
 
   return result;
