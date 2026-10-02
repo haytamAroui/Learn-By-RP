@@ -63,11 +63,24 @@ export function deriveSkillEvidenceReasonCodes(
 export function evidenceReasonCodesForDisplay(
   observation: SkillObservation
 ): SkillEvidenceReasonCode[] {
-  const codes = [...(observation.reasonCodes ?? [])];
+  const persisted = observation.reasonCodes ?? [];
+  const codes = persisted.length > 0
+    ? [...persisted]
+    : deriveSkillEvidenceReasonCodes({
+        retrieval: observation.retrieval,
+        modality: observation.modality,
+        evidenceSource: observation.evidenceSource,
+        relevantSupport:
+          observation.retrieval === 'assisted'
+            ? ([{ kind: 'full_form' }] as SupportExposure[])
+            : [],
+        isRehearsalAttempt: false,
+      });
+
   if (observation.userDisputed && !codes.includes('DISPUTED_BY_LEARNER')) {
     codes.push('DISPUTED_BY_LEARNER');
   }
-  return codes;
+  return [...new Set(codes)];
 }
 
 export const SKILL_EVIDENCE_REASON_TEXT: Record<
