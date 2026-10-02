@@ -6,7 +6,7 @@
  * Bump SCENE_CONTRACT_VERSION when a shape changes incompatibly.
  */
 
-export const SCENE_CONTRACT_VERSION = 1;
+export const SCENE_CONTRACT_VERSION = 2;
 
 /** Allowlisted action names. Anything else is rejected without being evaluated. */
 export type SceneActionName =
@@ -68,6 +68,29 @@ export interface CompletionPredicate {
   predicate: Predicate;
 }
 
+/**
+ * Authored chance to demonstrate exactly one communicative skill.
+ *
+ * Opportunity availability comes only from deterministic scene facts. Semantic
+ * interpretation may later classify what the learner did with the opportunity,
+ * but it may never invent the opportunity itself.
+ */
+export interface SkillOpportunityDefinition {
+  /** Stable content id; never reuse a retired id for a different challenge. */
+  id: string;
+  /** Exactly one most-specific communicative skill. */
+  skillId: string;
+  /** Facts that make this opportunity available to the learner. */
+  sceneCondition: Predicate;
+  /** Reviewer examples for assessor guidance; never executable scene logic. */
+  positiveExamples: string[];
+  negativeExamples: string[];
+  /** Authored world actions that can satisfy or advance this opportunity. */
+  relevantActionIds?: SceneActionName[];
+  /** Mission/actor semantic intents relevant to this opportunity. */
+  relevantIntentIds?: string[];
+}
+
 export interface Complication {
   id: string;
   description: string;
@@ -103,6 +126,11 @@ export interface SceneDefinition {
   /** Curated mappings only. Never model-generated. */
   phraseIds: string[];
   skillIds: string[];
+  /**
+   * First-class authored communicative opportunities. Runtime instances are
+   * derived from these definitions plus authoritative scene state.
+   */
+  opportunityDefinitions: SkillOpportunityDefinition[];
   reviewStatus: 'draft' | 'reviewed' | 'released';
 }
 
