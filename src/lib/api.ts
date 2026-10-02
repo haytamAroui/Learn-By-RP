@@ -314,6 +314,7 @@ export const api = {
     },
   },
   actorRespond: (body: {
+    missionId: string;
     character: any;
     setting: string;
     learnerGoal: string;
