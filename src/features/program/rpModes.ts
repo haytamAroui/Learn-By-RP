@@ -3,13 +3,52 @@ import type {
   SkillLapse,
   SupportExposure,
 } from '../../types';
+import type { RoleplayPressureLevel } from '../../contracts/scene';
 import { isSkillProductionSupportRelevant } from '../learning/supportScope';
 
 export type RpLearningMode = 'cold' | 'guided' | 'transfer' | 'recovery';
 
 export const RP_MODE_POLICY = {
   maxConsecutiveRecoveries: 2,
+  recoveryPressureCeiling: 'manageable' as RoleplayPressureLevel,
 } as const;
+
+const PRESSURE_ORDER: Record<RoleplayPressureLevel, number> = {
+  manageable: 0,
+  standard: 1,
+  stretch: 2,
+};
+
+export interface RpPressurePolicy {
+  enabled: boolean;
+  allowedLevels: RoleplayPressureLevel[];
+}
+
+/**
+ * Pressure is always learner-opt-in. Recovery additionally caps the authored
+ * branch level at manageable even when a higher level was requested.
+ */
+export function pressurePolicyForLearningMode(input: {
+  mode: RpLearningMode;
+  learnerOptedIn: boolean;
+  requestedCeiling?: RoleplayPressureLevel;
+}): RpPressurePolicy {
+  if (!input.learnerOptedIn) {
+    return { enabled: false, allowedLevels: [] };
+  }
+
+  const requested = input.requestedCeiling ?? 'standard';
+  const ceiling =
+    input.mode === 'recovery'
+      ? RP_MODE_POLICY.recoveryPressureCeiling
+      : requested;
+
+  return {
+    enabled: true,
+    allowedLevels: (Object.keys(PRESSURE_ORDER) as RoleplayPressureLevel[])
+      .filter(level => PRESSURE_ORDER[level] <= PRESSURE_ORDER[ceiling]),
+  };
+}
 
 export interface AttemptLearningContext {
   mode: RpLearningMode;
