@@ -72,21 +72,52 @@ function modelProposal(overrides: Record<string, unknown> = {}) {
         sourceRevision: 'rev-1',
         modality: 'spoken',
         retrievalProposal: 'unassisted',
+        opportunityInstanceId: 'opp-positive-1',
       },
     ],
     ...overrides,
   };
 }
 
+function positiveOpportunity(
+  overrides: Partial<OpportunityInstance> = {}
+): OpportunityInstance {
+  return {
+    id: 'opp-positive-1',
+    attemptId: 'attempt-1',
+    opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
+    skillId: 'skill-request-substitution',
+    status: 'taken',
+    detection: 'validated',
+    demonstration: 'demonstrated',
+    learnerAttemptPassageId: 'p-1',
+    learnerAttemptRevision: 'rev-1',
+    recordedAt: '2026-09-20T09:00:04.000Z',
+    ...overrides,
+  };
+}
+
 /** The runtime facts, which the model has no say over. */
 function runtimeFacts(overrides: Partial<Parameters<typeof validateSkillEvidenceProposal>[1]> = {}) {
+  const attemptId = overrides.attemptId ?? 'attempt-1';
+  const passages = overrides.passages ?? [PASSAGE];
+  const learnerPassage = passages.find(p => p.speaker === 'user') ?? PASSAGE;
+
   return {
     sessionId: 'sess-1',
-    attemptId: 'attempt-1',
+    attemptId,
     mission: MISSION,
-    passages: [PASSAGE],
+    passages,
     supportExposures: [] as SupportExposure[],
-    opportunityInstances: [] as OpportunityInstance[],
+    opportunityInstances:
+      overrides.opportunityInstances ??
+      [
+        positiveOpportunity({
+          attemptId,
+          learnerAttemptPassageId: learnerPassage.id,
+          learnerAttemptRevision: learnerPassage.revisionKey,
+        }),
+      ],
     isRehearsalAttempt: false,
     sessionEndReason: 'completed' as const,
     evidenceSource: 'validated_explicit' as const,
@@ -98,7 +129,7 @@ function failedOpportunity(overrides: Partial<OpportunityInstance> = {}): Opport
   return {
     id: 'opp-failed-1',
     attemptId: 'attempt-1',
-    opportunityId: 'opportunity-request-substitution',
+    opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
     skillId: 'skill-request-substitution',
     status: 'taken',
     detection: 'validated',
@@ -227,6 +258,7 @@ describe('a live session persists validated skill evidence', () => {
             sourceRevision: 'rev-1',
             modality: 'spoken',
             retrievalProposal: 'assisted',
+            opportunityInstanceId: 'opp-positive-1',
           },
         ],
       }) as any,
@@ -269,6 +301,7 @@ describe('a live session persists validated skill evidence', () => {
             sourceRevision: 'rev-superseded',
             modality: 'spoken',
             retrievalProposal: 'unassisted',
+            opportunityInstanceId: 'opp-positive-1',
           },
         ],
       }) as any,
