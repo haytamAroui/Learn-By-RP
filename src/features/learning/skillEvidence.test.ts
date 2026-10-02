@@ -62,11 +62,14 @@ function exposure(overrides: Partial<SupportExposure> = {}): SupportExposure {
     attemptId: 'attempt-1',
     kind: 'full_form',
     source: 'coach',
-    text: '¿Tiene leche de avena?',
+    targetSkillId: SKILL,
+    targetOpportunityId: 'opp-1',
     targetPhraseId: 'phrase.es.1',
-    shownAt: '2026-09-20T09:00:02.000Z',
+    targetItemIds: ['phrase.es.1'],
+    exposure: 'visible',
+    recordedAt: '2026-09-20T09:00:02.000Z',
     ...overrides,
-  } as SupportExposure;
+  };
 }
 
 function candidate(overrides: Partial<SkillEvidenceCandidate> = {}): SkillEvidenceCandidate {
@@ -269,6 +272,53 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.rejected.map(r => r.check)).toContain('support_contradicts_retrieval');
   });
 
+  it('does not downgrade production for meaning help on the character turn', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate()]),
+      context({
+        supportExposures: [
+          exposure({
+            kind: 'meaning_of_assistant_turn',
+            targetSkillId: undefined,
+            targetOpportunityId: undefined,
+            targetPhraseId: undefined,
+            targetItemIds: [],
+          }),
+        ],
+      })
+    );
+
+    expect(result.validated[0].retrieval).toBe('unassisted');
+    expect(result.rejected.map(r => r.check)).not.toContain('support_contradicts_retrieval');
+  });
+
+  it('does not downgrade a skill for full-form help scoped to another skill', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate()]),
+      context({
+        supportExposures: [
+          exposure({
+            targetSkillId: 'skill-wayfinding-transit',
+            targetOpportunityId: undefined,
+            targetPhraseId: undefined,
+            targetItemIds: [],
+          }),
+        ],
+      })
+    );
+
+    expect(result.validated[0].retrieval).toBe('unassisted');
+  });
+
+  it('does not treat an intent hint as production-form assistance', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate()]),
+      context({ supportExposures: [exposure({ kind: 'intent_hint' })] })
+    );
+
+    expect(result.validated[0].retrieval).toBe('unassisted');
+  });
+
   it('rejects a citation to support that is not in the ledger', () => {
     const result = validateSkillEvidenceProposal(
       proposal([candidate({ supportExposureIds: ['exp-invented'] })]),
@@ -411,6 +461,25 @@ describe('deriveLapses', () => {
     );
 
     expect(result.lapses).toEqual([]);
+  });
+
+  it('keeps lapse eligibility when support targeted an unrelated skill', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({
+        opportunityInstances: [opportunity()],
+        supportExposures: [
+          exposure({
+            targetSkillId: 'skill-wayfinding-transit',
+            targetOpportunityId: undefined,
+            targetPhraseId: undefined,
+            targetItemIds: [],
+          }),
+        ],
+      })
+    );
+
+    expect(result.lapses).toHaveLength(1);
   });
 
   it('records no lapse when the learner stayed silent', () => {
