@@ -89,6 +89,19 @@ export class SqliteSceneStore implements SceneStore {
     for (const statement of SCHEMA) {
       await db.execAsync(statement);
     }
+
+    // Forward-compatible columns for stores created before runtime contract v3.
+    for (const migration of [
+      `ALTER TABLE hosted_sessions ADD COLUMN scene_version INTEGER NOT NULL DEFAULT 1;`,
+      `ALTER TABLE hosted_sessions ADD COLUMN mission_version INTEGER NOT NULL DEFAULT 1;`,
+    ]) {
+      try {
+        await db.execAsync(migration);
+      } catch (error) {
+        if (!String(error).toLowerCase().includes('duplicate column')) throw error;
+      }
+    }
+
     return new SqliteSceneStore(db);
   }
 
