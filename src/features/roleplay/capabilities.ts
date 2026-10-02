@@ -1,5 +1,30 @@
 import { TransportCapabilities } from '../../providers/voice/types';
 
+export type CommunicationChallengeType =
+  | 'fast_speech'
+  | 'scripted_mishearing';
+
+export const COMMUNICATION_CHALLENGE_REQUIREMENTS = {
+  fast_speech: 'speechRateControl',
+  scripted_mishearing: 'scriptedLineInjection',
+} as const satisfies Record<
+  CommunicationChallengeType,
+  keyof TransportCapabilities
+>;
+
+export function supportedCommunicationChallenges(
+  available: TransportCapabilities
+): CommunicationChallengeType[] {
+  return (
+    Object.keys(
+      COMMUNICATION_CHALLENGE_REQUIREMENTS
+    ) as CommunicationChallengeType[]
+  ).filter(
+    challenge =>
+      available[COMMUNICATION_CHALLENGE_REQUIREMENTS[challenge]] === true
+  );
+}
+
 export interface RoleplayCapabilityRequest {
   wantsSlowSpeech?: boolean;
   wantsLongThinkingTime?: boolean;
@@ -27,6 +52,11 @@ export interface NegotiatedRoleplayCapabilities {
   allowScriptedLineInjection: boolean;
   allowTranscriptRevisions: boolean;
   allowConsequentialToolActions: boolean;
+  /**
+   * Transport-dependent communication challenges that may be surfaced by the
+   * pedagogy/UI. Unsupported challenge types never enter this list.
+   */
+  availableCommunicationChallenges: CommunicationChallengeType[];
   degradations: CapabilityDegradation[];
 }
 
@@ -115,6 +145,8 @@ export function negotiateRoleplayCapabilities(
     allowScriptedLineInjection,
     allowTranscriptRevisions,
     allowConsequentialToolActions,
+    availableCommunicationChallenges:
+      supportedCommunicationChallenges(available),
     degradations,
   };
 }
