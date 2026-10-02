@@ -488,6 +488,15 @@ export interface SkillProjectionV2 {
    */
   reviewDue: boolean;
 
+  /**
+   * Stronger recovery signal than reviewDue. Multiple recent strict lapses may
+   * request a revisit, but never demote the demonstrated status.
+   */
+  revisit: boolean;
+
+  /** Most recent qualifying independent spoken use, when one exists. */
+  lastIndependentUseAt?: string;
+
   /** Why this status, in words a developer can show. */
   explanation: string;
 }
