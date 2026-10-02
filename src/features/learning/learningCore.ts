@@ -125,7 +125,12 @@ export function validateAssessmentProposal(
     // 3. Exposure ledger reclassification. The model may propose; the ledger
     //    decides. Support downgrades independent use, it never upgrades it.
     const relevantExposures = supportExposures.filter(exp =>
-      isPhraseProductionSupportRelevant(exp, candidate.itemId!)
+      isPhraseProductionSupportRelevant({
+        exposure: exp,
+        phraseId: candidate.itemId!,
+        passage: matchingPassage,
+        attemptId: proposal.attemptId,
+      })
     );
 
     // 4. Retrieval is derived, never taken from the proposal. The model is not
@@ -241,7 +246,12 @@ export function buildLocalObservations(input: {
       seen.add(`${passage.id}:${phrase.id}`);
 
       const relevantExposures = supportExposures.filter(exp =>
-        isPhraseProductionSupportRelevant(exp, phrase.id)
+        isPhraseProductionSupportRelevant({
+          exposure: exp,
+          phraseId: phrase.id,
+          passage,
+          attemptId,
+        })
       );
 
       const isSpoken = passage.modality === 'spoken';
