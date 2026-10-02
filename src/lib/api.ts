@@ -191,12 +191,30 @@ async function getRequest<T>(
   }
 }
 
+function requiredConsentForPath(path: string): ConsentScope | null {
+  if (path === '/api/realtime/session') return 'voice';
+  if (path === '/api/assessment') return 'saved_analysis';
+  return null;
+}
+
 async function request<T>(
   path: string,
   body: unknown,
   timeoutMs = 30000,
   retryAuth = true
 ): Promise<T> {
+  const requiredScope = requiredConsentForPath(path);
+  if (requiredScope) {
+    const decision = localConsentSnapshot[requiredScope];
+    if (!decision || decision.granted !== true) {
+      throw new ApiError('consent_required', 403, {
+        error: 'consent_required',
+        scope: requiredScope,
+        decided: Boolean(decision),
+      });
+    }
+  }
+
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
