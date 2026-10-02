@@ -165,20 +165,25 @@ export function recommendNextRp(input: NextRpInput): NextRpRecommendation {
     input.now ?? Date.now()
   );
 
-  // Strong recovery signal first. A raw failed scene is never present here;
-  // only persisted strict SkillLapse records can reach this branch.
-  const revisit = projections
-    .filter(projection => projection.revisit)
-    .sort((a, b) => a.skillId.localeCompare(b.skillId))[0];
+  // Recovery can start from one genuine strict lapse. `revisit` is a stronger
+  // repeated-lapse signal used by projection/UI, not a prerequisite for recovery.
+  // A raw failed scene is never present here; only persisted SkillLapse records
+  // can reach this branch.
+  const recoverySignal = projections
+    .filter(projection => projection.reviewDue)
+    .sort((a, b) => {
+      if (a.revisit !== b.revisit) return a.revisit ? -1 : 1;
+      return a.skillId.localeCompare(b.skillId);
+    })[0];
 
-  if (revisit) {
-    const mission = recoveryCandidate(input, revisit.skillId);
+  if (recoverySignal) {
+    const mission = recoveryCandidate(input, recoverySignal.skillId);
     if (mission) {
       return recommendationForMission(
         'recovery',
         mission,
         'STRICT_LAPSE_RECOVERY',
-        revisit.skillId
+        recoverySignal.skillId
       );
     }
   }
