@@ -71,6 +71,7 @@ import {
 } from '../features/learning/retrySupport';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import { negotiateRoleplayCapabilities } from '../features/roleplay/capabilities';
+import { mayCommitActorReply } from '../features/roleplay/actorContract';
 import { SceneActionName } from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
@@ -686,16 +687,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         if (!isGenerationCurrent(generation) || isEndingRef.current) return;
 
         if (response.proposedAction) {
-          const actionAccepted = await applyProposedSceneAction(
+          const actionResult = await applyProposedSceneAction(
             response.proposedAction,
             [userPassageId]
           );
 
           // The actor may not confirm a consequential world change until the
-          // authoritative reducer accepts it. A rejected/unavailable action
-          // therefore suppresses this generated actor line rather than leaking
-          // a fictional state change into the transcript.
-          if (!actionAccepted) {
+          // authoritative reducer accepts it. A missing mirror, network failure,
+          // stale revision, or reducer rejection all suppress this actor line.
+          if (!mayCommitActorReply(response.proposedAction, actionResult)) {
             setVoiceState('idle');
             return;
           }
@@ -820,7 +820,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       sourceTurnIds: string[]
     ) => {
       const mirror = sceneMirrorRef.current;
-      if (!mirror) return true;
+      if (!mirror) return null;
 
       const result = await mirror.propose(
         attemptId,
@@ -832,7 +832,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       if (!result) {
         setSceneEventNotice(t.live.sceneDirectorUnavailable);
         setTimeout(() => setSceneEventNotice(null), 4000);
-        return false;
+        return null;
       }
 
       if (!result.accepted) {
@@ -842,7 +842,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             : t.live.actionNotPermitted
         );
         setTimeout(() => setSceneEventNotice(null), 4000);
-        return false;
+        return result;
       }
 
       const authoritative = await mirror.reconcile();
@@ -867,7 +867,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       }
 
       setTimeout(() => setSceneEventNotice(null), 4000);
-      return true;
+      return result;
     },
     [attemptId, mission?.character.name, t.live]
   );
