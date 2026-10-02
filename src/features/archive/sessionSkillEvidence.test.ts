@@ -5,7 +5,8 @@ import { archiveRepository } from './SqliteArchiveRepository';
 import { MISSION_CATALOG } from '../../data/missions';
 import { validateSkillEvidenceProposal } from '../learning/skillEvidence';
 import { projectSkillsV2 } from '../learning/skillProjection';
-import { OpportunityInstance, SessionRecord, Passage, SupportExposure } from '../../types';
+import { OpportunityInstance, Passage, SupportExposure } from '../../types';
+import type { PersistableSessionRecord } from './ArchiveRepository.types';
 
 /**
  * Live-session wiring.
@@ -145,9 +146,9 @@ function failedOpportunity(overrides: Partial<OpportunityInstance> = {}): Opport
 }
 
 function sessionWith(skillEvidence: {
-  observations?: SessionRecord['skillObservations'];
-  lapses?: SessionRecord['skillLapses'];
-}, opportunityInstances: OpportunityInstance[] = []): SessionRecord {
+  observations?: PersistableSessionRecord['skillObservations'];
+  lapses?: PersistableSessionRecord['skillLapses'];
+}, opportunityInstances: OpportunityInstance[] = []): PersistableSessionRecord {
   return {
     id: 'sess-1',
     missionId: MISSION.id,
@@ -442,13 +443,12 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       recordedAt: new Date(now - day).toISOString(),
     };
 
-    await archiveRepository.saveSkillObservations(built);
     await archiveRepository.completeSession(
       sessionWith({ observations: [], lapses: [lapse] })
     );
 
     const projections = projectSkillsV2(
-      await archiveRepository.getSkillObservations(),
+      built,
       await archiveRepository.getSkillLapses(),
       now
     );
