@@ -57,8 +57,10 @@ import {
   validateAssessmentProposal,
 } from '../features/learning/learningCore';
 import {
+  EMPTY_VALIDATED_SKILL_EVIDENCE,
   SkillEvidenceCandidate,
   SkillEvidenceProposal,
+  type ValidatedSkillEvidence,
   validateSkillEvidenceProposal,
 } from '../features/learning/skillEvidence';
 import { api } from '../lib/api';
@@ -124,7 +126,10 @@ interface LiveSessionViewProps {
   preferredSpeechRate?: number;
   /** Read-only prior-session briefing/recap rows used for cross-session evidence only. */
   historicalSupportExposures?: SupportExposure[];
-  onEndSession: (session: SessionRecord) => void;
+  onEndSession: (
+    session: SessionRecord,
+    skillEvidence: ValidatedSkillEvidence
+  ) => void;
 }
 
 /**
@@ -1342,6 +1347,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           observations: [],
           skillObservations: [],
           skillLapses: [],
+          validatedSkillEvidence: EMPTY_VALIDATED_SKILL_EVIDENCE,
         });
         finalizedAttemptIdsRef.current.add(parentAttemptId);
         return;
@@ -1476,6 +1482,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         observations: phraseObservations,
         skillObservations: skillValidation.validated,
         skillLapses: skillValidation.lapses,
+        validatedSkillEvidence: skillValidation.evidence,
       });
       finalizedAttemptIdsRef.current.add(parentAttemptId);
     },
@@ -1831,6 +1838,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         observations: finalObservations,
         skillObservations: validatedSkillObservations,
         skillLapses,
+        validatedSkillEvidence: skillValidation.evidence,
       },
     });
 
@@ -1871,10 +1879,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       supportExposures,
       opportunityInstances: finalOpportunityInstances,
       observations: mergedEvidence.observations,
-      // Only validated evidence reaches the archive, written in the same
-      // transaction as the transcript it cites.
-      skillObservations: mergedEvidence.skillObservations,
-      skillLapses: mergedEvidence.skillLapses,
       taskOutcome: resolvedOutcome,
       sceneState: finalSceneState,
       summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, mergedEvidence.observations.length, hasLearnerSpeech),
@@ -1885,7 +1889,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         t.live.feedbackReviewDue,
       ],
       operationalTelemetry: operationalTelemetryRef.current,
-    });
+    }, mergedEvidence.validatedSkillEvidence);
   }, [
     attemptId,
     coldAttempt,
