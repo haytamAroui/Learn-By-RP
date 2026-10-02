@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   COMMUNICATIVE_SKILLS_CATALOG,
+  RETIRED_COMMUNICATIVE_SKILL_IDS,
   communicativeSkillFor,
 } from './skills';
 
@@ -18,6 +19,11 @@ describe('communicative skill catalog contract', () => {
           .toBeGreaterThan(0);
       }
     }
+  });
+
+  it('never reuses a retired stable id', () => {
+    const active = new Set(COMMUNICATIVE_SKILLS_CATALOG.map(skill => skill.id));
+    expect(RETIRED_COMMUNICATIVE_SKILL_IDS.filter(id => active.has(id))).toEqual([]);
   });
 
   it('keeps parent and deprecation successor references valid and acyclic', () => {
