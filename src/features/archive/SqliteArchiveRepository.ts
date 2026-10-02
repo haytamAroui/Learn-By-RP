@@ -199,8 +199,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO support_exposures
             (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
-             exposure, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             target_skill_id, target_opportunity_id, target_phrase_id, exposure, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           exposure.id,
           exposure.sessionId,
           exposure.attemptId,
@@ -208,6 +208,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           exposure.source,
           exposure.kind,
           JSON.stringify(exposure.targetItemIds ?? []),
+          exposure.targetSkillId ?? null,
+          exposure.targetOpportunityId ?? null,
+          exposure.targetPhraseId ?? null,
           exposure.exposure,
           exposure.recordedAt
         );
@@ -320,8 +323,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO support_exposures
             (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
-             exposure, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             target_skill_id, target_opportunity_id, target_phrase_id, exposure, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           exposure.id,
           exposure.sessionId,
           exposure.attemptId,
@@ -329,6 +332,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           exposure.source,
           exposure.kind,
           JSON.stringify(exposure.targetItemIds ?? []),
+          exposure.targetSkillId ?? null,
+          exposure.targetOpportunityId ?? null,
+          exposure.targetPhraseId ?? null,
           exposure.exposure,
           exposure.recordedAt
         );
@@ -1369,6 +1375,11 @@ function mapExposureRow(row: Record<string, unknown>): SupportExposure {
     source: String(row.source) as SupportExposure['source'],
     kind: String(row.kind) as SupportExposure['kind'],
     targetItemIds: parseJson<string[]>(String(row.target_item_ids ?? '[]'), []),
+    targetSkillId: row.target_skill_id ? String(row.target_skill_id) : undefined,
+    targetOpportunityId: row.target_opportunity_id
+      ? String(row.target_opportunity_id)
+      : undefined,
+    targetPhraseId: row.target_phrase_id ? String(row.target_phrase_id) : undefined,
     exposure: String(row.exposure) as SupportExposure['exposure'],
     recordedAt: String(row.recorded_at),
   };
