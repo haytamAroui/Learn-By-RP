@@ -12,6 +12,60 @@ import { matchPhraseInText, normalizeText } from './matching';
 import { classifyEvidence, countsAsIndependentEvidence } from './evidence';
 import { isPhraseProductionSupportRelevant } from './supportScope';
 
+const VALIDATED_PHRASE_EVIDENCE_BRAND = Symbol('learnbyrp.validated-phrase-evidence');
+
+export type ValidatedPhraseEvidence = Readonly<{
+  observations: readonly LearningObservation[];
+  [VALIDATED_PHRASE_EVIDENCE_BRAND]: true;
+}>;
+
+function validatedPhraseEvidence(
+  observations: readonly LearningObservation[]
+): ValidatedPhraseEvidence {
+  return Object.freeze({
+    observations: Object.freeze([...observations]),
+    [VALIDATED_PHRASE_EVIDENCE_BRAND]: true as const,
+  });
+}
+
+export const EMPTY_VALIDATED_PHRASE_EVIDENCE: ValidatedPhraseEvidence =
+  validatedPhraseEvidence([]);
+
+export function assertValidatedPhraseEvidence(
+  value: unknown
+): asserts value is ValidatedPhraseEvidence {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    (value as Record<PropertyKey, unknown>)[VALIDATED_PHRASE_EVIDENCE_BRAND] !== true
+  ) {
+    throw new Error('Phrase evidence write rejected: validator-issued evidence bundle required');
+  }
+}
+
+function phraseObservationIdentity(observation: LearningObservation): string {
+  return [
+    observation.sessionId,
+    observation.attemptId,
+    observation.sourceTurnId,
+    observation.sourceRevision,
+    observation.itemId,
+  ].join('::');
+}
+
+export function mergeValidatedPhraseEvidence(
+  bundles: readonly ValidatedPhraseEvidence[]
+): ValidatedPhraseEvidence {
+  const observations = new Map<string, LearningObservation>();
+  for (const bundle of bundles) {
+    assertValidatedPhraseEvidence(bundle);
+    for (const observation of bundle.observations) {
+      observations.set(phraseObservationIdentity(observation), observation);
+    }
+  }
+  return validatedPhraseEvidence([...observations.values()]);
+}
+
 export interface AssessmentCandidate {
   itemId?: string;
   candidateForm: string;
@@ -46,6 +100,7 @@ export function validateAssessmentProposal(
   isRehearsalAttempt: boolean = false
 ): {
   validatedObservations: LearningObservation[];
+  evidence: ValidatedPhraseEvidence;
   taskOutcome: TaskOutcome;
   rejectedProposals: { candidate: AssessmentCandidate; reason: string }[];
 } {
@@ -195,6 +250,7 @@ export function validateAssessmentProposal(
 
   return {
     validatedObservations,
+    evidence: validatedPhraseEvidence(validatedObservations),
     taskOutcome: proposal.taskOutcome || 'unknown',
     rejectedProposals
   };
@@ -216,7 +272,11 @@ export function buildLocalObservations(input: {
   candidates: Array<{ id: string; form: string; meaning: string }>;
   isColdAttempt: boolean;
   isRehearsalAttempt: boolean;
-}): { observations: LearningObservation[]; ambiguous: number } {
+}): {
+  observations: LearningObservation[];
+  evidence: ValidatedPhraseEvidence;
+  ambiguous: number;
+} {
   const { sessionId, attemptId, passages, supportExposures, candidates, isColdAttempt, isRehearsalAttempt } =
     input;
 
@@ -297,7 +357,81 @@ export function buildLocalObservations(input: {
     }
   }
 
-  return { observations, ambiguous };
+  return {
+    observations,
+    evidence: validatedPhraseEvidence(observations),
+    ambiguous,
+  };
+}
+
+export interface DrillReviewProposal {
+  phrase: Pick<PhraseItem, 'id' | 'form' | 'meaning'>;
+  quote: string;
+  modality: 'spoken' | 'typed';
+  selfReportedResult: 'remembered' | 'supported';
+  learnerAttemptCaptured: boolean;
+  answerRevealedBeforeAttempt: boolean;
+  modelAudioPlayedBeforeAttempt: boolean;
+  recordedAt?: string;
+}
+
+/**
+ * Deterministic phrase-drill evidence boundary.
+ *
+ * Reveal/listen are support. They cannot become learner production, and they
+ * cannot produce independent recall. If no learner attempt was captured, the
+ * validator returns an empty bundle rather than inventing the target phrase as a
+ * learner quote.
+ */
+export function validateDrillReview(
+  input: DrillReviewProposal
+): ValidatedPhraseEvidence {
+  const quote = input.quote.trim();
+  if (!input.learnerAttemptCaptured || !quote) {
+    return EMPTY_VALIDATED_PHRASE_EVIDENCE;
+  }
+
+  const supportBeforeAttempt =
+    input.answerRevealedBeforeAttempt ||
+    input.modelAudioPlayedBeforeAttempt;
+  const unassisted =
+    input.selfReportedResult === 'remembered' && !supportBeforeAttempt;
+
+  const modality = input.modality;
+  const retrieval: RetrievalType = unassisted
+    ? modality === 'spoken'
+      ? 'unassisted'
+      : 'unknown'
+    : 'assisted';
+
+  const recordedAt = input.recordedAt ?? new Date().toISOString();
+  const observation: LearningObservation = {
+    observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: 'drill',
+    attemptId: 'drill',
+    sourceTurnId: `drill-${Date.now()}`,
+    sourceRevision: 'rev-drill',
+    itemId: input.phrase.id,
+    candidateForm: input.phrase.form,
+    meaning: input.phrase.meaning,
+    quote,
+    modality,
+    retrieval,
+    taskOutcome: 'achieved',
+    rehearsal: false,
+    supportExposureIds: [],
+    recordedAt,
+    category: classifyEvidence({
+      retrieval,
+      modality,
+      exposures: [],
+      modelingWithinWindow: supportBeforeAttempt,
+      attemptedButFailed: false,
+      wasCorrected: false,
+    }),
+  };
+
+  return validatedPhraseEvidence([observation]);
 }
 
 /**
