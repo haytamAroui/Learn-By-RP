@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { CAFE_SCENE } from '../../content/scenes';
 import { OpportunityInstance } from '../../types';
 import { applyResult, createInitialScene, reduceSceneAction } from './sceneReducer';
-import { acceptSemanticCandidate, decideDirector } from './director';
+import { acceptSemanticCandidate, decideDirector, DirectorCadence } from './director';
 
 const SESSION = 'director-session';
 const ATTEMPT = 'attempt-1';
@@ -160,5 +160,100 @@ describe('deterministic director', () => {
       accepted: false,
       reason: 'unknown_or_non_executable',
     });
+  });
+});
+
+
+describe('DirectorCadence', () => {
+  it('ignores audio frames, interim ASR and streaming response deltas', () => {
+    const cadence = new DirectorCadence();
+    const state = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+
+    for (const event of [
+      { type: 'audio_level' as const },
+      { type: 'interim_transcript' as const },
+      { type: 'response_text_delta' as const },
+    ]) {
+      expect(
+        cadence.evaluate({
+          event,
+          scene: CAFE_SCENE,
+          state,
+          opportunities: [],
+        })
+      ).toBeNull();
+    }
+
+    // Ignored transport events do not consume the revision. A completed turn may
+    // still run the deterministic Director once.
+    expect(
+      cadence.evaluate({
+        event: { type: 'learner_turn_completed', turnId: 'p-1' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: [],
+      })
+    ).toMatchObject({ kind: 'trigger_complication' });
+  });
+
+  it('evaluates at most once for the same attempt and authoritative revision', () => {
+    const cadence = new DirectorCadence();
+    const state = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+
+    expect(
+      cadence.evaluate({
+        event: { type: 'learner_turn_completed', turnId: 'p-1' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: [],
+      })
+    ).not.toBeNull();
+
+    expect(
+      cadence.evaluate({
+        event: { type: 'actor_turn_completed', turnId: 'p-2' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: [],
+      })
+    ).toBeNull();
+  });
+
+  it('allows a new evaluation after an accepted action advances scene revision', () => {
+    const cadence = new DirectorCadence();
+    let state = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+
+    expect(
+      cadence.evaluate({
+        event: { type: 'learner_turn_completed', turnId: 'p-1' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: [],
+      })
+    ).not.toBeNull();
+
+    const result = reduceSceneAction({
+      scene: CAFE_SCENE,
+      state,
+      proposal: {
+        actionId: 'confirm-1',
+        sessionId: SESSION,
+        attemptId: ATTEMPT,
+        expectedSceneRevision: state.revision,
+        action: 'confirm_order_item',
+        payload: { item: 'café' },
+        sourceTurnIds: ['p-1'],
+      },
+    });
+    state = applyResult(CAFE_SCENE, state, result);
+
+    expect(
+      cadence.evaluate({
+        event: { type: 'scene_action_accepted', actionId: 'confirm-1' },
+        scene: CAFE_SCENE,
+        state,
+        opportunities: [],
+      })
+    ).not.toBeNull();
   });
 });
