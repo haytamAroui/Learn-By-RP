@@ -315,7 +315,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     });
   }
 
-  async completeSession(session: SessionRecord): Promise<void> {
+  async completeSession(session: PersistableSessionRecord): Promise<void> {
     const now = new Date().toISOString();
 
     await this.transaction(async tx => {
