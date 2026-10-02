@@ -178,6 +178,78 @@ describe('prepareArchiveImport', () => {
     });
   });
 
+  it('rejects a real quote attributed to a different curated phrase', () => {
+    const raw = session();
+    (raw.observations[0] as any).itemId = 'phrase.es.tea';
+    (raw.observations[0] as any).candidateForm = 'té verde';
+
+    const result = prepareArchiveImport({
+      schemaVersion: 1,
+      sessions: [raw],
+      phrases: [
+        PHRASE,
+        {
+          ...PHRASE,
+          id: 'phrase.es.tea',
+          form: 'té verde',
+          meaning: 'green tea',
+        },
+      ],
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/unverified phrase evidence/i),
+    });
+  });
+
+  it('rejects unassisted phrase evidence when production support preceded it', () => {
+    const raw = session({
+      supportExposures: [
+        {
+          id: 'exp-phrase',
+          sessionId: 'session-1',
+          attemptId: 'attempt-1',
+          source: 'coach',
+          kind: 'full_form',
+          targetPhraseId: 'phrase.es.1',
+          targetItemIds: ['phrase.es.1'],
+          exposure: 'visible',
+          recordedAt: '2026-10-02T08:00:30.000Z',
+        },
+      ],
+    });
+
+    expect(prepareArchiveImport(archive(raw))).toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/unverified phrase evidence/i),
+    });
+  });
+
+  it('rejects unassisted skill evidence when skill-scoped form support preceded it', () => {
+    const raw = session({
+      supportExposures: [
+        {
+          id: 'exp-skill',
+          sessionId: 'session-1',
+          attemptId: 'attempt-1',
+          source: 'coach',
+          kind: 'full_form',
+          targetSkillId: 'skill-request-substitution',
+          targetOpportunityId: 'opp-1',
+          targetItemIds: [],
+          exposure: 'visible',
+          recordedAt: '2026-10-02T08:00:30.000Z',
+        },
+      ],
+    });
+
+    expect(prepareArchiveImport(archive(raw))).toMatchObject({
+      ok: false,
+      message: expect.stringMatching(/unverified skill evidence/i),
+    });
+  });
+
   it('rejects validated-explicit skill evidence without its validated taken opportunity', () => {
     const raw = session({ opportunityInstances: [] });
 
