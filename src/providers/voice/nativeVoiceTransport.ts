@@ -331,15 +331,12 @@ export class NativeVoiceTransport implements VoiceTransport {
 
       await new Promise<void>(resolve => {
         let settled = false;
-        const subscription = player.addListener('playbackStatusUpdate', status => {
-          if (!status?.didJustFinish) return;
-          settle(true);
-        });
+        let subscription: { remove: () => void } | null = null;
 
         const settle = (naturalEnd: boolean) => {
           if (settled) return;
           settled = true;
-          subscription.remove();
+          subscription?.remove();
           try {
             if (!naturalEnd) player.pause();
             player.remove();
@@ -359,6 +356,10 @@ export class NativeVoiceTransport implements VoiceTransport {
           resolve();
         };
 
+        subscription = player.addListener('playbackStatusUpdate', status => {
+          if (!status?.didJustFinish) return;
+          settle(true);
+        });
         this.cancelActivePlayback = () => settle(false);
         player.play();
       });
