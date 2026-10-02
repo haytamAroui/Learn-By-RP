@@ -31,35 +31,72 @@ function proposal(overrides: Partial<SceneActionProposal> = {}): SceneActionProp
 }
 
 describe('evaluatePredicate', () => {
-  const facts = { itemConfirmed: true, takeaway: false, note: 'hola' };
+  const facts = {
+    itemConfirmed: true,
+    serviceMode: 'unset',
+    count: 2,
+  };
 
-  it('checks fact presence', () => {
-    expect(evaluatePredicate({ fact: 'itemConfirmed' }, facts)).toBe(true);
-    expect(evaluatePredicate({ fact: 'missing' }, facts)).toBe(false);
-  });
-
-  it('treats false and empty string as absent', () => {
-    expect(evaluatePredicate({ fact: 'takeaway' }, facts)).toBe(false);
-    expect(evaluatePredicate({ notFact: 'takeaway' }, facts)).toBe(true);
-  });
-
-  it('checks equality', () => {
-    expect(evaluatePredicate({ fact: 'oatMilkAvailable', equals: false }, { oatMilkAvailable: false })).toBe(true);
-    expect(evaluatePredicate({ fact: 'oatMilkAvailable', equals: false }, { oatMilkAvailable: true })).toBe(false);
-  });
-
-  it('composes with all and any', () => {
+  it('supports eq, neq, in and exists', () => {
+    expect(evaluatePredicate({ op: 'eq', fact: 'itemConfirmed', value: true }, facts)).toBe(true);
+    expect(evaluatePredicate({ op: 'neq', fact: 'serviceMode', value: 'takeaway' }, facts)).toBe(true);
     expect(
       evaluatePredicate(
-        { all: [{ fact: 'itemConfirmed' }, { any: [{ fact: 'takeaway' }, { fact: 'forHere' }] }] },
+        { op: 'in', fact: 'serviceMode', values: ['takeaway', 'for_here'] },
+        facts
+      )
+    ).toBe(false);
+    expect(evaluatePredicate({ op: 'exists', fact: 'count' }, facts)).toBe(true);
+    expect(evaluatePredicate({ op: 'exists', fact: 'missing' }, facts)).toBe(false);
+  });
+
+  it('supports bounded numeric comparisons', () => {
+    expect(evaluatePredicate({ op: 'gte', fact: 'count', value: 2 }, facts)).toBe(true);
+    expect(evaluatePredicate({ op: 'lte', fact: 'count', value: 1 }, facts)).toBe(false);
+  });
+
+  it('composes and, or and not', () => {
+    expect(
+      evaluatePredicate(
+        {
+          op: 'and',
+          predicates: [
+            { op: 'eq', fact: 'itemConfirmed', value: true },
+            {
+              op: 'or',
+              predicates: [
+                { op: 'eq', fact: 'serviceMode', value: 'takeaway' },
+                { op: 'eq', fact: 'serviceMode', value: 'for_here' },
+              ],
+            },
+          ],
+        },
         facts
       )
     ).toBe(false);
 
     expect(
       evaluatePredicate(
-        { all: [{ fact: 'itemConfirmed' }, { any: [{ fact: 'takeaway' }, { fact: 'note' }] }] },
+        {
+          op: 'not',
+          predicate: { op: 'eq', fact: 'serviceMode', value: 'takeaway' },
+        },
         facts
+      )
+    ).toBe(true);
+  });
+
+  it('supports deterministic action counts', () => {
+    expect(
+      evaluatePredicate(
+        {
+          op: 'countOf',
+          action: 'confirm_order_item',
+          comparator: 'gte',
+          value: 2,
+        },
+        facts,
+        { confirm_order_item: 2 }
       )
     ).toBe(true);
   });
@@ -95,7 +132,6 @@ describe('reduceSceneAction — acceptance', () => {
 
     expect(result.accepted).toBe(true);
     expect(result.newFacts.itemConfirmed).toBe(true);
-    expect(result.newFacts.orderedItem).toBe('café con leche');
     expect(result.revision).toBe(2);
   });
 
@@ -112,7 +148,7 @@ describe('reduceSceneAction — acceptance', () => {
           actionId: 'act-2',
           expectedSceneRevision: 2,
           action: 'confirm_takeaway',
-          payload: { takeaway: true },
+          payload: {},
         }),
       })
     );
@@ -148,7 +184,7 @@ describe('reduceSceneAction — rejection (test #2)', () => {
     const result = reduceSceneAction({
       scene: CAFE_SCENE,
       state: freshState(),
-      proposal: proposal({ action: 'confirm_takeaway', payload: { takeaway: true } }),
+      proposal: proposal({ action: 'confirm_takeaway', payload: {} }),
     });
 
     expect(result.accepted).toBe(false);
@@ -182,7 +218,7 @@ describe('reduceSceneAction — rejection (test #2)', () => {
     const result = reduceSceneAction({
       scene: CAFE_SCENE,
       state: before,
-      proposal: proposal({ action: 'confirm_takeaway', payload: { takeaway: true } }),
+      proposal: proposal({ action: 'confirm_takeaway', payload: {} }),
     });
 
     expect(result.newFacts).toEqual(before.facts);
@@ -190,95 +226,30 @@ describe('reduceSceneAction — rejection (test #2)', () => {
   });
 });
 
-describe('mutations', () => {
-  it('unsets the named fact, not a different one', () => {
-    const scene = {
+describe('finite effects', () => {
+  it('sets only an authored finite fact value and keeps sibling facts', () => {
+    const scene: SceneDefinition = {
       ...CAFE_SCENE,
-      actionSchemas: {
-        ...CAFE_SCENE.actionSchemas,
-        confirm_order_item: { type: 'object' as const, required: [], properties: {}, additionalProperties: true },
-      },
       allowedActions: [
         {
           name: 'confirm_order_item',
-          actor: 'character' as const,
+          actor: 'character',
           description: 'test action',
           preconditions: [],
-          effects: [{ unset: 'trainDepartsSoon' as const }],
+          effects: [{ set: 'trainDepartsSoon', value: false }],
         },
       ],
-    } as unknown as SceneDefinition;
+    };
 
     const result = reduceSceneAction({
       scene,
       state: freshState(scene),
-      proposal: proposal({ payload: {} }),
+      proposal: proposal(),
     });
 
     expect(result.accepted).toBe(true);
-    expect(result.newFacts.trainDepartsSoon).toBeUndefined();
-    // Sibling facts survive.
+    expect(result.newFacts.trainDepartsSoon).toBe(false);
     expect(result.newFacts.menuVisible).toBe(true);
-  });
-
-  it('sets a nested path without dropping its siblings', () => {
-    const scene = {
-      ...CAFE_SCENE,
-      initialFacts: { order: { item: 'unknown', mode: 'unknown' } },
-      actionSchemas: {
-        ...CAFE_SCENE.actionSchemas,
-        confirm_order_item: { type: 'object' as const, required: [], properties: {}, additionalProperties: true },
-      },
-      allowedActions: [
-        {
-          name: 'confirm_order_item',
-          actor: 'character' as const,
-          description: 'test',
-          preconditions: [],
-          effects: [{ setPath: 'order.item' as const, from: 'item' }],
-        },
-      ],
-    } as unknown as SceneDefinition;
-
-    const result = reduceSceneAction({
-      scene,
-      state: freshState(scene),
-      proposal: proposal({ payload: { item: 'café con leche' } }),
-    });
-
-    expect(result.newFacts.order).toEqual({ item: 'café con leche', mode: 'unknown' });
-  });
-
-  it('merges an object into a fact while keeping existing keys', () => {
-    const scene = {
-      ...CAFE_SCENE,
-      initialFacts: { order: { item: 'unknown', mode: 'unknown' } },
-      actionSchemas: {
-        ...CAFE_SCENE.actionSchemas,
-        confirm_order_item: { type: 'object' as const, required: [], properties: {}, additionalProperties: true },
-      },
-      allowedActions: [
-        {
-          name: 'confirm_order_item',
-          actor: 'character' as const,
-          description: 'test',
-          preconditions: [],
-          effects: [{ merge: 'order' as const, from: 'details' }],
-        },
-      ],
-    } as unknown as SceneDefinition;
-
-    const result = reduceSceneAction({
-      scene,
-      state: freshState(scene),
-      proposal: proposal({ payload: { details: { size: 'grande' } } }),
-    });
-
-    expect(result.newFacts.order).toEqual({
-      item: 'unknown',
-      mode: 'unknown',
-      size: 'grande',
-    });
   });
 });
 
@@ -321,7 +292,8 @@ describe('reduceSceneAction — idempotency (test #3)', () => {
     });
 
     // The duplicate returns the original facts, not the tampered ones.
-    expect(second.newFacts.orderedItem).toBe('café con leche');
+    expect(second.newFacts.itemConfirmed).toBe(true);
+    expect(second.newFacts.tampered).toBeUndefined();
   });
 });
 
@@ -350,7 +322,7 @@ describe('reduceSceneAction — stale revision (test #6)', () => {
 
 describe('completion (test #1: paraphrase succeeds, wrong item does not)', () => {
   it('is not achieved by an item alone', () => {
-    const facts = { ...CAFE_SCENE.initialFacts, itemConfirmed: true, orderedItem: 'café con leche' };
+    const facts = { ...CAFE_SCENE.initialFacts, itemConfirmed: true };
     expect(evaluateCompletion(CAFE_SCENE, facts)).toBe('partial');
   });
 
@@ -358,8 +330,7 @@ describe('completion (test #1: paraphrase succeeds, wrong item does not)', () =>
     const facts = {
       ...CAFE_SCENE.initialFacts,
       itemConfirmed: true,
-      orderedItem: 'café con leche',
-      forHere: true,
+      serviceMode: 'for_here',
     };
     expect(evaluateCompletion(CAFE_SCENE, facts)).toBe('achieved');
   });
@@ -368,7 +339,7 @@ describe('completion (test #1: paraphrase succeeds, wrong item does not)', () =>
     const facts = {
       ...CAFE_SCENE.initialFacts,
       itemConfirmed: true,
-      takeaway: true,
+      serviceMode: 'takeaway',
     };
     expect(evaluateCompletion(CAFE_SCENE, facts)).toBe('achieved');
   });
@@ -380,7 +351,11 @@ describe('completion (test #1: paraphrase succeeds, wrong item does not)', () =>
   it('never completes purely on wording, only on facts', () => {
     // The reducer never sees the learner's sentence. A beautifully formed
     // request and a clumsy one that names an item are treated identically.
-    const clumsy = { ...CAFE_SCENE.initialFacts, itemConfirmed: true, forHere: true };
+    const clumsy = {
+      ...CAFE_SCENE.initialFacts,
+      itemConfirmed: true,
+      serviceMode: 'for_here',
+    };
     expect(evaluateCompletion(CAFE_SCENE, clumsy)).toBe('achieved');
   });
 });
@@ -429,7 +404,7 @@ describe('the reducer is not specialised to one scene', () => {
     const result = reduceSceneAction({
       scene: PHARMACY_SCENE,
       state: createInitialScene(PHARMACY_SCENE, SESSION, 'attempt-1'),
-      proposal: proposal({ action: 'confirm_takeaway', payload: { takeaway: true } }),
+      proposal: proposal({ action: 'confirm_takeaway', payload: {} }),
     });
 
     expect(result.accepted).toBe(false);
