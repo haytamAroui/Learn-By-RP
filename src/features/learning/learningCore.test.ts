@@ -202,7 +202,7 @@ describe('validateAssessmentProposal', () => {
           kind: 'full_form',
           targetItemIds: [PHRASE.id],
           exposure: 'visible',
-          recordedAt: new Date().toISOString(),
+          recordedAt: '2026-01-01T09:59:30.000Z',
         },
       ];
 
@@ -221,7 +221,7 @@ describe('validateAssessmentProposal', () => {
           kind: 'full_form',
           targetItemIds: [PHRASE.id],
           exposure: 'visible',
-          recordedAt: new Date().toISOString(),
+          recordedAt: '2026-01-01T09:59:30.000Z',
         },
       ];
 
@@ -328,7 +328,7 @@ describe('buildLocalObservations', () => {
           kind: 'full_form',
           targetItemIds: [PHRASE.id],
           exposure: 'visible',
-          recordedAt: new Date().toISOString(),
+          recordedAt: '2026-01-01T09:59:30.000Z',
         },
       ],
       candidates,
