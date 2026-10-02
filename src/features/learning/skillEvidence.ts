@@ -5,7 +5,11 @@ import {
   isSkillProductionSupportRelevant,
 } from './supportScope';
 import { normalizeText } from './matching';
-import { LEARNING_WINDOWS, SKILL_POLICY } from './policy';
+import {
+  LEARNING_POLICY_VERSION,
+  LEARNING_WINDOWS,
+  SKILL_POLICY,
+} from './policy';
 import {
   CommunicativeSkillId,
   EvidenceSource,
@@ -399,6 +403,12 @@ export function validateSkillEvidenceProposal(
       supportExposureIds: supportReferenceIds,
       evidenceSource,
       quote: candidate.quote,
+      dayKey: (passage.endedAt ?? passage.startedAt ?? new Date().toISOString()).slice(0, 10),
+      reasonCode:
+        evidenceSource === 'validated_explicit'
+          ? 'validated_demonstration'
+          : 'legacy_inferred_demonstration',
+      policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: passage.endedAt ?? passage.startedAt ?? new Date().toISOString(),
     });
   }
@@ -496,6 +506,14 @@ export function deriveLapses(
       opportunityInstanceId: opportunity.id,
       demonstration: 'attempted_not_demonstrated',
       basis: 'cold_attempt_failed',
+      dayKey: (
+        opportunity.recordedAt ??
+        passage.endedAt ??
+        passage.startedAt ??
+        new Date().toISOString()
+      ).slice(0, 10),
+      reasonCode: 'cold_taken_opportunity_not_demonstrated',
+      policyVersion: LEARNING_POLICY_VERSION,
       recordedAt:
         opportunity.recordedAt ??
         passage.endedAt ??
