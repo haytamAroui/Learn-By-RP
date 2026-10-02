@@ -17,7 +17,10 @@ import {
   Fragment,
 } from '../../types';
 import { INITIAL_PHRASE_ITEMS } from '../../data/missions';
-import { projectPhraseState } from '../learning/learningCore';
+import {
+  projectPhraseState,
+  validateDrillReview,
+} from '../learning/learningCore';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
 import { CONSENT_VERSION } from './schema';
 import {
@@ -1094,26 +1097,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     unassisted: boolean;
   }): Promise<void> {
     const db = await getDatabase();
-    const { phrase, quote, modality, unassisted } = input;
-    const now = new Date().toISOString();
-
-    const observation: LearningObservation = {
-      observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sessionId: 'drill',
-      attemptId: 'drill',
-      sourceTurnId: `drill-${Date.now()}`,
-      sourceRevision: 'rev-drill',
-      itemId: phrase.id,
-      candidateForm: phrase.form,
-      meaning: phrase.meaning,
-      quote,
-      modality,
-      retrieval: unassisted ? 'unassisted' : 'assisted',
-      taskOutcome: 'achieved',
-      rehearsal: false,
-      supportExposureIds: [],
-      recordedAt: now,
-    };
+    const observation = validateDrillReview(input);
+    if (!observation) return;
 
     await withTransaction(async txn => {
       await txn.runAsync(
@@ -1134,15 +1119,15 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         observation.modality,
         observation.retrieval,
         observation.taskOutcome,
-        0,
-        JSON.stringify([]),
+        observation.rehearsal ? 1 : 0,
+        JSON.stringify(observation.supportExposureIds),
         LEARNING_POLICY_VERSION,
         observation.recordedAt
       );
 
       await this.writePhraseRow(
         txn,
-        projectPhraseState(phrase, [observation, ...[]])
+        projectPhraseState(input.phrase, [observation])
       );
     });
   }
