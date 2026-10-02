@@ -442,7 +442,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
         (existing.supportExposures ?? []).map(exposure => [exposure.id, exposure])
       );
       for (const exposure of exposures) {
-        if (exposure.sessionId !== sessionId) continue;
+        if (exposure.sessionId !== sessionId || byId.has(exposure.id)) continue;
         byId.set(exposure.id, exposure);
       }
 
