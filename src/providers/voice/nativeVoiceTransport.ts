@@ -8,7 +8,12 @@ import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from 'expo-audio';
 import { File, Paths, EncodingType } from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import { pickBestNativeVoice, resolveSpeechLocale } from './language';
-import type { VoiceEvent, VoicePlaybackOptions, VoiceTransport } from './types';
+import type {
+  TransportCapabilities,
+  VoiceEvent,
+  VoicePlaybackOptions,
+  VoiceTransport,
+} from './types';
 
 /**
  * Voice transport backed by expo-speech-recognition (capture + interim results)
@@ -19,6 +24,14 @@ import type { VoiceEvent, VoicePlaybackOptions, VoiceTransport } from './types';
  */
 export class NativeVoiceTransport implements VoiceTransport {
   readonly id = 'native-expo';
+  readonly capabilities: TransportCapabilities = {
+    speechRateControl: true,
+    endOfTurnDelayControl: false,
+    pushToTalk: true,
+    scriptedLineInjection: true,
+    blockingToolCalls: false,
+    transcriptRevisions: true,
+  };
   private listeners: ((event: VoiceEvent) => void)[] = [];
   private subscriptions: Array<{ remove: () => void }> = [];
   private targetLanguage = 'es';
