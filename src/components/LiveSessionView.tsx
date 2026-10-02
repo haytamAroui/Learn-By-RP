@@ -112,6 +112,8 @@ interface LiveSessionViewProps {
   initialSession: SessionRecord;
   accommodations?: AccommodationProfile;
   preferredSpeechRate?: number;
+  /** Read-only prior-session briefing/recap rows used for cross-session evidence only. */
+  historicalSupportExposures?: SupportExposure[];
   onEndSession: (session: SessionRecord) => void;
 }
 
@@ -306,6 +308,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   initialSession,
   accommodations = { enabled: [] },
   preferredSpeechRate = 1,
+  historicalSupportExposures = [],
   onEndSession,
 }) => {
   const { t, language } = useI18n();
@@ -1375,6 +1378,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     // Assessment only sees the current attempt. The archive keeps every prior
     // attempt so retry never erases learner evidence or transcript provenance.
     const finalPassages = passagesRef.current;
+    const evidenceSupportExposures = [
+      ...historicalSupportExposures,
+      ...supportExposures,
+    ];
     const archivedPassages = mergeAttemptPassages(
       priorAttemptPassagesRef.current,
       finalPassages
@@ -1430,7 +1437,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         // still validated client-side; this only narrows what is offered.
         missionId: mission.id,
         passages: finalPassages,
-        supportExposures,
+        supportExposures: evidenceSupportExposures,
         usefulPhrases: mission.usefulPhrases,
         language: mission.language,
         opportunityInstances: finalOpportunityInstances
@@ -1464,7 +1471,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       const validated = validateAssessmentProposal(
         proposal,
         finalPassages,
-        supportExposures,
+        evidenceSupportExposures,
         wasRehearsal
       );
       finalObservations = validated.validatedObservations;
@@ -1505,7 +1512,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       attemptId,
       mission,
       passages: archivedPassages,
-      supportExposures,
+      supportExposures: evidenceSupportExposures,
       opportunityInstances: opportunityAssessmentView,
       isRehearsalAttempt: wasRehearsal,
       sessionEndReason: endReason,
@@ -1538,7 +1545,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       sessionId,
       attemptId,
       passages: finalPassages,
-      supportExposures,
+      supportExposures: evidenceSupportExposures,
       candidates: mission.usefulPhrases,
       isColdAttempt: coldAttempt,
       isRehearsalAttempt: wasRehearsal,
@@ -1622,6 +1629,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     t.live,
     sessionId,
     supportExposures,
+    historicalSupportExposures,
   ]);
 
   if (!mission) return null;
