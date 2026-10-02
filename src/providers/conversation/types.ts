@@ -5,6 +5,8 @@ export interface ConversationTurnInput {
   setting: string;
   learnerGoal: string;
   sceneFacts: any;
+  /** Authored action names only; actor may propose no other action. */
+  allowedActions: string[];
   mode: string;
   recentPassages: any[];
   userMessage: string;
