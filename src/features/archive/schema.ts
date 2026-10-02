@@ -321,6 +321,13 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE support_exposures ADD COLUMN policy_version INTEGER;`,
     ],
   },
+  {
+    version: 7,
+    name: 'persist_scene_action_counts',
+    statements: [
+      `ALTER TABLE scene_state ADD COLUMN action_counts TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
