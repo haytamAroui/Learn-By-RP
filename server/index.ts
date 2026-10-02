@@ -154,6 +154,19 @@ app.post(
   validateBody(validateRealtimeSessionRequest),
   async (req: Request, res: Response) => {
   try {
+    const missionId = req.body?.missionId;
+    const mission = MISSION_CATALOG.find(item => item.id === missionId);
+    if (!mission) {
+      res.status(400).json({ error: 'missionId must identify a released mission' });
+      return;
+    }
+    if (isRegulatedHealthMission(mission)) {
+      res.status(403).json({
+        error: 'realtime_not_allowed_for_regulated_health_mission',
+      });
+      return;
+    }
+
     if (!providers.realtime) {
       res.status(503).json({ error: 'OpenAI Realtime is not configured' });
       return;
@@ -168,7 +181,7 @@ app.post(
     } = req.body ?? {};
 
     const session = await providers.realtime.createSession(
-      { targetLanguage, explanationLanguage, instructions, voice },
+      { missionId, targetLanguage, explanationLanguage, instructions, voice },
       typeof safetyIdentifier === 'string' ? safetyIdentifier : undefined
     );
 
