@@ -1,11 +1,9 @@
 import { describe, expect, it } from 'vitest';
 import { consentDecisionsComplete } from '../src/features/consent/consentState';
-import type { ConsentRecord } from '../src/features/archive/ArchiveRepository.types';
-
 function decision(
-  scope: ConsentRecord['scope'],
+  scope: 'voice' | 'saved_analysis',
   granted: boolean
-): ConsentRecord {
+) {
   return {
     id: scope,
     scope,
