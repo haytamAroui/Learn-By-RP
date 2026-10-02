@@ -30,6 +30,7 @@ import {
 } from './ArchiveRepository.types';
 import { getDatabase, withTransaction } from './database';
 import { Db } from './db';
+import { prepareArchiveImport } from './archiveImportValidation';
 
 export type { ConsentRecord } from './ArchiveRepository.types';
 
@@ -1197,125 +1198,62 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     message: string;
     counts?: { sessions: number; phrases: number; observations: number };
   }> {
-    let parsed: any;
+    let parsed: unknown;
     try {
       parsed = JSON.parse(json);
     } catch (err) {
-      return { success: false, message: `Failed to import archive: ${(err as Error).message}` };
-    }
-
-    if (!parsed || typeof parsed !== 'object') {
-      return { success: false, message: 'Invalid JSON payload format' };
-    }
-
-    // Validate everything before mutating anything, so a malformed archive cannot
-    // leave the learner with half an archive and no undo.
-    if (parsed.schemaVersion !== undefined && parsed.schemaVersion !== 1) {
       return {
         success: false,
-        message: `Unsupported archive schema version: ${parsed.schemaVersion}`,
+        message: `Failed to import archive: ${(err as Error).message}`,
       };
     }
 
-    if (!Array.isArray(parsed.sessions) || !Array.isArray(parsed.phrases)) {
-      return { success: false, message: 'Archive is missing sessions or phrases' };
+    const prepared = prepareArchiveImport(parsed);
+    if (!prepared.ok) {
+      return { success: false, message: prepared.message };
     }
 
-    for (const phrase of parsed.phrases) {
-      if (typeof phrase?.id !== 'string' || typeof phrase?.form !== 'string') {
-        return { success: false, message: 'Archive contains a malformed phrase' };
-      }
+    // Validate the entire backup before the first mutation. Rehydration then uses
+    // the same validated session write boundary as live completion, instead of a
+    // second persistence path with weaker evidence rules.
+    if (prepared.value.preferences) {
+      await this.savePreferences({
+        ...DEFAULT_PREFERENCES,
+        ...prepared.value.preferences,
+      });
     }
 
-    for (const session of parsed.sessions) {
-      if (typeof session?.id !== 'string' || typeof session?.missionId !== 'string') {
-        return { success: false, message: 'Archive contains a malformed session' };
+    await this.savePhrases(prepared.value.phrases);
+
+    for (const session of prepared.value.sessions) {
+      await this.completeSession(session);
+
+      // completeSession intentionally writes active evidence. Restore learner
+      // hide/dispute choices afterwards without allowing those flags to become a
+      // separate evidence-creation path.
+      for (const observation of session.observations) {
+        if (observation.userDisputed) {
+          await this.disputeObservation(observation.observationId);
+        } else if (observation.hidden) {
+          await this.hideObservation(observation.observationId);
+        }
       }
-      if (Array.isArray(session.observations)) {
-        for (const observation of session.observations) {
-          if (typeof observation?.quote !== 'string') {
-            return { success: false, message: 'Archive contains an observation without a quote' };
-          }
+      for (const observation of session.skillObservations ?? []) {
+        if (observation.userDisputed) {
+          await this.disputeSkillObservation(observation.id);
+        } else if (observation.hidden) {
+          await this.hideSkillObservation(observation.id);
         }
       }
     }
-
-    const preferences = parsed.preferences
-      ? { ...DEFAULT_PREFERENCES, ...parsed.preferences }
-      : null;
-
-    await withTransaction(async txn => {
-      if (preferences) {
-        await txn.runAsync(
-          `INSERT OR REPLACE INTO preferences (id, payload, updated_at) VALUES (?, ?, ?)`,
-          PREFERENCES_ID,
-          JSON.stringify(preferences),
-          new Date().toISOString()
-        );
-      }
-
-      for (const phrase of parsed.phrases) {
-        await this.writePhraseRow(txn, phrase as PhraseItem);
-      }
-
-      for (const session of parsed.sessions) {
-        await txn.runAsync(
-          `INSERT OR REPLACE INTO sessions
-            (id, mission_id, mission_version, language, mode, provider, consent_version,
-             policy_version, state, end_reason, started_at, ended_at, usage_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-          session.id,
-          session.missionId,
-          session.missionVersion ?? 1,
-          session.language ?? 'es',
-          session.mode ?? 'guided',
-          'turn-based-http',
-          CONSENT_VERSION,
-          LEARNING_POLICY_VERSION,
-          session.state ?? 'ended',
-          session.endReason ?? null,
-          session.startedAt,
-          session.endedAt ?? null,
-          null
-        );
-
-        for (const observation of session.observations ?? []) {
-          await txn.runAsync(
-            `INSERT OR REPLACE INTO observations
-              (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
-               candidate_form, meaning, quote, modality, retrieval, task_outcome, rehearsal,
-               support_exposure_ids, policy_version, hidden, user_disputed, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            observation.observationId,
-            observation.sessionId ?? session.id,
-            observation.attemptId ?? 'attempt-1',
-            observation.sourceTurnId,
-            observation.sourceRevision,
-            observation.itemId,
-            observation.candidateForm,
-            observation.meaning ?? null,
-            observation.quote,
-            observation.modality,
-            observation.retrieval,
-            observation.taskOutcome,
-            observation.rehearsal ? 1 : 0,
-            JSON.stringify(observation.supportExposureIds ?? []),
-            LEARNING_POLICY_VERSION,
-            observation.hidden ? 1 : 0,
-            observation.userDisputed ? 1 : 0,
-            observation.recordedAt
-          );
-        }
-      }
-    });
 
     return {
       success: true,
-      message: `Successfully restored ${parsed.sessions.length} sessions, ${parsed.phrases.length} phrases, and ${parsed.observations?.length ?? 0} observations.`,
+      message: `Successfully restored ${prepared.value.sessions.length} sessions, ${prepared.value.phrases.length} phrases, and ${prepared.value.observationCount} observations.`,
       counts: {
-        sessions: parsed.sessions.length,
-        phrases: parsed.phrases.length,
-        observations: parsed.observations?.length ?? 0,
+        sessions: prepared.value.sessions.length,
+        phrases: prepared.value.phrases.length,
+        observations: prepared.value.observationCount,
       },
     };
   }
