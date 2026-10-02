@@ -443,7 +443,17 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       );
       for (const exposure of exposures) {
         if (exposure.sessionId !== sessionId || byId.has(exposure.id)) continue;
-        byId.set(exposure.id, exposure);
+
+        const normalized: SupportExposure = {
+          ...exposure,
+          turnId: exposure.turnId ?? undefined,
+          targetItemIds: exposure.targetItemIds ?? [],
+          targetSkillId: exposure.targetSkillId ?? undefined,
+          targetOpportunityId: exposure.targetOpportunityId ?? undefined,
+          targetPhraseId: exposure.targetPhraseId ?? undefined,
+          policyVersion: exposure.policyVersion ?? LEARNING_POLICY_VERSION,
+        };
+        byId.set(normalized.id, normalized);
       }
 
       this.putAll(tx, STORE.sessions, [
