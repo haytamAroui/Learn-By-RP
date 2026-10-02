@@ -690,6 +690,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         }
 
         const response = await provider.respond({
+          missionId: target.id,
           character: target.character,
           setting: target.setting,
           learnerGoal: target.learnerGoal,
