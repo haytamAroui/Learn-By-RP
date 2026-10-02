@@ -1,4 +1,4 @@
-import { SupportExposure } from '../../types';
+import { Passage, SupportExposure } from '../../types';
 import { LEARNING_POLICY_VERSION } from './policy';
 
 /**
@@ -30,4 +30,17 @@ export function inheritSupportForRetry(input: {
     ...input.exposures,
     ...inherited.filter(exposure => !existingIds.has(exposure.id)),
   ];
+}
+
+
+/** Preserve earlier attempt transcripts without duplicating replayed passage ids. */
+export function mergeAttemptPassages(
+  archived: Passage[],
+  current: Passage[]
+): Passage[] {
+  const byId = new Map<string, Passage>();
+  for (const passage of [...archived, ...current]) byId.set(passage.id, passage);
+  return [...byId.values()].sort((a, b) =>
+    (a.startedAt ?? '').localeCompare(b.startedAt ?? '')
+  );
 }
