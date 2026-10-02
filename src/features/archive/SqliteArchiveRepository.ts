@@ -35,6 +35,7 @@ import { prepareArchiveImport } from './archiveImportValidation';
 export type { ConsentRecord } from './ArchiveRepository.types';
 
 const PREFERENCES_ID = 'current';
+const TRUSTED_ARCHIVE_RESTORE: unique symbol = Symbol('trusted-archive-restore');
 
 /**
  * Safe defaults.
@@ -252,11 +253,24 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async completeSession(
     session: PersistableSessionRecord,
-    rejectedProposals: { reason: string }[] = []
+    rejectedProposals: { reason: string }[] = [],
+    trustedRestore?: typeof TRUSTED_ARCHIVE_RESTORE
   ): Promise<void> {
     const db = await getDatabase();
 
     await withTransaction(async txn => {
+      if (trustedRestore !== TRUSTED_ARCHIVE_RESTORE) {
+        const deletion = await txn.getFirstAsync<{ count: number }>(
+          `SELECT COUNT(*) as count
+             FROM deletion_markers
+            WHERE target_id = ?
+               OR (scope = 'all' AND created_at >= ?)`,
+          session.id,
+          session.startedAt
+        );
+        if ((deletion?.count ?? 0) > 0) return;
+      }
+
       // Upsert, not update. `beginSession` runs before streaming, but if that write
       // was lost — an interrupted boot, a restored backup without the session row —
       // an UPDATE alone would silently discard the transcript and its evidence,
@@ -1226,7 +1240,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     await this.savePhrases(prepared.value.phrases);
 
     for (const session of prepared.value.sessions) {
-      await this.completeSession(session);
+      await this.completeSession(session, [], TRUSTED_ARCHIVE_RESTORE);
 
       // completeSession intentionally writes active evidence. Restore learner
       // hide/dispute choices afterwards without allowing those flags to become a
