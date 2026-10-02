@@ -137,17 +137,11 @@ export function validateAssessmentProposal(
     //    allowed to claim the learner recalled something unaided.
     let finalRetrieval: RetrievalType;
 
-    const hadFormExposure = relevantExposures.some(
-      exp =>
-        exp.kind === 'full_form' ||
-        exp.kind === 'partial_form' ||
-        exp.source === 'briefing'
-    );
-
+    // Target and timing relevance was already decided against the learner
+    // passage by supportScope. Assessment time must not change the verdict.
+    const hadFormExposure = relevantExposures.length > 0;
     const modeledRecently = relevantExposures.some(
-      exp =>
-        exp.source === 'actor' &&
-        Date.now() - new Date(exp.recordedAt).getTime() < LEARNING_POLICY.modeledFormWindowMs
+      exp => exp.kind === 'model_phrase_audio'
     );
 
     if (hadFormExposure || modeledRecently || isRehearsalAttempt) {
@@ -256,17 +250,10 @@ export function buildLocalObservations(input: {
 
       const isSpoken = passage.modality === 'spoken';
 
-      const hadFormExposure = relevantExposures.some(
-        exp =>
-          exp.kind === 'full_form' ||
-          exp.kind === 'partial_form' ||
-          exp.source === 'briefing'
-      );
-
+      // Target and timing relevance was already decided against this passage.
+      const hadFormExposure = relevantExposures.length > 0;
       const modeledRecently = relevantExposures.some(
-        exp =>
-          exp.source === 'actor' &&
-          Date.now() - new Date(exp.recordedAt).getTime() < LEARNING_POLICY.modeledFormWindowMs
+        exp => exp.kind === 'model_phrase_audio'
       );
 
       let retrieval: RetrievalType;
