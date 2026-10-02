@@ -407,7 +407,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Roleplay requests capabilities; providers only declare capability support (`capabilities.ts`).
 - [x] Slow speech without native rate control is marked best-effort.
 - [x] Long thinking time falls back to push-to-talk / tap-when-done if timing control unavailable.
-- [ ] Challenge types only appear when provider supports them.
+- [x] Challenge types only appear when provider supports them (`supportedCommunicationChallenges`; `fast_speech` requires `speechRateControl`, `scripted_mishearing` requires `scriptedLineInjection`; `capabilities.test.ts`).
 - [x] Blocking consequential tool calls are required before character confirms world changes; live actor lines are suppressed until reducer acceptance.
 - [x] Log capability degradation as operational telemetry only (`SessionRecord.operationalTelemetry`, persisted in `usage_json`).
 
@@ -422,7 +422,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Character does not see learner evidence projection; evidence/projection is not part of Actor input.
 - [x] Character proposes only authored allowlisted actions; authoritative reducer decides.
 - [x] Character may not assert consequential result before reducer acceptance (`mayCommitActorReply`).
-- [ ] Realtime actor contract uses transport events, not only text-in/text-out.
+- [x] Realtime actor contract exposes normalized transport events (`connected`, `disconnected`, response start/delta/complete/cancel/error) through `ConversationProvider.subscribe`; Realtime emits them, HTTP adapts to the same surface, and `LiveSessionView` consumes lifecycle events.
 - [x] Text pipeline remains a valid fallback adapter; fallback actions pass the same allowlist sanitizer.
 
 ---
@@ -773,8 +773,8 @@ A program must pass:
 - [ ] predicate/effect DSL.
 - [ ] model checker.
 - [ ] deterministic Director.
-- [ ] blocking consequential actions.
-- [ ] provider capability negotiation.
+- [x] blocking consequential actions (`mayCommitActorReply` + authoritative reducer acceptance).
+- [x] provider capability negotiation (`features/roleplay/capabilities.ts`; challenge gating + degradation telemetry).
 
 ## P2 — evidence loop V1
 
