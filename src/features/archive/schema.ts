@@ -328,6 +328,13 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE scene_state ADD COLUMN action_counts TEXT;`,
     ],
   },
+  {
+    version: 8,
+    name: 'persist_scene_id',
+    statements: [
+      `ALTER TABLE scene_state ADD COLUMN scene_id TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
