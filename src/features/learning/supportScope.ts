@@ -1,4 +1,4 @@
-import { Passage, SupportExposure } from '../../types';
+import { Passage, SessionRecord, SupportExposure } from '../../types';
 import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from './policy';
 
 /**
@@ -16,8 +16,63 @@ const PRODUCTION_FORM_KINDS = new Set<SupportExposure['kind']>([
   'recap_exposure',
 ]);
 
+const CROSS_SESSION_FORM_KINDS = new Set<SupportExposure['kind']>([
+  'briefing_exposure',
+  'recap_exposure',
+]);
+
+function isCrossSessionFormExposure(exposure: SupportExposure): boolean {
+  return CROSS_SESSION_FORM_KINDS.has(exposure.kind);
+}
+
+function utcDayKey(value: string): string | null {
+  const timestamp = Date.parse(value);
+  return Number.isFinite(timestamp) ? new Date(timestamp).toISOString().slice(0, 10) : null;
+}
+
 export function isProductionFormExposure(exposure: SupportExposure): boolean {
   return PRODUCTION_FORM_KINDS.has(exposure.kind);
+}
+
+/**
+ * Pull only historical briefing/recap rows that could affect one new mission.
+ *
+ * The original exposure objects are returned unchanged so their session and
+ * attempt provenance remains intact. They are read-only evidence inputs and are
+ * never copied into the new session's durable ledger.
+ */
+export function selectHistoricalCrossSessionSupport(input: {
+  sessions: SessionRecord[];
+  currentSessionId: string;
+  targetPhraseIds: readonly string[];
+  currentSessionStartedAt: string;
+}): SupportExposure[] {
+  const targetIds = new Set(input.targetPhraseIds);
+  const currentDay = utcDayKey(input.currentSessionStartedAt);
+  const currentStart = Date.parse(input.currentSessionStartedAt);
+  if (!currentDay || !Number.isFinite(currentStart) || targetIds.size === 0) return [];
+
+  const byId = new Map<string, SupportExposure>();
+  for (const session of input.sessions) {
+    if (session.id === input.currentSessionId) continue;
+
+    for (const exposure of session.supportExposures ?? []) {
+      if (!isCrossSessionFormExposure(exposure)) continue;
+      const shownAt = Date.parse(exposure.recordedAt);
+      if (!Number.isFinite(shownAt) || shownAt > currentStart) continue;
+      if (utcDayKey(exposure.recordedAt) !== currentDay) continue;
+
+      const shownIds = new Set([
+        ...(exposure.targetPhraseId ? [exposure.targetPhraseId] : []),
+        ...(exposure.targetItemIds ?? []),
+      ]);
+      if (![...shownIds].some(id => targetIds.has(id))) continue;
+
+      byId.set(exposure.id, exposure);
+    }
+  }
+
+  return [...byId.values()].sort((a, b) => a.recordedAt.localeCompare(b.recordedAt));
 }
 
 export function exposurePrecedesPassage(
@@ -25,7 +80,13 @@ export function exposurePrecedesPassage(
   passage: Passage,
   attemptId: string
 ): boolean {
-  if (exposure.attemptId && exposure.attemptId !== attemptId) return false;
+  if (
+    !isCrossSessionFormExposure(exposure) &&
+    exposure.attemptId &&
+    exposure.attemptId !== attemptId
+  ) {
+    return false;
+  }
 
   const passageEnd = Date.parse(passage.endedAt ?? passage.startedAt ?? '');
   const shownAt = Date.parse(exposure.recordedAt);
@@ -54,6 +115,12 @@ export function isWithinProductionSupportWindow(
 
   if (!Number.isFinite(passageEnd) || !Number.isFinite(shownAt)) return true;
   if (shownAt > passageEnd) return false;
+
+  if (isCrossSessionFormExposure(exposure)) {
+    const shownDay = utcDayKey(exposure.recordedAt);
+    const passageDay = utcDayKey(passage.endedAt ?? passage.startedAt ?? '');
+    return Boolean(shownDay && passageDay && shownDay === passageDay);
+  }
 
   if (exposure.policyVersion === undefined) return true;
 
