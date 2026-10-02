@@ -6,6 +6,7 @@ import { getTranslations, I18nProvider } from '../../features/i18n';
 import { RootHeader } from '../../components/RootHeader';
 import { ProgressScreen } from '../../components/ProgressScreen';
 import { DuePhrasesPracticeModal } from '../../components/DuePhrasesPracticeModal';
+import { validateDrillReview } from '../../features/learning/learningCore';
 
 export default function ProgressTab() {
   const router = useRouter();
@@ -45,7 +46,11 @@ export default function ProgressTab() {
           const { archiveRepository } = await import(
             '../../features/archive/archiveRepository'
           );
-          await archiveRepository.recordDrillReview(input);
+          const evidence = validateDrillReview(input);
+          await archiveRepository.recordDrillReview({
+            phrase: input.phrase,
+            evidence,
+          });
           await archive.refresh();
         }}
       />
