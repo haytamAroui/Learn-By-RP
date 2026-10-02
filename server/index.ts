@@ -165,12 +165,31 @@ app.post('/api/coach/hint', async (req: Request, res: Response) => {
   try {
     const {
       step = 'intent_hint',
+      missionId,
       targetLanguage = 'Spanish',
       explanationLanguage = 'English',
       characterName = 'the character',
       lastAssistantLine = '',
-      learnerGoal = 'Order a drink'
+      learnerGoal = 'Order a drink',
+      targetSkillId,
+      targetOpportunityId,
+      targetPhraseId,
+      targetPhraseForm = '',
     } = req.body;
+
+    const missionSkills = allowedSkillsForMission(missionId);
+    const scopedSkill = missionSkills.find(skill => skill.id === targetSkillId);
+    if (!scopedSkill) {
+      res.status(400).json({ error: 'targetSkillId must be declared by the mission' });
+      return;
+    }
+
+    const scopedTargets = {
+      targetSkillId: scopedSkill.id,
+      targetOpportunityId:
+        typeof targetOpportunityId === 'string' ? targetOpportunityId : undefined,
+      targetPhraseId: typeof targetPhraseId === 'string' ? targetPhraseId : undefined,
+    };
 
     if (!providers.structured) {
       const fallbackHints: Record<string, string> = {
@@ -179,7 +198,10 @@ app.post('/api/coach/hint', async (req: Request, res: Response) => {
         full_form: `Say: "Un café con leche, por favor." or "¿Tiene leche de avena?"`,
         explanation: `${characterName} asked what you want. In Spain, "para llevar" means takeaway.`
       };
-      res.json({ hint: fallbackHints[step] || fallbackHints.intent_hint });
+      res.json({
+        hint: fallbackHints[step] || fallbackHints.intent_hint,
+        ...scopedTargets,
+      });
       return;
     }
 
@@ -189,6 +211,8 @@ The character just said: "${lastAssistantLine}".
 Target Language: ${targetLanguage}.
 Explanation Language: ${explanationLanguage}.
 Requested Hint Step: "${step}".
+Target Communicative Skill: ${scopedSkill.name} (${scopedSkill.id}).
+Target Phrase, when explicitly scoped: ${targetPhraseForm || 'none'}.
 - 'intent_hint': Give a 1-sentence strategic guidance about WHAT to communicate (do NOT reveal the exact foreign words).
 - 'partial_form': Give a sentence starter or partial grammar scaffold (e.g. "Start with: 'Quisiera...'").
 - 'full_form': Give a natural, complete sentence example in ${targetLanguage} with ${explanationLanguage} translation.
@@ -203,7 +227,13 @@ Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "
       temperature: 0.4,
     });
 
-    res.json(parsed);
+    res.json({
+      hint:
+        typeof parsed?.hint === 'string'
+          ? parsed.hint
+          : 'Try expressing the target idea in a simple sentence.',
+      ...scopedTargets,
+    });
   } catch (err: any) {
     console.error('Error in /api/coach/hint:', err);
     res.json({ hint: 'Try expressing what you would like in a simple sentence.' });
