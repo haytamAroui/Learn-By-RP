@@ -29,7 +29,7 @@ export function syncAuthoredOpportunities(input: {
 
   for (const definition of scene.opportunityDefinitions) {
     if (byDefinition.has(definition.id)) continue;
-    if (!evaluatePredicate(definition.sceneCondition, state.facts)) continue;
+    if (!evaluatePredicate(definition.sceneCondition, state.facts, state.actionCounts)) continue;
 
     next.push({
       id: opportunityInstanceId(state.attemptId, definition.id),
