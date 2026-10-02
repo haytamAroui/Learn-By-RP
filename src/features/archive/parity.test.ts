@@ -170,13 +170,16 @@ describe('native and web agree on the same archive', () => {
     for (const repo of [sqliteRepository, web]) {
       await repo.completeSession(session());
       await repo.appendSupportExposures('session-1', [recapExposure]);
-      await repo.appendSupportExposures('session-1', [recapExposure]);
+      await repo.appendSupportExposures('session-1', [
+        { ...recapExposure, recordedAt: '2026-09-20T09:20:00.000Z' },
+      ]);
     }
 
     const native = await sqliteRepository.getSessionById('session-1');
     const webSession = await web.getSessionById('session-1');
 
     expect(native?.supportExposures).toHaveLength(1);
+    expect(native?.supportExposures[0].recordedAt).toBe('2026-09-20T09:06:00.000Z');
     expect(webSession?.supportExposures).toEqual(native?.supportExposures);
   });
 
