@@ -12,7 +12,14 @@ import {
 import { archiveRepository } from './SqliteArchiveRepository';
 import { createNodeSqliteAdapter, Db } from './db';
 import { __setDatabaseForTesting, migrate } from './database';
-import { LearningObservation, Passage, SessionRecord } from '../../types';
+import {
+  LearningObservation,
+  Passage,
+  SkillObservation,
+  ValidatedLearningObservation,
+  ValidatedSkillObservation,
+} from '../../types';
+import type { PersistableSessionRecord } from './ArchiveRepository.types';
 
 /**
  * Transcript assembly and revision handling (§10.7).
@@ -34,7 +41,9 @@ afterEach(() => {
   driver.close();
 });
 
-function observation(overrides: Partial<LearningObservation> = {}): LearningObservation {
+function observation(
+  overrides: Partial<LearningObservation> = {}
+): ValidatedLearningObservation {
   return {
     observationId: 'obs-1',
     sessionId: 'session-1',
@@ -52,7 +61,7 @@ function observation(overrides: Partial<LearningObservation> = {}): LearningObse
     supportExposureIds: [],
     recordedAt: new Date().toISOString(),
     ...overrides,
-  };
+  } as ValidatedLearningObservation;
 }
 
 function makePassage(id: string, text: string, revisionKey: string): Passage {
@@ -72,7 +81,10 @@ function makePassage(id: string, text: string, revisionKey: string): Passage {
   };
 }
 
-function makeSession(passages: Passage[], observations: LearningObservation[]): SessionRecord {
+function makeSession(
+  passages: Passage[],
+  observations: ValidatedLearningObservation[]
+): PersistableSessionRecord {
   return {
     id: 'session-1',
     missionId: 'mission-es-cafe-sol',
