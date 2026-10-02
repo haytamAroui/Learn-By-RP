@@ -3,7 +3,7 @@ import {
   isDirectlyEvidencedSkill,
   isLaunchVisibleCommunicativeSkill,
 } from '../../content/skills';
-import { SKILL_POLICY } from './policy';
+import { LEARNING_POLICY_VERSION, SKILL_POLICY } from './policy';
 import { matchPhraseInText } from './matching';
 import { isIndependentSuccess, observationDay } from './skillEvidence';
 import {
@@ -232,6 +232,9 @@ export function inferLegacySkillEvidence(
         supportExposureIds: observation.supportExposureIds,
         evidenceSource: 'legacy_inferred',
         quote,
+        reasonCode: 'legacy_inferred_demonstration',
+        reasonCodes: ['LEGACY_INFERRED_EVIDENCE'],
+        policyVersion: LEARNING_POLICY_VERSION,
         recordedAt: observation.recordedAt,
       });
     }
