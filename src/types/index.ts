@@ -187,6 +187,8 @@ export interface SupportExposure {
    */
   targetItemIds: string[];
   exposure: 'visible' | 'played' | 'partial' | 'uncertain';
+  /** Learning policy that determined relevance/window semantics. */
+  policyVersion?: number;
   recordedAt: string;
 }
 
