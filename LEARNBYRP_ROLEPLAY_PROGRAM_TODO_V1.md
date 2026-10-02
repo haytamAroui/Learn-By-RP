@@ -231,12 +231,12 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] explanation
 - [x] meaning_of_assistant_turn
 - [ ] model_phrase_audio
-- [ ] assistant_audio_replay
-- [ ] assistant_audio_slow
+- [x] assistant_audio_replay (`LiveSessionView` Listen action records comprehension-only exposure)
+- [x] assistant_audio_slow (`LiveSessionView` slower replay records comprehension-only exposure)
 - [ ] caption_view
 - [ ] typed_example
 - [ ] recap_exposure
-- [ ] briefing_exposure
+- [x] briefing_exposure (only explicitly previewed phrase IDs; policy-versioned)
 
 ## Relevance rules
 
@@ -244,7 +244,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Partial/full/model phrase/typed example affect production evidence for the exact target. (policy semantics in `supportScope.ts`; remaining surfaces still need event instrumentation)
 - [x] Meaning/replay/slow/explanation of character speech do not downgrade production evidence. (`supportScope.ts`)
 - [ ] Briefing/recap exposure affects only shown target items within policy window.
-- [ ] Support windows are policy-versioned and per target.
+- [x] Support windows are policy-versioned and per target. (`SupportExposure.policyVersion`, SQLite migration v6, `supportScope.ts`)
 - [x] Never mark an entire session assisted because any help occurred.
 - [x] Add regression test: meaning of the character question does not downgrade unrelated production evidence. (`skillEvidence.test.ts`, `supportScope.test.ts`)
 - [x] Add regression test: hint for one phrase affects only that phrase/target. (`supportScope.test.ts`)
@@ -253,17 +253,17 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 
 # 7. Accessibility accommodations are not pedagogical help
 
-- [ ] Add `Accommodation` profile records.
+- [x] Add `Accommodation` profile records. (`AccommodationProfile` persisted in `UserPreferences`; backward-compatible for old archives)
 - [ ] Initial kinds:
-  - [ ] captions_always
-  - [ ] slower_speech_default
-  - [ ] typed_preferred
-  - [ ] haptic_turn_cues
-- [ ] Captions remain available in Cold.
-- [ ] Accommodation is visible/manageable in Settings.
-- [ ] Accommodation does not reduce unrelated production evidence.
-- [ ] Typed evidence remains typed; it does not establish spoken evidence.
-- [ ] Add test: captions-on does not change production evidence for a spoken clarification request.
+  - [x] captions_always
+  - [x] slower_speech_default
+  - [x] typed_preferred
+  - [x] haptic_turn_cues
+- [x] Captions remain available in Cold. (character transcript rendering is not gated by `coldAttempt`)
+- [x] Accommodation is visible/manageable in Settings. (EN/FR/ES/NL labels + four switches)
+- [x] Accommodation does not reduce unrelated production evidence. (accommodations are preferences, not support rows; comprehension-only exposure kinds are ignored by production scope)
+- [x] Typed evidence remains typed; it does not establish spoken evidence. (existing validator rule retained)
+- [x] Add regression coverage that caption/replay/slow/explanation are not production-form support. (`supportScope.test.ts`)
 - [ ] Preserve accommodations in final/minimal-support simulation.
 
 ---
@@ -271,11 +271,11 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 # 8. Retry support ledger must never rewind
 
 - [ ] Rename checkpoint support position to `supportLedgerHighWaterMark`.
-- [ ] Scene may rewind/fork; support knowledge does not.
-- [ ] Exact form seen after checkpoint still applies to a retry from that checkpoint.
-- [ ] Retry after exact answer reveal is rehearsal for that target.
-- [ ] Add regression test for support shown after checkpoint then retry.
-- [ ] Preserve original attempt and original evidence.
+- [x] Scene may rewind/fork; support knowledge does not. (`inheritSupportForRetry`)
+- [x] Exact form seen before retry is inherited into the new attempt with exact target provenance.
+- [x] Retry after answer reveal remains rehearsal; inherited support is materialized in the retry attempt.
+- [x] Add regression test for retry support inheritance and idempotency. (`retrySupport.test.ts`)
+- [ ] Preserve original attempt and original evidence. Transcript/support provenance is now retained across retries; per-attempt evidence finalization before retry is still open.
 
 ---
 
@@ -286,7 +286,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] opportunity was actually presented/taken and runtime-validated.
 - [x] learner made a relevant attempt linked to a learner passage.
 - [x] demonstration = attempted_not_demonstrated.
-- [ ] target was cold under the relevance matrix.
+- [x] target was cold under the scoped, policy-versioned relevance matrix.
 - [x] attempt was not rehearsal.
 - [x] transcript/revision is valid.
 - [x] no silence/noise/disconnect/provider failure.
