@@ -10,11 +10,11 @@ import {
   SkillObservation,
   SkillProjectionV2,
 } from '../types';
+import { MISSION_CATALOG } from '../data/missions';
 import {
   COMMUNICATIVE_SKILLS_CATALOG,
-  CommunicativeSkillMeta,
-  MISSION_CATALOG,
-} from '../data/missions';
+  type CommunicativeSkillDefinition,
+} from '../content/skills';
 import { useI18n } from '../features/i18n';
 import {
   inferLegacySkillEvidence,
@@ -70,7 +70,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   const { t } = useI18n();
   const [selectedTab, setSelectedTab] = useState<ProgressTab>('skills');
   const [selectedPhrase, setSelectedPhrase] = useState<PhraseItem | null>(null);
-  const [selectedSkill, setSelectedSkill] = useState<CommunicativeSkillMeta | null>(null);
+  const [selectedSkill, setSelectedSkill] = useState<CommunicativeSkillDefinition | null>(null);
 
   const duePhrases = useMemo(
     () => phrases.filter(phrase => phrase.scheduling.due),
