@@ -14,7 +14,7 @@ import { SceneDefinition } from '../contracts/scene';
  */
 export const CAFE_SCENE: SceneDefinition = {
   id: 'scene.es.cafe.breakfast',
-  version: 1,
+  version: 2,
   missionId: 'mission-es-cafe-sol',
   language: 'es',
 
@@ -215,6 +215,81 @@ export const CAFE_SCENE: SceneDefinition = {
     'skill-inquire-specifications',
     'skill-propose-alternative',
     'skill-communicative-repair',
+    'skill-request-repetition',
+    'skill-request-slower-speech',
+    'skill-ask-clarification',
+    'skill-check-understanding',
+    'skill-clarify-misunderstanding',
+    'skill-paraphrase-when-stuck',
+  ],
+
+  communicationChallenges: [
+    {
+      id: 'challenge.es.cafe.repeat-dense-detail',
+      type: 'unclear_detail',
+      targetSkillId: 'skill-request-repetition',
+      opportunityId: 'opp.es.cafe.repair.request-repetition',
+      trigger: { op: 'eq', fact: 'itemConfirmed', value: true },
+      actorInstruction:
+        'Opt-in repair twist: say one ordinary but information-dense service detail once, then wait. If the learner asks you to repeat it, repeat naturally; do not pretend they failed if they answer without repair.',
+      requiresLearnerOptIn: true,
+      skippable: true,
+    },
+    {
+      id: 'challenge.es.cafe.fast-service-turn',
+      type: 'fast_speech',
+      targetSkillId: 'skill-request-slower-speech',
+      opportunityId: 'opp.es.cafe.repair.request-slower-speech',
+      trigger: { op: 'eq', fact: 'itemConfirmed', value: true },
+      actorInstruction:
+        'Opt-in repair twist: deliver one short service follow-up faster than the normal scene pace. Return to normal speed immediately if the learner asks you to speak more slowly.',
+      requiresLearnerOptIn: true,
+      skippable: true,
+    },
+    {
+      id: 'challenge.es.cafe.unknown-service-term',
+      type: 'unknown_word',
+      targetSkillId: 'skill-ask-clarification',
+      opportunityId: 'opp.es.cafe.repair.ask-clarification',
+      trigger: { op: 'eq', fact: 'alternativeOffered', value: true },
+      actorInstruction:
+        'Opt-in repair twist: use one plausible café term whose meaning is not required elsewhere in the mission, then pause so the learner can ask what it means. Explain it plainly if asked.',
+      requiresLearnerOptIn: true,
+      skippable: true,
+    },
+    {
+      id: 'challenge.es.cafe.ambiguous-service-detail',
+      type: 'unclear_detail',
+      targetSkillId: 'skill-check-understanding',
+      opportunityId: 'opp.es.cafe.repair.check-understanding',
+      trigger: { op: 'eq', fact: 'alternativeOffered', value: true },
+      actorInstruction:
+        'Opt-in repair twist: give a service detail that has one natural interpretation but is worth confirming. Accept a learner check such as “So you mean …, right?” and clarify without penalty.',
+      requiresLearnerOptIn: true,
+      skippable: true,
+    },
+    {
+      id: 'challenge.es.cafe.mishear-service-mode',
+      type: 'scripted_mishearing',
+      targetSkillId: 'skill-clarify-misunderstanding',
+      opportunityId: 'opp.es.cafe.repair.clarify-misunderstanding',
+      trigger: { op: 'eq', fact: 'itemConfirmed', value: true },
+      actorInstruction:
+        'Opt-in repair twist: once only, misunderstand the learner’s intended service mode (for here vs takeaway) and state the wrong interpretation. Correct it immediately when the learner clarifies what they meant.',
+      requiresLearnerOptIn: true,
+      skippable: true,
+    },
+    {
+      id: 'challenge.es.cafe.reformulation-followup',
+      type: 'unexpected_followup',
+      targetSkillId: 'skill-paraphrase-when-stuck',
+      opportunityId: 'opp.es.cafe.repair.paraphrase-when-stuck',
+      trigger: { op: 'eq', fact: 'itemConfirmed', value: true },
+      actorInstruction:
+        'Opt-in repair twist: say you did not understand one non-essential word or expression the learner used and ask them to explain the same idea another way. Accept any clear paraphrase; never demand a target phrase.',
+      requiresLearnerOptIn: true,
+      skippable: true,
+    },
   ],
 
   opportunityDefinitions: [
@@ -245,6 +320,96 @@ export const CAFE_SCENE: SceneDefinition = {
       ],
       relevantActionIds: ['ask_about_ingredient'],
       relevantIntentIds: ['ask_specification'],
+    },
+    {
+      id: 'opp.es.cafe.repair.request-repetition',
+      skillId: 'skill-request-repetition',
+      sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
+      positiveExamples: [
+        'Asks the barista to repeat the just-delivered service detail because it was not caught.',
+        'Uses a natural repetition request such as “¿Puede repetirlo, por favor?”.',
+      ],
+      negativeExamples: [
+        'Asks the barista to speak more slowly without requesting repetition.',
+        'Continues the order without addressing the missed detail.',
+      ],
+      relevantIntentIds: ['request_repetition'],
+      communicationChallengeId: 'challenge.es.cafe.repeat-dense-detail',
+    },
+    {
+      id: 'opp.es.cafe.repair.request-slower-speech',
+      skillId: 'skill-request-slower-speech',
+      sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
+      positiveExamples: [
+        'Explicitly asks the barista to speak more slowly after the faster service turn.',
+        'Uses a natural request such as “¿Puede hablar más despacio, por favor?”.',
+      ],
+      negativeExamples: [
+        'Requests verbatim repetition without asking for a slower pace.',
+        'Uses the Slow accessibility control without producing a repair request.',
+      ],
+      relevantIntentIds: ['request_slower_speech'],
+      communicationChallengeId: 'challenge.es.cafe.fast-service-turn',
+    },
+    {
+      id: 'opp.es.cafe.repair.ask-clarification',
+      skillId: 'skill-ask-clarification',
+      sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
+      positiveExamples: [
+        'Identifies the unfamiliar café term or unclear phrase and asks what it means.',
+        'Uses a focused clarification question rather than guessing.',
+      ],
+      negativeExamples: [
+        'Asks for a new product fact unrelated to the unclear expression.',
+        'Repeats the character’s words without asking for meaning.',
+      ],
+      relevantIntentIds: ['ask_clarification'],
+      communicationChallengeId: 'challenge.es.cafe.unknown-service-term',
+    },
+    {
+      id: 'opp.es.cafe.repair.check-understanding',
+      skillId: 'skill-check-understanding',
+      sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
+      positiveExamples: [
+        'States an interpretation of the service detail and asks the barista to confirm it.',
+        'Uses a check such as “Entonces quiere decir que…, ¿verdad?”.',
+      ],
+      negativeExamples: [
+        'Asks an open clarification question without proposing an interpretation.',
+        'Changes the order without checking the uncertain detail.',
+      ],
+      relevantIntentIds: ['check_understanding'],
+      communicationChallengeId: 'challenge.es.cafe.ambiguous-service-detail',
+    },
+    {
+      id: 'opp.es.cafe.repair.clarify-misunderstanding',
+      skillId: 'skill-clarify-misunderstanding',
+      sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
+      positiveExamples: [
+        'Corrects the barista’s wrong interpretation and clearly restates the intended service mode.',
+        'Uses a repair such as “No, quería decir para llevar, no para tomar aquí.”',
+      ],
+      negativeExamples: [
+        'Accepts the wrong interpretation without correction.',
+        'Simply repeats the same words without making the intended meaning clearer.',
+      ],
+      relevantIntentIds: ['clarify_misunderstanding'],
+      communicationChallengeId: 'challenge.es.cafe.mishear-service-mode',
+    },
+    {
+      id: 'opp.es.cafe.repair.paraphrase-when-stuck',
+      skillId: 'skill-paraphrase-when-stuck',
+      sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
+      positiveExamples: [
+        'Explains the same intended idea with different words after the barista asks for reformulation.',
+        'Uses a description, example, or simpler wording rather than abandoning the meaning.',
+      ],
+      negativeExamples: [
+        'Repeats the same unexplained word verbatim.',
+        'Switches topic instead of attempting to express the intended idea another way.',
+      ],
+      relevantIntentIds: ['paraphrase_when_stuck'],
+      communicationChallengeId: 'challenge.es.cafe.reformulation-followup',
     },
   ],
 
@@ -377,6 +542,7 @@ export const PHARMACY_SCENE: SceneDefinition = {
     'skill-communicative-repair',
     'skill-request-substitution',
   ],
+  communicationChallenges: [],
   opportunityDefinitions: [
     {
       id: 'opp.es.pharmacy.inquire-specifications.open',
