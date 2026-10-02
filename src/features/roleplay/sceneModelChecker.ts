@@ -23,6 +23,7 @@ export interface SceneModelCheckReport {
 }
 
 interface QueueEntry {
+  key: string;
   state: SceneStateSnapshot;
   path: ModelCheckPathStep[];
 }
@@ -115,14 +116,18 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
   const caps = countCaps(scene);
 
   const initial = createInitialScene(scene, 'model-check', 'attempt-1');
-  const queue: QueueEntry[] = [{ state: initial, path: [] }];
-  const visited = new Set<string>([stateKey(initial, caps)]);
+  const initialKey = stateKey(initial, caps);
+  const queue: QueueEntry[] = [{ key: initialKey, state: initial, path: [] }];
+  const visited = new Set<string>([initialKey]);
+  const statesByKey = new Map<string, SceneStateSnapshot>([[initialKey, initial]]);
+  const pathByKey = new Map<string, ModelCheckPathStep[]>([[initialKey, []]]);
+  const edges = new Map<string, Set<string>>();
   let achievedPath: ModelCheckPathStep[] | null = null;
   let reachableNonAchievedDeadlock = false;
 
   while (queue.length > 0) {
     const current = queue.shift()!;
-    const { state, path } = current;
+    const { key: currentKey, state, path } = current;
 
     for (const opportunity of scene.opportunityDefinitions) {
       if (
@@ -180,6 +185,9 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
         { action: action.name, revision: next.revision },
       ];
       const key = stateKey(next, caps);
+      const outgoing = edges.get(currentKey) ?? new Set<string>();
+      outgoing.add(key);
+      edges.set(currentKey, outgoing);
 
       if (visited.has(key)) {
         if (
@@ -194,6 +202,8 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
       }
 
       visited.add(key);
+      statesByKey.set(key, next);
+      pathByKey.set(key, nextPath);
       if (visited.size > MAX_REACHABLE_STATES) {
         errors.push(
           `state-space exceeds ${MAX_REACHABLE_STATES} reachable logical states`
@@ -201,7 +211,7 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
         queue.length = 0;
         break;
       }
-      queue.push({ state: next, path: nextPath });
+      queue.push({ key, state: next, path: nextPath });
     }
 
     if (state.outcome !== 'achieved' && acceptedFromState === 0) {
@@ -210,6 +220,63 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
   }
 
   if (!achievedPath) errors.push('completion: achieved state is unreachable');
+
+  // A scene may have one happy path while an authored complication becomes
+  // available only inside a branch from which achievement is impossible.
+  // Global reachability is therefore not enough: every reachable state in which
+  // the complication may fire must itself retain a path to an achieved state.
+  const reverseEdges = new Map<string, Set<string>>();
+  for (const [from, targets] of edges) {
+    for (const target of targets) {
+      const incoming = reverseEdges.get(target) ?? new Set<string>();
+      incoming.add(from);
+      reverseEdges.set(target, incoming);
+    }
+  }
+
+  const canReachAchieved = new Set<string>();
+  const reverseQueue: string[] = [];
+  for (const [key, state] of statesByKey) {
+    if (state.outcome === 'achieved') {
+      canReachAchieved.add(key);
+      reverseQueue.push(key);
+    }
+  }
+
+  while (reverseQueue.length > 0) {
+    const key = reverseQueue.shift()!;
+    for (const predecessor of reverseEdges.get(key) ?? []) {
+      if (canReachAchieved.has(predecessor)) continue;
+      canReachAchieved.add(predecessor);
+      reverseQueue.push(predecessor);
+    }
+  }
+
+  if (scene.complication) {
+    for (const [key, state] of statesByKey) {
+      if (
+        !evaluatePredicate(
+          scene.complication.trigger,
+          state.facts,
+          state.actionCounts
+        ) ||
+        canReachAchieved.has(key)
+      ) {
+        continue;
+      }
+
+      const path = pathByKey.get(key) ?? [];
+      const renderedPath =
+        path.length === 0
+          ? 'scene start'
+          : path.map(step => step.action).join(' -> ');
+      errors.push(
+        `unsafe complication: ${scene.complication.id} can trigger after ${renderedPath}, but no achieved state is reachable from that branch`
+      );
+      break;
+    }
+  }
+
   if (reachableNonAchievedDeadlock) {
     errors.push('deadlock: reachable non-achieved state has no accepted action');
   }

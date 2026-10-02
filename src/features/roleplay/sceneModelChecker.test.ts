@@ -60,6 +60,47 @@ describe('scene model checker', () => {
     );
   });
 
+
+  it('fails when a reachable complication branch can no longer reach achievement', () => {
+    const unsafe: SceneDefinition = {
+      ...CAFE_SCENE,
+      complication: {
+        id: 'ingredient-lockout',
+        description: 'Entering this branch must not strand the learner.',
+        trigger: { op: 'eq', fact: 'ingredientQuestionAsked', value: true },
+        maxPerScene: 1,
+      },
+      allowedActions: CAFE_SCENE.allowedActions.map(action => {
+        if (action.name === 'confirm_order_item') {
+          return {
+            ...action,
+            preconditions: [
+              { op: 'eq' as const, fact: 'ingredientQuestionAsked', value: false },
+            ],
+          };
+        }
+        if (action.name === 'ask_about_ingredient') {
+          return {
+            ...action,
+            preconditions: [],
+            effects: [
+              { set: 'ingredientQuestionAsked', value: true },
+              { set: 'itemConfirmed', value: false },
+            ],
+          };
+        }
+        return action;
+      }),
+    };
+
+    const report = modelCheckScene(unsafe);
+
+    expect(report.achievedPath).not.toBeNull();
+    expect(report.errors.join('\n')).toMatch(
+      /unsafe complication: ingredient-lockout.*ask_about_ingredient.*no achieved state is reachable/i
+    );
+  });
+
   it('tracks countOf predicates without making the state space infinite', () => {
     const counted: SceneDefinition = {
       ...CAFE_SCENE,

@@ -176,3 +176,103 @@ export function acceptSemanticCandidate(
   void candidate;
   return { accepted: false, reason: 'unknown_or_non_executable' };
 }
+
+
+/**
+ * Runtime events visible to the Director cadence gate.
+ *
+ * Low-level transport progress is represented explicitly so the gate can reject
+ * it deterministically rather than relying on callers to remember which callbacks
+ * are safe. Only completed semantic/scene boundaries may run the Director.
+ */
+export type DirectorRuntimeEvent =
+  | { type: 'learner_turn_completed'; turnId: string }
+  | { type: 'actor_turn_completed'; turnId: string }
+  | { type: 'scene_action_accepted'; actionId: string }
+  | { type: 'opportunity_resolved'; opportunityInstanceId: string }
+  | { type: 'checkpoint_restored'; checkpointId: string }
+  | { type: 'audio_level' }
+  | { type: 'interim_transcript' }
+  | { type: 'response_text_delta' };
+
+const DIRECTOR_BOUNDARY_EVENTS = new Set<DirectorRuntimeEvent['type']>([
+  'learner_turn_completed',
+  'actor_turn_completed',
+  'scene_action_accepted',
+  'opportunity_resolved',
+  'checkpoint_restored',
+]);
+
+export function isDirectorBoundaryEvent(event: DirectorRuntimeEvent): boolean {
+  return DIRECTOR_BOUNDARY_EVENTS.has(event.type);
+}
+
+/**
+ * Event/turn-driven cadence for deterministic Director V1.
+ *
+ * One authoritative scene revision is evaluated at most once per attempt. Audio
+ * frames, interim ASR and streaming text deltas never consume a cadence slot and
+ * never call decideDirector().
+ */
+export class DirectorCadence {
+  private readonly evaluatedRevisions = new Set<string>();
+  private readonly emittedDirectives = new Set<string>();
+
+  evaluate(input: {
+    event: DirectorRuntimeEvent;
+    scene: SceneDefinition;
+    state: SceneStateSnapshot;
+    opportunities: OpportunityInstance[];
+    availableCommunicationChallenges?: readonly CommunicationChallengeType[];
+    targetChallengeSkillId?: string;
+  }): DirectorDecision | null {
+    if (!isDirectorBoundaryEvent(input.event)) return null;
+
+    const revisionKey =
+      `${input.state.attemptId}:${input.state.revision}`;
+    if (this.evaluatedRevisions.has(revisionKey)) return null;
+    this.evaluatedRevisions.add(revisionKey);
+
+    const decision = decideDirector({
+      scene: input.scene,
+      state: input.state,
+      opportunities: input.opportunities,
+      availableCommunicationChallenges:
+        input.availableCommunicationChallenges,
+      targetChallengeSkillId: input.targetChallengeSkillId,
+    });
+
+    const directiveKey =
+      decision.kind === 'trigger_complication'
+        ? `complication:${decision.complicationId}`
+        : decision.kind === 'present_communication_challenge'
+          ? `challenge:${decision.challengeId}`
+          : decision.kind === 'present_opportunity'
+            ? `opportunity:${decision.opportunityId}`
+            : decision.kind === 'prepare_completion'
+              ? 'completion'
+              : null;
+
+    if (directiveKey) {
+      const attemptDirectiveKey =
+        `${input.state.attemptId}:${directiveKey}`;
+      if (this.emittedDirectives.has(attemptDirectiveKey)) return null;
+      this.emittedDirectives.add(attemptDirectiveKey);
+    }
+
+    return decision;
+  }
+
+  resetAttempt(attemptId: string): void {
+    for (const key of [...this.evaluatedRevisions]) {
+      if (key.startsWith(`${attemptId}:`)) {
+        this.evaluatedRevisions.delete(key);
+      }
+    }
+    for (const key of [...this.emittedDirectives]) {
+      if (key.startsWith(`${attemptId}:`)) {
+        this.emittedDirectives.delete(key);
+      }
+    }
+  }
+}

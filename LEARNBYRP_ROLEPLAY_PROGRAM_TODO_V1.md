@@ -1,7 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
-**Last reconciled with `main`:** `2de7fc69399220fc0eea658cc3c2ae55bc2abdad` (2026-10-02)  
+**Last reconciled with `main`:** `67fbf88953e805aa25f02cc5265cf17b335cca6b` (2026-10-02)  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -350,7 +350,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Enumerate reachable states for each released finite scene. (`sceneModelChecker.ts`)
 - [x] Fail build if completion is unreachable. (`npm run validate:scenes` in Verify CI)
 - [x] Fail build on reachable non-complete deadlock.
-- [ ] Fail build if a complication can make completion unreachable.
+- [x] Fail build if a complication can make completion unreachable. (`sceneModelChecker.ts` builds the reachable-state graph and reverse completion reachability; every state where the authored complication can trigger must still reach `achieved`; regression includes exact unsafe action path)
 - [x] Fail build on dead authored action.
 - [x] Fail build if declared opportunity is unreachable.
 - [x] Detect/bound non-idempotent action cycles. Logical state keys cap action counts to referenced thresholds; global state/path bounds prevent infinite enumeration.
@@ -381,7 +381,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 # 13. Director V1 must be deterministic
 
 - [x] Define deterministic `DirectorDecision`. (`director.ts`)
-- [ ] Director runs on scene events/between turns, not per audio frame.
+- [x] Director runs on scene events/between turns, not per audio frame. (`DirectorCadence` admits only completed learner/actor turns, accepted scene actions, resolved opportunities and checkpoint restores; attempt+revision and directive dedupe; `LiveSessionView` wiring; audio/interim/delta regression coverage)
 - [ ] Director chooses only authored:
   - [x] opportunity
   - [x] complication
@@ -717,7 +717,7 @@ A program must pass:
 - [x] unreachable completion fails build. (`sceneModelChecker.test.ts`, `validate:scenes`)
 - [x] deadlock fails build. (`sceneModelChecker.test.ts`, `validate:scenes`)
 - [x] unsatisfiable opportunity fails build. (`sceneModelChecker.test.ts`)
-- [ ] unsafe complication path fails build.
+- [x] unsafe complication path fails build. (`sceneModelChecker.test.ts`: global happy path can exist while a complication-trigger branch is rejected because achievement is no longer reachable)
 
 ## Lapse/recovery
 
@@ -863,9 +863,9 @@ Confirmed from `main` after squash merge `fa4564dc19ed36adfff27f916a4486d0745954
 - [x] Authored `SkillOpportunityDefinition` → runtime `OpportunityInstance` → assessment → validated evidence is wired end-to-end.
 - [x] Coach support is scoped to exact skill/opportunity/phrase targets; unrelated comprehension assistance does not contaminate production evidence.
 - [x] Retry support uses a high-water ledger and never rewinds learner exposure; parent-attempt evidence is finalized before fork and merged into the final archive without re-assessing old passages as the active attempt.
-- [x] Finite scene facts, bounded predicate/effect DSL, payload validation and build-time model checking are active.
+- [x] Finite scene facts, bounded predicate/effect DSL, payload validation and build-time model checking are active; complication-trigger states are also required to retain a path to authored achievement.
 - [x] Hosted scene execution is server-authoritative with versioned requests, cross-channel dedupe metadata and append-only event replay.
-- [x] Deterministic Director V1 exists for authored opportunities, complications and completion preparation.
+- [x] Deterministic Director V1 exists for authored opportunities, complications and completion preparation; live evaluation is gated to completed scene/turn boundaries and deduped per authoritative revision/directive.
 - [x] Provider capabilities are negotiated; unsupported communication challenge types cannot be emitted by next-RP policy v2.
 - [x] Explicit repair challenge content is authored for all six direct repair skills in Café v2; it is opt-in/skippable, provider-capability gated, and challenge-linked opportunities cannot appear from scene predicates alone. Pharmacy remains challenge-free under the medical-simulation exclusion.
 - [x] RoleplayProgram contracts, ProgramProjection/Preferences, deterministic next-RP, Cold/Guided/Transfer/Recovery and recovery caps are implemented.
