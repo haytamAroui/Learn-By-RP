@@ -558,6 +558,16 @@ export interface SessionRecord {
 
 export type UiLanguage = 'en' | 'fr' | 'es' | 'nl';
 
+export type AccommodationKind =
+  | 'captions_always'
+  | 'slower_speech_default'
+  | 'typed_preferred'
+  | 'haptic_turn_cues';
+
+export interface AccommodationProfile {
+  enabled: AccommodationKind[];
+}
+
 export interface UserPreferences {
   learningLanguage: LanguageCode;
   explanationLanguage: UiLanguage;
@@ -569,4 +579,9 @@ export interface UserPreferences {
   audioPlaybackEnabled: boolean;
   autoPlaySpeech: boolean;
   speechRate?: number;
+  /**
+   * Accessibility preferences are not pedagogical help and never enter the
+   * support-exposure ledger.
+   */
+  accommodations: AccommodationProfile;
 }
