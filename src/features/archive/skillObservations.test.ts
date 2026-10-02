@@ -297,7 +297,7 @@ describe('skill and phrase evidence stay separate', () => {
           rehearsal: false,
           supportExposureIds: [],
           recordedAt: '2026-09-20T09:00:00.000Z',
-        } as ValidatedLearningObservation,
+        } as unknown as ValidatedLearningObservation,
       ],
       taskOutcome: 'completed',
       sceneState: {
