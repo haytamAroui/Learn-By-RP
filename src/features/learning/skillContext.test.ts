@@ -63,6 +63,31 @@ describe('skill context identity', () => {
     expect(projection.status).toBe('supported');
   });
 
+  it('does not count an authored pressure variant as a new transfer context', () => {
+    const base = observation({
+      id: 'base-pressure',
+      sessionId: 'session-base-pressure',
+      recordedAt: '2026-09-01T09:00:00.000Z',
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.es.cafe.breakfast',
+    });
+    const pressured = observation({
+      id: 'pressure-variant',
+      sessionId: 'session-pressure-variant',
+      recordedAt: '2026-09-03T09:00:00.000Z',
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.es.cafe.breakfast#pressure.es.cafe.concise-followup',
+    });
+
+    const projection = projectSkill(SKILL_ID, [base, pressured]);
+
+    expect(skillContextIdentity(base)).toBe('cafes::counter-ordering');
+    expect(skillContextIdentity(pressured)).toBe('cafes::counter-ordering');
+    expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
+  });
+
   it('counts the same reviewed family in a different domain as a distinct context', () => {
     const cafe = observation({
       id: 'cafe-domain',
