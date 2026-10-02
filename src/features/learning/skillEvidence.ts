@@ -1,5 +1,9 @@
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
 import { getScene } from '../../content/scenes';
+import {
+  exposurePrecedesPassage,
+  isSkillProductionSupportRelevant,
+} from './supportScope';
 import { normalizeText } from './matching';
 import { LEARNING_WINDOWS, SKILL_POLICY } from './policy';
 import {
@@ -320,7 +324,13 @@ export function validateSkillEvidenceProposal(
     //    therefore computed here from timestamps — support recorded before the end
     //    of the cited passage, within the same attempt.
     const relevantSupport = context.supportExposures.filter(exposure =>
-      isRelevantToPassage(exposure, passage, context.attemptId)
+      isSkillProductionSupportRelevant({
+        exposure,
+        passage,
+        attemptId: context.attemptId,
+        skillId: candidate.skillId,
+        opportunityInstanceId: candidate.opportunityInstanceId,
+      })
     );
     const hadSupport = relevantSupport.length > 0;
     const retrieval = deriveRetrieval({
@@ -459,7 +469,13 @@ export function deriveLapses(
     // passage-time rule: any support relevant to this exact attempt/passage means
     // the failure was not cold.
     const relevantSupport = context.supportExposures.filter(exposure =>
-      isRelevantToPassage(exposure, passage, context.attemptId)
+      isSkillProductionSupportRelevant({
+        exposure,
+        passage,
+        attemptId: context.attemptId,
+        skillId: opportunity.skillId,
+        opportunityInstanceId: opportunity.id,
+      })
     );
     if (relevantSupport.length > 0) continue;
 
@@ -503,18 +519,7 @@ export function isRelevantToPassage(
   passage: Passage,
   attemptId: string
 ): boolean {
-  if (exposure.attemptId && exposure.attemptId !== attemptId) return false;
-
-  const passageEnd = Date.parse(passage.endedAt ?? passage.startedAt ?? '');
-  const shownAt = Date.parse(exposure.recordedAt);
-
-  if (!Number.isFinite(passageEnd) || !Number.isFinite(shownAt)) {
-    // Without usable timestamps, an exposure in this session cannot be ruled out,
-    // and assuming it did not happen would overstate independent recall.
-    return true;
-  }
-
-  return shownAt <= passageEnd;
+  return exposurePrecedesPassage(exposure, passage, attemptId);
 }
 
 /**
