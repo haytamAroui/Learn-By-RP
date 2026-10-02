@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { readFileSync } from 'node:fs';
 import { MISSION_CATALOG } from '../src/data/missions';
+import { PHARMACY_SCENE } from '../src/content/scenes';
 import {
   containsRegulatedHealthAdvice,
   isRegulatedHealthMission,
@@ -52,6 +53,22 @@ describe('regulated health roleplay policy', () => {
 
       expect(learnerFacing, mission.id).not.toMatch(forbidden);
     }
+  });
+
+  it('uses communication-only facts and actions in pharmacy scene v2', () => {
+    const serialized = JSON.stringify(PHARMACY_SCENE);
+
+    expect(PHARMACY_SCENE.version).toBe(2);
+    expect(PHARMACY_SCENE.skillIds).not.toContain('skill-request-substitution');
+    expect(PHARMACY_SCENE.allowedActions.map(action => action.name)).toEqual([
+      'request_pharmacist',
+      'request_label_help',
+      'offer_pharmacist_handoff',
+      'complete_scene',
+    ]);
+    expect(serialized).not.toMatch(
+      /nonDrowsyMedicineAvailable|drowsinessMedicineAvailable|ingredientQuestionAsked|confirm_order_item|offer_alternative/i
+    );
   });
 
   it('masks medically suggestive internal scene facts before provider prompting', () => {
