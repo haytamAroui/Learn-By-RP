@@ -32,6 +32,11 @@ function resolveBaseUrl(): string {
 export const API_BASE_URL = resolveBaseUrl();
 
 type ConsentScope = 'voice' | 'saved_analysis';
+type ConsentSnapshot = Partial<
+  Record<ConsentScope, { granted: boolean; version: string }>
+>;
+
+let localConsentSnapshot: ConsentSnapshot = {};
 
 const GUEST_TOKEN_KEY = 'learnbyrp.guest_access_token.v1';
 
@@ -125,6 +130,21 @@ async function setServerConsent(
   }
 }
 
+async function syncKnownConsents(forceRefreshToken = false): Promise<void> {
+  let first = true;
+  for (const scope of ['voice', 'saved_analysis'] as const) {
+    const decision = localConsentSnapshot[scope];
+    if (!decision) continue;
+    await setServerConsent(
+      scope,
+      decision.granted,
+      decision.version,
+      forceRefreshToken && first
+    );
+    first = false;
+  }
+}
+
 
 class ApiError extends Error {
   status: number;
@@ -195,6 +215,8 @@ async function request<T>(
 
     if (response.status === 401 && retryAuth) {
       clearTimeout(timer);
+      await guestToken(true);
+      await syncKnownConsents();
       return request<T>(path, body, timeoutMs, false);
     }
 
@@ -205,6 +227,23 @@ async function request<T>(
         parsed = JSON.parse(text);
       } catch {
         parsed = { error: text };
+      }
+    }
+
+    if (
+      response.status === 403 &&
+      retryAuth &&
+      parsed?.error === 'consent_required' &&
+      (parsed?.scope === 'voice' || parsed?.scope === 'saved_analysis')
+    ) {
+      const decision = localConsentSnapshot[parsed.scope as ConsentScope];
+      if (decision) {
+        await setServerConsent(
+          parsed.scope as ConsentScope,
+          decision.granted,
+          decision.version
+        );
+        return request<T>(path, body, timeoutMs, false);
       }
     }
 
@@ -240,8 +279,21 @@ export const api = {
     ensureGuest: async () => {
       await guestToken();
     },
-    syncConsent: (scope: ConsentScope, granted: boolean, version: string) =>
-      setServerConsent(scope, granted, version),
+    setLocalConsentSnapshot: (snapshot: ConsentSnapshot) => {
+      localConsentSnapshot = { ...snapshot };
+    },
+    syncKnownConsents: () => syncKnownConsents(),
+    syncConsent: async (
+      scope: ConsentScope,
+      granted: boolean,
+      version: string
+    ) => {
+      localConsentSnapshot = {
+        ...localConsentSnapshot,
+        [scope]: { granted, version },
+      };
+      await setServerConsent(scope, granted, version);
+    },
   },
   actorRespond: (body: {
     character: any;
