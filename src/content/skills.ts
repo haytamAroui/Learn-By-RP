@@ -12,6 +12,12 @@ import {
  * when a mission is edited or versioned.
  */
 
+/**
+ * Tombstones for retired ids. Once an id is placed here it must never return to
+ * the active catalog for a different meaning.
+ */
+export const RETIRED_COMMUNICATIVE_SKILL_IDS: readonly CommunicativeSkillId[] = [];
+
 export const PRACTICE_SKILLS: readonly PracticeSkillDefinition[] = [
   {
     id: 'practice-start-conversation',
