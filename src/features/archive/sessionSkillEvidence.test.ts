@@ -5,6 +5,7 @@ import { archiveRepository } from './SqliteArchiveRepository';
 import { MISSION_CATALOG } from '../../data/missions';
 import { validateSkillEvidenceProposal } from '../learning/skillEvidence';
 import { projectSkillsV2 } from '../learning/skillProjection';
+import { LEARNING_POLICY_VERSION } from '../learning/policy';
 import { OpportunityInstance, SessionRecord, Passage, SupportExposure } from '../../types';
 
 /**
@@ -199,7 +200,7 @@ describe('a live session persists validated skill evidence', () => {
       evidenceSource: 'validated_explicit',
       dayKey: '2026-09-20',
       reasonCode: 'validated_demonstration',
-      policyVersion: 3,
+      policyVersion: LEARNING_POLICY_VERSION,
     });
   });
 
@@ -379,7 +380,7 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       basis: 'cold_attempt_failed',
       dayKey: '2026-09-20',
       reasonCode: 'cold_taken_opportunity_not_demonstrated',
-      policyVersion: 3,
+      policyVersion: LEARNING_POLICY_VERSION,
     });
     expect(await archiveRepository.getSkillObservations()).toHaveLength(0);
   });
