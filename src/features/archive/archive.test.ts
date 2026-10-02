@@ -3,7 +3,13 @@ import { createNodeSqliteAdapter, Db } from './db';
 import { __setDatabaseForTesting, getSchemaVersion, migrate, withTransaction } from './database';
 import { archiveRepository } from './SqliteArchiveRepository';
 import { MIGRATIONS } from './schema';
-import { LearningObservation, Passage, SessionRecord, SupportExposure } from '../../types';
+import {
+  LearningObservation,
+  Passage,
+  SupportExposure,
+  ValidatedLearningObservation,
+} from '../../types';
+import type { PersistableSessionRecord } from './ArchiveRepository.types';
 
 /**
  * The archive exercised against a real SQLite engine.
@@ -27,7 +33,9 @@ afterEach(() => {
   driver.close();
 });
 
-function makeSession(overrides: Partial<SessionRecord> = {}): SessionRecord {
+function makeSession(
+  overrides: Partial<PersistableSessionRecord> = {}
+): PersistableSessionRecord {
   return {
     id: 'session-1',
     missionId: 'mission-es-cafe-sol',
@@ -72,7 +80,9 @@ function makePassage(id: string, text: string, revisionKey = 'rev-1'): Passage {
   };
 }
 
-function makeObservation(overrides: Partial<LearningObservation> = {}): LearningObservation {
+function makeObservation(
+  overrides: Partial<LearningObservation> = {}
+): ValidatedLearningObservation {
   return {
     observationId: `obs-${Math.random().toString(36).slice(2, 9)}`,
     sessionId: 'session-1',
@@ -90,7 +100,7 @@ function makeObservation(overrides: Partial<LearningObservation> = {}): Learning
     supportExposureIds: [],
     recordedAt: new Date().toISOString(),
     ...overrides,
-  };
+  } as ValidatedLearningObservation;
 }
 
 describe('migrations', () => {
