@@ -44,8 +44,8 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 - [x] Assessment proposals are validated before persistence.
 - [x] Phrase and skill evidence are separate concepts.
 - [x] Support exposure exists in the runtime.
-- [ ] Enforce validator-only observation write path by type/API boundary.
-- [ ] Confirm reveal/listen cannot create unassisted phrase evidence.
+- [x] Enforce validator-only observation write path by type/API boundary. (`ValidatedLearningObservation` / `ValidatedSkillObservation` brands, `PersistableSessionRecord`, no public `saveSkillObservations`, `evidenceWriteBoundary.test.ts`; backup import is a provenance-validated trusted rehydration boundary)
+- [x] Confirm reveal/listen cannot create unassisted phrase evidence. (briefing reveal writes phrase-scoped `briefing_exposure`; target model audio before an attempt downgrades to assisted; post-attempt audio does not retroactively contaminate; drill Show answer/Listen without learner production writes no observation; `learningCore.test.ts`, `drill-evidence-flow.test.ts`)
 - [x] Confirm transcript revision invalidates stale derived evidence. (`skillEvidence.test.ts`, transcript/archive regression coverage)
 
 ## Scene baseline
