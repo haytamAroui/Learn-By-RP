@@ -34,6 +34,9 @@ describe('roleplay capability negotiation', () => {
       availableCommunicationChallenges: [
         'fast_speech',
         'scripted_mishearing',
+        'unknown_word',
+        'unclear_detail',
+        'unexpected_followup',
       ],
       degradations: [],
     });
@@ -106,13 +109,18 @@ describe('roleplay capability negotiation', () => {
     ).toEqual(['fast_speech']);
   });
 
-  it('exposes scripted-mishearing challenge only with scripted-line injection', () => {
+  it('exposes scripted repair challenges when speech-rate control is unavailable', () => {
     expect(
       supportedCommunicationChallenges({
         ...FULL,
         speechRateControl: false,
       })
-    ).toEqual(['scripted_mishearing']);
+    ).toEqual([
+      'scripted_mishearing',
+      'unknown_word',
+      'unclear_detail',
+      'unexpected_followup',
+    ]);
   });
 
   it('exposes no transport-dependent challenge when neither required capability exists', () => {
@@ -151,6 +159,18 @@ describe('roleplay capability negotiation', () => {
       requiredCapabilities: ['scriptedLineInjection'],
       missingCapabilities: [],
       supported: true,
+    });
+
+    expect(
+      communicationChallengeCompatibility('unknown_word', {
+        ...FULL,
+        scriptedLineInjection: false,
+      })
+    ).toMatchObject({
+      challengeType: 'unknown_word',
+      requiredCapabilities: ['scriptedLineInjection'],
+      missingCapabilities: ['scriptedLineInjection'],
+      supported: false,
     });
   });
 });
