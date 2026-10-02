@@ -126,6 +126,7 @@ export const api = {
     setting: string;
     learnerGoal: string;
     sceneFacts: any;
+    allowedActions: string[];
     mode: string;
     recentPassages: any[];
     userMessage: string;
