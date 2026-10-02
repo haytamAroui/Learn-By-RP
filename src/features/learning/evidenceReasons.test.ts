@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import type { SkillObservation, SupportExposure } from '../../types';
 import {
   deriveSkillEvidenceReasonCodes,
+  evidenceReasonCodeForValidationCheck,
   evidenceReasonCodesForDisplay,
   renderSkillEvidenceReason,
 } from './evidenceReasons';
@@ -80,6 +81,21 @@ describe('skill evidence reason codes', () => {
     })).toEqual(['ASSISTED_BRIEFING_EXPOSURE']);
   });
 
+  it('distinguishes recent assistant modeling from generic form support', () => {
+    const actorSupport = {
+      ...support('full_form'),
+      source: 'actor' as const,
+    };
+
+    expect(deriveSkillEvidenceReasonCodes({
+      retrieval: 'assisted',
+      modality: 'spoken',
+      evidenceSource: 'validated_explicit',
+      relevantSupport: [actorSupport],
+      isRehearsalAttempt: false,
+    })).toEqual(['ASSISTED_RECENT_ASSISTANT_MODELING']);
+  });
+
   it('keeps typed and rehearsal qualifiers separate from the main evidence reason', () => {
     expect(deriveSkillEvidenceReasonCodes({
       retrieval: 'assisted',
@@ -105,6 +121,16 @@ describe('skill evidence reason codes', () => {
       'INDEPENDENT_NO_RELEVANT_SUPPORT',
       'DISPUTED_BY_LEARNER',
     ]);
+  });
+
+  it('maps only learner-relevant validator failures to non-credit reason codes', () => {
+    expect(evidenceReasonCodeForValidationCheck('rehearsal_not_independent'))
+      .toBe('REHEARSAL_NOT_COUNTED_FOR_STATUS');
+    expect(evidenceReasonCodeForValidationCheck('revision_mismatch'))
+      .toBe('TRANSCRIPT_UNCERTAIN');
+    expect(evidenceReasonCodeForValidationCheck('opportunity_not_demonstrated'))
+      .toBe('TARGET_SKILL_NOT_DEMONSTRATED');
+    expect(evidenceReasonCodeForValidationCheck('unknown_skill')).toBeUndefined();
   });
 
   it('renders localized learner-facing text from codes', () => {
