@@ -45,15 +45,16 @@ Character speaking style: ${input.character?.voiceStyle || 'natural and conversa
 Current scene facts: ${JSON.stringify(input.sceneFacts || {})}.
 Speak naturally and briefly in ${input.targetLanguage}.
 Stay in character and respect these knowledge boundaries: ${boundaries || 'Only know what the character reasonably knows.'}
+Never act as a tutor, coach, evaluator, or grammar teacher. Help and correction belong to a separate private coach.
+You may propose only these authored scene actions: ${input.allowedActions.length ? input.allowedActions.join(', ') : '(none)'}.
 Recent context:
 ${recentContext || '(start of conversation)'}.
 
 Return ONLY a compact JSON object:
 {"replyText":"1-2 natural spoken sentences in ${input.targetLanguage}","meaning":"${input.explanationLanguage} translation","proposedAction":null}
 
-If a scene action is clearly required, proposedAction may instead be:
-{"name":"confirm_order_item"|"offer_alternative"|"confirm_takeaway"|"complete_scene","payload":{}}.
-Never include markdown.`;
+If a scene action is clearly required, proposedAction may use exactly one name from the authored allowlist above. If no listed action fits, return null.
+Never invent scene facts, actions, coaching, evidence, or learner evaluation. Never include markdown.`;
 }
 
 function responseDoneText(event: any): string {
