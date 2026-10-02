@@ -137,7 +137,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     return map;
   }, [allSkillEvidence, skillLapses]);
 
-  const localizeSkill = (skill: CommunicativeSkillMeta) => {
+  const localizeSkill = (skill: CommunicativeSkillDefinition) => {
     switch (skill.id) {
       case 'skill-request-substitution':
         return t.skills.requestSubstitution;
