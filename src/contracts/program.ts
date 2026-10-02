@@ -1,4 +1,15 @@
-import type { LanguageCode, CommunicativeSkillId } from '../types';
+import type {
+  LanguageCode,
+  CommunicativeSkillId,
+  ProgramGoalInput,
+  ProgramPreferences,
+} from '../types';
+
+export type {
+  ProgramGoalDomain,
+  ProgramGoalInput,
+  ProgramPreferences,
+} from '../types';
 
 export const ROLEPLAY_PROGRAM_CONTRACT_VERSION = 1;
 
@@ -50,31 +61,6 @@ export interface ProgramPreferences {
   skippedMissionIds: string[];
   pinnedMissionIds: string[];
   mutedSkillIds: CommunicativeSkillId[];
-}
-
-export type ProgramGoalDomain =
-  | 'travel'
-  | 'relocation'
-  | 'work'
-  | 'social'
-  | 'services'
-  | 'exam';
-
-export interface ProgramGoalInput {
-  targetLanguage: LanguageCode;
-  targetLocale: string;
-  domain: ProgramGoalDomain;
-  contextId: string;
-  /**
-   * Optional ordering constraint only. It must never be converted into a
-   * readiness/competence prediction.
-   */
-  deadline?: string;
-  /** Local-only by product policy; never executable scene input. */
-  personalProfile?: {
-    displayName?: string;
-    notes?: string;
-  };
 }
 
 export interface ProgramContractValidation {
