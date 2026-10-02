@@ -21,9 +21,9 @@ export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
   missionPlan: [
     {
       missionId: 'mission-es-cafe-sol',
-      missionVersion: 1,
+      missionVersion: 2,
       sceneId: 'scene.es.cafe.breakfast',
-      sceneVersion: 1,
+      sceneVersion: 2,
     },
     {
       missionId: 'mission-es-farmacia-sol',

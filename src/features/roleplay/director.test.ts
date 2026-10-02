@@ -69,6 +69,57 @@ describe('deterministic director', () => {
     });
   });
 
+  it('selects an explicit repair challenge only when its capability and target skill are enabled', () => {
+    let state = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+    state = {
+      ...state,
+      firedComplications: [CAFE_SCENE.complication!.id],
+      facts: {
+        ...state.facts,
+        itemConfirmed: true,
+      },
+    };
+
+    const decision = decideDirector({
+      scene: CAFE_SCENE,
+      state,
+      opportunities: [],
+      availableCommunicationChallenges: ['scripted_mishearing'],
+      targetChallengeSkillId: 'skill-clarify-misunderstanding',
+    });
+
+    expect(decision).toMatchObject({
+      kind: 'present_communication_challenge',
+      challengeId: 'challenge.es.cafe.mishear-service-mode',
+      challengeType: 'scripted_mishearing',
+      opportunityId: 'opp.es.cafe.repair.clarify-misunderstanding',
+      skillId: 'skill-clarify-misunderstanding',
+      reason: 'authored_communication_challenge_available',
+    });
+  });
+
+  it('does not emit a repair challenge when the provider did not negotiate that type', () => {
+    let state = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+    state = {
+      ...state,
+      firedComplications: [CAFE_SCENE.complication!.id],
+      facts: {
+        ...state.facts,
+        itemConfirmed: true,
+      },
+    };
+
+    const decision = decideDirector({
+      scene: CAFE_SCENE,
+      state,
+      opportunities: [],
+      availableCommunicationChallenges: ['fast_speech'],
+      targetChallengeSkillId: 'skill-clarify-misunderstanding',
+    });
+
+    expect(decision.kind).not.toBe('present_communication_challenge');
+  });
+
   it('does not re-select an opportunity already materialised for this attempt', () => {
     let state = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
     state = {

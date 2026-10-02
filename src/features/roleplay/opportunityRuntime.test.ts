@@ -8,6 +8,7 @@ import {
   declineOpportunity,
   finalizeNotPresentedOpportunities,
   prepareOpportunityAssessmentView,
+  presentAuthoredCommunicationChallenge,
   syncAuthoredOpportunities,
   takeOpportunity,
 } from './opportunityRuntime';
@@ -84,6 +85,60 @@ describe('authored opportunity runtime', () => {
       detection: 'validated',
       demonstration: 'unknown',
       skillId: 'skill-request-substitution',
+    });
+  });
+
+  it('does not auto-present repair opportunities from scene facts before the challenge is delivered', () => {
+    let state = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+    const result = reduceSceneAction({
+      scene: CAFE_SCENE,
+      state,
+      proposal: {
+        actionId: 'confirm-item-for-repair',
+        sessionId: SESSION,
+        attemptId: ATTEMPT,
+        expectedSceneRevision: state.revision,
+        action: 'confirm_order_item',
+        payload: { item: 'café con leche' },
+        sourceTurnIds: ['assistant-repair-1'],
+      },
+    });
+    state = applyResult(CAFE_SCENE, state, result);
+
+    const synced = syncAuthoredOpportunities({
+      scene: CAFE_SCENE,
+      state,
+      existing: [],
+      recordedAt: NOW,
+    });
+
+    expect(
+      synced.some(instance =>
+        instance.opportunityId.startsWith('opp.es.cafe.repair.')
+      )
+    ).toBe(false);
+
+    const presented = presentAuthoredCommunicationChallenge({
+      scene: CAFE_SCENE,
+      state,
+      existing: synced,
+      challengeId: 'challenge.es.cafe.mishear-service-mode',
+      recordedAt: NOW,
+      presentedAtPassageId: 'assistant-repair-1',
+    });
+
+    expect(
+      presented.find(
+        instance =>
+          instance.opportunityId ===
+          'opp.es.cafe.repair.clarify-misunderstanding'
+      )
+    ).toMatchObject({
+      status: 'presented',
+      detection: 'validated',
+      demonstration: 'unknown',
+      skillId: 'skill-clarify-misunderstanding',
+      presentedAtPassageId: 'assistant-repair-1',
     });
   });
 

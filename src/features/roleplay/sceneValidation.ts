@@ -180,6 +180,46 @@ export function validateSceneDefinition(scene: SceneDefinition): SceneValidation
     validatePredicate(scene, scene.complication.trigger, 'complication.trigger', errors);
   }
 
+  const challengeIds = scene.communicationChallenges.map(item => item.id);
+  if (new Set(challengeIds).size !== challengeIds.length) {
+    errors.push('communicationChallenges: duplicate challenge id');
+  }
+
+  const challengesById = new Map(
+    scene.communicationChallenges.map(item => [item.id, item])
+  );
+  const opportunitiesById = new Map(
+    scene.opportunityDefinitions.map(item => [item.id, item])
+  );
+
+  for (const [index, challenge] of scene.communicationChallenges.entries()) {
+    const path = `communicationChallenges[${index}]`;
+    if (!challenge.actorInstruction.trim()) {
+      errors.push(`${path}: actorInstruction must not be empty`);
+    }
+    if (!scene.skillIds.includes(challenge.targetSkillId)) {
+      errors.push(`${path}: skill ${challenge.targetSkillId} is not declared by scene.skillIds`);
+    }
+    if (!isKnownCommunicativeSkill(challenge.targetSkillId)) {
+      errors.push(`${path}: skill ${challenge.targetSkillId} is not in the canonical skill catalog`);
+    } else if (!isDirectlyEvidencedSkill(challenge.targetSkillId)) {
+      errors.push(`${path}: skill ${challenge.targetSkillId} is derived and cannot own a challenge`);
+    }
+
+    const opportunity = opportunitiesById.get(challenge.opportunityId);
+    if (!opportunity) {
+      errors.push(`${path}: opportunity ${challenge.opportunityId} does not exist`);
+    } else {
+      if (opportunity.communicationChallengeId !== challenge.id) {
+        errors.push(`${path}: opportunity ${challenge.opportunityId} does not link back to ${challenge.id}`);
+      }
+      if (opportunity.skillId !== challenge.targetSkillId) {
+        errors.push(`${path}: opportunity skill ${opportunity.skillId} does not match target ${challenge.targetSkillId}`);
+      }
+    }
+    validatePredicate(scene, challenge.trigger, `${path}.trigger`, errors);
+  }
+
   const opportunityIds = scene.opportunityDefinitions.map(item => item.id);
   if (new Set(opportunityIds).size !== opportunityIds.length) {
     errors.push('opportunityDefinitions: duplicate opportunity id');
@@ -196,6 +236,14 @@ export function validateSceneDefinition(scene: SceneDefinition): SceneValidation
       errors.push(`${path}: skill ${opportunity.skillId} is not in the canonical skill catalog`);
     } else if (!isDirectlyEvidencedSkill(opportunity.skillId)) {
       errors.push(`${path}: skill ${opportunity.skillId} is derived and cannot own an opportunity`);
+    }
+    if (opportunity.communicationChallengeId) {
+      const challenge = challengesById.get(opportunity.communicationChallengeId);
+      if (!challenge) {
+        errors.push(`${path}: unknown communication challenge ${opportunity.communicationChallengeId}`);
+      } else if (challenge.opportunityId !== opportunity.id) {
+        errors.push(`${path}: challenge ${challenge.id} points to ${challenge.opportunityId}, not ${opportunity.id}`);
+      }
     }
     for (const action of opportunity.relevantActionIds ?? []) {
       if (!availableActions.has(action)) {

@@ -29,6 +29,9 @@ export function syncAuthoredOpportunities(input: {
 
   for (const definition of scene.opportunityDefinitions) {
     if (byDefinition.has(definition.id)) continue;
+    // Repair challenges must be actually delivered before their opportunity is
+    // presented. A true scene predicate alone must never manufacture confusion.
+    if (definition.communicationChallengeId) continue;
     if (!evaluatePredicate(definition.sceneCondition, state.facts, state.actionCounts)) continue;
 
     next.push({
@@ -44,6 +47,68 @@ export function syncAuthoredOpportunities(input: {
   }
 
   return next;
+}
+
+/**
+ * Materialise the opportunity owned by one explicit authored communication
+ * challenge after the Director/provider has actually delivered that challenge.
+ *
+ * This operation is deterministic and idempotent. It never classifies what the
+ * learner did and therefore never creates evidence by itself.
+ */
+export function presentAuthoredCommunicationChallenge(input: {
+  scene: SceneDefinition;
+  state: SceneStateSnapshot;
+  existing: OpportunityInstance[];
+  challengeId: string;
+  recordedAt: string;
+  presentedAtPassageId?: string;
+}): OpportunityInstance[] {
+  const { scene, state, challengeId, recordedAt, presentedAtPassageId } = input;
+  if (state.sceneId !== scene.id) {
+    throw new Error(`Scene state ${state.sceneId} does not match definition ${scene.id}`);
+  }
+
+  const challenge = scene.communicationChallenges.find(item => item.id === challengeId);
+  if (!challenge) {
+    throw new Error(`Unknown communication challenge ${challengeId}`);
+  }
+  if (!evaluatePredicate(challenge.trigger, state.facts, state.actionCounts)) {
+    throw new Error(`Communication challenge ${challengeId} is not available in current scene state`);
+  }
+
+  const definition = scene.opportunityDefinitions.find(
+    item => item.id === challenge.opportunityId
+  );
+  if (
+    !definition ||
+    definition.communicationChallengeId !== challenge.id ||
+    definition.skillId !== challenge.targetSkillId
+  ) {
+    throw new Error(`Communication challenge ${challengeId} has an invalid opportunity binding`);
+  }
+
+  const existingInstance = input.existing.find(
+    instance =>
+      instance.attemptId === state.attemptId &&
+      instance.opportunityId === definition.id
+  );
+  if (existingInstance) return input.existing;
+
+  return [
+    ...input.existing,
+    {
+      id: opportunityInstanceId(state.attemptId, definition.id),
+      attemptId: state.attemptId,
+      opportunityId: definition.id,
+      skillId: definition.skillId,
+      status: 'presented',
+      detection: 'validated',
+      demonstration: 'unknown',
+      ...(presentedAtPassageId ? { presentedAtPassageId } : {}),
+      recordedAt,
+    },
+  ];
 }
 
 /**

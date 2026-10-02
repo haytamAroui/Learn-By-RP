@@ -19,6 +19,7 @@ export interface SceneModelCheckReport {
   achievedPath: ModelCheckPathStep[] | null;
   reachableActions: SceneActionName[];
   reachableOpportunityIds: string[];
+  reachableCommunicationChallengeIds: string[];
 }
 
 interface QueueEntry {
@@ -45,6 +46,7 @@ function countCaps(scene: SceneDefinition): Partial<Record<SceneActionName, numb
     ...scene.completion.map(entry => entry.predicate),
     ...scene.checkpoints.map(entry => entry.after),
     ...scene.opportunityDefinitions.map(entry => entry.sceneCondition),
+    ...scene.communicationChallenges.map(entry => entry.trigger),
     ...(scene.complication ? [scene.complication.trigger] : []),
   ];
 
@@ -109,6 +111,7 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
   const warnings: string[] = [];
   const reachableActions = new Set<SceneActionName>();
   const reachableOpportunities = new Set<string>();
+  const reachableCommunicationChallenges = new Set<string>();
   const caps = countCaps(scene);
 
   const initial = createInitialScene(scene, 'model-check', 'attempt-1');
@@ -130,6 +133,18 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
         )
       ) {
         reachableOpportunities.add(opportunity.id);
+      }
+    }
+
+    for (const challenge of scene.communicationChallenges) {
+      if (
+        evaluatePredicate(
+          challenge.trigger,
+          state.facts,
+          state.actionCounts
+        )
+      ) {
+        reachableCommunicationChallenges.add(challenge.id);
       }
     }
 
@@ -211,6 +226,12 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
     }
   }
 
+  for (const challenge of scene.communicationChallenges) {
+    if (!reachableCommunicationChallenges.has(challenge.id)) {
+      errors.push(`unreachable communication challenge: ${challenge.id}`);
+    }
+  }
+
   return {
     sceneId: scene.id,
     reachableStateCount: visited.size,
@@ -219,5 +240,6 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
     achievedPath,
     reachableActions: [...reachableActions],
     reachableOpportunityIds: [...reachableOpportunities],
+    reachableCommunicationChallengeIds: [...reachableCommunicationChallenges],
   };
 }

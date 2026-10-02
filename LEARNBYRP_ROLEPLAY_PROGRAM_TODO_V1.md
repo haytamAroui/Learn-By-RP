@@ -1,7 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
-**Last reconciled with `main`:** `fa4564dc19ed36adfff27f916a4486d07459549d` (2026-10-02)  
+**Last reconciled with `main`:** `2e11d0e1652e3fdb59799d2b9b59b1b9a540e8ce` (2026-10-02)  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -207,7 +207,7 @@ interface OpportunityInstance {
 - [x] `not_presented` is never weakness.
 - [x] Live semantic detection is provisional only for lapse eligibility; only `validated` opportunities can lapse.
 - [x] Checkpoints may only reference deterministic/validated scene state, not provisional semantic judgments. (`RoleplayCheckpoint` v5 contains authored checkpoint id + authoritative revision + learner-history coordinates only; ingress/store reject semantic/unknown fields; `sceneStore.test.ts`)
-- [ ] Author explicit communication challenges for repair skills instead of waiting for accidental confusion.
+- [x] Author explicit communication challenges for repair skills instead of waiting for accidental confusion. (`CommunicationChallengeDefinition`; six opt-in/skippable Café repair variants cover every direct repair child skill; challenge-linked opportunities materialize only after explicit delivery; capability/target-gated `decideDirector`; validation/model-check/runtime regressions)
 - [x] Add tests for presented/taken/declined/not-presented lifecycle. (`src/features/roleplay/opportunityRuntime.test.ts`; includes retry isolation and validated-assessment commit)
 
 ---
@@ -867,6 +867,7 @@ Confirmed from `main` after squash merge `fa4564dc19ed36adfff27f916a4486d0745954
 - [x] Hosted scene execution is server-authoritative with versioned requests, cross-channel dedupe metadata and append-only event replay.
 - [x] Deterministic Director V1 exists for authored opportunities, complications and completion preparation.
 - [x] Provider capabilities are negotiated; unsupported communication challenge types cannot be emitted by next-RP policy v2.
+- [x] Explicit repair challenge content is authored for all six direct repair skills in Café v2; it is opt-in/skippable, provider-capability gated, and challenge-linked opportunities cannot appear from scene predicates alone. Pharmacy remains challenge-free under the medical-simulation exclusion.
 - [x] RoleplayProgram contracts, ProgramProjection/Preferences, deterministic next-RP, Cold/Guided/Transfer/Recovery and recovery caps are implemented.
 - [x] Carry-forward continuity facts have source, sensitivity, mission allowlist, TTL and local-only enforcement.
 - [x] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution implemented (`src/content/skills.ts`, `skillEvidence.ts`, scene/catalog/hierarchy regression tests; duplicate mission-owned catalog removed).

@@ -3,7 +3,7 @@ import { MissionDefinition } from '../types';
 export const MISSION_CATALOG: MissionDefinition[] = [
   {
     id: 'mission-es-cafe-sol',
-    version: 1,
+    version: 2,
     language: 'es',
     sceneId: 'scene.es.cafe.breakfast',
     scenarioFamilyId: 'counter-ordering',
@@ -29,7 +29,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     stretchGoal: 'Ask if they have oat milk or inquire about a dairy-free milk alternative',
     targetIntents: ['order_beverage', 'request_substitution', 'specify_takeaway'],
     primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
-    secondarySkillIds: ['skill-propose-alternative', 'skill-communicative-repair'],
+    secondarySkillIds: [
+      'skill-propose-alternative',
+      'skill-communicative-repair',
+      'skill-request-repetition',
+      'skill-request-slower-speech',
+      'skill-ask-clarification',
+      'skill-check-understanding',
+      'skill-clarify-misunderstanding',
+      'skill-paraphrase-when-stuck',
+    ],
     usefulPhrases: [
       {
         id: 'phrase.es.cafe_con_leche',
