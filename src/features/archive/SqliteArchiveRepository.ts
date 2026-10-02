@@ -48,6 +48,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   audioPlaybackEnabled: true,
   autoPlaySpeech: true,
   speechRate: 1.0,
+  accommodations: { enabled: [] },
 };
 
 function parseJson<T>(raw: string | null | undefined, fallback: T): T {
