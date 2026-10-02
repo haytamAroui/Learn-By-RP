@@ -10,6 +10,8 @@ import {
   getSceneSnapshot,
   listAbandonedSessions,
   markSessionReconciled,
+  rebuildSceneStateFromEventLog,
+  reconcileHostedSession,
 } from './sceneStore';
 import { SqliteSceneStore } from './SqliteSceneStore';
 import { CAFE_SCENE } from '../../content/scenes';
@@ -278,6 +280,65 @@ describe('durability', () => {
 
     expect((await getSceneSnapshot('hosted-2'))?.facts.itemConfirmed).toBe(true);
     expect((await getSceneSnapshot(SESSION))?.facts.itemConfirmed).toBe(false);
+  });
+});
+
+describe('event-log scene recovery', () => {
+  it('repairs a stale snapshot from an accepted durable event', async () => {
+    const initial = await seedSession();
+    await applySceneAction(proposal());
+
+    // Simulate the crash window after scene_events commit but before state_json commit.
+    await driver.db.runAsync(
+      'UPDATE hosted_sessions SET state_json = ? WHERE session_id = ?',
+      JSON.stringify(initial.state),
+      SESSION
+    );
+
+    const stale = await getSceneSnapshot(SESSION);
+    expect(stale?.revision).toBe(1);
+
+    const rebuilt = await rebuildSceneStateFromEventLog(SESSION);
+    expect(rebuilt.revision).toBe(2);
+    expect(rebuilt.facts.itemConfirmed).toBe(true);
+
+    const reconciled = await reconcileHostedSession(SESSION);
+    expect(reconciled.state.revision).toBe(2);
+    expect((await getSceneSnapshot(SESSION))?.facts.itemConfirmed).toBe(true);
+  });
+
+  it('keeps rejected events audit-only during replay', async () => {
+    await seedSession();
+    await applySceneAction(
+      proposal({ actionId: 'reject-replay', action: 'hand_over_free_coffee' })
+    );
+
+    const rebuilt = await rebuildSceneStateFromEventLog(SESSION);
+    expect(rebuilt.revision).toBe(1);
+    expect(rebuilt.facts.itemConfirmed).toBe(false);
+  });
+
+  it('replays only the current fork attempt', async () => {
+    await seedSession();
+    await applySceneAction(proposal());
+
+    const fork = await forkScene(SESSION, {
+      checkpointId: 'cp-start',
+      rehearsal: true,
+    });
+
+    await applySceneAction(
+      proposal({
+        actionId: 'fork-act',
+        attemptId: fork.attemptId,
+        expectedSceneRevision: 1,
+      })
+    );
+
+    const rebuilt = await rebuildSceneStateFromEventLog(SESSION);
+    expect(rebuilt.attemptId).toBe(fork.attemptId);
+    expect(rebuilt.revision).toBe(2);
+    expect(rebuilt.facts.itemConfirmed).toBe(true);
   });
 });
 

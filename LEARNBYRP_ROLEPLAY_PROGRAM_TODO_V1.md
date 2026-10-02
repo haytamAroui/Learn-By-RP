@@ -371,7 +371,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Add provider call ID to hosted action ingress (`providerCallId`).
 - [x] Add connection generation to hosted action ingress (`connectionGeneration`).
 - [x] Append accepted/rejected scene proposals and reducer verdicts to `scene_events`.
-- [ ] Rebuild revision state from event log.
+- [x] Rebuild current-attempt revision state from append-only event log during reconciliation; accepted verdicts replay, rejected verdicts remain audit-only, and replay fails closed on revision gaps/version drift (`rebuildSceneStateFromEventLog`, recovery tests).
 - [x] Cross-channel duplicate `actionId` → first persisted verdict is replayed; accepted and rejected actions are both idempotent.
 - [x] Consequential tool actions block actor confirmation until reducer result (`mayCommitActorReply`; Actor line suppressed on missing/rejected verdict).
 

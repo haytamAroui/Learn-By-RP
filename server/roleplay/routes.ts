@@ -7,7 +7,7 @@ import {
   getHostedSession,
   getSceneSnapshot,
   listAbandonedSessions,
-  markSessionReconciled,
+  reconcileHostedSession,
 } from '../../src/features/roleplay/sceneStore';
 import { getScene, SCENES } from '../../src/content/scenes';
 import { MISSION_CATALOG } from '../../src/data/missions';
@@ -236,14 +236,13 @@ roleplayRouter.get(
 roleplayRouter.post(
   '/v1/voice/sessions/:id/reconcile',
   wrap(async (req, res) => {
-    // Idempotent: reconciling twice is safe.
-    await markSessionReconciled(req.params.id);
-    const record = await getHostedSession(req.params.id);
-    if (!record) {
-      res.status(404).json({ error: 'Unknown session' });
-      return;
-    }
-    res.json({ sessionId: record.sessionId, reconciledAt: record.reconciledAt, state: record.state });
+    // Idempotent: replaying the same accepted verdicts yields the same snapshot.
+    const record = await reconcileHostedSession(req.params.id);
+    res.json({
+      sessionId: record.sessionId,
+      reconciledAt: record.reconciledAt,
+      state: record.state,
+    });
   })
 );
 

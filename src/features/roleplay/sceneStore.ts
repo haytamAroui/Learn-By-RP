@@ -105,6 +105,71 @@ export async function getSceneSnapshot(
 }
 
 /**
+ * Rebuild the current attempt strictly from its append-only reducer verdicts.
+ *
+ * This repairs the exact crash window where an accepted scene_event was durable
+ * but the denormalized hosted_sessions.state_json snapshot was not yet updated.
+ * Rejected events remain in the audit log but never mutate replayed scene truth.
+ */
+export async function rebuildSceneStateFromEventLog(
+  sessionId: string
+): Promise<HostedSessionRecord['state']> {
+  const store = await getStore();
+  const record = await store.get(sessionId);
+  if (!record) {
+    throw new Error(`Unknown hosted session: ${sessionId}`);
+  }
+
+  const scene = getScene(record.sceneId);
+  if (!scene) {
+    throw new Error(`Unknown scene: ${record.sceneId}`);
+  }
+  if (scene.version !== record.sceneVersion) {
+    throw new Error(
+      `Cannot replay scene ${record.sceneId}: stored version ${record.sceneVersion} != catalog ${scene.version}`
+    );
+  }
+
+  const currentAttemptId = record.state.attemptId;
+  let rebuilt = createInitialScene(scene, record.sessionId, currentAttemptId);
+  const events = await store.listEvents(record.sessionId, currentAttemptId);
+
+  for (const event of events) {
+    const result = event.result;
+    if (!result.accepted) continue;
+
+    const expectedRevision = rebuilt.revision + 1;
+    if (result.revision !== expectedRevision) {
+      throw new Error(
+        `Scene event replay gap for ${record.sessionId}/${currentAttemptId}: expected revision ${expectedRevision}, got ${result.revision}`
+      );
+    }
+    rebuilt = applyResult(scene, rebuilt, result);
+  }
+
+  return rebuilt;
+}
+
+/**
+ * Recovery reconciliation: rebuild scene truth from the append-only event log,
+ * persist the repaired snapshot, then mark the hosted session reconciled.
+ */
+export async function reconcileHostedSession(
+  sessionId: string
+): Promise<HostedSessionRecord> {
+  const store = await getStore();
+  const record = await store.get(sessionId);
+  if (!record) {
+    throw new Error(`Unknown hosted session: ${sessionId}`);
+  }
+
+  record.state = await rebuildSceneStateFromEventLog(sessionId);
+  record.reconciledAt = new Date().toISOString();
+  await store.put(record);
+  return record;
+}
+
+/**
  * Applies a proposed action and returns the reducer's verdict verbatim.
  *
  * Idempotency is enforced in two places: the stored actionId, and the client's

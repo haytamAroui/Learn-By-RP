@@ -1,8 +1,8 @@
-import {
+import type {
   SceneActionProposal,
   SceneActionResult,
   SceneStateSnapshot,
-} from '../../contracts/scene';
+} from './runtime';
 
 /**
  * Durable storage for hosted scene truth (§13.4).
@@ -21,6 +21,7 @@ export interface SceneStore {
     proposal: SceneActionProposal,
     result: SceneActionResult
   ): Promise<void>;
+  listEvents(sessionId: string, attemptId: string): Promise<StoredSceneEvent[]>;
   listAbandoned(olderThanMs: number): Promise<AbandonedSession[]>;
   markReconciled(sessionId: string): Promise<void>;
 }
@@ -45,6 +46,14 @@ export interface AttemptRecord {
   checkpointId?: string;
   rehearsal: boolean;
   createdAt: string;
+}
+
+export interface StoredSceneEvent {
+  sessionId: string;
+  actionId: string;
+  attemptId: string;
+  result: SceneActionResult;
+  appliedAt: string;
 }
 
 export interface AbandonedSession {
@@ -174,6 +183,28 @@ export class SqliteSceneStore implements SceneStore {
       result.revision,
       result.appliedAt
     );
+  }
+
+  async listEvents(
+    sessionId: string,
+    attemptId: string
+  ): Promise<StoredSceneEvent[]> {
+    const rows = await this.db.getAllAsync<Record<string, unknown>>(
+      `SELECT session_id, action_id, attempt_id, result_json, applied_at
+       FROM scene_events
+       WHERE session_id = ? AND attempt_id = ?
+       ORDER BY applied_at ASC, rowid ASC`,
+      sessionId,
+      attemptId
+    );
+
+    return rows.map(row => ({
+      sessionId: String(row.session_id),
+      actionId: String(row.action_id),
+      attemptId: String(row.attempt_id),
+      result: JSON.parse(String(row.result_json)) as SceneActionResult,
+      appliedAt: String(row.applied_at),
+    }));
   }
 
   /**
