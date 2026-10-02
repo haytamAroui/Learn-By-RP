@@ -147,8 +147,8 @@ export function missionSkillIds(mission: MissionDefinition): {
   secondary: Set<CommunicativeSkillId>;
 } {
   return {
-    primary: new Set(mission.primarySkillIds),
-    secondary: new Set(mission.secondarySkillIds),
+    primary: new Set(mission.primarySkillIds.filter(isDirectlyEvidencedSkill)),
+    secondary: new Set(mission.secondarySkillIds.filter(isDirectlyEvidencedSkill)),
   };
 }
 
