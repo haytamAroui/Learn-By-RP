@@ -12,6 +12,7 @@ import type {
   RoleplayProgram,
 } from '../../contracts/program';
 import { MISSION_CATALOG } from '../../data/missions';
+import { validateMissionScenarioFamily } from '../../content/scenarioFamilies';
 import { isIndependentSuccess } from '../learning/skillEvidence';
 import { projectSkillsV2 } from '../learning/skillProjection';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
@@ -88,6 +89,7 @@ function missionForRef(program: RoleplayProgram, missionId: string): MissionDefi
   if (!ref) return undefined;
   const mission = MISSION_CATALOG.find(item => item.id === ref.missionId);
   if (!mission || mission.version !== ref.missionVersion) return undefined;
+  if (validateMissionScenarioFamily(mission).length > 0) return undefined;
   return mission;
 }
 
