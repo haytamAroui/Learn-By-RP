@@ -514,6 +514,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     const rows = await db.getAllAsync<Record<string, unknown>>(
       'SELECT * FROM sessions ORDER BY started_at DESC'
     );
+    const [allSkillObservations, allSkillLapses] = await Promise.all([
+      this.getSkillObservations(),
+      this.getSkillLapses(),
+    ]);
 
     const sessions: SessionRecord[] = [];
 
@@ -561,6 +565,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         supportExposures: exposureRows.map(mapExposureRow),
         opportunityInstances: opportunityRows.map(mapOpportunityInstanceRow),
         observations: observationRows.map(mapObservationRow),
+        skillObservations: allSkillObservations.filter(
+          observation => observation.sessionId === sessionId
+        ),
+        skillLapses: allSkillLapses.filter(lapse => lapse.sessionId === sessionId),
         operationalTelemetry: parseJson(row.usage_json as string, []),
         taskOutcome: 'unknown',
         sceneState: {
