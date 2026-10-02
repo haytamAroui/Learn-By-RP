@@ -352,7 +352,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['Could you say that again?'],
     samplePhrases: ['Could you say that again?', '¿Puede repetirlo?', 'Kunt u dat herhalen?'],
-    associatedMissions: [],
+    associatedMissions: ['mission-es-cafe-sol'],
   },
   {
     id: 'skill-request-slower-speech',
@@ -375,7 +375,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['Could you speak more slowly?'],
     samplePhrases: ['Could you speak more slowly?', '¿Puede hablar más despacio?', 'Kunt u wat langzamer spreken?'],
-    associatedMissions: [],
+    associatedMissions: ['mission-es-cafe-sol'],
   },
   {
     id: 'skill-ask-clarification',
@@ -401,7 +401,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['What do you mean by [X]?'],
     samplePhrases: ['What do you mean by that?', '¿Qué quiere decir con eso?', 'Wat bedoelt u daarmee?'],
-    associatedMissions: [],
+    associatedMissions: ['mission-es-cafe-sol'],
   },
   {
     id: 'skill-check-understanding',
@@ -424,7 +424,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['So you mean [X], right?'],
     samplePhrases: ['So you mean tomorrow morning, right?', 'Dus u bedoelt morgen ochtend, toch?'],
-    associatedMissions: [],
+    associatedMissions: ['mission-es-cafe-sol'],
   },
   {
     id: 'skill-clarify-misunderstanding',
@@ -447,7 +447,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['No, I meant [X].'],
     samplePhrases: ['No, I meant tomorrow, not today.', 'Nee, ik bedoelde morgen, niet vandaag.'],
-    associatedMissions: [],
+    associatedMissions: ['mission-es-cafe-sol'],
   },
   {
     id: 'skill-paraphrase-when-stuck',
@@ -470,7 +470,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['It is the thing you use for [purpose].'],
     samplePhrases: ['It is the thing you use to open the door.'],
-    associatedMissions: [],
+    associatedMissions: ['mission-es-cafe-sol'],
   },
   {
     id: 'skill-give-opinion-with-reason',
