@@ -3,16 +3,7 @@ import { Text, View } from 'react-native';
 import { useRouter, useSegments } from 'expo-router';
 import { useArchive } from '../archive/ArchiveProvider';
 import { CONSENT_VERSION } from '../archive/schema';
-import type { ConsentRecord } from '../archive/ArchiveRepository.types';
-
-export function consentDecisionsComplete(
-  voice: ConsentRecord | null,
-  savedAnalysis: ConsentRecord | null
-): boolean {
-  // null = undecided. A false record is still a valid explicit refusal and must
-  // not force the learner back through onboarding.
-  return Boolean(voice && savedAnalysis);
-}
+import { consentDecisionsComplete } from './consentState';
 
 /**
  * Blocks the app only until both consent scopes have an explicit decision.
