@@ -19,6 +19,10 @@ import {
 import { INITIAL_PHRASE_ITEMS } from '../../data/missions';
 import { projectPhraseState } from '../learning/learningCore';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
+import {
+  assertValidatedSkillEvidence,
+  type ValidatedSkillEvidence,
+} from '../learning/skillEvidence';
 import { CONSENT_VERSION } from './schema';
 import {
   ArchiveRepository as ArchiveRepositoryContract,
@@ -247,8 +251,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async completeSession(
     session: SessionRecord,
-    rejectedProposals: { reason: string }[] = []
+    rejectedProposals: { reason: string }[] = [],
+    skillEvidence?: ValidatedSkillEvidence
   ): Promise<void> {
+    if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
     const db = await getDatabase();
 
     await withTransaction(async txn => {
@@ -411,7 +417,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         );
       }
 
-      await this.writeSkillEvidence(txn, session);
+      if (skillEvidence) {
+        await this.writeSkillEvidence(txn, skillEvidence);
+      }
 
       await this.reprojectPhrases(txn);
     });
@@ -425,8 +433,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
    * does not hold, and an interrupted write must not leave evidence without the
    * passage it cites.
    */
-  private async writeSkillEvidence(txn: Db, session: SessionRecord): Promise<void> {
-    for (const observation of session.skillObservations ?? []) {
+  private async writeSkillEvidence(
+    txn: Db,
+    skillEvidence: ValidatedSkillEvidence
+  ): Promise<void> {
+    assertValidatedSkillEvidence(skillEvidence);
+    for (const observation of skillEvidence.observations) {
       await txn.runAsync(
         `INSERT OR REPLACE INTO skill_observations
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
@@ -464,7 +476,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       );
     }
 
-    for (const lapse of session.skillLapses ?? []) {
+    for (const lapse of skillEvidence.lapses) {
       await txn.runAsync(
         `INSERT OR REPLACE INTO skill_lapses
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
@@ -697,51 +709,6 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       'SELECT * FROM observations ORDER BY created_at DESC'
     );
     return rows.map(mapObservationRow);
-  }
-
-  async saveSkillObservations(observations: SkillObservation[]): Promise<void> {
-    if (observations.length === 0) return;
-    const db = await getDatabase();
-
-    await withTransaction(async txn => {
-      for (const observation of observations) {
-        await txn.runAsync(
-          `INSERT OR REPLACE INTO skill_observations
-            (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-             domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
-             task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
-             evidence_source, quote, day_key, reason_code, reason_codes, policy_version, hidden, user_disputed, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
-          observation.id,
-          observation.skillId,
-          observation.sessionId,
-          observation.attemptId,
-          observation.sourcePassageId,
-          observation.sourceRevision,
-          observation.contextKey.domainId,
-          observation.contextKey.scenarioFamilyId,
-          observation.contextKey.scenarioId ?? observation.scenarioId ?? null,
-          observation.examProgramId ?? null,
-          observation.examTaskId ?? null,
-          observation.modality,
-          observation.retrieval,
-          observation.taskOutcome,
-          observation.demonstration,
-          observation.opportunityInstanceId ?? null,
-          JSON.stringify(observation.supportExposureIds),
-          observation.evidenceSource,
-          observation.quote,
-          observation.dayKey ?? observation.recordedAt.slice(0, 10),
-          observation.reasonCode ??
-            (observation.evidenceSource === 'legacy_inferred'
-              ? 'legacy_inferred_demonstration'
-              : 'validated_demonstration'),
-          JSON.stringify(observation.reasonCodes ?? []),
-          observation.policyVersion ?? LEARNING_POLICY_VERSION,
-          observation.recordedAt
-        );
-      }
-    });
   }
 
   async getSkillObservations(): Promise<SkillObservation[]> {
