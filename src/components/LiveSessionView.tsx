@@ -26,6 +26,7 @@ import {
   X,
 } from 'lucide-react-native';
 import {
+  AccommodationProfile,
   MissionDefinition,
   Mode,
   Passage,
@@ -71,6 +72,8 @@ import { iconColor } from '../design/iconColor';
 interface LiveSessionViewProps {
   mission: MissionDefinition | null;
   initialSession: SessionRecord;
+  accommodations?: AccommodationProfile;
+  preferredSpeechRate?: number;
   onEndSession: (session: SessionRecord) => void;
 }
 
@@ -256,6 +259,8 @@ function resolveCoachTarget(
 export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   mission,
   initialSession,
+  accommodations = { enabled: [] },
+  preferredSpeechRate = 1,
   onEndSession,
 }) => {
   const { t, language } = useI18n();
@@ -351,7 +356,13 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     );
   }, [passages, showMeaningLine, sessionId, attemptId]);
 
-  const [showTypedInput, setShowTypedInput] = useState(false);
+  const typedPreferred = accommodations.enabled.includes('typed_preferred');
+  const slowerSpeechDefault = accommodations.enabled.includes('slower_speech_default');
+  const effectiveSpeechRate = slowerSpeechDefault
+    ? Math.min(preferredSpeechRate, 0.8)
+    : preferredSpeechRate;
+
+  const [showTypedInput, setShowTypedInput] = useState(typedPreferred);
   const [typedMessage, setTypedMessage] = useState('');
   /*
     The last assistant failure, kept so recovery can be offered rather than the
@@ -709,6 +720,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             } else {
               await speakWithBestAvailable(transport, response.replyText, {
                 language: target.language,
+                speed: effectiveSpeechRate,
                 style: target.character.voiceStyle,
               });
             }
@@ -743,7 +755,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         setVoiceState('reconnecting');
       }
     },
-    [audioPlaybackEnabled, attemptId, explanationLanguage, mode, sessionId]
+    [audioPlaybackEnabled, attemptId, effectiveSpeechRate, explanationLanguage, mode, sessionId]
   );
 
   /*
@@ -992,6 +1004,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
       await speakWithBestAvailable(transport, greeting, {
         language: mission.language,
+        speed: effectiveSpeechRate,
         style: mission.character.voiceStyle,
       });
     };
@@ -1009,7 +1022,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       void sceneMirrorRef.current?.close();
       sceneMirrorRef.current = null;
     };
-  }, [mission, sessionId, coldAttempt, buildInitialGreeting, handleUserMessage]);
+  }, [
+    mission,
+    sessionId,
+    coldAttempt,
+    buildInitialGreeting,
+    effectiveSpeechRate,
+    handleUserMessage,
+  ]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
