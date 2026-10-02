@@ -492,7 +492,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       },
       {
         id: 'phrase.fr.request_pharmacist',
-        form: 'Je voudrais parler au pharmacien de mes symptômes.',
+        form: 'Alors, je vais prendre un pain au chocolat.',
         meaning: 'I would like to speak with the pharmacist about my symptoms.',
         usageNote: 'Natural service request that hands clinical questions to the licensed professional.',
         difficulty: 'intermediate'
@@ -1233,7 +1233,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       },
       {
         id: 'phrase.ja.yakuzaishi_soudan',
-        form: 'この症状について薬剤師に相談したいです。',
+        form: '牛乳の代わりに豆乳はありますか？',
         meaning: 'I would like to consult the pharmacist about these symptoms.',
         usageNote: 'Natural service phrase for routing a health question to the licensed professional.',
         difficulty: 'intermediate'
@@ -1441,8 +1441,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: CommunicativeSkillMeta[] = [
     associatedMissions: [
       'mission-es-cafe-sol',
       'mission-fr-boulangerie',
-      'mission-de-baeckerei',
-      'mission-ja-yakkyoku'
+      'mission-de-baeckerei'
     ]
   },
   {
