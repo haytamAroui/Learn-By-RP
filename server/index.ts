@@ -15,6 +15,15 @@ import {
   createGuestAccessRegistry,
   readBearerToken,
 } from './security/guestAccess';
+import { createFixedWindowRateLimiter } from './security/rateLimit';
+import {
+  validateActorRequest,
+  validateAssessmentRequest,
+  validateBody,
+  validateCoachRequest,
+  validateRealtimeSessionRequest,
+  validateSpeechRequest,
+} from './security/requestValidation';
 
 dotenv.config();
 
@@ -23,13 +32,51 @@ const app = express();
 // The Expo client runs from a different origin (Metro, a dev server, or a
 // standalone build), so allow the API to be called cross-origin.
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '1mb' }));
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Provider choice is centralized. Routes never depend on a vendor SDK directly.
 const providers = createProviderRuntime();
 const guestAccess = createGuestAccessRegistry();
+const guestBootstrapRateLimit = createFixedWindowRateLimiter({
+  name: 'guest-bootstrap',
+  windowMs: 60 * 60 * 1000,
+  maxRequests: 30,
+  key: req => req.ip || req.socket.remoteAddress || 'unknown',
+});
+const consentRateLimit = createFixedWindowRateLimiter({
+  name: 'consent',
+  windowMs: 60 * 1000,
+  maxRequests: 30,
+});
+const aiRateLimits = {
+  realtime: createFixedWindowRateLimiter({
+    name: 'realtime',
+    windowMs: 60 * 1000,
+    maxRequests: 12,
+  }),
+  actor: createFixedWindowRateLimiter({
+    name: 'actor',
+    windowMs: 60 * 1000,
+    maxRequests: 90,
+  }),
+  coach: createFixedWindowRateLimiter({
+    name: 'coach',
+    windowMs: 60 * 1000,
+    maxRequests: 30,
+  }),
+  assessment: createFixedWindowRateLimiter({
+    name: 'assessment',
+    windowMs: 60 * 1000,
+    maxRequests: 12,
+  }),
+  speech: createFixedWindowRateLimiter({
+    name: 'speech',
+    windowMs: 60 * 1000,
+    maxRequests: 60,
+  }),
+};
 
 console.log('[Server] Provider runtime:', providers.descriptor());
 
@@ -49,11 +96,15 @@ app.get('/api/providers', (_req: Request, res: Response) => {
   res.json(providers.descriptor());
 });
 
-app.post('/api/access/guest', (_req: Request, res: Response) => {
+app.post('/api/access/guest', guestBootstrapRateLimit, (_req: Request, res: Response) => {
   res.status(201).json(guestAccess.createGuest());
 });
 
-app.post('/api/access/consent', guestAccess.requireGuest, (req: Request, res: Response) => {
+app.post(
+  '/api/access/consent',
+  guestAccess.requireGuest,
+  consentRateLimit,
+  (req: Request, res: Response) => {
   const { scope, granted, version } = req.body ?? {};
   if (scope !== 'voice' && scope !== 'saved_analysis') {
     res.status(400).json({ error: 'invalid_consent_scope' });
@@ -83,9 +134,15 @@ app.post('/api/access/consent', guestAccess.requireGuest, (req: Request, res: Re
   }
 
   res.json(record);
-});
+  }
+);
 
-app.post('/api/realtime/session', guestAccess.requireConsent('voice'), async (req: Request, res: Response) => {
+app.post(
+  '/api/realtime/session',
+  guestAccess.requireConsent('voice'),
+  aiRateLimits.realtime,
+  validateBody(validateRealtimeSessionRequest),
+  async (req: Request, res: Response) => {
   try {
     if (!providers.realtime) {
       res.status(503).json({ error: 'OpenAI Realtime is not configured' });
@@ -112,7 +169,8 @@ app.post('/api/realtime/session', guestAccess.requireConsent('voice'), async (re
       error: err?.message || 'Realtime session creation failed',
     });
   }
-});
+  }
+);
 
 /**
  * 1. Actor Response (Conversational Character)
@@ -137,7 +195,12 @@ function sanitizeActorResponse(
   };
 }
 
-app.post('/api/actor/respond', guestAccess.requireGuest, async (req: Request, res: Response) => {
+app.post(
+  '/api/actor/respond',
+  guestAccess.requireGuest,
+  aiRateLimits.actor,
+  validateBody(validateActorRequest),
+  async (req: Request, res: Response) => {
   try {
     const {
       character,
@@ -227,7 +290,8 @@ Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`
     );
     res.json(sanitizeActorResponse(fallbackReply, allowedActions));
   }
-});
+  }
+);
 
 /**
  * 2. Scene truth lives in the roleplay router under /v1/voice/sessions/:id/scene.
@@ -241,7 +305,12 @@ Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`
 
 // 3. Coach Hint Ladder (Separate Private Coach Surface)
 // Ladder: intent_hint -> partial_form -> full_form -> explanation
-app.post('/api/coach/hint', guestAccess.requireGuest, async (req: Request, res: Response) => {
+app.post(
+  '/api/coach/hint',
+  guestAccess.requireGuest,
+  aiRateLimits.coach,
+  validateBody(validateCoachRequest),
+  async (req: Request, res: Response) => {
   try {
     const {
       step = 'intent_hint',
@@ -318,13 +387,19 @@ Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "
     console.error('Error in /api/coach/hint:', err);
     res.json({ hint: 'Try expressing what you would like in a simple sentence.' });
   }
-});
+  }
+);
 
 /**
  * 4. Bounded Structured Assessment (Recap / Evidence Extractor)
  * Extracts quotes from user transcript and matches to candidate useful phrases.
  */
-app.post('/api/assessment', guestAccess.requireConsent('saved_analysis'), async (req: Request, res: Response) => {
+app.post(
+  '/api/assessment',
+  guestAccess.requireConsent('saved_analysis'),
+  aiRateLimits.assessment,
+  validateBody(validateAssessmentRequest),
+  async (req: Request, res: Response) => {
   try {
     const {
       sessionId,
@@ -457,7 +532,8 @@ Return JSON matching:
     const userPassages = (passages || []).filter((p: any) => p.speaker === 'user');
     res.json(generateDeterministicAssessment(sessionId, attemptId, userPassages, usefulPhrases));
   }
-});
+  }
+);
 
 function generateDeterministicAssessment(
   sessionId: string,
@@ -570,8 +646,20 @@ const handleSpeechSynthesis = async (req: Request, res: Response) => {
   }
 };
 
-app.post('/api/speech/synthesize', guestAccess.requireGuest, handleSpeechSynthesis);
-app.post('/api/tts', guestAccess.requireGuest, handleSpeechSynthesis);
+app.post(
+  '/api/speech/synthesize',
+  guestAccess.requireGuest,
+  aiRateLimits.speech,
+  validateBody(validateSpeechRequest),
+  handleSpeechSynthesis
+);
+app.post(
+  '/api/tts',
+  guestAccess.requireGuest,
+  aiRateLimits.speech,
+  validateBody(validateSpeechRequest),
+  handleSpeechSynthesis
+);
 
 function generateFallbackActorReply(
   characterName: string = 'Mateo',
