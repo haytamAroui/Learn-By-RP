@@ -1,5 +1,8 @@
 import type { ActorResponse } from '../../lib/api';
 import { api } from '../../lib/api';
+import { sanitizeActorAction } from '../../features/roleplay/actorContract';
+import { MISSION_CATALOG } from '../../data/missions';
+import { isRegulatedHealthMission } from '../../features/roleplay/regulatedHealthPolicy';
 import type {
   ConversationProvider,
   ConversationProviderEvent,
@@ -21,6 +24,7 @@ interface PendingTurn {
   resolve: (response: ActorResponse) => void;
   reject: (error: Error) => void;
   text: string;
+  input: ConversationTurnInput;
   timer: ReturnType<typeof setTimeout>;
 }
 
@@ -96,6 +100,20 @@ function parseActorResponse(raw: string): ActorResponse {
   }
 }
 
+function finalizeRealtimeActorResponse(
+  raw: string,
+  input: ConversationTurnInput
+): ActorResponse {
+  const parsed = parseActorResponse(raw);
+  return {
+    ...parsed,
+    proposedAction: sanitizeActorAction(
+      parsed.proposedAction,
+      input.allowedActions
+    ),
+  };
+}
+
 /**
  * OpenAI Realtime used as a persistent text-turn conversation brain.
  *
@@ -113,6 +131,7 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
   private connectionGeneration = 0;
   private connectPromise: Promise<void> | null = null;
   private lastInstructions = '';
+  private connectedMissionId: string | null = null;
 
   subscribe(listener: ConversationProviderEventListener): () => void {
     this.listeners.add(listener);
@@ -138,17 +157,14 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
   }
 
   async connect(): Promise<void> {
-    if (this.connected && this.socket?.readyState === WebSocket.OPEN) return;
-    if (this.connectPromise) return this.connectPromise;
-
-    this.connectPromise = this.openConnection().finally(() => {
-      this.connectPromise = null;
-    });
-    return this.connectPromise;
+    // Mission identity is required before the broker may issue a Realtime
+    // secret. Pre-connect is intentionally a no-op; the first turn opens the
+    // socket once its mission is known.
   }
 
-  private async openConnection(): Promise<void> {
+  private async openConnection(missionId: string): Promise<void> {
     const session = await api.createRealtimeSession({
+      missionId,
       targetLanguage: 'auto',
       explanationLanguage: 'auto',
       instructions: 'Roleplay conversation session.',
@@ -173,6 +189,7 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       ws.onopen = () => {
         clearTimeout(timer);
         this.connected = true;
+        this.connectedMissionId = missionId;
         this.connectionGeneration += 1;
         this.emit({
           type: 'connected',
@@ -212,7 +229,27 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
   }
 
   async respond(input: ConversationTurnInput): Promise<ActorResponse> {
-    await this.connect();
+    const mission = MISSION_CATALOG.find(item => item.id === input.missionId);
+    if (!mission) {
+      throw new Error('Realtime turn mission is not in the released catalog');
+    }
+    if (isRegulatedHealthMission(mission)) {
+      // The resilient provider will route this turn through the HTTP actor,
+      // where server-side pre/post safety guards are authoritative.
+      throw new Error('Regulated-health missions require the HTTP actor boundary');
+    }
+
+    if (!this.connected || this.socket?.readyState !== WebSocket.OPEN) {
+      if (!this.connectPromise) {
+        this.connectPromise = this.openConnection(input.missionId).finally(() => {
+          this.connectPromise = null;
+        });
+      }
+      await this.connectPromise;
+    } else if (this.connectedMissionId !== input.missionId) {
+      throw new Error('Realtime provider cannot change mission inside one socket');
+    }
+
     const ws = this.socket;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
       throw new Error('Realtime connection is not open');
@@ -262,7 +299,7 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
         reject(new Error('Realtime response timed out'));
       }, 30000);
 
-      this.pending = { resolve, reject, text: '', timer };
+      this.pending = { resolve, reject, text: '', input, timer };
     });
   }
 
@@ -306,7 +343,7 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       const pending = this.pending;
       this.pending = null;
       clearTimeout(pending.timer);
-      const response = parseActorResponse(text);
+      const response = finalizeRealtimeActorResponse(text, pending.input);
       this.emit({
         type: 'response_completed',
         providerId: this.id,
@@ -323,7 +360,7 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       clearTimeout(pending.timer);
       const text = pending.text.trim() || responseDoneText(event).trim();
       if (text) {
-        const response = parseActorResponse(text);
+        const response = finalizeRealtimeActorResponse(text, pending.input);
         this.emit({
           type: 'response_completed',
           providerId: this.id,
@@ -388,6 +425,7 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
     }
     this.socket = null;
     this.connected = false;
+    this.connectedMissionId = null;
     this.connectPromise = null;
     this.listeners.clear();
   }
