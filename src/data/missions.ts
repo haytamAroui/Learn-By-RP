@@ -267,34 +267,34 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     tags: ['transit', 'metro', 'directions', 'tickets'],
     nextMissionId: 'mission-es-farmacia-sol',
     transferPattern: 'Ask for specific options & instructions',
-    transferReason: 'Applies your question-asking pattern to ask Elena at the pharmacy for medication details.'
+    transferReason: 'Applies your question-asking pattern to describe symptoms and request the licensed pharmacist at the pharmacy.'
   },
   {
     id: 'mission-es-farmacia-sol',
-    version: 1,
+    version: 2,
     language: 'es',
     sceneId: 'scene.es.pharmacy.symptom',
     scenarioFamilyId: 'pharmacy-consultation',
     levelRange: 'A2',
-    title: 'Farmacia Sol: Seasonal Allergies',
+    title: 'Farmacia Sol: Describe Symptoms & Ask for the Pharmacist',
     category: 'problems',
     neighborhood: 'El Barrio · Farmacia Calle del Sol 22',
     setting: 'A bright, quiet neighborhood pharmacy with green cross signage and glass shelves of wellness products. An herbal scent fills the air.',
-    aiRole: 'Elena, the licensed pharmacist on duty.',
+    aiRole: 'Elena, the pharmacy counter staff member who routes clinical questions to the licensed pharmacist.',
     character: {
       name: 'Elena',
-      role: 'Pharmacist',
+      role: 'Pharmacy Counter Staff',
       voiceStyle: 'Calm, empathetic, precise',
-      personality: 'Listens attentively to health symptoms, advises dosage clearly',
+      personality: 'Calm service professional who helps visitors explain needs and reach the licensed pharmacist without giving medical advice',
       knowledgeBoundary: [
-        'Has antihistamine tablets (pastillas para la alergia) that do not cause drowsiness',
-        'Has saline nasal spray and eye drops',
-        'Knows dosage: one tablet per day in the morning with water'
+        'Can direct the learner to the licensed pharmacist and the consultation counter',
+        'Can point to official product labels and patient leaflets without interpreting them as medical advice',
+        'Must not diagnose, recommend or select medicine, or give dosage, treatment, contraindication, efficacy, or side-effect advice'
       ]
     },
-    learnerGoal: 'Describe your symptoms (sneezing, itchy eyes) and ask for an allergy medicine that does not make you drowsy',
-    stretchGoal: 'Ask how many times per day you need to take it and if it should be taken with food',
-    targetIntents: ['describe_symptoms', 'request_medicine', 'ask_dosage'],
+    learnerGoal: 'Describe your symptoms (sneezing, itchy eyes) and ask to speak with the licensed pharmacist',
+    stretchGoal: 'Ask where the consultation counter is and ask for help locating the official label or patient leaflet',
+    targetIntents: ['describe_symptoms', 'request_pharmacist', 'ask_label_help'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
     secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
@@ -307,16 +307,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       },
       {
         id: 'phrase.es.que_no_de_sueno',
-        form: '¿Tiene algo que no dé sueño?',
-        meaning: 'Do you have something that does not cause drowsiness?',
-        usageNote: 'Important medical condition phrase when buying over-the-counter medicine.',
+        form: 'Necesito hablar con el farmacéutico sobre estos síntomas.',
+        meaning: 'I need to speak with the pharmacist about these symptoms.',
+        usageNote: 'Service-language pattern for requesting the appropriate licensed professional.',
         difficulty: 'intermediate'
       },
       {
         id: 'phrase.es.como_se_toma',
-        form: '¿Cómo se toma y cuántas veces al día?',
-        meaning: 'How is it taken and how many times a day?',
-        usageNote: 'Standard question for dosage instructions.',
+        form: '¿Puede ayudarme a encontrar la etiqueta o el prospecto?',
+        meaning: 'Can you help me find the label or patient leaflet?',
+        usageNote: 'Safe clarification request that keeps medical interpretation with the professional and official product information.',
         difficulty: 'intermediate'
       }
     ],
@@ -325,11 +325,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Symptoms explained', 'Medicine recommended', 'Dosage noted'],
+    completionSignals: ['Symptoms explained', 'Licensed pharmacist requested', 'Official label or leaflet located'],
     estimatedMinutes: 4,
     tags: ['health', 'pharmacy', 'symptoms', 'services'],
     nextMissionId: 'mission-es-la-terraza',
-    transferPattern: 'Specify requirements & conditions',
+    transferPattern: 'State needs & ask for authoritative information',
     transferReason: 'Transfers the specific requirement pattern ("que no dé...") to specify terrace requirements at La Terraza.'
   },
   {
@@ -453,33 +453,33 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     tags: ['bakery', 'breakfast', 'food', 'paris'],
     nextMissionId: 'mission-fr-pharmacie',
     transferPattern: 'Request a substitution & confirm options',
-    transferReason: 'Reuses your substitution question when asking Camille at the pharmacy for non-drowsy alternatives.'
+    transferReason: 'Reuses your service-request pattern when asking Camille to direct you to the licensed pharmacist.'
   },
   {
     id: 'mission-fr-pharmacie',
-    version: 1,
+    version: 2,
     language: 'fr',
     scenarioFamilyId: 'pharmacy-consultation',
     levelRange: 'A2',
-    title: 'Pharmacie Saint-Michel: Maux de Gorge & Soins',
+    title: 'Pharmacie Saint-Michel: Décrire ses symptômes & demander le pharmacien',
     category: 'problems',
     neighborhood: 'Quartier Saint-Michel · Rue Saint-André-des-Arts',
     setting: 'A bright, quiet Parisian pharmacy with a glowing green neon cross outside. Glass shelves are filled with remedies and thermal skincare.',
-    aiRole: 'Camille, the pharmacist on duty in a clean white coat.',
+    aiRole: 'Camille, the pharmacy counter staff member who routes clinical questions to the licensed pharmacist.',
     character: {
       name: 'Camille',
-      role: 'Pharmacist',
+      role: 'Pharmacy Counter Staff',
       voiceStyle: 'Articulate, caring, calm Parisian French',
-      personality: 'Listens carefully, explains posology clearly, attentive to side-effects',
+      personality: 'Listens carefully, helps visitors formulate questions, and routes medical decisions to the licensed pharmacist',
       knowledgeBoundary: [
-        'Has honey-lemon throat pastilles that soothe irritation without drowsiness',
-        'Has saline nasal spray and paracetamol',
-        'Knows dosage: one pastille every 4 hours, maximum 6 per day'
+        'Can direct the learner to the licensed pharmacist and consultation counter',
+        'Can point to official packaging and patient leaflets without interpreting them as medical advice',
+        'Must not diagnose, recommend or select medicine, or give dosage, treatment, contraindication, efficacy, or side-effect advice'
       ]
     },
-    learnerGoal: 'Explain that you have a sore throat and ask for lozenges that do not cause drowsiness',
-    stretchGoal: 'Ask how many times per day you should take them and if they should be taken after meals',
-    targetIntents: ['describe_symptoms', 'request_remedy', 'clarify_dosage'],
+    learnerGoal: 'Explain that you have a sore throat and ask to speak with the licensed pharmacist',
+    stretchGoal: 'Ask where the consultation counter is and ask for help finding the official notice or packaging information',
+    targetIntents: ['describe_symptoms', 'request_pharmacist', 'ask_label_help'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
     secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
@@ -492,16 +492,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       },
       {
         id: 'phrase.fr.qui_ne_fait_pas_dormir',
-        form: 'Est-ce que vous avez des pastilles qui ne font pas dormir ?',
-        meaning: 'Do you have pastilles that do not make you sleepy?',
-        usageNote: 'Essential conditional request for non-drowsy medication.',
+        form: 'Je voudrais parler au pharmacien de mes symptômes.',
+        meaning: 'I would like to speak with the pharmacist about my symptoms.',
+        usageNote: 'Natural service request that hands clinical questions to the licensed professional.',
         difficulty: 'intermediate'
       },
       {
         id: 'phrase.fr.combien_de_fois',
-        form: 'Combien de fois par jour dois-je les prendre ?',
-        meaning: 'How many times a day should I take them?',
-        usageNote: 'Key question for clarifying dosage instructions.',
+        form: 'Pouvez-vous m’aider à trouver la notice officielle ?',
+        meaning: 'Can you help me find the official patient leaflet?',
+        usageNote: 'Safe clarification request about where to find authoritative product information.',
         difficulty: 'intermediate'
       }
     ],
@@ -510,11 +510,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Symptoms stated', 'Pastilles selected', 'Dosage noted'],
+    completionSignals: ['Symptoms stated', 'Licensed pharmacist requested', 'Official notice located'],
     estimatedMinutes: 4,
     tags: ['health', 'pharmacy', 'symptoms', 'remedy'],
     nextMissionId: 'mission-fr-kiosque',
-    transferPattern: 'Inquire about instructions & requirements',
+    transferPattern: 'Describe a need & request authoritative help',
     transferReason: 'Applies your clarification questions when inquiring about metro zones and pass validity at the kiosk.'
   },
   {
@@ -704,29 +704,29 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-de-apotheke',
-    version: 1,
+    version: 2,
     language: 'de',
     scenarioFamilyId: 'pharmacy-consultation',
     levelRange: 'A2',
-    title: 'Apotheke am Tor: Allergietabletten & Beratung',
+    title: 'Apotheke am Tor: Beschwerden schildern & nach dem Apotheker fragen',
     category: 'problems',
     neighborhood: 'Kreuzberg · Oranienstraße Apotheke',
     setting: 'A quiet, well-organized Berlin pharmacy with amber glass bottles on wood shelves and a calm medicinal aroma.',
-    aiRole: 'Stefan, the certified pharmacist.',
+    aiRole: 'Stefan, the pharmacy counter staff member who routes clinical questions to the licensed pharmacist.',
     character: {
       name: 'Stefan',
-      role: 'Pharmacist',
+      role: 'Pharmacy Counter Staff',
       voiceStyle: 'Calm, precise, standard German (Hochdeutsch)',
-      personality: 'Thorough, provides clear medical advice and checks contraindications',
+      personality: 'Thorough service professional who helps visitors formulate questions without giving medical advice',
       knowledgeBoundary: [
-        'Has antihistamine tablets (Cetirizin / Loratadin) that do not cause drowsiness (macht nicht müde)',
-        'Has saline nasal spray (Meerwasserspray) and eye drops',
-        'Knows dosage: one tablet daily in the evening with a glass of water'
+        'Can direct the learner to the licensed pharmacist and consultation area',
+        'Can point to official packaging and package leaflets without interpreting them as medical advice',
+        'Must not diagnose, recommend or select medicine, or give dosage, treatment, contraindication, efficacy, or side-effect advice'
       ]
     },
-    learnerGoal: 'Explain seasonal allergy symptoms (hay fever, itchy eyes) and ask for medicine that does not make you drowsy',
-    stretchGoal: 'Ask how often per day you should take it and if it should be taken with meals',
-    targetIntents: ['describe_allergies', 'request_medicine', 'ask_dosage'],
+    learnerGoal: 'Explain seasonal allergy symptoms (hay fever, itchy eyes) and ask to speak with the licensed pharmacist',
+    stretchGoal: 'Ask where the consultation area is and ask for help finding the official package leaflet',
+    targetIntents: ['describe_allergies', 'request_pharmacist', 'ask_label_help'],
     primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
     secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
@@ -739,16 +739,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       },
       {
         id: 'phrase.de.nicht_muede',
-        form: 'Haben Sie Tabletten, die nicht müde machen?',
-        meaning: 'Do you have tablets that do not cause tiredness?',
-        usageNote: 'Very useful condition pattern for pharmacy visits.',
+        form: 'Ich möchte mit dem Apotheker über meine Beschwerden sprechen.',
+        meaning: 'I would like to speak with the pharmacist about my symptoms.',
+        usageNote: 'Natural service request that routes clinical questions to the licensed professional.',
         difficulty: 'intermediate'
       },
       {
         id: 'phrase.de.wie_oft',
-        form: 'Wie oft am Tag soll ich die Tablette nehmen?',
-        meaning: 'How often a day should I take the tablet?',
-        usageNote: 'Standard question for dosage instructions.',
+        form: 'Können Sie mir helfen, die Packungsbeilage zu finden?',
+        meaning: 'Can you help me find the package leaflet?',
+        usageNote: 'Safe request for authoritative written product information.',
         difficulty: 'intermediate'
       }
     ],
@@ -757,11 +757,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Symptoms explained', 'Tablets suggested', 'Dosage understood'],
+    completionSignals: ['Symptoms explained', 'Licensed pharmacist requested', 'Official package leaflet located'],
     estimatedMinutes: 4,
     tags: ['pharmacy', 'health', 'medicine', 'allergies'],
     nextMissionId: 'mission-de-ubahn',
-    transferPattern: 'Specify requirements & conditions',
+    transferPattern: 'State needs & request authoritative information',
     transferReason: 'Applies your specification pattern when asking for specific transit zones at the U-Bahn station.'
   },
   {
@@ -947,33 +947,33 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     tags: ['italian', 'espresso', 'bar', 'piazza'],
     nextMissionId: 'mission-it-farmacia',
     transferPattern: 'Specify preferences & quick service requests',
-    transferReason: 'Reuses your counter inquiry pattern when asking Elena at the farmacia for specific remedies.'
+    transferReason: 'Reuses your counter inquiry pattern when asking Elena to direct you to the licensed pharmacist.'
   },
   {
     id: 'mission-it-farmacia',
-    version: 1,
+    version: 2,
     language: 'it',
     scenarioFamilyId: 'pharmacy-consultation',
     levelRange: 'A2',
-    title: 'Farmacia Santa Croce: Mal di Gola & Rimedi',
+    title: 'Farmacia Santa Croce: Descrivere i sintomi & chiedere il farmacista',
     category: 'problems',
     neighborhood: 'Centro Storico · Via dei Neri Farmacia',
     setting: 'A historic Florentine pharmacy with dark walnut cabinets, porcelain apothecary jars, and the faint soothing scent of eucalyptus.',
-    aiRole: 'Elena, the helpful pharmacist.',
+    aiRole: 'Elena, the pharmacy counter staff member who routes clinical questions to the licensed pharmacist.',
     character: {
       name: 'Elena',
-      role: 'Pharmacist',
+      role: 'Pharmacy Counter Staff',
       voiceStyle: 'Gentle, articulate, classic Tuscan Italian',
-      personality: 'Attentive, asks about allergy history, gives clear advice on usage',
+      personality: 'Attentive service professional who helps visitors formulate requests without giving medical advice',
       knowledgeBoundary: [
-        'Has propolis throat spray and honey lozenges that do not cause drowsiness',
-        'Has saline spray and headache tablets',
-        'Knows dosage: two sprays into the throat three times a day, after meals'
+        'Can direct the learner to the licensed pharmacist and consultation counter',
+        'Can point to official packaging and patient leaflets without interpreting them as medical advice',
+        'Must not diagnose, recommend or select medicine, or give dosage, treatment, contraindication, efficacy, or side-effect advice'
       ]
     },
-    learnerGoal: 'Describe your sore throat and ask for a spray or lozenges that do not cause drowsiness',
-    stretchGoal: 'Ask how many times per day you need to use it and whether before or after meals',
-    targetIntents: ['describe_throat_pain', 'request_spray', 'ask_timing'],
+    learnerGoal: 'Describe your sore throat and ask to speak with the licensed pharmacist',
+    stretchGoal: 'Ask where the consultation counter is and ask for help finding the official patient leaflet',
+    targetIntents: ['describe_throat_pain', 'request_pharmacist', 'ask_label_help'],
     primarySkillIds: ['skill-inquire-specifications'],
     secondarySkillIds: ['skill-request-substitution', 'skill-communicative-repair'],
     usefulPhrases: [
@@ -986,16 +986,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       },
       {
         id: 'phrase.it.non_dia_sonnolenza',
-        form: 'Ha uno spray per la gola che non dia sonnolenza?',
-        meaning: 'Do you have a throat spray that does not cause drowsiness?',
-        usageNote: 'Polite formal subjunctive request for medical specifications.',
+        form: 'Vorrei parlare con il farmacista dei miei sintomi.',
+        meaning: 'I would like to speak with the pharmacist about my symptoms.',
+        usageNote: 'Polite service request that leaves clinical decisions to the licensed professional.',
         difficulty: 'intermediate'
       },
       {
         id: 'phrase.it.prima_o_dopo_pasti',
-        form: 'Si prende prima o dopo i pasti?',
-        meaning: 'Is it taken before or after meals?',
-        usageNote: 'Crucial question for medical administration.',
+        form: 'Può aiutarmi a trovare il foglietto illustrativo ufficiale?',
+        meaning: 'Can you help me find the official patient leaflet?',
+        usageNote: 'Safe request for authoritative written product information.',
         difficulty: 'elementary'
       }
     ],
@@ -1004,11 +1004,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Symptoms stated', 'Spray recommended', 'Usage clarified'],
+    completionSignals: ['Symptoms stated', 'Licensed pharmacist requested', 'Official leaflet located'],
     estimatedMinutes: 4,
     tags: ['health', 'pharmacy', 'symptoms', 'florence'],
     nextMissionId: 'mission-it-stazione',
-    transferPattern: 'Clarify dosage & timing instructions',
+    transferPattern: 'Clarify service steps & authoritative information',
     transferReason: 'Transfers clarifying instructions to purchasing regional tickets and validating them at the station.'
   },
   {
@@ -1194,33 +1194,33 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     tags: ['konbini', 'shopping', 'tokyo', 'everyday'],
     nextMissionId: 'mission-ja-yakkyoku',
     transferPattern: 'Service requests & polite counters',
-    transferReason: 'Reuses your polite request pattern ("...kudasai / onegaishimasu") when asking for headache medicine at the drugstore.'
+    transferReason: 'Reuses your polite request pattern ("...kudasai / onegaishimasu") when asking to consult the licensed pharmacist.'
   },
   {
     id: 'mission-ja-yakkyoku',
-    version: 1,
+    version: 2,
     language: 'ja',
     scenarioFamilyId: 'pharmacy-consultation',
     levelRange: 'A2',
-    title: 'Kusuri no Yanaka: Zutsū-yaku to Nomikata',
+    title: 'Kusuri no Yanaka: Shōjō o Tsutaete Yakuzaishi ni Sōdan',
     category: 'problems',
     neighborhood: 'Yanaka · Yanaka Shotengai Pharmacy',
     setting: 'A quiet Japanese neighborhood drugstore lined with organized aisles of healthcare remedies, vitamin tonics, and eye drops.',
-    aiRole: 'Aoi, the registered pharmacist.',
+    aiRole: 'Aoi, the pharmacy counter staff member who routes clinical questions to the licensed pharmacist.',
     character: {
       name: 'Aoi',
-      role: 'Pharmacist',
+      role: 'Pharmacy Counter Staff',
       voiceStyle: 'Gentle, clear, supportive Japanese',
-      personality: 'Careful listener, checks if symptoms include fever or stomach sensitivity',
+      personality: 'Careful service professional who helps visitors explain symptoms and reach the licensed pharmacist without giving medical advice',
       knowledgeBoundary: [
-        'Has headache medicine (zutsuu-yaku / ibuprofen) that is gentle on the stomach and does not cause drowsiness (nemuku naranai)',
-        'Has cooling forehead sheets (netsu-sama sheet) and hydration salts',
-        'Knows dosage: two tablets after meals (shokugo), up to two times a day with water'
+        'Can direct the learner to the licensed pharmacist and consultation counter',
+        'Can point to official packaging and patient leaflets without interpreting them as medical advice',
+        'Must not diagnose, recommend or select medicine, or give dosage, treatment, contraindication, efficacy, or side-effect advice'
       ]
     },
-    learnerGoal: 'Explain you have a headache and ask for medicine that does not make you drowsy',
-    stretchGoal: 'Ask how many tablets to take per dose and whether to take it after meals',
-    targetIntents: ['describe_headache', 'request_non_drowsy_medicine', 'ask_dosage_timing'],
+    learnerGoal: 'Explain you have a headache and ask to speak with the licensed pharmacist',
+    stretchGoal: 'Ask where the consultation counter is and ask for help finding the official package leaflet',
+    targetIntents: ['describe_headache', 'request_pharmacist', 'ask_label_help'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-request-substitution'],
     secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
@@ -1233,16 +1233,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       },
       {
         id: 'phrase.ja.nemuku_naranai',
-        form: '眠くならない薬はありますか？',
-        meaning: 'Do you have medicine that does not cause drowsiness?',
-        usageNote: 'Vital question when purchasing over-the-counter medicine in Japan.',
+        form: 'この症状について薬剤師に相談したいです。',
+        meaning: 'I would like to consult the pharmacist about these symptoms.',
+        usageNote: 'Natural service phrase for routing a health question to the licensed professional.',
         difficulty: 'intermediate'
       },
       {
         id: 'phrase.ja.shokugo_nomimasu',
-        form: '一回何錠、食後に飲みますか？',
-        meaning: 'How many tablets at a time, and do I take it after meals?',
-        usageNote: 'Clear question for dosage and intake instructions.',
+        form: '公式の説明書はどこにありますか？',
+        meaning: 'Where can I find the official product leaflet?',
+        usageNote: 'Safe request for authoritative written product information.',
         difficulty: 'intermediate'
       }
     ],
@@ -1251,11 +1251,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Headache explained', 'Medicine recommended', 'Dosage understood'],
+    completionSignals: ['Headache explained', 'Licensed pharmacist requested', 'Official product leaflet located'],
     estimatedMinutes: 4,
     tags: ['health', 'pharmacy', 'symptoms', 'medicine'],
     nextMissionId: 'mission-ja-eki',
-    transferPattern: 'Specifying conditions & dosage',
+    transferPattern: 'Describe a need & request authoritative information',
     transferReason: 'Applies your question-asking pattern when asking station staff about train lines and card recharging.'
   },
   {
@@ -1482,7 +1482,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: CommunicativeSkillMeta[] = [
     id: 'skill-inquire-specifications',
     name: 'Inquiring About Specifications & Recommendations',
     category: 'Clarification & Inquiry',
-    description: 'Ask for chef recommendations, dosage frequency, or ingredient specifications before ordering.',
+    description: 'Ask for service recommendations, label information, or ingredient specifications before making a choice.',
     patterns: [
       '¿Qué nos recomienda para [ocasión]?',
       'Qu’est-ce que vous nous recommandez...?',
