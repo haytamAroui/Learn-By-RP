@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Passage, SupportExposure } from '../../types';
-import { inheritSupportForRetry, mergeAttemptPassages } from './retrySupport';
+import { inheritSupportForRetry, mergeAttemptPassages, mergeFinalizedAttemptEvidence } from './retrySupport';
 
 const EXPOSURE: SupportExposure = {
   id: 'exp-1',
@@ -127,5 +127,67 @@ describe('mergeAttemptPassages', () => {
     expect(new Set(merged.map(item => item.attemptId))).toEqual(
       new Set(['attempt-1', 'attempt-2'])
     );
+  });
+});
+
+
+describe('mergeFinalizedAttemptEvidence', () => {
+  it('preserves parent-attempt evidence and deduplicates grounded identities', () => {
+    const parentObservation = {
+      observationId: 'obs-parent',
+      sessionId: 's-1',
+      attemptId: 'attempt-1',
+      sourceTurnId: 'p-parent',
+      sourceRevision: 'rev-1',
+      itemId: 'phrase-a',
+      candidateForm: 'A',
+      meaning: 'A',
+      quote: 'A',
+      modality: 'spoken',
+      retrieval: 'unassisted',
+      taskOutcome: 'achieved',
+      rehearsal: false,
+      supportExposureIds: [],
+      recordedAt: '2026-10-02T10:00:00.000Z',
+    } as any;
+    const parentSkill = {
+      id: 'skill-parent',
+      attemptId: 'attempt-1',
+    } as any;
+    const currentObservation = {
+      ...parentObservation,
+      observationId: 'obs-current',
+      attemptId: 'attempt-2',
+      sourceTurnId: 'p-current',
+    };
+    const currentSkill = {
+      id: 'skill-current',
+      attemptId: 'attempt-2',
+    } as any;
+
+    const merged = mergeFinalizedAttemptEvidence({
+      finalizedAttempts: [
+        {
+          attemptId: 'attempt-1',
+          observations: [parentObservation],
+          skillObservations: [parentSkill],
+          skillLapses: [],
+        },
+      ],
+      current: {
+        observations: [currentObservation, parentObservation],
+        skillObservations: [currentSkill, parentSkill],
+        skillLapses: [],
+      },
+    });
+
+    expect(merged.observations.map(item => item.sourceTurnId).sort()).toEqual([
+      'p-current',
+      'p-parent',
+    ]);
+    expect(merged.skillObservations.map(item => item.id).sort()).toEqual([
+      'skill-current',
+      'skill-parent',
+    ]);
   });
 });
