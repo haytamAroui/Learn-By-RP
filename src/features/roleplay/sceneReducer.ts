@@ -22,12 +22,14 @@ import {
   SceneStateSnapshot,
   SCENE_CONTRACT_VERSION,
 } from '../../contracts/scene';
+import { assertValidSceneDefinition } from './sceneValidation';
 
 export function createInitialScene(
   scene: SceneDefinition,
   sessionId: string,
   attemptId: string
 ): SceneStateSnapshot {
+  assertValidSceneDefinition(scene);
   return {
     sceneId: scene.id,
     sessionId,
