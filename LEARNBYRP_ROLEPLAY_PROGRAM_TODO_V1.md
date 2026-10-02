@@ -407,7 +407,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Roleplay requests capabilities; providers only declare capability support (`capabilities.ts`).
 - [x] Slow speech without native rate control is marked best-effort.
 - [x] Long thinking time falls back to push-to-talk / tap-when-done if timing control unavailable.
-- [x] Challenge types only appear when provider supports them: `COMMUNICATION_CHALLENGE_REQUIREMENTS` defines required transport capabilities, negotiation produces the allowlist, and `recommendNextRp` refuses to emit `kind: challenge` unless it can attach a negotiated compatible `challengeType` (`capabilities.test.ts`, `nextRp.test.ts`).
+- [x] Challenge types only appear when provider supports them: `COMMUNICATION_CHALLENGE_REQUIREMENTS` defines required transport capabilities, negotiation produces the allowlist, and `recommendNextRp` policy v2 refuses to emit `kind: challenge` unless it can attach a negotiated compatible `challengeType` (`capabilities.test.ts`, `nextRp.test.ts`).
 - [x] Blocking consequential tool calls are required before character confirms world changes; live actor lines are suppressed until reducer acceptance.
 - [x] Log capability degradation as operational telemetry only (`SessionRecord.operationalTelemetry`, persisted in `usage_json`).
 
