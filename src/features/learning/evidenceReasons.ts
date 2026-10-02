@@ -71,18 +71,22 @@ export function evidenceReasonCodesForDisplay(
   observation: SkillObservation
 ): SkillEvidenceReasonCode[] {
   const persisted = observation.reasonCodes ?? [];
-  const codes = persisted.length > 0
+  const codes: SkillEvidenceReasonCode[] = persisted.length > 0
     ? [...persisted]
-    : deriveSkillEvidenceReasonCodes({
-        retrieval: observation.retrieval,
-        modality: observation.modality,
-        evidenceSource: observation.evidenceSource,
-        relevantSupport:
-          observation.retrieval === 'assisted'
-            ? ([{ kind: 'full_form' }] as SupportExposure[])
-            : [],
-        isRehearsalAttempt: false,
-      });
+    : observation.evidenceSource === 'legacy_inferred'
+      ? ['LEGACY_INFERRED_EVIDENCE']
+      : observation.retrieval === 'unassisted'
+        ? ['INDEPENDENT_NO_RELEVANT_SUPPORT']
+        : observation.retrieval === 'assisted'
+          ? ['ASSISTED_RELEVANT_SUPPORT_SHOWN']
+          : ['RETRIEVAL_UNKNOWN_NOT_INDEPENDENT_EVIDENCE'];
+
+  if (
+    observation.modality === 'typed' &&
+    !codes.includes('TYPED_NOT_SPOKEN_EVIDENCE')
+  ) {
+    codes.push('TYPED_NOT_SPOKEN_EVIDENCE');
+  }
 
   if (observation.userDisputed && !codes.includes('DISPUTED_BY_LEARNER')) {
     codes.push('DISPUTED_BY_LEARNER');
