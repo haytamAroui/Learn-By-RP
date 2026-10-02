@@ -188,6 +188,37 @@ export const CAFE_SCENE: SceneDefinition = {
   ],
   skillIds: ['skill-request-substitution', 'skill-request-item', 'skill-clarify-service'],
 
+  opportunityDefinitions: [
+    {
+      id: 'opp.es.cafe.request-substitution.after-alternative',
+      skillId: 'skill-request-substitution',
+      sceneCondition: { fact: 'alternativeOffered' },
+      positiveExamples: [
+        'Accepts or requests a viable substitute after learning the preferred option is unavailable.',
+        'Asks for another available milk or changes the order to an available option.',
+      ],
+      negativeExamples: [
+        'Repeats the unavailable option without adapting.',
+        'Changes topic without addressing the unavailable item.',
+      ],
+      relevantActionIds: ['confirm_order_item'],
+      relevantIntentIds: ['request_substitution'],
+    },
+    {
+      id: 'opp.es.cafe.inquire-specifications.after-item',
+      skillId: 'skill-inquire-specifications',
+      sceneCondition: { fact: 'itemConfirmed' },
+      positiveExamples: [
+        'Asks a concrete follow-up about the confirmed item, ingredient, price, or service condition.',
+      ],
+      negativeExamples: [
+        'Makes an unrelated comment that does not seek information about the order.',
+      ],
+      relevantActionIds: ['ask_about_ingredient'],
+      relevantIntentIds: ['ask_specification'],
+    },
+  ],
+
   reviewStatus: 'released',
 };
 
@@ -303,6 +334,21 @@ export const PHARMACY_SCENE: SceneDefinition = {
 
   phraseIds: ['phrase.es.sin_somnio', 'phrase.es.dolor_cabeza'],
   skillIds: ['skill-request-substitution', 'skill-clarify-service'],
+  opportunityDefinitions: [
+    {
+      id: 'opp.es.pharmacy.inquire-specifications.open',
+      skillId: 'skill-inquire-specifications',
+      sceneCondition: { fact: 'nonDrowsyMedicineAvailable' },
+      positiveExamples: [
+        'Asks whether an option causes drowsiness or asks another concrete product-condition question.',
+      ],
+      negativeExamples: [
+        'Names a product without asking about the relevant condition.',
+      ],
+      relevantActionIds: ['ask_about_ingredient'],
+      relevantIntentIds: ['ask_dosage', 'request_medicine'],
+    },
+  ],
   reviewStatus: 'released',
 };
 
