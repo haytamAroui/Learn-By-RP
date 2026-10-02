@@ -229,77 +229,66 @@ describe('a corrected passage invalidates the skill evidence that cited it', () 
   const SKILL = 'skill-request-substitution';
 
   async function seedSkillEvidence(sourceRevision: string): Promise<void> {
-    await archiveRepository.saveSkillObservations([
-      {
-        id: `so-${sourceRevision}`,
-        skillId: SKILL,
-        sessionId: 'session-1',
-        attemptId: 'attempt-1',
-        sourcePassageId: 'p-1',
-        sourceRevision,
-        contextKey: {
-          domainId: 'cafes',
-          scenarioFamilyId: 'counter-ordering',
-          scenarioId: 'scene.es.cafe.breakfast',
-        },
-        domainId: 'cafes',
-        scenarioId: 'scene.es.cafe.breakfast',
-        modality: 'spoken',
-        retrieval: 'unassisted',
-        taskOutcome: 'achieved',
-        demonstration: 'demonstrated',
-        supportExposureIds: [],
-        evidenceSource: 'validated_explicit',
-        quote: 'la leche de avena',
-        recordedAt: new Date().toISOString(),
-      },
-    ]);
+    const now = new Date().toISOString();
 
-    await archiveRepository.completeSession({
-      id: 'session-lapse',
-      missionId: 'mission-es-cafe-sol',
-      missionVersion: 1,
-      language: 'es',
-      mode: 'guided',
-      coldAttempt: true,
-      state: 'recap_ready',
-      startedAt: new Date().toISOString(),
-      endedAt: new Date().toISOString(),
-      passages: [],
-      supportExposures: [],
-      observations: [],
-      skillLapses: [
-        {
-          id: `lapse-${sourceRevision}`,
-          skillId: SKILL,
-          sessionId: 'session-1',
-          attemptId: 'attempt-1',
-          sourcePassageId: 'p-1',
-          sourceRevision,
-          contextKey: {
-            domainId: 'cafes',
-            scenarioFamilyId: 'counter-ordering',
-            scenarioId: 'scene.es.cafe.breakfast',
-          },
-          opportunityInstanceId: `opp-${sourceRevision}`,
-          demonstration: 'attempted_not_demonstrated',
-          basis: 'cold_attempt_failed',
-          recordedAt: new Date().toISOString(),
-        },
-      ],
-      taskOutcome: 'completed',
-      sceneState: {
-        sceneId: 'scene.es.cafe.breakfast',
-        revision: 1,
-        facts: {},
-        learnerKnows: [],
-        characterKnows: [],
-        checkpoints: [],
-        isFinished: false,
-        outcome: 'unknown',
-      },
-    });
+    // This transcript test seeds persistence below the public archive API so it
+    // can exercise stale-row invalidation directly. Production callers cannot
+    // write raw skill evidence.
+    await driver.db.runAsync(
+      `INSERT OR REPLACE INTO skill_observations
+        (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
+         domain_id, scenario_family_id, scenario_id, modality, retrieval,
+         task_outcome, demonstration, support_exposure_ids, evidence_source, quote,
+         day_key, reason_code, reason_codes, policy_version, hidden, user_disputed, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+      `so-${sourceRevision}`,
+      SKILL,
+      'session-1',
+      'attempt-1',
+      'p-1',
+      sourceRevision,
+      'cafes',
+      'counter-ordering',
+      'scene.es.cafe.breakfast',
+      'spoken',
+      'unassisted',
+      'achieved',
+      'demonstrated',
+      '[]',
+      'validated_explicit',
+      'la leche de avena',
+      now.slice(0, 10),
+      'validated_demonstration',
+      '[]',
+      5,
+      now
+    );
+
+    await driver.db.runAsync(
+      `INSERT OR REPLACE INTO skill_lapses
+        (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
+         domain_id, scenario_family_id, scenario_id, opportunity_instance_id,
+         demonstration, basis, day_key, reason_code, policy_version, hidden, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+      `lapse-${sourceRevision}`,
+      SKILL,
+      'session-1',
+      'attempt-1',
+      'p-1',
+      sourceRevision,
+      'cafes',
+      'counter-ordering',
+      'scene.es.cafe.breakfast',
+      `opp-${sourceRevision}`,
+      'attempted_not_demonstrated',
+      'cold_attempt_failed',
+      now.slice(0, 10),
+      'cold_taken_opportunity_not_demonstrated',
+      5,
+      now
+    );
   }
+
 
   it('removes the skill observation when the passage is superseded', async () => {
     await seedSkillEvidence('rev-1');
