@@ -257,7 +257,7 @@ export const CAFE_SCENE: SceneDefinition = {
  */
 export const PHARMACY_SCENE: SceneDefinition = {
   id: 'scene.es.pharmacy.symptom',
-  version: 1,
+  version: 2,
   missionId: 'mission-es-farmacia-sol',
   language: 'es',
 
@@ -265,9 +265,13 @@ export const PHARMACY_SCENE: SceneDefinition = {
     {
       id: 'pharmacist',
       name: 'Elena',
-      role: 'pharmacist',
+      role: 'pharmacy counter staff',
       voiceStyle: 'Calm, precise, brief',
-      knowledgeBoundary: ['knows which medicines are non-drowsy', 'knows opening hours'],
+      knowledgeBoundary: [
+        'can direct the learner to the licensed pharmacist',
+        'can point to official labels and patient leaflets',
+        'must not diagnose, recommend medicine, or give dosage/treatment advice',
+      ],
       mayKnowAboutPriorScenes: [],
     },
   ],
@@ -290,28 +294,33 @@ export const PHARMACY_SCENE: SceneDefinition = {
     closedByLearner: false,
   },
 
-  learnerKnows: ['They have a headache and want something that will not make them sleepy.'],
-  characterKnows: { pharmacist: ['A drowsy medicine and a non-drowsy one are both on the shelf.'] },
+  learnerKnows: ['They have symptoms they want to describe and need to ask for the licensed pharmacist.'],
+  characterKnows: {
+    pharmacist: [
+      'The licensed pharmacist can be requested at the consultation counter.',
+      'Official product labels and patient leaflets are available.',
+    ],
+  },
 
   allowedActions: [
     {
       name: 'ask_about_ingredient',
       actor: 'character',
-      description: 'Learner asks whether a medicine causes drowsiness.',
+      description: 'Learner asks for the pharmacist or asks where to find official label/leaflet information.',
       preconditions: [],
       effects: [{ set: 'ingredientQuestionAsked', value: true }],
     },
     {
       name: 'confirm_order_item',
       actor: 'character',
-      description: 'Accepts the medicine the learner names.',
+      description: 'Records that the learner accepts a handoff to the licensed pharmacist.',
       preconditions: [],
       effects: [{ set: 'itemConfirmed', value: true }],
     },
     {
       name: 'offer_alternative',
       actor: 'director',
-      description: 'Offers the non-drowsy alternative.',
+      description: 'Offers a handoff to the licensed pharmacist or points to official product information.',
       preconditions: [{ op: 'eq', fact: 'alternativeOffered', value: false }],
       effects: [{ set: 'alternativeOffered', value: true }],
     },
@@ -353,7 +362,7 @@ export const PHARMACY_SCENE: SceneDefinition = {
 
   completion: [
     {
-      // The task is complete when the learner secures a non-drowsy option.
+      // The task is complete when the learner secures the licensed-pharmacist handoff.
       name: 'achieved',
       predicate: { op: 'eq', fact: 'itemConfirmed', value: true },
     },
@@ -366,12 +375,16 @@ export const PHARMACY_SCENE: SceneDefinition = {
   checkpoints: [
     {
       id: 'cp-item-confirmed',
-      description: 'Medicine chosen',
+      description: 'Licensed pharmacist requested',
       after: { op: 'eq', fact: 'itemConfirmed', value: true },
     },
   ],
 
-  phraseIds: ['phrase.es.sin_somnio', 'phrase.es.dolor_cabeza'],
+  phraseIds: [
+    'phrase.es.tengo_alergia',
+    'phrase.es.request_pharmacist',
+    'phrase.es.find_official_leaflet',
+  ],
   skillIds: [
     'skill-inquire-specifications',
     'skill-communicative-repair',
@@ -387,13 +400,13 @@ export const PHARMACY_SCENE: SceneDefinition = {
         value: true,
       },
       positiveExamples: [
-        'Asks whether an option causes drowsiness or asks another concrete product-condition question.',
+        'Describes a concrete symptom, asks for the licensed pharmacist, or asks where to find official label/leaflet information.',
       ],
       negativeExamples: [
-        'Names a product without asking about the relevant condition.',
+        'Requests diagnosis, treatment selection, or dosage instead of practising a communication handoff.'
       ],
       relevantActionIds: ['ask_about_ingredient'],
-      relevantIntentIds: ['ask_dosage', 'request_medicine'],
+      relevantIntentIds: ['request_pharmacist', 'ask_label_help'],
     },
   ],
   reviewStatus: 'released',
