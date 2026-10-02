@@ -4,10 +4,20 @@ import cors from 'cors';
 // Shared with the client: one matching implementation, so the offline fallback
 // cannot be more generous than the deterministic client core.
 import { matchPhraseInText } from '../src/features/learning/matching';
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/data/missions';
+import {
+  COMMUNICATIVE_SKILLS_CATALOG,
+  MISSION_CATALOG,
+} from '../src/data/missions';
 import { allowedSkillsForMission } from '../src/features/learning/skillMembership';
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
+import {
+  isRegulatedHealthMission,
+  REGULATED_HEALTH_ACTOR_RULES,
+  regulatedHealthBoundaryReply,
+  regulatedHealthPromptFacts,
+  sanitizeRegulatedHealthActorResponse,
+} from '../src/features/roleplay/regulatedHealthPolicy';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
@@ -195,56 +205,80 @@ function sanitizeActorResponse(
   };
 }
 
+function finalizeActorResponse(
+  response: any,
+  allowedActions: unknown,
+  mission: (typeof MISSION_CATALOG)[number]
+) {
+  const sanitized = sanitizeActorResponse(response, allowedActions);
+  return isRegulatedHealthMission(mission)
+    ? sanitizeRegulatedHealthActorResponse(sanitized, mission.language)
+    : sanitized;
+}
+
 app.post(
   '/api/actor/respond',
   guestAccess.requireGuest,
   aiRateLimits.actor,
   validateBody(validateActorRequest),
   async (req: Request, res: Response) => {
-  try {
     const {
-      character,
-      setting,
-      learnerGoal,
+      missionId,
       sceneFacts,
       allowedActions = [],
       mode,
       recentPassages,
       userMessage,
-      targetLanguage = 'Spanish',
-      explanationLanguage = 'English'
+      explanationLanguage = 'English',
     } = req.body;
 
-    if (!userMessage || typeof userMessage !== 'string') {
-      res.status(400).json({ error: 'userMessage is required' });
+    const mission = MISSION_CATALOG.find(item => item.id === missionId);
+    if (!mission) {
+      res.status(400).json({ error: 'missionId must identify a released mission' });
       return;
     }
 
-    if (!providers.structured) {
-      // Offline / fallback intelligent actor
-      const fallbackReply = generateFallbackActorReply(
-        character?.name,
-        userMessage,
-        sceneFacts,
-        targetLanguage
-      );
-      res.json(sanitizeActorResponse(fallbackReply, allowedActions));
-      return;
-    }
+    const regulatedHealth = isRegulatedHealthMission(mission);
+    const character = mission.character;
+    const targetLanguage = mission.language;
+    const promptSceneFacts = regulatedHealth
+      ? regulatedHealthPromptFacts(sceneFacts)
+      : sceneFacts;
 
-    const conversationHistory = (recentPassages || [])
-      .map((p: any) => `${p.speaker === 'user' ? 'Learner' : character?.name || 'Character'}: ${p.text}`)
-      .join('\n');
+    try {
+      if (!providers.structured) {
+        const fallbackReply = regulatedHealth
+          ? {
+              ...regulatedHealthBoundaryReply(targetLanguage),
+              proposedAction: null,
+            }
+          : generateFallbackActorReply(
+              character.name,
+              userMessage,
+              promptSceneFacts,
+              targetLanguage
+            );
 
-    const systemInstruction = `You are roleplaying as ${character?.name || 'a character'} (${character?.role || 'assistant'}).
-Setting: ${setting || 'A neighborhood café'}.
-Learner Goal: ${learnerGoal || 'Order a coffee drink'}.
+        res.json(finalizeActorResponse(fallbackReply, allowedActions, mission));
+        return;
+      }
+
+      const conversationHistory = (recentPassages || [])
+        .map(
+          (p: any) =>
+            `${p.speaker === 'user' ? 'Learner' : character.name}: ${p.text}`
+        )
+        .join('\n');
+
+      const systemInstruction = `You are roleplaying as ${character.name} (${character.role}).
+Setting: ${mission.setting}.
+Learner Goal: ${mission.learnerGoal}.
 Mode: ${mode || 'guided'}.
 Language: You MUST speak exclusively in authentic, natural ${targetLanguage}.
 Character Persona & Boundaries:
-- Style: ${character?.voiceStyle || 'Warm, patient, colloquial'}
-- Knowledge Boundaries: ${(character?.knowledgeBoundary || []).join('; ')}
-- Current Scene Facts: ${JSON.stringify(sceneFacts || {})}
+- Style: ${character.voiceStyle}
+- Knowledge Boundaries: ${character.knowledgeBoundary.join('; ')}
+- Current Scene Facts: ${JSON.stringify(promptSceneFacts || {})}
 
 RULES:
 1. Speak 1 to 2 short sentences ONLY. Natural spoken conversation, not a monologue.
@@ -257,39 +291,40 @@ RULES:
   "replyText": "your spoken line in ${targetLanguage}",
   "meaning": "${explanationLanguage} translation of what you just said",
   "proposedAction": null or {"name": "one exact authored action name", "payload": {}}
-}`;
+}
+${regulatedHealth ? `\n${REGULATED_HEALTH_ACTOR_RULES}` : ''}`;
 
-    const prompt = `Recent conversation:
+      const prompt = `Recent conversation:
 ${conversationHistory}
 Learner: "${userMessage}"
 
-Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`;
+Respond in character as ${character.name} in ${targetLanguage}:`;
 
-    const response = await providers.structured.generateJson({
-      task: 'actor',
-      systemInstruction,
-      input: prompt,
-      temperature: 0.7,
-    });
+      const response = await providers.structured.generateJson({
+        task: 'actor',
+        systemInstruction,
+        input: prompt,
+        temperature: 0.7,
+      });
 
-    res.json(sanitizeActorResponse(response, allowedActions));
-  } catch (err: any) {
-    console.error('Error in /api/actor/respond:', err);
-    const {
-      character,
-      userMessage = '',
-      sceneFacts,
-      targetLanguage = 'Spanish',
-      allowedActions = [],
-    } = req.body || {};
-    const fallbackReply = generateFallbackActorReply(
-      character?.name,
-      userMessage,
-      sceneFacts,
-      targetLanguage
-    );
-    res.json(sanitizeActorResponse(fallbackReply, allowedActions));
-  }
+      res.json(finalizeActorResponse(response, allowedActions, mission));
+    } catch (err: any) {
+      console.error('Error in /api/actor/respond:', err);
+
+      const fallbackReply = regulatedHealth
+        ? {
+            ...regulatedHealthBoundaryReply(targetLanguage),
+            proposedAction: null,
+          }
+        : generateFallbackActorReply(
+            character.name,
+            userMessage,
+            promptSceneFacts,
+            targetLanguage
+          );
+
+      res.json(finalizeActorResponse(fallbackReply, allowedActions, mission));
+    }
   }
 );
 
