@@ -285,6 +285,49 @@ describe('native and web agree on the same archive', () => {
     }
   });
 
+  it('both block a late completion after the learner deletes that session', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      await repo.completeSession(session());
+      await repo.deleteSession('session-1');
+
+      // Simulates a provider/assessment promise resolving after deletion.
+      await repo.completeSession({
+        ...session(),
+        endedAt: '2026-09-20T09:06:00.000Z',
+      });
+
+      expect(await repo.getSessions()).toHaveLength(0);
+      expect(await repo.getObservations()).toHaveLength(0);
+      expect(await repo.isDeleted('session-1')).toBe(true);
+    }
+  });
+
+  it('both use clear-all as a cutoff, blocking old writes but allowing new sessions', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      await repo.completeSession(session());
+      await repo.clearAllLearningData();
+
+      // Old in-flight work from before the clear must not resurrect learning data.
+      await repo.completeSession(session());
+      expect(await repo.getSessions()).toHaveLength(0);
+      expect(await repo.getObservations()).toHaveLength(0);
+
+      // A genuinely new session after the cutoff is still writable.
+      await repo.completeSession(
+        session({
+          id: 'session-after-clear',
+          startedAt: '2099-01-01T00:00:00.000Z',
+          endedAt: '2099-01-01T00:05:00.000Z',
+          passages: [],
+          observations: [],
+        })
+      );
+
+      const sessions = await repo.getSessions();
+      expect(sessions.map(item => item.id)).toEqual(['session-after-clear']);
+    }
+  });
+
   it('both treat a delete-everything marker as covering every session', async () => {
     for (const repo of [sqliteRepository, web]) {
       await repo.clearAllLearningData();
