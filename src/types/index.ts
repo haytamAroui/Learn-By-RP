@@ -158,8 +158,33 @@ export interface SupportExposure {
   sessionId: string;
   attemptId: string;
   turnId?: string;
-  source: 'briefing' | 'actor' | 'coach' | 'caption' | 'retry';
-  kind: 'intent_hint' | 'meaning' | 'partial_form' | 'full_form' | 'repeat';
+  source: 'briefing' | 'actor' | 'coach' | 'caption' | 'retry' | 'recap';
+  kind:
+    | 'intent_hint'
+    | 'partial_form'
+    | 'full_form'
+    | 'explanation'
+    | 'meaning_of_assistant_turn'
+    | 'model_phrase_audio'
+    | 'assistant_audio_replay'
+    | 'assistant_audio_slow'
+    | 'caption_view'
+    | 'typed_example'
+    | 'recap_exposure'
+    | 'briefing_exposure'
+    /** Legacy values retained for previously persisted sessions. */
+    | 'meaning'
+    | 'repeat';
+  /** Exact communicative-skill scope for new coach support. */
+  targetSkillId?: CommunicativeSkillId;
+  /** Runtime OpportunityInstance id, never a model-invented semantic label. */
+  targetOpportunityId?: string;
+  /** At most one exact phrase target for newly generated form support. */
+  targetPhraseId?: string;
+  /**
+   * Legacy multi-item scope. New coach exposures should use targetPhraseId
+   * instead; retained so old archives remain readable.
+   */
   targetItemIds: string[];
   exposure: 'visible' | 'played' | 'partial' | 'uncertain';
   recordedAt: string;
