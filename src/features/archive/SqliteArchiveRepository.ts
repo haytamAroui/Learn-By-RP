@@ -17,7 +17,11 @@ import {
   Fragment,
 } from '../../types';
 import { INITIAL_PHRASE_ITEMS } from '../../data/missions';
-import { projectPhraseState } from '../learning/learningCore';
+import {
+  assertValidatedPhraseEvidence,
+  projectPhraseState,
+  type ValidatedPhraseEvidence,
+} from '../learning/learningCore';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
 import {
   assertValidatedSkillEvidence,
@@ -252,9 +256,11 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   async completeSession(
     session: SessionRecord,
     rejectedProposals: { reason: string }[] = [],
-    skillEvidence?: ValidatedSkillEvidence
+    skillEvidence?: ValidatedSkillEvidence,
+    phraseEvidence?: ValidatedPhraseEvidence
   ): Promise<void> {
     if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
+    if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
     const db = await getDatabase();
 
     await withTransaction(async txn => {
@@ -391,7 +397,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       // The uniqueness index on (source_turn_id, source_revision, item_id) makes a
       // replayed turn a replace rather than a second row, so a reconnect cannot
       // manufacture a second independent use of the same phrase.
-      for (const obs of session.observations) {
+      for (const obs of phraseEvidence?.observations ?? []) {
         await txn.runAsync(
           `INSERT OR REPLACE INTO observations
             (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
@@ -1138,61 +1144,48 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async recordDrillReview(input: {
     phrase: PhraseItem;
-    quote: string;
-    modality: 'spoken' | 'typed';
-    unassisted: boolean;
+    evidence: ValidatedPhraseEvidence;
   }): Promise<void> {
     const db = await getDatabase();
-    const { phrase, quote, modality, unassisted } = input;
-    const now = new Date().toISOString();
+    const { phrase, evidence } = input;
+    assertValidatedPhraseEvidence(evidence);
+    const observations = [...evidence.observations];
 
-    const observation: LearningObservation = {
-      observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sessionId: 'drill',
-      attemptId: 'drill',
-      sourceTurnId: `drill-${Date.now()}`,
-      sourceRevision: 'rev-drill',
-      itemId: phrase.id,
-      candidateForm: phrase.form,
-      meaning: phrase.meaning,
-      quote,
-      modality,
-      retrieval: unassisted ? 'unassisted' : 'assisted',
-      taskOutcome: 'achieved',
-      rehearsal: false,
-      supportExposureIds: [],
-      recordedAt: now,
-    };
+    for (const observation of observations) {
+      if (observation.itemId !== phrase.id) {
+        throw new Error('Phrase evidence item does not match drill phrase');
+      }
+    }
+    if (observations.length === 0) return;
 
     await withTransaction(async txn => {
-      await txn.runAsync(
-        `INSERT OR REPLACE INTO observations
-          (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
-           candidate_form, meaning, quote, modality, retrieval, task_outcome, rehearsal,
-           support_exposure_ids, policy_version, hidden, user_disputed, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
-        observation.observationId,
-        observation.sessionId,
-        observation.attemptId,
-        observation.sourceTurnId,
-        observation.sourceRevision,
-        observation.itemId,
-        observation.candidateForm,
-        observation.meaning ?? null,
-        observation.quote,
-        observation.modality,
-        observation.retrieval,
-        observation.taskOutcome,
-        0,
-        JSON.stringify([]),
-        LEARNING_POLICY_VERSION,
-        observation.recordedAt
-      );
+      for (const observation of observations) {
+        await txn.runAsync(
+          `INSERT OR REPLACE INTO observations
+            (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
+             candidate_form, meaning, quote, modality, retrieval, task_outcome, rehearsal,
+             support_exposure_ids, policy_version, hidden, user_disputed, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+          observation.observationId,
+          observation.sessionId,
+          observation.attemptId,
+          observation.sourceTurnId,
+          observation.sourceRevision,
+          observation.itemId,
+          observation.candidateForm,
+          observation.meaning ?? null,
+          observation.quote,
+          observation.modality,
+          observation.retrieval,
+          observation.taskOutcome,
+          observation.rehearsal ? 1 : 0,
+          JSON.stringify(observation.supportExposureIds ?? []),
+          LEARNING_POLICY_VERSION,
+          observation.recordedAt
+        );
+      }
 
-      await this.writePhraseRow(
-        txn,
-        projectPhraseState(phrase, [observation, ...[]])
-      );
+      await this.writePhraseRow(txn, projectPhraseState(phrase, observations));
     });
   }
 
