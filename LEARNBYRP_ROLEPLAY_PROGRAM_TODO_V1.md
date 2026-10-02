@@ -297,9 +297,9 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Keep status = new / supported / growing / steady. (`skillProjection.ts`; lapses never rewrite status)
 - [x] Keep `revisit` as a separate boolean. (`SkillProjectionV2.revisit`)
 - [x] Show `lastIndependentUseAt`. (projection + Progress skill cards/details)
-- [ ] One strict lapse does not demote status.
-- [ ] Second lapse within policy window may flag revisit [Tunable].
-- [ ] Do not implement automatic demotion in V1.
+- [x] One strict lapse does not demote status. It sets `reviewDue` only; regression-tested.
+- [x] Second lapse within policy window may flag revisit [Tunable]. (`SKILL_POLICY.revisitMinRecentLapses = 2`)
+- [x] Do not implement automatic demotion in V1.
 - [ ] Cap consecutive recovery missions per skill [Tunable].
 - [ ] Offer off-ramps: guided practice / different skill / break / mute skill.
 
