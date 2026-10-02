@@ -1,4 +1,5 @@
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import { getScene } from '../../content/scenes';
 import { normalizeText } from './matching';
 import { LEARNING_WINDOWS, SKILL_POLICY } from './policy';
 import {
@@ -97,9 +98,14 @@ export interface SkillValidationRejection {
     | 'support_reference_unknown'
     | 'support_contradicts_retrieval'
     | 'rehearsal_not_independent'
+    | 'opportunity_required'
     | 'opportunity_unknown'
+    | 'opportunity_not_declared'
     | 'opportunity_skill_mismatch'
-    | 'opportunity_not_taken';
+    | 'opportunity_not_validated'
+    | 'opportunity_not_taken'
+    | 'opportunity_passage_mismatch'
+    | 'opportunity_not_demonstrated';
   reason: string;
 }
 
@@ -175,16 +181,46 @@ export function validateSkillEvidenceProposal(
       continue;
     }
 
-    // If the live runtime supplied an opportunity link, validate it. During the
-    // migration period an older assessor may omit the link; that can still create
-    // positive evidence, but never a lapse.
+    // 3. Positive validated evidence must come from a first-class authored
+    // opportunity. Mission membership alone is not enough: the scene must have
+    // actually created a concrete chance to demonstrate this exact skill.
+    if (evidenceSource === 'validated_explicit' && !candidate.opportunityInstanceId) {
+      reject(
+        'opportunity_required',
+        'Validated skill evidence requires a declared runtime opportunity'
+      );
+      continue;
+    }
+
     let opportunity: OpportunityInstance | undefined;
     if (candidate.opportunityInstanceId) {
       opportunity = opportunitiesById.get(candidate.opportunityInstanceId);
       if (!opportunity || opportunity.attemptId !== context.attemptId) {
         reject(
           'opportunity_unknown',
-          `Opportunity ${candidate.opportunityInstanceId} is not a validated runtime opportunity for this attempt`
+          `Opportunity ${candidate.opportunityInstanceId} is not a runtime opportunity for this attempt`
+        );
+        continue;
+      }
+
+      const scene = context.mission.sceneId ? getScene(context.mission.sceneId) : undefined;
+      const authoredDefinition = scene?.opportunityDefinitions.find(
+        definition => definition.id === opportunity!.opportunityId
+      );
+      if (evidenceSource === 'validated_explicit' && !authoredDefinition) {
+        reject(
+          'opportunity_not_declared',
+          `Opportunity ${opportunity.opportunityId} is not declared by scene ${context.mission.sceneId ?? 'none'}`
+        );
+        continue;
+      }
+      if (
+        authoredDefinition &&
+        authoredDefinition.skillId !== opportunity.skillId
+      ) {
+        reject(
+          'opportunity_skill_mismatch',
+          `Authored opportunity ${authoredDefinition.id} belongs to ${authoredDefinition.skillId}, not ${opportunity.skillId}`
         );
         continue;
       }
@@ -195,10 +231,37 @@ export function validateSkillEvidenceProposal(
         );
         continue;
       }
+      if (opportunity.detection !== 'validated') {
+        reject(
+          'opportunity_not_validated',
+          `Opportunity ${opportunity.id} is only ${opportunity.detection}`
+        );
+        continue;
+      }
       if (opportunity.status !== 'taken') {
         reject(
           'opportunity_not_taken',
           `Opportunity ${opportunity.id} was ${opportunity.status}, not taken`
+        );
+        continue;
+      }
+      if (
+        opportunity.learnerAttemptPassageId !== candidate.sourcePassageId ||
+        opportunity.learnerAttemptRevision !== candidate.sourceRevision
+      ) {
+        reject(
+          'opportunity_passage_mismatch',
+          `Opportunity ${opportunity.id} is linked to a different learner passage or revision`
+        );
+        continue;
+      }
+      if (
+        evidenceSource === 'validated_explicit' &&
+        opportunity.demonstration !== 'demonstrated'
+      ) {
+        reject(
+          'opportunity_not_demonstrated',
+          `Opportunity ${opportunity.id} is classified as ${opportunity.demonstration}`
         );
         continue;
       }
