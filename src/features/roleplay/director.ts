@@ -216,6 +216,7 @@ export function isDirectorBoundaryEvent(event: DirectorRuntimeEvent): boolean {
  */
 export class DirectorCadence {
   private readonly evaluatedRevisions = new Set<string>();
+  private readonly emittedDirectives = new Set<string>();
 
   evaluate(input: {
     event: DirectorRuntimeEvent;
@@ -232,7 +233,7 @@ export class DirectorCadence {
     if (this.evaluatedRevisions.has(revisionKey)) return null;
     this.evaluatedRevisions.add(revisionKey);
 
-    return decideDirector({
+    const decision = decideDirector({
       scene: input.scene,
       state: input.state,
       opportunities: input.opportunities,
@@ -240,12 +241,37 @@ export class DirectorCadence {
         input.availableCommunicationChallenges,
       targetChallengeSkillId: input.targetChallengeSkillId,
     });
+
+    const directiveKey =
+      decision.kind === 'trigger_complication'
+        ? `complication:${decision.complicationId}`
+        : decision.kind === 'present_communication_challenge'
+          ? `challenge:${decision.challengeId}`
+          : decision.kind === 'present_opportunity'
+            ? `opportunity:${decision.opportunityId}`
+            : decision.kind === 'prepare_completion'
+              ? 'completion'
+              : null;
+
+    if (directiveKey) {
+      const attemptDirectiveKey =
+        `${input.state.attemptId}:${directiveKey}`;
+      if (this.emittedDirectives.has(attemptDirectiveKey)) return null;
+      this.emittedDirectives.add(attemptDirectiveKey);
+    }
+
+    return decision;
   }
 
   resetAttempt(attemptId: string): void {
     for (const key of [...this.evaluatedRevisions]) {
       if (key.startsWith(`${attemptId}:`)) {
         this.evaluatedRevisions.delete(key);
+      }
+    }
+    for (const key of [...this.emittedDirectives]) {
+      if (key.startsWith(`${attemptId}:`)) {
+        this.emittedDirectives.delete(key);
       }
     }
   }
