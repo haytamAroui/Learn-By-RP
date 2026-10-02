@@ -1,4 +1,9 @@
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import {
+  COMMUNICATIVE_SKILLS_CATALOG,
+  communicativeSkillById,
+  isDirectlyEvidencedSkill,
+  selectMostSpecificSkillIds,
+} from '../../content/skills';
 import { getScene } from '../../content/scenes';
 import {
   exposurePrecedesPassage,
@@ -98,6 +103,8 @@ export interface SkillValidationRejection {
   /** The check that failed. Stable, so it can be tested and displayed. */
   check:
     | 'unknown_skill'
+    | 'skill_not_directly_evidenced'
+    | 'not_most_specific'
     | 'not_in_mission'
     | 'passage_missing'
     | 'passage_not_learner'
@@ -164,6 +171,32 @@ export function validateSkillEvidenceProposal(
   // can be contradicted by the ledger.
   const allExposureIds = new Set(context.supportExposures.map(e => e.id));
 
+  // One communicative act may be proposed under both a broad family and a
+  // specific child. Credit only the most-specific skill for that act. The act
+  // identity is transcript provenance + normalized quoted span; unrelated
+  // skills on different quoted acts in the same passage remain eligible.
+  const mostSpecificSkillsByAct = new Map<string, Set<CommunicativeSkillId>>();
+  const actKey = (candidate: SkillEvidenceCandidate) =>
+    [
+      candidate.sourcePassageId,
+      candidate.sourceRevision,
+      normalizeText(candidate.quote),
+    ].join('::');
+
+  const candidatesByAct = new Map<string, SkillEvidenceCandidate[]>();
+  for (const candidate of proposal.skillItems) {
+    const key = actKey(candidate);
+    const group = candidatesByAct.get(key) ?? [];
+    group.push(candidate);
+    candidatesByAct.set(key, group);
+  }
+  for (const [key, candidates] of candidatesByAct) {
+    mostSpecificSkillsByAct.set(
+      key,
+      new Set(selectMostSpecificSkillIds(candidates.map(candidate => candidate.skillId)))
+    );
+  }
+
   for (const candidate of proposal.skillItems) {
     const reject = (check: SkillValidationRejection['check'], reason: string) => {
       rejected.push({ candidate, check, reason });
@@ -172,6 +205,27 @@ export function validateSkillEvidenceProposal(
     // 1. Is this a skill we actually have?
     if (!KNOWN_SKILL_IDS.has(candidate.skillId)) {
       reject('unknown_skill', `"${candidate.skillId}" is not in the curated skill catalog`);
+      continue;
+    }
+
+    const mostSpecificForAct = mostSpecificSkillsByAct.get(actKey(candidate));
+    if (mostSpecificForAct && !mostSpecificForAct.has(candidate.skillId)) {
+      reject(
+        'not_most_specific',
+        `${candidate.skillId} is broader than another proposed skill for the same communicative act`
+      );
+      continue;
+    }
+
+    // Derived families are learner-facing roll-ups only. Persisting direct
+    // evidence on them would double-credit the same act and make later hierarchy
+    // changes impossible to reconstruct.
+    if (!isDirectlyEvidencedSkill(candidate.skillId)) {
+      const skill = communicativeSkillById(candidate.skillId);
+      reject(
+        'skill_not_directly_evidenced',
+        `${candidate.skillId} is a ${skill?.evidenceMode ?? 'non-direct'} skill family; evidence must target a most-specific direct child`
+      );
       continue;
     }
 
