@@ -62,6 +62,7 @@ import {
 } from '../features/roleplay/opportunityRuntime';
 import { getScene } from '../content/scenes';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
+import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import { SceneActionName } from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
@@ -341,6 +342,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       // phrase, so no phrase ids are claimed.
       targetItemIds: [],
       exposure: 'visible',
+      policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: new Date().toISOString(),
     };
 
@@ -862,6 +864,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             ? [data.targetPhraseId ?? target.targetPhraseId!]
             : [],
           exposure: 'visible',
+          policyVersion: LEARNING_POLICY_VERSION,
           recordedAt: new Date().toISOString(),
         };
         setSupportExposures(prev => [...prev, exposure]);
@@ -1354,6 +1357,44 @@ t.live.rehearsalRestored
                     ? t.live.voiceFailed
                     : t.live.tapToSpeak;
 
+  const recordAssistantAudioExposure = useCallback(
+    (passage: Passage, kind: 'assistant_audio_replay' | 'assistant_audio_slow') => {
+      const exposure: SupportExposure = {
+        id: `exp-${kind}-${passage.id}-${Date.now()}`,
+        sessionId,
+        attemptId,
+        turnId: passage.id,
+        source: 'actor',
+        kind,
+        targetItemIds: [],
+        exposure: 'played',
+        policyVersion: LEARNING_POLICY_VERSION,
+        recordedAt: new Date().toISOString(),
+      };
+      setSupportExposures(prev => [...prev, exposure]);
+    },
+    [attemptId, sessionId]
+  );
+
+  const replayAssistantLine = useCallback(
+    async (passage: Passage, speed = 1) => {
+      const transport = voiceTransportRef.current;
+      if (!transport) return;
+
+      recordAssistantAudioExposure(
+        passage,
+        speed < 1 ? 'assistant_audio_slow' : 'assistant_audio_replay'
+      );
+
+      await speakWithBestAvailable(transport, passage.text, {
+        language: mission.language,
+        speed,
+        style: mission.character.voiceStyle,
+      });
+    },
+    [mission.character.voiceStyle, mission.language, recordAssistantAudioExposure]
+  );
+
   const requestSupport = (kind: 'intent_hint' | 'partial_form' | 'full_form') => {
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
@@ -1733,17 +1774,20 @@ t.live.rehearsalRestored
             variant="secondary"
           />
           <Button
+            label={t.common.listen}
+            onPress={() => {
+              if (latestAssistantPassage) {
+                void replayAssistantLine(latestAssistantPassage, 1);
+              }
+              setShowHelpSheet(false);
+            }}
+            variant="ghost"
+          />
+          <Button
             label={t.settings.speedSlower}
             onPress={() => {
               if (latestAssistantPassage) {
-                const transport = voiceTransportRef.current;
-                if (transport) {
-                  void speakWithBestAvailable(transport, latestAssistantPassage.text, {
-                    language: mission.language,
-                    speed: 0.75,
-                    style: mission.character.voiceStyle,
-                  });
-                }
+                void replayAssistantLine(latestAssistantPassage, 0.75);
               }
               setShowHelpSheet(false);
             }}
