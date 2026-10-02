@@ -24,6 +24,7 @@ import {
   Play,
   RotateCcw,
   Send,
+  Volume2,
   X,
 } from 'lucide-react-native';
 import {
@@ -73,6 +74,11 @@ import {
   mergeAttemptPassages,
 } from '../features/learning/retrySupport';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
+import {
+  createModelPhraseAudioExposure,
+  createTypedExampleExposure,
+  mergeVisibleCaptionViewExposures,
+} from '../features/learning/supportSurfaces';
 import { negotiateRoleplayCapabilities } from '../features/roleplay/capabilities';
 import { mayCommitActorReply } from '../features/roleplay/actorContract';
 import type {
@@ -252,6 +258,13 @@ function normalizeTargetForm(value: string): string {
     .trim();
 }
 
+interface ActiveCoachAudioTarget {
+  targetSkillId: string;
+  targetOpportunityId?: string;
+  targetPhraseId: string;
+  targetPhraseForm: string;
+}
+
 function resolveCoachTarget(
   mission: MissionDefinition,
   opportunities: OpportunityInstance[],
@@ -421,6 +434,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const [showHelpSheet, setShowHelpSheet] = useState(false);
   const [isSceneFrozen, setIsSceneFrozen] = useState(false);
   const [activeCoachAdvice, setActiveCoachAdvice] = useState<string | null>(null);
+  const [activeCoachAudioTarget, setActiveCoachAudioTarget] =
+    useState<ActiveCoachAudioTarget | null>(null);
   const [isCoachLoading, setIsCoachLoading] = useState(false);
 
   const voiceTransportRef = useRef<VoiceTransport | null>(null);
@@ -447,6 +462,28 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   supportExposuresRef.current = supportExposures;
   isMutedRef.current = isMuted;
   isSceneFrozenRef.current = isSceneFrozen;
+
+  useEffect(() => {
+    const latestAssistant = [...passages]
+      .reverse()
+      .find(passage => passage.speaker === 'assistant');
+    const olderVisible = latestAssistant
+      ? passages.filter(passage => passage.id !== latestAssistant.id).slice(-6)
+      : passages.slice(-6);
+    const visiblePassages = latestAssistant
+      ? [latestAssistant, ...olderVisible]
+      : olderVisible;
+
+    setSupportExposures(existing =>
+      mergeVisibleCaptionViewExposures({
+        existing,
+        visiblePassages,
+        sessionId,
+        attemptId,
+        recordedAt: new Date().toISOString(),
+      })
+    );
+  }, [attemptId, passages, sessionId]);
 
   useEffect(() => {
     if (!mission?.sceneId) return;
@@ -904,6 +941,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     ) => {
       if (!mission) return;
       setIsCoachLoading(true);
+      setActiveCoachAudioTarget(null);
 
       const lastAssistantPassage = [...passagesRef.current]
         .reverse()
@@ -944,7 +982,23 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           recordedAt: new Date().toISOString(),
         };
         setSupportExposures(prev => [...prev, exposure]);
+
+        const scopedPhraseId = data.targetPhraseId ?? target.targetPhraseId;
+        const scopedPhrase = scopedPhraseId
+          ? mission.usefulPhrases.find(phrase => phrase.id === scopedPhraseId)
+          : undefined;
+
+        if (step === 'full_form' && scopedPhrase) {
+          setActiveCoachAudioTarget({
+            targetSkillId: data.targetSkillId || target.targetSkillId,
+            targetOpportunityId:
+              data.targetOpportunityId ?? target.targetOpportunityId,
+            targetPhraseId: scopedPhrase.id,
+            targetPhraseForm: scopedPhrase.form,
+          });
+        }
       } catch (e) {
+        setActiveCoachAudioTarget(null);
         setActiveCoachAdvice('Try expressing your order in simple, clear words.');
       } finally {
         setIsCoachLoading(false);
@@ -1181,6 +1235,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     } else {
       setIsSceneFrozen(false);
       setActiveCoachAdvice(null);
+      setActiveCoachAudioTarget(null);
       setVoiceState('idle');
       voiceTransportRef.current?.startListening();
     }
@@ -1282,6 +1337,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     setPassages(currentPassages.slice(0, checkpoint.passageIndex + 1));
     setIsSceneFrozen(false);
     setActiveCoachAdvice(null);
+    setActiveCoachAudioTarget(null);
     setSceneEventNotice(t.live.rehearsalRestored);
     setTimeout(() => setSceneEventNotice(null), 4000);
     voiceTransportRef.current?.startListening();
@@ -1632,6 +1688,59 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     [mission.character.voiceStyle, mission.language, recordAssistantAudioExposure]
   );
 
+  const playCoachModelPhrase = useCallback(async () => {
+    if (!activeCoachAudioTarget) return;
+    const transport = voiceTransportRef.current;
+    if (!transport) return;
+
+    transport.stopPlayback();
+    await speakWithBestAvailable(
+      transport,
+      activeCoachAudioTarget.targetPhraseForm,
+      {
+        language: mission.language,
+        speed: effectiveSpeechRate,
+        style: mission.character.voiceStyle,
+      }
+    );
+
+    const exposure = createModelPhraseAudioExposure({
+      sessionId,
+      attemptId,
+      targetSkillId: activeCoachAudioTarget.targetSkillId,
+      targetOpportunityId: activeCoachAudioTarget.targetOpportunityId,
+      targetPhraseId: activeCoachAudioTarget.targetPhraseId,
+      recordedAt: new Date().toISOString(),
+    });
+    setSupportExposures(prev => [...prev, exposure]);
+  }, [
+    activeCoachAudioTarget,
+    attemptId,
+    effectiveSpeechRate,
+    mission.character.voiceStyle,
+    mission.language,
+    sessionId,
+  ]);
+
+  const useCoachTypedExample = useCallback(() => {
+    if (!activeCoachAudioTarget) return;
+
+    const exposure = createTypedExampleExposure({
+      sessionId,
+      attemptId,
+      targetSkillId: activeCoachAudioTarget.targetSkillId,
+      targetOpportunityId: activeCoachAudioTarget.targetOpportunityId,
+      targetPhraseId: activeCoachAudioTarget.targetPhraseId,
+      recordedAt: new Date().toISOString(),
+    });
+
+    setSupportExposures(prev =>
+      prev.some(existing => existing.id === exposure.id) ? prev : [...prev, exposure]
+    );
+    setTypedMessage(activeCoachAudioTarget.targetPhraseForm);
+    setShowTypedInput(true);
+  }, [activeCoachAudioTarget, attemptId, sessionId]);
+
   const requestSupport = (
     kind: 'intent_hint' | 'partial_form' | 'full_form' | 'explanation'
   ) => {
@@ -1800,6 +1909,32 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 </Text>
               </View>
             </View>
+
+            {activeCoachAudioTarget && !isCoachLoading ? (
+              <View className="gap-2 rounded-2xl border border-primary/20 bg-surface px-3 py-3">
+                <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
+                  {t.common.targetPhrase}
+                </Text>
+                <Text className="text-sm font-medium leading-5 text-ink">
+                  {activeCoachAudioTarget.targetPhraseForm}
+                </Text>
+                <View className="flex-row flex-wrap gap-2">
+                  <Button
+                    label={t.common.listen}
+                    onPress={() => void playCoachModelPhrase()}
+                    size="sm"
+                    variant="ghost"
+                    icon={<Volume2 size={15} color={iconColor('brand')} />}
+                  />
+                  <Button
+                    label={t.live.useTypedExample}
+                    onPress={useCoachTypedExample}
+                    size="sm"
+                    variant="secondary"
+                  />
+                </View>
+              </View>
+            ) : null}
 
             <View className="flex-row gap-2">
               <View className="flex-1">

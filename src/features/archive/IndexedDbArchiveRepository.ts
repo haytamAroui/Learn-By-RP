@@ -21,6 +21,7 @@ import {
   SessionState,
   SkillLapse,
   SkillObservation,
+  SupportExposure,
   TaskOutcome,
   UserPreferences,
 } from '../../types';
@@ -420,6 +421,47 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
             ...existing,
             endReason: reason,
             endedAt: existing.endedAt ?? new Date().toISOString(),
+          },
+        },
+      ]);
+    });
+  }
+
+
+  async appendSupportExposures(
+    sessionId: string,
+    exposures: SupportExposure[]
+  ): Promise<void> {
+    if (exposures.length === 0) return;
+
+    await this.transaction(async tx => {
+      const existing = await this.loadSessionIn(tx, sessionId);
+      if (!existing) return;
+
+      const byId = new Map(
+        (existing.supportExposures ?? []).map(exposure => [exposure.id, exposure])
+      );
+      for (const exposure of exposures) {
+        if (exposure.sessionId !== sessionId || byId.has(exposure.id)) continue;
+
+        const normalized: SupportExposure = {
+          ...exposure,
+          turnId: exposure.turnId ?? undefined,
+          targetItemIds: exposure.targetItemIds ?? [],
+          targetSkillId: exposure.targetSkillId ?? undefined,
+          targetOpportunityId: exposure.targetOpportunityId ?? undefined,
+          targetPhraseId: exposure.targetPhraseId ?? undefined,
+          policyVersion: exposure.policyVersion ?? LEARNING_POLICY_VERSION,
+        };
+        byId.set(normalized.id, normalized);
+      }
+
+      this.putAll(tx, STORE.sessions, [
+        {
+          key: sessionId,
+          value: {
+            ...existing,
+            supportExposures: [...byId.values()],
           },
         },
       ]);

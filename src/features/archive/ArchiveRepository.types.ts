@@ -5,6 +5,7 @@ import {
   SessionState,
   SkillLapse,
   SkillObservation,
+  SupportExposure,
   UserPreferences,
 } from '../../types';
 
@@ -78,6 +79,7 @@ export interface ArchiveRepository {
     sessionId: string,
     reason: SessionRecord['endReason']
   ): Promise<void>;
+  appendSupportExposures(sessionId: string, exposures: SupportExposure[]): Promise<void>;
 
   // ----------------------------------------------------------------- evidence
   getObservations(): Promise<LearningObservation[]>;

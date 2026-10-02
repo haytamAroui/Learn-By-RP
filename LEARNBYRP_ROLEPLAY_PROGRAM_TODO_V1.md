@@ -1,7 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
-**Last reconciled with `main`:** `2e11d0e1652e3fdb59799d2b9b59b1b9a540e8ce` (2026-10-02)  
+**Last reconciled with `main`:** `753bda9f9ff0e2861b44848b4eb64c860949ea64` (2026-10-02)  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -231,12 +231,12 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] full_form
 - [x] explanation
 - [x] meaning_of_assistant_turn
-- [ ] model_phrase_audio
+- [x] model_phrase_audio (`supportSurfaces.ts`; full-form coach target only; explicit Listen plays the exact curated target phrase and records exact skill/opportunity/phrase scope after successful playback)
 - [x] assistant_audio_replay (`LiveSessionView` Listen action records comprehension-only exposure)
 - [x] assistant_audio_slow (`LiveSessionView` slower replay records comprehension-only exposure)
-- [ ] caption_view
-- [ ] typed_example
-- [ ] recap_exposure
+- [x] caption_view (`LiveSessionView` + `supportSurfaces.ts`; actually rendered final assistant captions are ledgered once per attempt/turn and remain non-production support)
+- [x] typed_example (`LiveSessionView` + `supportSurfaces.ts`; learner explicitly copies the exact full-form coach target into the typed reply field; one stable exact skill/opportunity/phrase exposure per attempt target)
+- [x] recap_exposure (`RecapScreen` + `ArchiveRepository.appendSupportExposures`; only validated phrase forms actually opened in the evidence sheet are ledgered; stable first-write-wins IDs/timestamps with SQLite↔IndexedDB parity coverage)
 - [x] briefing_exposure (only explicitly previewed phrase IDs; policy-versioned)
 
 ## Relevance rules
@@ -874,7 +874,7 @@ Confirmed from `main` after squash merge `fa4564dc19ed36adfff27f916a4486d0745954
 - [x] Canonical reviewed ScenarioFamily catalog defines stable family IDs, domain boundaries, inclusion/exclusion reviewer metadata and fail-closed mission/program validation (`src/content/scenarioFamilies.ts`, `scenarioFamilies.test.ts`, `validate-scenes.mts`).
 - [x] Detailed evidence reason codes are deterministic, persisted and localized; scene success still cannot manufacture target-skill evidence (`evidenceReasons.ts`, schema v10, `skillEvidence.test.ts`).
 - [x] Retry checkpoints are deterministic-authority only: semantic opportunity judgments are excluded from the v5 checkpoint contract and rejected if injected at ingress/store boundaries (`scene.ts`, `sceneStore.ts`, `routes.ts`, `sceneStore.test.ts`).
-- [ ] Non-coach support surfaces still need complete instrumentation for model phrase audio, captions, typed examples and recap exposure.
+- [x] Support-surface exposure instrumentation is complete for the §6 exposure-kind list: model phrase audio, rendered captions, explicit typed examples, recap phrase review and briefing preview all have scoped ledger events. Cross-session briefing/recap relevance-window semantics remain separately open above.
 - [ ] Director pressure branches remain open.
 - [ ] Curated launch content, locale review and final simulation remain open.
 - [ ] Consent/privacy/security hardening and delete-tombstone guarantees remain G0 blockers.

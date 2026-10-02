@@ -172,6 +172,7 @@ export interface Translations {
     coachStepIntent: string;
     coachStepPartial: string;
     coachStepFull: string;
+    useTypedExample: string;
     coachStepExpl: string;
     coachAsking: string;
     summaryNoSpeech: string;
@@ -548,6 +549,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepIntent: "1. Strategic Intent Hint",
       coachStepPartial: "2. Sentence Starter",
       coachStepFull: "3. Complete Model Phrase",
+      useTypedExample: "Use in typed reply",
       coachStepExpl: "4. Cultural & Grammar Nuance",
       coachAsking: "Consulting language coach...",
       summaryNoSpeech:
@@ -938,6 +940,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepIntent: "1. Indice d’intention stratégique",
       coachStepPartial: "2. Début de phrase",
       coachStepFull: "3. Phrase modèle complète",
+      useTypedExample: "Utiliser dans la réponse écrite",
       coachStepExpl: "4. Nuance culturelle et grammaticale",
       coachAsking: "Consultation du coach en cours...",
       summaryNoSpeech:
@@ -1327,6 +1330,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepIntent: "1. Pista estratégica de intención",
       coachStepPartial: "2. Inicio de frase",
       coachStepFull: "3. Frase modelo completa",
+      useTypedExample: "Usar en la respuesta escrita",
       coachStepExpl: "4. Matiz cultural y gramatical",
       coachAsking: "Consultando al coach...",
       summaryNoSpeech:
@@ -1716,6 +1720,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       coachStepIntent: "1. Strategische intentie-hint",
       coachStepPartial: "2. Zinsbegin",
       coachStepFull: "3. Volledige voorbeeldzin",
+      useTypedExample: "Gebruiken in getypt antwoord",
       coachStepExpl: "4. Culturele en grammaticale toelichting",
       coachAsking: "Coach raadplegen...",
       summaryNoSpeech:

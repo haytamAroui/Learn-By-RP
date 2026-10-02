@@ -5,7 +5,7 @@ import { __setDatabaseForTesting, migrate } from './database';
 import { archiveRepository as sqliteRepository } from './SqliteArchiveRepository';
 import { IndexedDbArchiveRepository } from './IndexedDbArchiveRepository';
 import { ArchiveRepository } from './ArchiveRepository.types';
-import { LearningObservation, Passage, SessionRecord } from '../../types';
+import { LearningObservation, Passage, SessionRecord, SupportExposure } from '../../types';
 
 /**
  * Native/web parity.
@@ -136,6 +136,7 @@ async function snapshot(repo: ArchiveRepository) {
     spokenCount: target?.stats.spokenCount,
     explanationLanguage: preferences.explanationLanguage,
     lapseCount: lapses.length,
+    supportExposureIds: sessions[0]?.supportExposures.map(exposure => exposure.id).sort() ?? [],
   };
 }
 
@@ -150,6 +151,36 @@ describe('native and web agree on the same archive', () => {
     }
 
     expect(await snapshot(web)).toEqual(await snapshot(sqliteRepository));
+  });
+
+
+  it('both append post-session support exposures idempotently', async () => {
+    const recapExposure: SupportExposure = {
+      id: 'exp-recap-session-1-phrase.es.cafe_con_leche',
+      sessionId: 'session-1',
+      attemptId: 'attempt-1',
+      source: 'recap',
+      kind: 'recap_exposure',
+      targetPhraseId: 'phrase.es.cafe_con_leche',
+      targetItemIds: ['phrase.es.cafe_con_leche'],
+      exposure: 'visible',
+      recordedAt: '2026-09-20T09:06:00.000Z',
+    };
+
+    for (const repo of [sqliteRepository, web]) {
+      await repo.completeSession(session());
+      await repo.appendSupportExposures('session-1', [recapExposure]);
+      await repo.appendSupportExposures('session-1', [
+        { ...recapExposure, recordedAt: '2026-09-20T09:20:00.000Z' },
+      ]);
+    }
+
+    const native = await sqliteRepository.getSessionById('session-1');
+    const webSession = await web.getSessionById('session-1');
+
+    expect(native?.supportExposures).toHaveLength(1);
+    expect(native?.supportExposures[0].recordedAt).toBe('2026-09-20T09:06:00.000Z');
+    expect(webSession?.supportExposures).toEqual(native?.supportExposures);
   });
 
   it('both seed a phrase catalog on first read', async () => {
@@ -307,6 +338,7 @@ describe('the contract is enforced at compile time', () => {
       'getSessionSummaries',
       'getInterruptedSessions',
       'markSessionEnded',
+      'appendSupportExposures',
       'getObservations',
       'hideObservation',
       'disputeObservation',
