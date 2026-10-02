@@ -309,52 +309,52 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 
 ## Typed finite facts
 
-- [ ] Replace unrestricted `Record<string, unknown>` scene facts with per-scene finite schemas.
+- [x] Replace unrestricted scene facts with per-scene finite schemas. (`SceneFactSchema`, contract v3)
 - [ ] Supported fact types:
-  - [ ] boolean
-  - [ ] enum
-  - [ ] bounded integer where necessary
-- [ ] Every effect may only write declared facts with declared values.
+  - [x] boolean
+  - [x] enum
+  - [x] bounded integer where necessary
+- [x] Every effect may only write declared facts with declared values. (`sceneValidation.ts`)
 
 ## Predicate DSL
 
 - [ ] Define bounded JSON predicate language:
-  - [ ] eq
-  - [ ] neq
-  - [ ] in
-  - [ ] and
-  - [ ] or
-  - [ ] not
-  - [ ] exists
-  - [ ] lte / gte for bounded numbers
-  - [ ] countOf(actions)
-- [ ] No arbitrary code in content predicates.
-- [ ] Bound predicate depth.
+  - [x] eq
+  - [x] neq
+  - [x] in
+  - [x] and
+  - [x] or
+  - [x] not
+  - [x] exists
+  - [x] lte / gte for bounded numbers
+  - [x] countOf(actions)
+- [x] No arbitrary code in content predicates. Predicates are data-only discriminated unions.
+- [x] Bound predicate depth. (`MAX_PREDICATE_DEPTH = 8`)
 - [ ] Use same predicate language for:
-  - [ ] preconditions
-  - [ ] completion
-  - [ ] complications
-  - [ ] opportunity scene conditions
+  - [x] preconditions
+  - [x] completion
+  - [x] complications
+  - [x] opportunity scene conditions
 
 ## Effects
 
-- [ ] Define finite effect language.
-- [ ] Remove arbitrary untyped nested mutations where the content schema cannot be statically checked.
-- [ ] Validate every action payload against its declared schema.
+- [x] Define finite effect language. Effects are authored `{ set, value }` over finite facts.
+- [x] Remove arbitrary untyped nested mutations where the content schema cannot be statically checked.
+- [x] Validate every action payload against its declared schema. (`validatePayload`)
 
 ---
 
 # 11. Build-time scene model checker
 
-- [ ] Enumerate reachable states for each released finite scene.
-- [ ] Fail build if completion is unreachable.
-- [ ] Fail build on reachable non-complete deadlock.
+- [x] Enumerate reachable states for each released finite scene. (`sceneModelChecker.ts`)
+- [x] Fail build if completion is unreachable. (`npm run validate:scenes` in Verify CI)
+- [x] Fail build on reachable non-complete deadlock.
 - [ ] Fail build if a complication can make completion unreachable.
-- [ ] Fail build on dead authored action.
-- [ ] Fail build if declared opportunity is unreachable.
-- [ ] Detect/bound non-idempotent action cycles.
-- [ ] Generate scripted dry-run paths for reducer CI.
-- [ ] Add model-check report to content validation output.
+- [x] Fail build on dead authored action.
+- [x] Fail build if declared opportunity is unreachable.
+- [x] Detect/bound non-idempotent action cycles. Logical state keys cap action counts to referenced thresholds; global state/path bounds prevent infinite enumeration.
+- [x] Generate scripted dry-run paths for reducer CI. Report includes the action path to first reachable `achieved` state.
+- [x] Add model-check report to content validation output. (`scripts/validate-scenes.mts`)
 
 ---
 
