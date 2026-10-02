@@ -23,7 +23,18 @@ export interface TranscriptCase {
   /** Support the learner was shown before the turn. */
   exposures?: Array<{
     source: 'briefing' | 'actor' | 'coach' | 'caption' | 'retry';
-    kind: 'intent_hint' | 'meaning' | 'partial_form' | 'full_form' | 'repeat';
+    kind:
+      | 'intent_hint'
+      | 'meaning'
+      | 'partial_form'
+      | 'full_form'
+      | 'repeat'
+      | 'model_phrase_audio'
+      | 'assistant_audio_replay'
+      | 'assistant_audio_slow'
+      | 'meaning_of_assistant_turn'
+      | 'caption_view'
+      | 'typed_example';
     /** Minutes ago, used for the modeling window. */
     minutesAgo?: number;
   }>;
@@ -150,7 +161,7 @@ export const EVIDENCE_CASES: TranscriptCase[] = [
     target: { id: 'phrase.es.cafe_leche', form: 'Un café con leche', meaning: 'A coffee with milk' },
     learnerUtterance: 'un café con leche',
     isColdAttempt: true,
-    exposures: [{ source: 'actor', kind: 'repeat', minutesAgo: 1 }],
+    exposures: [{ source: 'actor', kind: 'model_phrase_audio', minutesAgo: 1 }],
     expect: {
       credited: true,
       retrieval: 'assisted',
@@ -165,7 +176,7 @@ export const EVIDENCE_CASES: TranscriptCase[] = [
     target: { id: 'phrase.es.cafe_leche', form: 'Un café con leche', meaning: 'A coffee with milk' },
     learnerUtterance: 'un café con leche por favor',
     isColdAttempt: true,
-    exposures: [{ source: 'actor', kind: 'repeat', minutesAgo: 60 }],
+    exposures: [{ source: 'actor', kind: 'model_phrase_audio', minutesAgo: 60 }],
     expect: {
       credited: true,
       retrieval: 'unassisted',
