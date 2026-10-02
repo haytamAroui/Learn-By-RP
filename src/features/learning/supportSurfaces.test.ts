@@ -7,6 +7,8 @@ import {
 } from './supportScope';
 import {
   createModelPhraseAudioExposure,
+  createRecapPhraseExposures,
+  createTypedExampleExposure,
   mergeVisibleCaptionViewExposures,
 } from './supportSurfaces';
 
@@ -137,5 +139,73 @@ describe('non-coach support surface instrumentation', () => {
         opportunityInstanceId: 'opportunity:attempt-1:opp-other',
       })
     ).toBe(false);
+  });
+  it('records typed example use with exact production scope', () => {
+    const exposure = createTypedExampleExposure({
+      sessionId: 's-1',
+      attemptId: 'attempt-1',
+      targetSkillId: 'skill-request-substitution',
+      targetOpportunityId: 'opportunity:attempt-1:opp-1',
+      targetPhraseId: 'phrase.es.oat_milk_request',
+      recordedAt: '2026-10-02T10:00:03.000Z',
+    });
+
+    expect(exposure).toMatchObject({
+      source: 'coach',
+      kind: 'typed_example',
+      targetSkillId: 'skill-request-substitution',
+      targetOpportunityId: 'opportunity:attempt-1:opp-1',
+      targetPhraseId: 'phrase.es.oat_milk_request',
+      targetItemIds: ['phrase.es.oat_milk_request'],
+      exposure: 'visible',
+    });
+    expect(isProductionFormExposure(exposure)).toBe(true);
+  });
+
+  it('creates one recap exposure per actually shown phrase and is idempotent', () => {
+    const first = createRecapPhraseExposures({
+      existing: [],
+      sessionId: 's-1',
+      observations: [
+        { attemptId: 'attempt-1', itemId: 'phrase-a' },
+        { attemptId: 'attempt-1', itemId: 'phrase-a' },
+        { attemptId: 'attempt-2', itemId: 'phrase-b' },
+      ],
+      recordedAt: '2026-10-02T10:05:00.000Z',
+    });
+
+    expect(first).toHaveLength(2);
+    expect(first).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({
+          id: 'exp-recap-s-1-phrase-a',
+          attemptId: 'attempt-1',
+          source: 'recap',
+          kind: 'recap_exposure',
+          targetPhraseId: 'phrase-a',
+          targetItemIds: ['phrase-a'],
+        }),
+        expect.objectContaining({
+          id: 'exp-recap-s-1-phrase-b',
+          attemptId: 'attempt-2',
+          source: 'recap',
+          kind: 'recap_exposure',
+          targetPhraseId: 'phrase-b',
+          targetItemIds: ['phrase-b'],
+        }),
+      ])
+    );
+
+    const second = createRecapPhraseExposures({
+      existing: first,
+      sessionId: 's-1',
+      observations: [
+        { attemptId: 'attempt-1', itemId: 'phrase-a' },
+        { attemptId: 'attempt-2', itemId: 'phrase-b' },
+      ],
+      recordedAt: '2026-10-02T10:06:00.000Z',
+    });
+
+    expect(second).toEqual([]);
   });
 });
