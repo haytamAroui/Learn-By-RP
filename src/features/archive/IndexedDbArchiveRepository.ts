@@ -81,6 +81,7 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   audioPlaybackEnabled: true,
   autoPlaySpeech: true,
   speechRate: 1.0,
+  accommodations: { enabled: [] },
 };
 
 function isDue(nextReviewAt: string, now: number): boolean {
