@@ -77,6 +77,7 @@ function candidate(overrides: Partial<SkillEvidenceCandidate> = {}): SkillEviden
     quote: 'la leche de avena',
     modality: 'spoken',
     retrievalProposal: 'unassisted',
+    opportunityInstanceId: 'opp-1',
     supportExposureIds: [],
     ...overrides,
   };
@@ -96,11 +97,11 @@ function opportunity(overrides: Partial<OpportunityInstance> = {}): OpportunityI
   return {
     id: 'opp-1',
     attemptId: 'attempt-1',
-    opportunityId: 'opportunity-request-substitution',
+    opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
     skillId: SKILL,
     status: 'taken',
     detection: 'validated',
-    demonstration: 'attempted_not_demonstrated',
+    demonstration: 'demonstrated',
     learnerAttemptPassageId: 'p-1',
     learnerAttemptRevision: 'rev-1',
     recordedAt: '2026-09-20T09:00:04.000Z',
@@ -116,7 +117,7 @@ const context = (
   mission: mission(),
   passages: [passage()],
   supportExposures: [] as SupportExposure[],
-  opportunityInstances: [] as OpportunityInstance[],
+  opportunityInstances: [opportunity()] as OpportunityInstance[],
   sessionEndReason: 'completed' as const,
   ...overrides,
 } as Parameters<typeof validateSkillEvidenceProposal>[1]);
@@ -154,18 +155,38 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.rejected[0].reason).toContain('does not declare');
   });
 
-  it('accepts a secondary skill the mission declares', () => {
+  it('does not credit a mission-declared skill without an authored scene opportunity', () => {
+    const repair = opportunity({
+      id: 'opp-repair',
+      opportunityId: 'opp.es.cafe.repair.unreleased',
+      skillId: 'skill-communicative-repair',
+    });
     const result = validateSkillEvidenceProposal(
-      proposal([candidate({ skillId: 'skill-communicative-repair' })]),
+      proposal([
+        candidate({
+          skillId: 'skill-communicative-repair',
+          opportunityInstanceId: repair.id,
+        }),
+      ]),
+      context({ opportunityInstances: [repair] })
+    );
+
+    expect(result.validated).toHaveLength(0);
+    expect(result.rejected[0].check).toBe('opportunity_not_declared');
+  });
+
+  it('rejects positive explicit evidence without an opportunity link', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate({ opportunityInstanceId: undefined })]),
       context()
     );
 
-    expect(result.rejected).toEqual([]);
-    expect(result.validated).toHaveLength(1);
+    expect(result.validated).toHaveLength(0);
+    expect(result.rejected[0].check).toBe('opportunity_required');
   });
 
   it('links a demonstrated skill to a validated taken opportunity when supplied', () => {
-    const instance = opportunity({ demonstration: 'demonstrated' });
+    const instance = opportunity();
     const result = validateSkillEvidenceProposal(
       proposal([candidate({ opportunityInstanceId: instance.id })]),
       context({ opportunityInstances: [instance] })
@@ -188,7 +209,6 @@ describe('validateSkillEvidenceProposal', () => {
   it('rejects an opportunity for a different skill', () => {
     const instance = opportunity({
       skillId: 'skill-propose-alternative',
-      demonstration: 'demonstrated',
     });
     const result = validateSkillEvidenceProposal(
       proposal([candidate({ opportunityInstanceId: instance.id })]),
