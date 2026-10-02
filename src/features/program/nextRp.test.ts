@@ -27,7 +27,7 @@ function observation(
 ): SkillObservation {
   return {
     id: 'obs-1',
-    skillId: 'skill-request-substitution',
+    skillId: 'skill-inquire-specifications',
     sessionId: 's-1',
     attemptId: 'attempt-1',
     sourcePassageId: 'p-1',
@@ -44,7 +44,7 @@ function observation(
     opportunityInstanceId: 'opp-1',
     supportExposureIds: [],
     evidenceSource: 'validated_explicit',
-    quote: 'Entonces, leche de almendra.',
+    quote: '¿Tiene leche de avena?',
     dayKey: '2026-10-01',
     reasonCode: 'validated_demonstration',
     policyVersion: 3,
@@ -114,7 +114,7 @@ describe('deterministic next-RP policy', () => {
     expect(result).toMatchObject({
       kind: 'transfer',
       missionId: 'mission-es-farmacia-sol',
-      targetSkillId: 'skill-request-substitution',
+      targetSkillId: 'skill-inquire-specifications',
       reasonCode: 'INDEPENDENT_SUCCESS_TRANSFER',
       requiresLearnerConfirmation: false,
     });
