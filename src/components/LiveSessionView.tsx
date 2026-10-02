@@ -1228,11 +1228,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       }
     }
 
-    const retainedPassageIds = new Set(
-      currentPassages
-        .slice(0, passageIndex + 1)
-        .map(passage => passage.id)
-    );
     const checkpoint: RoleplayCheckpoint = {
       id: selected?.id ?? 'scene-start',
       sceneRevision: selected?.sceneRevision ?? 1,
@@ -1240,21 +1235,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       // This is intentionally captured at retry time, not checkpoint time.
       // Support shown after the scene checkpoint remains known to the learner.
       supportLedgerHighWaterMark: supportExposuresRef.current.length,
-      completedOpportunityIds: opportunityInstancesRef.current
-        .filter(
-          opportunity =>
-            opportunity.attemptId === attemptId &&
-            opportunity.detection === 'validated' &&
-            opportunity.status === 'taken' &&
-            Boolean(
-              opportunity.learnerAttemptPassageId &&
-                retainedPassageIds.has(opportunity.learnerAttemptPassageId)
-            )
-        )
-        .map(opportunity => opportunity.id),
     };
 
-    // The server verifies checkpoint id + revision against replayed parent state.
+    // The server verifies checkpoint id + revision against replayed authoritative parent state; semantic opportunity judgments never enter the restore contract.
     const forkedAttemptId = await mirror.fork(checkpoint, true);
     if (!forkedAttemptId) {
       setSceneEventNotice(t.live.sceneDirectorUnavailable);
