@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Text, View } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
+import type { PersistableSessionRecord } from '../../features/archive/ArchiveRepository.types';
 import { getTranslations, I18nProvider } from '../../features/i18n';
 import { LiveSessionView } from '../../components/LiveSessionView';
 import { Button } from '../../components/ui';
@@ -75,7 +76,7 @@ export default function SessionScreen() {
     );
   }
 
-  const handleEndSession = async (session: SessionRecord) => {
+  const handleEndSession = async (session: PersistableSessionRecord) => {
     // Persist transcript, exposure ledger, validated observations and the
     // recomputed projection in one transaction.
     await archive.completeSession(session);
