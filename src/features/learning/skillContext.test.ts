@@ -63,6 +63,31 @@ describe('skill context identity', () => {
     expect(projection.status).toBe('supported');
   });
 
+  it('counts the same reviewed family in a different domain as a distinct context', () => {
+    const cafe = observation({
+      id: 'cafe-domain',
+      sessionId: 'session-cafe-domain',
+      recordedAt: '2026-09-01T09:00:00.000Z',
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+    });
+    const convenience = observation({
+      id: 'service-domain',
+      sessionId: 'session-service-domain',
+      recordedAt: '2026-09-03T09:00:00.000Z',
+      domainId: 'services',
+      scenarioFamilyId: 'counter-ordering',
+    });
+
+    const projection = projectSkill(SKILL_ID, [cafe, convenience]);
+
+    expect(projection.independentContexts).toEqual([
+      'cafes::counter-ordering',
+      'services::counter-ordering',
+    ]);
+    expect(projection.status).toBe('growing');
+  });
+
   it('counts a genuinely different scenario family as a distinct transfer context', () => {
     const counter = observation({
       id: 'counter',
