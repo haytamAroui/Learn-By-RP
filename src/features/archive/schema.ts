@@ -335,6 +335,16 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE scene_state ADD COLUMN scene_id TEXT;`,
     ],
   },
+  {
+    version: 9,
+    name: 'persist_skill_evidence_audit_metadata',
+    statements: [
+      `ALTER TABLE skill_observations ADD COLUMN day_key TEXT;`,
+      `ALTER TABLE skill_observations ADD COLUMN reason_code TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN day_key TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN reason_code TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
