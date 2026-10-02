@@ -113,7 +113,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
   - [x] clarify_misunderstanding
   - [x] paraphrase_when_stuck
 - [x] Attribute one communicative act to one most-specific child skill. (`sameCommunicativeAct` + ancestor rejection; regression-tested)
-- [ ] Cap skills credited per passage [Tunable].
+- [x] Cap distinct skills credited per passage [Tunable]. (`SKILL_POLICY.maxSkillsCreditedPerPassage = 2`, learning policy v4; cap runs after validation and deterministically prefers mission primary skills; `skillCreditCap.test.ts`)
 - [x] Add `give_opinion_with_reason`.
 - [x] Add `compare_options`.
 - [x] Add `make_arrangement`.

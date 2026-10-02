@@ -6,6 +6,7 @@ import cors from 'cors';
 import { matchPhraseInText } from '../src/features/learning/matching';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/content/skills';
 import { evidentiarySkillsForMission } from '../src/features/learning/skillMembership';
+import { SKILL_POLICY } from '../src/features/learning/policy';
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 // Scene director + action reducer, mounted under /v1.
@@ -369,6 +370,7 @@ Rules:
 13. Scene outcome and skill demonstration are independent. A learner may demonstrate a skill even when the overall task is not achieved.
 14. Your classification is only a proposal. The deterministic client validates the opportunity, passage, revision, support state and mission/scene authorship before persisting anything.
 15. Do not report skill failures. A failed cold opportunity is derived deterministically from validated runtime OpportunityInstance records, never from taskOutcome alone.
+16. Propose at most ${SKILL_POLICY.maxSkillsCreditedPerPassage} distinct skillIds for any one learner passage. A passage may contain more than one communicative act, but do not turn one rich answer into broad multi-skill credit. The deterministic validator enforces this cap again.
 
 Return JSON matching:
 {

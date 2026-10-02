@@ -15,7 +15,7 @@
  * a validated CEFR alignment.
  */
 
-export const LEARNING_POLICY_VERSION = 3;
+export const LEARNING_POLICY_VERSION = 4;
 
 /**
  * Phrase recall: one item, retrieved over time.
@@ -88,6 +88,17 @@ export const SKILL_POLICY = {
    * reconstructed by guessing stays below steady until real evidence exists.
    */
   steadyMinValidatedObservations: 4,
+
+  /**
+   * Maximum number of distinct communicative skills that one learner passage may
+   * receive credit for.
+   *
+   * A passage can contain more than one communicative act, so V1 does not force
+   * this to 1. The cap of 2 is a conservative [Tunable] guardrail against an
+   * assessor turning one rich sentence into broad multi-skill credit. Selection
+   * is deterministic: mission primary skills outrank secondary skills.
+   */
+  maxSkillsCreditedPerPassage: 2,
 } as const;
 
 /** Windows shared by both policies. */

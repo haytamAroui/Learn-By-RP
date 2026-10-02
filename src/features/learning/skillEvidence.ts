@@ -104,6 +104,7 @@ export interface SkillValidationRejection {
     | 'unknown_skill'
     | 'skill_not_directly_evidenced'
     | 'less_specific_skill'
+    | 'passage_skill_cap_exceeded'
     | 'not_in_mission'
     | 'passage_missing'
     | 'passage_not_learner'
@@ -150,6 +151,97 @@ export function missionSkillIds(mission: MissionDefinition): {
   };
 }
 
+interface ValidatedSkillCandidate {
+  candidate: SkillEvidenceCandidate;
+  observation: SkillObservation;
+}
+
+function missionSkillPriority(
+  mission: MissionDefinition,
+  skillId: CommunicativeSkillId
+): [tier: number, index: number, skillId: string] {
+  const primaryIndex = mission.primarySkillIds.indexOf(skillId);
+  if (primaryIndex >= 0) return [0, primaryIndex, skillId];
+
+  const secondaryIndex = mission.secondarySkillIds.indexOf(skillId);
+  if (secondaryIndex >= 0) return [1, secondaryIndex, skillId];
+
+  return [2, Number.MAX_SAFE_INTEGER, skillId];
+}
+
+function compareMissionSkillPriority(
+  mission: MissionDefinition,
+  leftSkillId: CommunicativeSkillId,
+  rightSkillId: CommunicativeSkillId
+): number {
+  const left = missionSkillPriority(mission, leftSkillId);
+  const right = missionSkillPriority(mission, rightSkillId);
+
+  if (left[0] !== right[0]) return left[0] - right[0];
+  if (left[1] !== right[1]) return left[1] - right[1];
+  return left[2].localeCompare(right[2]);
+}
+
+/**
+ * Applies the V1 per-passage skill-credit cap only after every other validator
+ * check has passed. Invalid candidates therefore never consume one of the slots.
+ *
+ * The cap is over distinct skill ids, not observations. If the same skill appears
+ * more than once for one passage/revision, it occupies one slot. When there are
+ * more valid skills than the policy permits, mission primary skills win before
+ * secondary skills, with authored mission order as the deterministic tie-breaker.
+ */
+function applyPassageSkillCreditCap(input: {
+  entries: ValidatedSkillCandidate[];
+  mission: MissionDefinition;
+  rejected: SkillValidationRejection[];
+}): SkillObservation[] {
+  const { entries, mission, rejected } = input;
+  const byPassage = new Map<string, ValidatedSkillCandidate[]>();
+
+  for (const entry of entries) {
+    const key = `${entry.observation.sourcePassageId}::${entry.observation.sourceRevision}`;
+    const group = byPassage.get(key);
+    if (group) group.push(entry);
+    else byPassage.set(key, [entry]);
+  }
+
+  const kept = new Set<ValidatedSkillCandidate>();
+
+  for (const group of byPassage.values()) {
+    const skillIds = [...new Set(group.map(entry => entry.observation.skillId))];
+
+    if (skillIds.length <= SKILL_POLICY.maxSkillsCreditedPerPassage) {
+      group.forEach(entry => kept.add(entry));
+      continue;
+    }
+
+    const selected = new Set(
+      skillIds
+        .sort((left, right) => compareMissionSkillPriority(mission, left, right))
+        .slice(0, SKILL_POLICY.maxSkillsCreditedPerPassage)
+    );
+
+    for (const entry of group) {
+      if (selected.has(entry.observation.skillId)) {
+        kept.add(entry);
+        continue;
+      }
+
+      rejected.push({
+        candidate: entry.candidate,
+        check: 'passage_skill_cap_exceeded',
+        reason:
+          `Passage ${entry.observation.sourcePassageId} already supports the policy maximum of ` +
+          `${SKILL_POLICY.maxSkillsCreditedPerPassage} distinct skill credits; ` +
+          `${entry.observation.skillId} was outside the deterministic mission-priority selection`,
+      });
+    }
+  }
+
+  return entries.filter(entry => kept.has(entry)).map(entry => entry.observation);
+}
+
 function sameCommunicativeAct(
   left: SkillEvidenceCandidate,
   right: SkillEvidenceCandidate
@@ -183,7 +275,7 @@ export function validateSkillEvidenceProposal(
   proposal: SkillEvidenceProposal,
   context: SkillValidationContext
 ): SkillValidationResult {
-  const validated: SkillObservation[] = [];
+  const validatedEntries: ValidatedSkillCandidate[] = [];
   const rejected: SkillValidationRejection[] = [];
   const evidenceSource: EvidenceSource = context.evidenceSource ?? 'validated_explicit';
 
@@ -447,7 +539,7 @@ export function validateSkillEvidenceProposal(
       modality: candidate.modality,
     });
 
-    validated.push({
+    const observation: SkillObservation = {
       id: `skill-obs-${context.sessionId}-${candidate.skillId}-${candidate.sourcePassageId}`,
       skillId: candidate.skillId,
 
@@ -483,8 +575,15 @@ export function validateSkillEvidenceProposal(
           : 'legacy_inferred_demonstration',
       policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: passage.endedAt ?? passage.startedAt ?? new Date().toISOString(),
-    });
+    };
+    validatedEntries.push({ candidate, observation });
   }
+
+  const validated = applyPassageSkillCreditCap({
+    entries: validatedEntries,
+    mission: context.mission,
+    rejected,
+  });
 
   return {
     validated,
