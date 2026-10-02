@@ -397,68 +397,68 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 
 # 14. Provider capability negotiation
 
-- [ ] Define `TransportCapabilities`:
-  - [ ] speechRateControl
-  - [ ] endOfTurnDelayControl
-  - [ ] pushToTalk
-  - [ ] scriptedLineInjection
-  - [ ] blockingToolCalls
-  - [ ] transcriptRevisions
-- [ ] Roleplay pressure requests capabilities; provider does not define pedagogy.
-- [ ] Slow speech without native rate control is marked best-effort.
-- [ ] Long thinking time falls back to push-to-talk / tap-when-done if timing control unavailable.
+- [x] Define `TransportCapabilities`:
+  - [x] speechRateControl
+  - [x] endOfTurnDelayControl
+  - [x] pushToTalk
+  - [x] scriptedLineInjection
+  - [x] blockingToolCalls
+  - [x] transcriptRevisions
+- [x] Roleplay requests capabilities; providers only declare capability support (`capabilities.ts`).
+- [x] Slow speech without native rate control is marked best-effort.
+- [x] Long thinking time falls back to push-to-talk / tap-when-done if timing control unavailable.
 - [ ] Challenge types only appear when provider supports them.
-- [ ] Blocking consequential tool calls are required before character confirms world changes.
-- [ ] Log capability degradation as operational telemetry only.
+- [x] Blocking consequential tool calls are required before character confirms world changes; live actor lines are suppressed until reducer acceptance.
+- [x] Log capability degradation as operational telemetry only (`SessionRecord.operationalTelemetry`, persisted in `usage_json`).
 
 ---
 
 # 15. Character Actor contract
 
-- [ ] Character stays in role.
-- [ ] Character never turns into the coach.
-- [ ] Character sees only allowed scene/program facts.
-- [ ] Character does not see private coach content.
-- [ ] Character does not see learner evidence projection.
-- [ ] Character proposes actions; reducer decides.
-- [ ] Character may not assert consequential result before reducer acceptance.
+- [x] Character stays in role. HTTP + Realtime contracts explicitly require role fidelity.
+- [x] Character never turns into the coach. Coach/evaluator/grammar-teacher behavior is prohibited in Actor prompts.
+- [x] Character sees only the explicitly supplied mission/character context and authoritative scene facts.
+- [x] Character does not see private coach content; coach state is not part of `ConversationTurnInput`.
+- [x] Character does not see learner evidence projection; evidence/projection is not part of Actor input.
+- [x] Character proposes only authored allowlisted actions; authoritative reducer decides.
+- [x] Character may not assert consequential result before reducer acceptance (`mayCommitActorReply`).
 - [ ] Realtime actor contract uses transport events, not only text-in/text-out.
-- [ ] Text pipeline remains a valid fallback adapter.
+- [x] Text pipeline remains a valid fallback adapter; fallback actions pass the same allowlist sanitizer.
 
 ---
 
 # 16. Coach contract
 
-- [ ] Coach is private and outside fictional world.
-- [ ] Help content appears only after learner acceptance.
-- [ ] A breakdown may surface a Help affordance, not proactive answer text.
-- [ ] Coach ladder:
-  - [ ] intent
-  - [ ] partial form
-  - [ ] full form
-  - [ ] explanation
-- [ ] Coach support always emits exact scoped exposure records.
-- [ ] Remove Spanish-specific deterministic fallback examples.
-- [ ] Fallback is target-language aware/template-driven.
-- [ ] Coach never creates evidence.
-- [ ] Coach never changes scene facts.
+- [x] Coach is private and outside fictional world (separate Help sheet + `/api/coach/hint`).
+- [x] Help content appears only after learner action (`Help`/ladder selection); it is not injected into Actor turns.
+- [x] Help is an affordance; no proactive coach answer is inserted into the fictional transcript.
+- [x] Coach ladder:
+  - [x] intent
+  - [x] partial form
+  - [x] full form
+  - [x] explanation
+- [x] Coach support emits scoped skill/opportunity/phrase exposure records.
+- [x] Remove Spanish-specific deterministic fallback examples.
+- [x] Fallback is target-language aware/template-driven (`coachFallback.ts`).
+- [x] Coach never creates evidence; only support exposure is written.
+- [x] Coach never changes scene facts.
 
 ---
 
 # 17. Evidence loop V1
 
-- [ ] Add `demonstration`.
-- [ ] Add `opportunityInstanceId`.
-- [ ] Add required `contextKey`.
-- [ ] Add `dayKey`.
-- [ ] Add reason codes.
-- [ ] Add policy version.
-- [ ] Preserve phrase and skill evidence separately.
+- [x] Add `demonstration`.
+- [x] Add `opportunityInstanceId`.
+- [x] Add required `contextKey`.
+- [x] Add `dayKey` with SQLite round-trip/backfill.
+- [x] Add deterministic reason codes with SQLite round-trip/backfill.
+- [x] Add policy version to skill observations/lapses.
+- [x] Preserve phrase and skill evidence separately.
 - [ ] One communicative act maps to one most-specific skill.
-- [ ] Assessor proposes; validator persists.
-- [ ] Rehearsal cannot count as independent.
-- [ ] Provider/session failure cannot produce lapse.
-- [ ] Add learner dispute flow: "That's not right" hides observation from projection without deleting raw history.
+- [x] Assessor proposes; deterministic validator persists.
+- [x] Rehearsal cannot count as independent.
+- [x] Provider/session failure cannot produce lapse; lapse requires natural `completed` end + strict taken cold opportunity.
+- [x] Add learner dispute flow: dispute marks phrase/skill observation hidden + user-disputed while preserving raw history; Progress exposes the action.
 
 ---
 
@@ -466,24 +466,24 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 
 ## RoleplayProgram
 
-- [ ] Add targetLanguage.
-- [ ] Add `targetLocale` (BCP-47, e.g. nl-BE).
-- [ ] Add program policy version.
-- [ ] Pin every plan entry to mission ID + missionVersion.
-- [ ] Pin referenced scene/content versions where needed.
+- [x] Add targetLanguage (`RoleplayProgram`).
+- [x] Add validated `targetLocale` (BCP-47 shape, e.g. nl-BE).
+- [x] Add program policy version.
+- [x] Pin every plan entry to mission ID + missionVersion.
+- [x] Pin referenced sceneId + sceneVersion; catalog validation rejects drift.
 - [ ] Split:
-  - [ ] `ProgramProjection` — derived/rebuildable
-  - [ ] `ProgramPreferences` — skipped/pinned/muted source data
+  - [x] `ProgramProjection` — derived/rebuildable
+  - [x] `ProgramPreferences` — skipped/pinned/muted source data
 
 ## Goal input V1
 
-- [ ] Slot-based goal type.
-- [ ] Domain/context selection.
-- [ ] Target language + locale.
-- [ ] Optional deadline used only for ordering.
-- [ ] No readiness prediction from deadline.
+- [x] Slot-based goal type (`ProgramGoalInput`).
+- [x] Domain/context selection.
+- [x] Target language + locale.
+- [x] Optional deadline is contractually an ordering constraint only.
+- [x] No readiness prediction field/derivation exists in goal contract.
 - [ ] Personal profile fields local-only by default.
-- [ ] Free-text goal is not directly executable input.
+- [x] Free-text goal is rejected by `isExecutableGoalInput`.
 
 ---
 
