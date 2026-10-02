@@ -1,7 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
-**Last reconciled with `main`:** `582d8c89efa88d6a8ab10a2dd8531b686919d1f3` (2026-10-02)  
+**Last reconciled with `main`:** `fa4564dc19ed36adfff27f916a4486d07459549d` (2026-10-02)  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -206,7 +206,7 @@ interface OpportunityInstance {
 
 - [x] `not_presented` is never weakness.
 - [x] Live semantic detection is provisional only for lapse eligibility; only `validated` opportunities can lapse.
-- [ ] Checkpoints may only reference deterministic/validated scene state, not provisional semantic judgments.
+- [x] Checkpoints may only reference deterministic/validated scene state, not provisional semantic judgments. (`RoleplayCheckpoint` v5 contains authored checkpoint id + authoritative revision + learner-history coordinates only; ingress/store reject semantic/unknown fields; `sceneStore.test.ts`)
 - [ ] Author explicit communication challenges for repair skills instead of waiting for accidental confusion.
 - [x] Add tests for presented/taken/declined/not-presented lifecycle. (`src/features/roleplay/opportunityRuntime.test.ts`; includes retry isolation and validated-assessment commit)
 
@@ -856,7 +856,7 @@ And the system can prove:
 
 # 31. Immediate known code deltas
 
-Confirmed from `main` after squash merge `582d8c89efa88d6a8ab10a2dd8531b686919d1f3`:
+Confirmed from `main` after squash merge `fa4564dc19ed36adfff27f916a4486d07459549d`:
 
 - [x] Context identity is domain + `scenarioFamilyId`; session/retry/cosmetic variants do not create transfer contexts.
 - [x] Scene outcome and skill demonstration are independent, and strict lapses require a validated taken cold opportunity tied to learner evidence.
@@ -872,6 +872,7 @@ Confirmed from `main` after squash merge `582d8c89efa88d6a8ab10a2dd8531b686919d1
 - [x] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution implemented (`src/content/skills.ts`, `skillEvidence.ts`, scene/catalog/hierarchy regression tests; duplicate mission-owned catalog removed).
 - [x] Canonical reviewed ScenarioFamily catalog defines stable family IDs, domain boundaries, inclusion/exclusion reviewer metadata and fail-closed mission/program validation (`src/content/scenarioFamilies.ts`, `scenarioFamilies.test.ts`, `validate-scenes.mts`).
 - [x] Detailed evidence reason codes are deterministic, persisted and localized; scene success still cannot manufacture target-skill evidence (`evidenceReasons.ts`, schema v10, `skillEvidence.test.ts`).
+- [x] Retry checkpoints are deterministic-authority only: semantic opportunity judgments are excluded from the v5 checkpoint contract and rejected if injected at ingress/store boundaries (`scene.ts`, `sceneStore.ts`, `routes.ts`, `sceneStore.test.ts`).
 - [ ] Non-coach support surfaces still need complete instrumentation for model phrase audio, captions, typed examples and recap exposure.
 - [ ] Director pressure branches remain open.
 - [ ] Curated launch content, locale review and final simulation remain open.

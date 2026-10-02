@@ -51,7 +51,6 @@ function retryCheckpoint(
     sceneRevision: 2,
     passageIndex: 1,
     supportLedgerHighWaterMark: 2,
-    completedOpportunityIds: [],
     ...overrides,
   };
 }
@@ -277,6 +276,44 @@ describe('retry forks an attempt and preserves the earlier one (test #7)', () =>
         rehearsal: true,
       })
     ).rejects.toThrow(/not an authored checkpoint/i);
+  });
+
+  it('rejects semantic opportunity judgments embedded in checkpoint metadata', async () => {
+    await seedSession();
+    await applySceneAction(proposal());
+
+    const forged = {
+      ...retryCheckpoint(),
+      completedOpportunityIds: ['opportunity:attempt-1:invented'],
+    } as RoleplayCheckpoint & { completedOpportunityIds: string[] };
+
+    await expect(
+      forkScene(SESSION, {
+        checkpoint: forged,
+        rehearsal: true,
+      })
+    ).rejects.toThrow(/unsupported semantic\/state field/i);
+  });
+
+  it('rejects any provisional semantic field even when the authored checkpoint itself is valid', async () => {
+    await seedSession();
+    await applySceneAction(proposal());
+
+    const forged = {
+      ...retryCheckpoint(),
+      semanticJudgment: {
+        skillId: 'skill-request-substitution',
+        demonstration: 'demonstrated',
+        detection: 'provisional',
+      },
+    } as RoleplayCheckpoint & { semanticJudgment: unknown };
+
+    await expect(
+      forkScene(SESSION, {
+        checkpoint: forged,
+        rehearsal: true,
+      })
+    ).rejects.toThrow(/unsupported semantic\/state field/i);
   });
 
   it('rejects a proposal from the pre-fork attempt', async () => {

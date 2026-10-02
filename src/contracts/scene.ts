@@ -6,7 +6,7 @@
  * Bump SCENE_CONTRACT_VERSION when a shape changes incompatibly.
  */
 
-export const SCENE_CONTRACT_VERSION = 4;
+export const SCENE_CONTRACT_VERSION = 5;
 
 /** Allowlisted action names. Anything else is rejected without being evaluated. */
 export type SceneActionName =
@@ -212,8 +212,13 @@ export interface SceneStateSnapshot {
 /**
  * Conversation-level checkpoint metadata supplied when a retry forks.
  *
- * sceneRevision is server-verifiable. Passage/support positions are learner
- * history coordinates and are deliberately not used to mutate scene truth.
+ * Only the authored checkpoint id + authoritative scene revision may identify
+ * world state. Passage/support positions are learner-history coordinates and are
+ * deliberately not used to mutate scene truth.
+ *
+ * Semantic judgments (for example opportunity completion/demonstration) do not
+ * belong in this contract. They are validated separately against transcript and
+ * runtime opportunity records and may never become restore-point authority.
  */
 export interface RoleplayCheckpoint {
   id: string;
@@ -221,8 +226,6 @@ export interface RoleplayCheckpoint {
   passageIndex: number;
   /** Highest support-ledger position visible before the retry began. Never rewound. */
   supportLedgerHighWaterMark: number;
-  /** Runtime opportunities completed and validated by this checkpoint. */
-  completedOpportunityIds: string[];
 }
 
 export interface SceneForkRequest {

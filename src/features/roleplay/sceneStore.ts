@@ -109,6 +109,20 @@ export async function getSceneSnapshot(
 function assertCheckpointMetadata(
   checkpoint: SceneForkRequest['checkpoint']
 ): void {
+  const allowedFields = new Set([
+    'id',
+    'sceneRevision',
+    'passageIndex',
+    'supportLedgerHighWaterMark',
+  ]);
+  const unsupportedFields = Object.keys(checkpoint as unknown as Record<string, unknown>)
+    .filter(field => !allowedFields.has(field));
+  if (unsupportedFields.length > 0) {
+    throw new Error(
+      `Retry checkpoint contains unsupported semantic/state field(s): ${unsupportedFields.join(', ')}`
+    );
+  }
+
   const integerFields = [
     ['sceneRevision', checkpoint.sceneRevision, 1],
     ['passageIndex', checkpoint.passageIndex, 0],
@@ -122,12 +136,6 @@ function assertCheckpointMetadata(
   }
   if (!checkpoint.id.trim()) {
     throw new Error('Retry checkpoint id is required');
-  }
-  if (
-    !Array.isArray(checkpoint.completedOpportunityIds) ||
-    checkpoint.completedOpportunityIds.some(id => typeof id !== 'string' || !id)
-  ) {
-    throw new Error('Retry checkpoint completedOpportunityIds must contain ids');
   }
 }
 
@@ -170,7 +178,7 @@ async function rebuildAttemptState(
   if (attempt.parentAttemptId) {
     if (!attempt.checkpoint) {
       throw new Error(
-        `Attempt ${attemptId} predates checkpoint-v4 metadata and cannot be replayed safely`
+        `Attempt ${attemptId} predates deterministic checkpoint metadata and cannot be replayed safely`
       );
     }
 
