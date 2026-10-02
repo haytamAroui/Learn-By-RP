@@ -245,26 +245,6 @@ export function validateSkillEvidenceProposal(
         );
         continue;
       }
-      if (
-        opportunity.learnerAttemptPassageId !== candidate.sourcePassageId ||
-        opportunity.learnerAttemptRevision !== candidate.sourceRevision
-      ) {
-        reject(
-          'opportunity_passage_mismatch',
-          `Opportunity ${opportunity.id} is linked to a different learner passage or revision`
-        );
-        continue;
-      }
-      if (
-        evidenceSource === 'validated_explicit' &&
-        opportunity.demonstration !== 'demonstrated'
-      ) {
-        reject(
-          'opportunity_not_demonstrated',
-          `Opportunity ${opportunity.id} is classified as ${opportunity.demonstration}`
-        );
-        continue;
-      }
     }
 
     // 3. Does the cited passage exist?
@@ -287,6 +267,29 @@ export function validateSkillEvidenceProposal(
         `Passage ${passage.id} is at revision ${passage.revisionKey}, proposal cites ${candidate.sourceRevision}`
       );
       continue;
+    }
+
+    if (opportunity) {
+      if (
+        opportunity.learnerAttemptPassageId !== candidate.sourcePassageId ||
+        opportunity.learnerAttemptRevision !== candidate.sourceRevision
+      ) {
+        reject(
+          'opportunity_passage_mismatch',
+          `Opportunity ${opportunity.id} is linked to a different learner passage or revision`
+        );
+        continue;
+      }
+      if (
+        evidenceSource === 'validated_explicit' &&
+        opportunity.demonstration !== 'demonstrated'
+      ) {
+        reject(
+          'opportunity_not_demonstrated',
+          `Opportunity ${opportunity.id} is classified as ${opportunity.demonstration}`
+        );
+        continue;
+      }
     }
 
     // 6. Is the quoted text actually in that passage?
