@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { negotiateRoleplayCapabilities } from './capabilities';
+import {
+  negotiateRoleplayCapabilities,
+  supportedCommunicationChallenges,
+} from './capabilities';
 import { TransportCapabilities } from '../../providers/voice/types';
 
 const FULL: TransportCapabilities = {
@@ -27,6 +30,10 @@ describe('roleplay capability negotiation', () => {
       allowScriptedLineInjection: true,
       allowTranscriptRevisions: true,
       allowConsequentialToolActions: true,
+      availableCommunicationChallenges: [
+        'fast_speech',
+        'scripted_mishearing',
+      ],
       degradations: [],
     });
   });
@@ -87,5 +94,36 @@ describe('roleplay capability negotiation', () => {
         fallback: 'best_effort_local_rate',
       })
     );
+  });
+
+  it('exposes fast-speech challenge only with speech-rate control', () => {
+    expect(
+      supportedCommunicationChallenges({
+        ...FULL,
+        scriptedLineInjection: false,
+      })
+    ).toEqual(['fast_speech']);
+  });
+
+  it('exposes scripted-mishearing challenge only with scripted-line injection', () => {
+    expect(
+      supportedCommunicationChallenges({
+        ...FULL,
+        speechRateControl: false,
+      })
+    ).toEqual(['scripted_mishearing']);
+  });
+
+  it('exposes no transport-dependent challenge when neither required capability exists', () => {
+    const result = negotiateRoleplayCapabilities(
+      {
+        ...FULL,
+        speechRateControl: false,
+        scriptedLineInjection: false,
+      },
+      {}
+    );
+
+    expect(result.availableCommunicationChallenges).toEqual([]);
   });
 });
