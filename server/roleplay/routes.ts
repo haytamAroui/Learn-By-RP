@@ -228,14 +228,20 @@ roleplayRouter.post(
   '/v1/voice/sessions/:id/scene/fork',
   wrap(async (req, res) => {
     const rawCheckpoint = req.body?.checkpoint ?? {};
-    if (
-      !Array.isArray(rawCheckpoint.completedOpportunityIds) ||
-      rawCheckpoint.completedOpportunityIds.some(
-        (id: unknown) => typeof id !== 'string' || !id
-      )
-    ) {
+    const allowedCheckpointFields = new Set([
+      'id',
+      'sceneRevision',
+      'passageIndex',
+      'supportLedgerHighWaterMark',
+    ]);
+    const unsupportedCheckpointFields = Object.keys(rawCheckpoint).filter(
+      field => !allowedCheckpointFields.has(field)
+    );
+    if (unsupportedCheckpointFields.length > 0) {
       throw Object.assign(
-        new Error('checkpoint.completedOpportunityIds must be an array of ids'),
+        new Error(
+          `checkpoint contains unsupported semantic/state field(s): ${unsupportedCheckpointFields.join(', ')}`
+        ),
         { status: 400 }
       );
     }
@@ -256,7 +262,6 @@ roleplayRouter.post(
           rawCheckpoint.supportLedgerHighWaterMark,
           'checkpoint.supportLedgerHighWaterMark'
         ),
-        completedOpportunityIds: rawCheckpoint.completedOpportunityIds,
       },
       rehearsal: Boolean(req.body?.rehearsal),
     };
