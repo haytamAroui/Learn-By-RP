@@ -314,6 +314,13 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE support_exposures ADD COLUMN target_phrase_id TEXT;`,
     ],
   },
+  {
+    version: 6,
+    name: 'version_support_exposure_policy',
+    statements: [
+      `ALTER TABLE support_exposures ADD COLUMN policy_version INTEGER;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
