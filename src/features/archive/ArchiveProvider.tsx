@@ -8,6 +8,7 @@ import {
 import { archiveRepository } from './archiveRepository';
 import { ConsentRecord } from './ArchiveRepository.types';
 import type { ValidatedSkillEvidence } from '../learning/skillEvidence';
+import type { ValidatedPhraseEvidence } from '../learning/learningCore';
 
 interface ArchiveContextValue {
   ready: boolean;
@@ -30,7 +31,8 @@ interface ArchiveContextValue {
   completeSession: (
     session: SessionRecord,
     rejected?: { reason: string }[],
-    skillEvidence?: ValidatedSkillEvidence
+    skillEvidence?: ValidatedSkillEvidence,
+    phraseEvidence?: ValidatedPhraseEvidence
   ) => Promise<void>;
 
   hideObservation: (id: string) => Promise<void>;
@@ -126,9 +128,15 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
     async (
       session: SessionRecord,
       rejected: { reason: string }[] = [],
-      skillEvidence?: ValidatedSkillEvidence
+      skillEvidence?: ValidatedSkillEvidence,
+      phraseEvidence?: ValidatedPhraseEvidence
     ) => {
-      await archiveRepository.completeSession(session, rejected, skillEvidence);
+      await archiveRepository.completeSession(
+        session,
+        rejected,
+        skillEvidence,
+        phraseEvidence
+      );
       await refresh();
     },
     [refresh]
