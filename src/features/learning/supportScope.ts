@@ -74,11 +74,19 @@ export function isWithinProductionSupportWindow(
  * multi-target representation retained for old archives. A support record scoped
  * only to a skill/opportunity does not automatically expose every phrase.
  */
-export function isPhraseProductionSupportRelevant(
-  exposure: SupportExposure,
-  phraseId: string
-): boolean {
+export function isPhraseProductionSupportRelevant(input: {
+  exposure: SupportExposure;
+  phraseId: string;
+  passage?: Passage;
+  attemptId?: string;
+}): boolean {
+  const { exposure, phraseId, passage, attemptId } = input;
   if (!isProductionFormExposure(exposure)) return false;
+
+  if (passage && attemptId) {
+    if (!exposurePrecedesPassage(exposure, passage, attemptId)) return false;
+    if (!isWithinProductionSupportWindow(exposure, passage)) return false;
+  }
 
   if (exposure.targetPhraseId) return exposure.targetPhraseId === phraseId;
   if (exposure.targetItemIds.length > 0) return exposure.targetItemIds.includes(phraseId);
