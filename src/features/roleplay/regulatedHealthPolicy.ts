@@ -47,6 +47,25 @@ export function containsRegulatedHealthAdvice(text: string): boolean {
   return HIGH_CONFIDENCE_ADVICE_PATTERNS.some(pattern => pattern.test(text));
 }
 
+export function regulatedHealthCoachHint(
+  language: MissionDefinition['language'] | string
+): string {
+  switch (language) {
+    case 'es':
+      return 'Describe tus síntomas y pide hablar con el farmacéutico. Si necesitas información del producto, pide la etiqueta o el prospecto oficial.';
+    case 'fr':
+      return 'Décrivez vos symptômes et demandez à parler au pharmacien. Pour les informations sur le produit, demandez la notice officielle.';
+    case 'de':
+      return 'Beschreiben Sie Ihre Beschwerden und bitten Sie um ein Gespräch mit dem Apotheker. Fragen Sie für Produktinformationen nach der offiziellen Packungsbeilage.';
+    case 'it':
+      return 'Descrivi i sintomi e chiedi di parlare con il farmacista. Per le informazioni sul prodotto, chiedi il foglietto illustrativo ufficiale.';
+    case 'ja':
+      return '症状を伝えて、薬剤師に相談したいと伝えましょう。製品情報は公式の説明書を確認したいと頼みましょう。';
+    default:
+      return 'Describe the symptoms and ask to speak with the pharmacist. For product information, ask for the official label or leaflet.';
+  }
+}
+
 export function regulatedHealthBoundaryReply(
   language: MissionDefinition['language'] | string
 ): Pick<ActorSafetyResponse, 'replyText' | 'meaning'> {
