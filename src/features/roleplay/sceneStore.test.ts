@@ -116,6 +116,35 @@ describe('double tool request produces one transition (test #3)', () => {
   });
 });
 
+describe('rejected actions are idempotent across channels', () => {
+  it('replays the first rejection for the same actionId without a second event', async () => {
+    await seedSession();
+
+    const first = await applySceneAction(
+      proposal({ actionId: 'reject-1', action: 'hand_over_free_coffee' })
+    );
+    const second = await applySceneAction(
+      proposal({
+        actionId: 'reject-1',
+        action: 'confirm_order_item',
+        payload: { item: 'changed payload' },
+      })
+    );
+
+    expect(first.accepted).toBe(false);
+    expect(second.accepted).toBe(false);
+    expect(second.deduplicated).toBe(true);
+    expect(second.reason).toBe(first.reason);
+
+    const rows = await driver.db.getAllAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM scene_events WHERE session_id = ? AND action_id = ?',
+      SESSION,
+      'reject-1'
+    );
+    expect(rows[0].count).toBe(1);
+  });
+});
+
 describe('stale revision is refused (test #6)', () => {
   it('rejects a proposal built against revision 1 once at revision 2', async () => {
     await seedSession();
