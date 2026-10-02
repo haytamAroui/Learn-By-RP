@@ -6,7 +6,10 @@ import {
   UserPreferences,
 } from '../../types';
 import { archiveRepository } from './archiveRepository';
-import { ConsentRecord } from './ArchiveRepository.types';
+import {
+  ConsentRecord,
+  PersistableSessionRecord,
+} from './ArchiveRepository.types';
 
 interface ArchiveContextValue {
   ready: boolean;
@@ -26,7 +29,10 @@ interface ArchiveContextValue {
 
   beginSession: (session: SessionRecord) => Promise<void>;
   getSessionById: (id: string) => Promise<SessionRecord | null>;
-  completeSession: (session: SessionRecord, rejected?: { reason: string }[]) => Promise<void>;
+  completeSession: (
+    session: PersistableSessionRecord,
+    rejected?: { reason: string }[]
+  ) => Promise<void>;
 
   hideObservation: (id: string) => Promise<void>;
   disputeObservation: (id: string) => Promise<void>;
@@ -118,7 +124,7 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, []);
 
   const completeSession = useCallback(
-    async (session: SessionRecord, rejected: { reason: string }[] = []) => {
+    async (session: PersistableSessionRecord, rejected: { reason: string }[] = []) => {
       await archiveRepository.completeSession(session, rejected);
       await refresh();
     },
