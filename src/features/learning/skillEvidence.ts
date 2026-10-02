@@ -145,8 +145,8 @@ export function missionSkillIds(mission: MissionDefinition): {
   secondary: Set<CommunicativeSkillId>;
 } {
   return {
-    primary: new Set(mission.primarySkillIds.filter(isDirectlyEvidencedSkill)),
-    secondary: new Set(mission.secondarySkillIds.filter(isDirectlyEvidencedSkill)),
+    primary: new Set(mission.primarySkillIds),
+    secondary: new Set(mission.secondarySkillIds),
   };
 }
 
@@ -229,14 +229,6 @@ export function validateSkillEvidenceProposal(
       continue;
     }
 
-    if (!isDirectlyEvidencedSkill(candidate.skillId)) {
-      reject(
-        'skill_not_directly_evidenced',
-        `${candidate.skillId} is a derived/organizational skill and cannot receive direct evidence`
-      );
-      continue;
-    }
-
     // 2. Does this mission teach that skill? Without this check the model could
     //    credit any catalogued skill from any successful turn, which is the exact
     //    failure mode this contract exists to prevent.
@@ -315,6 +307,18 @@ export function validateSkillEvidenceProposal(
         );
         continue;
       }
+    }
+
+    // Derived families organize more-specific skills but never receive direct
+    // evidence. This check follows opportunity integrity checks deliberately:
+    // malformed/invented runtime opportunity links are rejected on their own
+    // authority boundary before the pedagogical hierarchy is considered.
+    if (!isDirectlyEvidencedSkill(candidate.skillId)) {
+      reject(
+        'skill_not_directly_evidenced',
+        `${candidate.skillId} is a derived/organizational skill and cannot receive direct evidence`
+      );
+      continue;
     }
 
     // 3. Does the cited passage exist?
