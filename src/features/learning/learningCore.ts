@@ -1,5 +1,6 @@
 import {
   LearningObservation,
+  ValidatedLearningObservation,
   Passage,
   PhraseItem,
   RecallStatus,
@@ -45,11 +46,11 @@ export function validateAssessmentProposal(
   supportExposures: SupportExposure[],
   isRehearsalAttempt: boolean = false
 ): {
-  validatedObservations: LearningObservation[];
+  validatedObservations: ValidatedLearningObservation[];
   taskOutcome: TaskOutcome;
   rejectedProposals: { candidate: AssessmentCandidate; reason: string }[];
 } {
-  const validatedObservations: LearningObservation[] = [];
+  const validatedObservations: ValidatedLearningObservation[] = [];
   const rejectedProposals: { candidate: AssessmentCandidate; reason: string }[] = [];
 
   const userPassages = passages.filter(p => p.speaker === 'user');
@@ -159,7 +160,7 @@ export function validateAssessmentProposal(
 
     const finalModality: 'spoken' | 'typed' = candidate.modality === 'typed' ? 'typed' : 'spoken';
 
-    const observation: LearningObservation = {
+    const observation = {
       observationId: `obs-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       sessionId: proposal.sessionId,
       attemptId: proposal.attemptId,
@@ -188,7 +189,7 @@ export function validateAssessmentProposal(
       // Retained together when the learner's wording differed from the curated
       // form, so both are available without losing the original.
       originalForm: match.verdict === 'paraphrase' ? match.matchedText || undefined : undefined,
-    };
+    } as ValidatedLearningObservation;
 
     validatedObservations.push(observation);
   }
@@ -216,12 +217,12 @@ export function buildLocalObservations(input: {
   candidates: Array<{ id: string; form: string; meaning: string }>;
   isColdAttempt: boolean;
   isRehearsalAttempt: boolean;
-}): { observations: LearningObservation[]; ambiguous: number } {
+}): { observations: ValidatedLearningObservation[]; ambiguous: number } {
   const { sessionId, attemptId, passages, supportExposures, candidates, isColdAttempt, isRehearsalAttempt } =
     input;
 
   const userPassages = passages.filter(p => p.speaker === 'user');
-  const observations: LearningObservation[] = [];
+  const observations: ValidatedLearningObservation[] = [];
   const seen = new Set<string>();
   let ambiguous = 0;
 
@@ -293,7 +294,7 @@ export function buildLocalObservations(input: {
           wasCorrected: match.verdict === 'paraphrase',
         }),
         originalForm: match.verdict === 'paraphrase' ? match.matchedText || undefined : undefined,
-      });
+      } as ValidatedLearningObservation);
     }
   }
 
