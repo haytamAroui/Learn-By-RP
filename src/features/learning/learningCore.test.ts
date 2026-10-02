@@ -4,6 +4,7 @@ import {
   projectPhraseState,
   StructuredAssessmentProposal,
   validateAssessmentProposal,
+  validateDrillReview,
 } from './learningCore';
 import { LEARNING_POLICY } from './policy';
 import { LearningObservation, Passage, PhraseItem, SupportExposure } from '../../types';
@@ -367,6 +368,67 @@ describe('buildLocalObservations', () => {
 
     const keys = observations.map(o => `${o.sourceTurnId}:${o.itemId}`);
     expect(new Set(keys).size).toBe(keys.length);
+  });
+});
+
+describe('validateDrillReview', () => {
+  it('rejects an empty quote', () => {
+    expect(
+      validateDrillReview({
+        phrase: makePhrase(),
+        quote: '   ',
+        modality: 'spoken',
+        unassisted: true,
+      })
+    ).toBeNull();
+  });
+
+  it('rejects words that do not demonstrate the reviewed phrase', () => {
+    expect(
+      validateDrillReview({
+        phrase: makePhrase(),
+        quote: 'quisiera un té verde',
+        modality: 'spoken',
+        unassisted: true,
+      })
+    ).toBeNull();
+  });
+
+  it('records a matching spoken cold review as unassisted', () => {
+    const result = validateDrillReview({
+      phrase: makePhrase(),
+      quote: 'un café con leche',
+      modality: 'spoken',
+      unassisted: true,
+      now: '2026-10-02T08:00:00.000Z',
+    });
+
+    expect(result).not.toBeNull();
+    expect(result?.retrieval).toBe('unassisted');
+    expect(result?.modality).toBe('spoken');
+  });
+
+  it('never turns typed recall into unassisted spoken evidence', () => {
+    const result = validateDrillReview({
+      phrase: makePhrase(),
+      quote: 'un café con leche',
+      modality: 'typed',
+      unassisted: true,
+    });
+
+    expect(result?.retrieval).toBe('unknown');
+    expect(result?.modality).toBe('typed');
+  });
+
+  it('preserves assisted status when help was declared', () => {
+    const result = validateDrillReview({
+      phrase: makePhrase(),
+      quote: 'un café con leche',
+      modality: 'spoken',
+      unassisted: false,
+    });
+
+    expect(result?.retrieval).toBe('assisted');
   });
 });
 
