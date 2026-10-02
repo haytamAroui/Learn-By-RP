@@ -452,6 +452,26 @@ export interface OpportunityInstance {
  */
 export type EvidenceSource = 'validated_explicit' | 'legacy_inferred';
 
+
+/**
+ * Deterministic learner-facing explanation codes for skill evidence.
+ *
+ * These are generated from validated runtime facts only. UI copy is rendered
+ * locally from these codes; no model-written "why this counted" prose is stored.
+ */
+export type SkillEvidenceReasonCode =
+  | 'INDEPENDENT_NO_RELEVANT_SUPPORT'
+  | 'ASSISTED_RELEVANT_SUPPORT_SHOWN'
+  | 'ASSISTED_FORM_SUPPORT_SHOWN'
+  | 'ASSISTED_MODEL_PHRASE_SHOWN'
+  | 'ASSISTED_BRIEFING_EXPOSURE'
+  | 'ASSISTED_TYPED_EXAMPLE_SHOWN'
+  | 'REHEARSAL_NOT_COUNTED_FOR_STATUS'
+  | 'TYPED_NOT_SPOKEN_EVIDENCE'
+  | 'RETRIEVAL_UNKNOWN_NOT_INDEPENDENT_EVIDENCE'
+  | 'LEGACY_INFERRED_EVIDENCE'
+  | 'DISPUTED_BY_LEARNER';
+
 /**
  * A single validated instance of a learner demonstrating a communicative skill.
  *
@@ -510,6 +530,11 @@ export interface SkillObservation {
   dayKey?: string;
   /** Deterministic reason code; localized prose is rendered separately. */
   reasonCode?: 'validated_demonstration' | 'legacy_inferred_demonstration';
+  /**
+   * Detailed deterministic reasons used by learner-facing evidence explanation.
+   * Optional only for archives created before schema v10.
+   */
+  reasonCodes?: SkillEvidenceReasonCode[];
   policyVersion?: number;
   hidden?: boolean;
   userDisputed?: boolean;
