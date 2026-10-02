@@ -1,7 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
-**Last reconciled with `main`:** `67fbf88953e805aa25f02cc5265cf17b335cca6b` (2026-10-02)  
+**Last reconciled with `main`:** `520102dc12dd162b081d93c92503e5a3030c47c1` (2026-10-02)  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -382,10 +382,10 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 
 - [x] Define deterministic `DirectorDecision`. (`director.ts`)
 - [x] Director runs on scene events/between turns, not per audio frame. (`DirectorCadence` admits only completed learner/actor turns, accepted scene actions, resolved opportunities and checkpoint restores; attempt+revision and directive dedupe; `LiveSessionView` wiring; audio/interim/delta regression coverage)
-- [ ] Director chooses only authored:
+- [x] Director chooses only authored: (`PressureBranchDefinition` joins authored opportunity/complication/completion choices; `DirectorDecision` has no free-form pressure output)
   - [x] opportunity
   - [x] complication
-  - [ ] pressure branch
+  - [x] pressure branch (`pressureBranches` are statically validated/model-checked; Director requires explicit pressure policy and emits only reviewed branch IDs/instructions; cadence dedupes per attempt)
   - [x] completion preparation
 - [x] Director cannot invent facts. Decision output contains no fact mutation.
 - [x] Director cannot create evidence. Decision contract has no evidence output.
@@ -586,7 +586,7 @@ These are properties of RP opportunities/attempts, not conventional lesson scree
 
 - [x] Recovery is eligible only from a persisted strict `SkillLapse`.
 - [x] Recovery chooses a different recent family when possible.
-- [ ] Lower/manageable pressure.
+- [x] Lower/manageable pressure. (`RP_MODE_POLICY.recoveryPressureCeiling = manageable`; recovery next-RP policy v3 carries `pressureCeiling: manageable`; `pressurePolicyForLearningMode` cannot admit standard/stretch branches in Recovery)
 - [x] Consecutive recovery cap = 2 (`RP_MODE_POLICY`).
 - [x] Recovery cap produces deterministic `RECOVERY_CAP_OFF_RAMP` recommendation.
 - [ ] Return to cold as soon as reasonable.
@@ -685,7 +685,7 @@ A program must pass:
 ## Identity
 
 - [x] same-family Café A → Café B adds no context. (`skillContext.test.ts`)
-- [ ] pressure variant adds no context.
+- [x] pressure variant adds no context. (`skillContext.test.ts`: pressured scenario provenance with the same domain + scenarioFamilyId collapses to the same transfer context)
 - [ ] retry adds no context.
 
 ## Evidence
@@ -773,7 +773,7 @@ A program must pass:
 - [x] typed finite facts (`SceneFactSchema`).
 - [x] predicate/effect DSL (bounded data-only predicates + finite set effects).
 - [x] model checker. (`sceneModelChecker.ts`; `npm run validate:scenes`)
-- [x] deterministic Director. (`director.ts`; authored opportunity/complication/completion selection; pressure branch remains separately open in §13)
+- [x] deterministic Director. (`director.ts`; authored opportunity/complication/pressure/completion selection, event-bound cadence and directive dedupe)
 - [x] blocking consequential actions (`mayCommitActorReply` + authoritative reducer acceptance).
 - [x] provider capability negotiation (`features/roleplay/capabilities.ts`; challenge gating + degradation telemetry).
 
@@ -792,7 +792,7 @@ A program must pass:
 - [ ] choose first two programs.
 - [ ] author/review mission set.
 - [x] ProgramProjection + ProgramPreferences. (`contracts/program.ts`, persisted learner preferences)
-- [x] deterministic next-RP engine. (`nextRp.ts`, policy v2)
+- [x] deterministic next-RP engine. (`nextRp.ts`, policy v3; recovery recommendations carry a bounded manageable pressure ceiling)
 - [ ] Program UI.
 
 ## P4 — pedagogy loop
@@ -856,7 +856,7 @@ And the system can prove:
 
 # 31. Immediate known code deltas
 
-Confirmed from `main` after squash merge `fa4564dc19ed36adfff27f916a4486d07459549d`:
+Confirmed from `main` after squash merge `520102dc12dd162b081d93c92503e5a3030c47c1`:
 
 - [x] Context identity is domain + `scenarioFamilyId`; session/retry/cosmetic variants do not create transfer contexts.
 - [x] Scene outcome and skill demonstration are independent, and strict lapses require a validated taken cold opportunity tied to learner evidence.
@@ -865,17 +865,17 @@ Confirmed from `main` after squash merge `fa4564dc19ed36adfff27f916a4486d0745954
 - [x] Retry support uses a high-water ledger and never rewinds learner exposure; parent-attempt evidence is finalized before fork and merged into the final archive without re-assessing old passages as the active attempt.
 - [x] Finite scene facts, bounded predicate/effect DSL, payload validation and build-time model checking are active; complication-trigger states are also required to retain a path to authored achievement.
 - [x] Hosted scene execution is server-authoritative with versioned requests, cross-channel dedupe metadata and append-only event replay.
-- [x] Deterministic Director V1 exists for authored opportunities, complications and completion preparation; live evaluation is gated to completed scene/turn boundaries and deduped per authoritative revision/directive.
-- [x] Provider capabilities are negotiated; unsupported communication challenge types cannot be emitted by next-RP policy v2.
+- [x] Deterministic Director V1 exists for authored opportunities, complications, pressure branches and completion preparation; pressure is reviewed/opt-in content, while live evaluation remains gated to completed scene/turn boundaries and deduped per authoritative revision/directive.
+- [x] Provider capabilities are negotiated; unsupported communication challenge types cannot be emitted by next-RP policy v3.
 - [x] Explicit repair challenge content is authored for all six direct repair skills in Café v2; it is opt-in/skippable, provider-capability gated, and challenge-linked opportunities cannot appear from scene predicates alone. Pharmacy remains challenge-free under the medical-simulation exclusion.
-- [x] RoleplayProgram contracts, ProgramProjection/Preferences, deterministic next-RP, Cold/Guided/Transfer/Recovery and recovery caps are implemented.
+- [x] RoleplayProgram contracts, ProgramProjection/Preferences, deterministic next-RP, Cold/Guided/Transfer/Recovery, recovery caps and manageable Recovery pressure ceiling are implemented.
 - [x] Carry-forward continuity facts have source, sensitivity, mission allowlist, TTL and local-only enforcement.
 - [x] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution implemented (`src/content/skills.ts`, `skillEvidence.ts`, scene/catalog/hierarchy regression tests; duplicate mission-owned catalog removed).
 - [x] Canonical reviewed ScenarioFamily catalog defines stable family IDs, domain boundaries, inclusion/exclusion reviewer metadata and fail-closed mission/program validation (`src/content/scenarioFamilies.ts`, `scenarioFamilies.test.ts`, `validate-scenes.mts`).
 - [x] Detailed evidence reason codes are deterministic, persisted and localized; scene success still cannot manufacture target-skill evidence (`evidenceReasons.ts`, schema v10, `skillEvidence.test.ts`).
 - [x] Retry checkpoints are deterministic-authority only: semantic opportunity judgments are excluded from the v5 checkpoint contract and rejected if injected at ingress/store boundaries (`scene.ts`, `sceneStore.ts`, `routes.ts`, `sceneStore.test.ts`).
 - [x] Support-surface exposure instrumentation is complete for the §6 exposure-kind list, including exact-target same-day cross-session briefing/recap relevance under learning policy v5.
-- [ ] Director pressure branches remain open.
+- [x] Director pressure branches are bounded authored content with static validation, reachability checks, explicit opt-in policy gating and same-family/no-transfer-credit regression coverage.
 - [ ] Curated launch content, locale review and final simulation remain open.
 - [ ] Consent/privacy/security hardening and delete-tombstone guarantees remain G0 blockers.
 - [ ] Physical Android/iPhone native voice and cloud → native fallback verification remain open.
