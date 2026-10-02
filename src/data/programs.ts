@@ -11,7 +11,7 @@ import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
  */
 export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
   id: 'program.es-es.daily-services.pilot',
-  version: 1,
+  version: 2,
   targetLanguage: 'es',
   targetLocale: 'es-ES',
   policyVersion: LEARNING_POLICY_VERSION,
@@ -26,9 +26,9 @@ export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
     },
     {
       missionId: 'mission-es-farmacia-sol',
-      missionVersion: 1,
+      missionVersion: 2,
       sceneId: 'scene.es.pharmacy.symptom',
-      sceneVersion: 1,
+      sceneVersion: 2,
     },
   ],
 };
