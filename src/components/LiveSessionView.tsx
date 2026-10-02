@@ -78,10 +78,28 @@ import { mayCommitActorReply } from '../features/roleplay/actorContract';
 import type {
   RoleplayCheckpoint,
   SceneActionName,
+  SceneCheckpointSnapshot,
 } from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
+
+function toRuntimeCheckpoints(
+  checkpoints: SceneState['checkpoints']
+): SceneCheckpointSnapshot[] {
+  return checkpoints.flatMap(checkpoint =>
+    typeof checkpoint.sceneRevision === 'number'
+      ? [
+          {
+            id: checkpoint.id,
+            description: checkpoint.description,
+            timestamp: checkpoint.timestamp,
+            sceneRevision: checkpoint.sceneRevision,
+          },
+        ]
+      : []
+  );
+}
 
 interface LiveSessionViewProps {
   mission: MissionDefinition | null;
@@ -444,7 +462,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         revision: sceneState.revision,
         facts: sceneState.facts,
         actionCounts: sceneState.actionCounts ?? {},
-        checkpoints: sceneState.checkpoints,
+        checkpoints: toRuntimeCheckpoints(sceneState.checkpoints),
         isFinished: sceneState.isFinished,
         outcome: sceneState.outcome,
         firedComplications: [],
@@ -1335,7 +1353,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         revision: finalSceneState.revision,
         facts: finalSceneState.facts,
         actionCounts: finalSceneState.actionCounts ?? {},
-        checkpoints: finalSceneState.checkpoints,
+        checkpoints: toRuntimeCheckpoints(finalSceneState.checkpoints),
         isFinished: finalSceneState.isFinished,
         outcome: finalSceneState.outcome,
         firedComplications: [] as string[],
