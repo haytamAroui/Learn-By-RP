@@ -2,7 +2,6 @@ import type {
   LanguageCode,
   CommunicativeSkillId,
   ProgramGoalInput,
-  ProgramPreferences,
 } from '../types';
 
 export type {
@@ -51,16 +50,6 @@ export interface ProgramProjection {
   demonstratedSkillIds: CommunicativeSkillId[];
   reviewSkillIds: CommunicativeSkillId[];
   rebuiltAt: string;
-}
-
-/**
- * Durable user choices that are not derivable from evidence.
- */
-export interface ProgramPreferences {
-  programId: string;
-  skippedMissionIds: string[];
-  pinnedMissionIds: string[];
-  mutedSkillIds: CommunicativeSkillId[];
 }
 
 export interface ProgramContractValidation {

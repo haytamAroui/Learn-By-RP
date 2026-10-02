@@ -1,11 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import {
-  CarryForwardFact,
   canCarryFactToMission,
   clearContinuityFact,
   continuityFactsForMission,
   upsertContinuityFact,
 } from './continuity';
+import type { CarryForwardFact } from '../../types';
 
 const FACT: CarryForwardFact = {
   id: 'fact-1',
