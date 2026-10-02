@@ -15,6 +15,7 @@ import { MISSION_CATALOG } from '../../data/missions';
 import { isIndependentSuccess } from '../learning/skillEvidence';
 import { projectSkillsV2 } from '../learning/skillProjection';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
+import { isRecoveryEligible } from './rpModes';
 
 export const NEXT_RP_POLICY_VERSION = 1;
 
@@ -31,7 +32,8 @@ export type NextRpReasonCode =
   | 'SUPPORTED_SUCCESS_COLD_TRANSFER'
   | 'STRICT_LAPSE_RECOVERY'
   | 'REPEATED_SUCCESS_CHALLENGE'
-  | 'PROGRAM_CORE_COMPLETE';
+  | 'PROGRAM_CORE_COMPLETE'
+  | 'RECOVERY_CAP_OFF_RAMP';
 
 export interface MissionReadiness {
   missionId: string;
@@ -58,6 +60,7 @@ export interface NextRpInput {
   recentScenarioFamilyIds: string[];
   completedMissionIds: string[];
   missionReadiness: MissionReadiness[];
+  consecutiveRecoveries?: number;
   /** Ordering only; never converted into readiness or competence. */
   deadline?: string;
   now?: number;
@@ -178,14 +181,37 @@ export function recommendNextRp(input: NextRpInput): NextRpRecommendation {
     })[0];
 
   if (recoverySignal) {
-    const mission = recoveryCandidate(input, recoverySignal.skillId);
-    if (mission) {
-      return recommendationForMission(
-        'recovery',
-        mission,
-        'STRICT_LAPSE_RECOVERY',
-        recoverySignal.skillId
+    const latestMatchingLapse = [...input.lapses]
+      .filter(lapse => lapse.skillId === recoverySignal.skillId)
+      .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))[0];
+
+    const recovery = isRecoveryEligible({
+      lapse: latestMatchingLapse,
+      targetSkillId: recoverySignal.skillId,
+      consecutiveRecoveries: input.consecutiveRecoveries ?? 0,
+    });
+
+    if (recovery.eligible) {
+      const mission = recoveryCandidate(input, recoverySignal.skillId);
+      if (mission) {
+        return recommendationForMission(
+          'recovery',
+          mission,
+          'STRICT_LAPSE_RECOVERY',
+          recoverySignal.skillId
+        );
+      }
+    } else if (recovery.offRampRequired) {
+      const offRamp = orderedAvailableMissions(input).find(
+        mission => !input.completedMissionIds.includes(mission.id)
       );
+      if (offRamp) {
+        return recommendationForMission(
+          'continue',
+          offRamp,
+          'RECOVERY_CAP_OFF_RAMP'
+        );
+      }
     }
   }
 
@@ -275,6 +301,8 @@ export const NEXT_RP_REASON_TEXT: Record<
       'Repeated independent success makes an optional harder variant available.',
     PROGRAM_CORE_COMPLETE:
       'The current reviewed program missions are complete; an integrated simulation can be offered.',
+    RECOVERY_CAP_OFF_RAMP:
+      'Pause recovery missions and continue through another manageable program route.',
   },
   fr: {
     PROGRAM_NEXT_READY: 'Continuez avec la prochaine mission validée de votre programme.',
@@ -288,6 +316,8 @@ export const NEXT_RP_REASON_TEXT: Record<
       'Des réussites autonomes répétées permettent de proposer une variante plus difficile.',
     PROGRAM_CORE_COMPLETE:
       'Les missions validées du programme sont terminées ; une simulation intégrée peut être proposée.',
+    RECOVERY_CAP_OFF_RAMP:
+      'Faites une pause dans les missions de récupération et poursuivez par une autre voie gérable du programme.',
   },
   es: {
     PROGRAM_NEXT_READY: 'Continúa con la siguiente misión revisada de tu programa.',
@@ -301,6 +331,8 @@ export const NEXT_RP_REASON_TEXT: Record<
       'Los éxitos independientes repetidos permiten ofrecer una variante más difícil.',
     PROGRAM_CORE_COMPLETE:
       'Las misiones revisadas del programa están completas; se puede ofrecer una simulación integrada.',
+    RECOVERY_CAP_OFF_RAMP:
+      'Pausa las misiones de recuperación y continúa por otra ruta manejable del programa.',
   },
   nl: {
     PROGRAM_NEXT_READY: 'Ga verder met de volgende beoordeelde missie in je programma.',
@@ -314,6 +346,8 @@ export const NEXT_RP_REASON_TEXT: Record<
       'Herhaald zelfstandig succes maakt een optionele moeilijkere variant beschikbaar.',
     PROGRAM_CORE_COMPLETE:
       'De beoordeelde programmamissies zijn voltooid; een geïntegreerde simulatie kan worden aangeboden.',
+    RECOVERY_CAP_OFF_RAMP:
+      'Pauzeer herstelmissies en ga verder via een andere haalbare route in het programma.',
   },
 };
 
