@@ -114,6 +114,7 @@ export const validateRealtimeSessionRequest: Validator = body => {
   const errors: string[] = [];
   if (!value) return { ok: false, errors: ['body must be an object'] };
 
+  requiredString(value, 'missionId', errors, 160);
   optionalString(value, 'targetLanguage', errors, 32);
   optionalString(value, 'explanationLanguage', errors, 32);
   optionalString(value, 'instructions', errors, 6000);
