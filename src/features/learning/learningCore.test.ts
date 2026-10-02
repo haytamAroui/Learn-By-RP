@@ -4,6 +4,9 @@ import {
   projectPhraseState,
   StructuredAssessmentProposal,
   validateAssessmentProposal,
+  validateDrillReview,
+  assertValidatedPhraseEvidence,
+  type ValidatedPhraseEvidence,
 } from './learningCore';
 import { LEARNING_POLICY } from './policy';
 import { LearningObservation, Passage, PhraseItem, SupportExposure } from '../../types';
@@ -98,6 +101,84 @@ function makeObservation(overrides: Partial<LearningObservation> = {}): Learning
     ...overrides,
   };
 }
+
+describe('validator-owned phrase evidence', () => {
+  it('cannot be structurally forged', () => {
+    // @ts-expect-error The phrase-evidence brand is private to learningCore.ts.
+    const forged: ValidatedPhraseEvidence = { observations: [] };
+
+    expect(() => assertValidatedPhraseEvidence(forged)).toThrow(
+      /validator-issued evidence bundle required/i
+    );
+
+    const valid = validateAssessmentProposal(makeProposal(), [makePassage()], []);
+    expect(() => assertValidatedPhraseEvidence(valid.evidence)).not.toThrow();
+  });
+});
+
+describe('validateDrillReview', () => {
+  const base = {
+    phrase: PHRASE,
+    quote: 'un café con leche',
+    modality: 'spoken' as const,
+    selfReportedResult: 'remembered' as const,
+    learnerAttemptCaptured: true,
+    answerRevealedBeforeAttempt: false,
+    modelAudioPlayedBeforeAttempt: false,
+    recordedAt: '2026-01-01T10:00:00.000Z',
+  };
+
+  it('allows independent spoken recall only when the attempt predates support', () => {
+    const evidence = validateDrillReview(base);
+    expect(evidence.observations).toHaveLength(1);
+    expect(evidence.observations[0].retrieval).toBe('unassisted');
+    expect(evidence.observations[0].quote).toBe(base.quote);
+  });
+
+  it('makes an answer reveal before the attempt assisted', () => {
+    const evidence = validateDrillReview({
+      ...base,
+      answerRevealedBeforeAttempt: true,
+    });
+    expect(evidence.observations[0].retrieval).toBe('assisted');
+  });
+
+  it('makes model audio heard before the attempt assisted', () => {
+    const evidence = validateDrillReview({
+      ...base,
+      modelAudioPlayedBeforeAttempt: true,
+    });
+    expect(evidence.observations[0].retrieval).toBe('assisted');
+  });
+
+  it('creates no learner observation when only the answer was revealed/listened to', () => {
+    const evidence = validateDrillReview({
+      ...base,
+      quote: '',
+      learnerAttemptCaptured: false,
+      answerRevealedBeforeAttempt: true,
+      modelAudioPlayedBeforeAttempt: true,
+    });
+    expect(evidence.observations).toEqual([]);
+  });
+
+  it('keeps spontaneous typed recall as written/unknown, not spoken independent', () => {
+    const evidence = validateDrillReview({
+      ...base,
+      modality: 'typed',
+    });
+    expect(evidence.observations[0].modality).toBe('typed');
+    expect(evidence.observations[0].retrieval).toBe('unknown');
+  });
+
+  it('honors a learner report that help was needed even without a reveal', () => {
+    const evidence = validateDrillReview({
+      ...base,
+      selfReportedResult: 'supported',
+    });
+    expect(evidence.observations[0].retrieval).toBe('assisted');
+  });
+});
 
 describe('validateAssessmentProposal', () => {
   describe('provenance: the model may not invent evidence', () => {
