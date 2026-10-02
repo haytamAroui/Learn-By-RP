@@ -85,7 +85,7 @@ export function createTypedExampleExposure(input: {
   recordedAt: string;
 }): SupportExposure {
   return {
-    id: `exp-typed-example-${input.attemptId}-${input.targetPhraseId}-${input.recordedAt}`,
+    id: `exp-typed-example-${input.attemptId}-${input.targetPhraseId}`,
     sessionId: input.sessionId,
     attemptId: input.attemptId,
     source: 'coach',
