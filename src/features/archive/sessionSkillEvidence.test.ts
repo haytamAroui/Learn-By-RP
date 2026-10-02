@@ -200,6 +200,7 @@ describe('a live session persists validated skill evidence', () => {
       evidenceSource: 'validated_explicit',
       dayKey: '2026-09-20',
       reasonCode: 'validated_demonstration',
+      reasonCodes: ['INDEPENDENT_NO_RELEVANT_SUPPORT'],
       policyVersion: LEARNING_POLICY_VERSION,
     });
   });
@@ -233,6 +234,7 @@ describe('a live session persists validated skill evidence', () => {
 
     const stored = await archiveRepository.getSkillObservations();
     expect(stored[0].retrieval).toBe('assisted');
+    expect(stored[0].reasonCodes).toContain('ASSISTED_FORM_SUPPORT_SHOWN');
   });
 
   // 4. A retry cannot inherit independence from attempt 1.

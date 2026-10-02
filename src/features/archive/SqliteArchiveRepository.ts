@@ -432,8 +432,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
            domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
            task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
-           evidence_source, quote, day_key, reason_code, policy_version, hidden, user_disputed, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+           evidence_source, quote, day_key, reason_code, reason_codes, policy_version, hidden, user_disputed, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
         observation.id,
         observation.skillId,
         observation.sessionId,
@@ -458,6 +458,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           (observation.evidenceSource === 'legacy_inferred'
             ? 'legacy_inferred_demonstration'
             : 'validated_demonstration'),
+        JSON.stringify(observation.reasonCodes ?? []),
         observation.policyVersion ?? LEARNING_POLICY_VERSION,
         observation.recordedAt
       );
@@ -709,8 +710,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
             (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
              domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
              task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
-             evidence_source, quote, day_key, reason_code, policy_version, hidden, user_disputed, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+             evidence_source, quote, day_key, reason_code, reason_codes, policy_version, hidden, user_disputed, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
           observation.id,
           observation.skillId,
           observation.sessionId,
@@ -735,6 +736,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
             (observation.evidenceSource === 'legacy_inferred'
               ? 'legacy_inferred_demonstration'
               : 'validated_demonstration'),
+          JSON.stringify(observation.reasonCodes ?? []),
           observation.policyVersion ?? LEARNING_POLICY_VERSION,
           observation.recordedAt
         );
@@ -785,6 +787,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         : String(row.evidence_source) === 'legacy_inferred'
           ? 'legacy_inferred_demonstration'
           : 'validated_demonstration',
+      reasonCodes: parseJson<NonNullable<SkillObservation['reasonCodes']>>(
+        row.reason_codes ? String(row.reason_codes) : undefined,
+        []
+      ),
       policyVersion: Number(row.policy_version ?? LEARNING_POLICY_VERSION),
       hidden: bool(row.hidden),
       userDisputed: bool(row.user_disputed),

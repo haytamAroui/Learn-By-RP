@@ -484,6 +484,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     );
     return observations
       .filter(o => !o.hidden)
+      .map(o => ({ ...o, reasonCodes: o.reasonCodes ?? [] }))
       .sort((a, b) => (b.recordedAt ?? '').localeCompare(a.recordedAt ?? ''));
   }
 

@@ -9,6 +9,7 @@ import {
   isSkillProductionSupportRelevant,
 } from './supportScope';
 import { normalizeText } from './matching';
+import { deriveSkillEvidenceReasonCodes } from './evidenceReasons';
 import {
   LEARNING_POLICY_VERSION,
   LEARNING_WINDOWS,
@@ -520,6 +521,13 @@ export function validateSkillEvidenceProposal(
 
     // Persist the ledger's answer, not the model's citation.
     const supportReferenceIds = relevantSupport.map(e => e.id);
+    const reasonCodes = deriveSkillEvidenceReasonCodes({
+      retrieval,
+      modality: candidate.modality,
+      evidenceSource,
+      relevantSupport,
+      isRehearsalAttempt: Boolean(context.isRehearsalAttempt),
+    });
 
     // 9. A rehearsal is not independent use, whatever the proposal claims.
     if (context.isRehearsalAttempt && retrieval === 'unassisted') {
@@ -573,6 +581,7 @@ export function validateSkillEvidenceProposal(
         evidenceSource === 'validated_explicit'
           ? 'validated_demonstration'
           : 'legacy_inferred_demonstration',
+      reasonCodes,
       policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: passage.endedAt ?? passage.startedAt ?? new Date().toISOString(),
     };

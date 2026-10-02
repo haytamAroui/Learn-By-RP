@@ -139,6 +139,9 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.validated[0].skillId).toBe(SKILL);
     expect(result.validated[0].demonstration).toBe('demonstrated');
     expect(result.validated[0].evidenceSource).toBe('validated_explicit');
+    expect(result.validated[0].reasonCodes).toEqual([
+      'INDEPENDENT_NO_RELEVANT_SUPPORT',
+    ]);
   });
 
   it('rejects a skill that is not in the catalog', () => {
@@ -274,6 +277,7 @@ describe('validateSkillEvidenceProposal', () => {
 
     expect(result.validated).toHaveLength(1);
     expect(result.validated[0].retrieval).toBe('assisted');
+    expect(result.validated[0].reasonCodes).toContain('ASSISTED_FORM_SUPPORT_SHOWN');
     expect(result.rejected.map(r => r.check)).toContain('support_contradicts_retrieval');
   });
 
@@ -351,6 +355,26 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.validated).toHaveLength(1);
     expect(result.validated[0].taskOutcome).toBe('not_achieved');
     expect(result.validated[0].demonstration).toBe('demonstrated');
+  });
+
+  it('does not infer a target-skill demonstration from scene achievement alone', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'achieved'),
+      context({
+        opportunityInstances: [
+          opportunity({
+            status: 'not_presented',
+            demonstration: 'unknown',
+            learnerAttemptPassageId: undefined,
+            learnerAttemptRevision: undefined,
+          }),
+        ],
+      })
+    );
+
+    expect(result.taskOutcome).toBe('achieved');
+    expect(result.validated).toEqual([]);
+    expect(result.lapses).toEqual([]);
   });
 
   it('does not treat spoken typing as spoken production', () => {
@@ -1003,6 +1027,9 @@ describe('inferLegacySkillEvidence', () => {
     const inferred = inferLegacySkillEvidence([observation()]);
     expect(inferred.length).toBeGreaterThan(0);
     expect(inferred.every(o => o.evidenceSource === 'legacy_inferred')).toBe(true);
+    expect(inferred.every(o =>
+      o.reasonCodes?.includes('LEGACY_INFERRED_EVIDENCE')
+    )).toBe(true);
   });
 
   it('produces nothing for an unrelated utterance', () => {
