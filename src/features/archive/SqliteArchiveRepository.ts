@@ -222,10 +222,11 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
       await txn.runAsync(
         `INSERT OR REPLACE INTO scene_state
-          (session_id, mission_id, revision, facts, action_counts, checkpoints, is_finished, outcome)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          (session_id, mission_id, scene_id, revision, facts, action_counts, checkpoints, is_finished, outcome)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
+        session.sceneState?.sceneId ?? session.missionId,
         session.sceneState?.revision ?? 1,
         JSON.stringify(session.sceneState?.facts ?? {}),
         JSON.stringify(session.sceneState?.actionCounts ?? {}),
@@ -365,10 +366,11 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
       await txn.runAsync(
         `INSERT OR REPLACE INTO scene_state
-          (session_id, mission_id, revision, facts, action_counts, checkpoints, is_finished, outcome)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+          (session_id, mission_id, scene_id, revision, facts, action_counts, checkpoints, is_finished, outcome)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
+        session.sceneState?.sceneId ?? session.missionId,
         session.sceneState?.revision ?? 1,
         JSON.stringify(session.sceneState?.facts ?? {}),
         JSON.stringify(session.sceneState?.actionCounts ?? {}),
@@ -561,7 +563,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         observations: observationRows.map(mapObservationRow),
         taskOutcome: 'unknown',
         sceneState: {
-          sceneId: String(row.mission_id),
+          sceneId: sceneRow?.scene_id
+            ? String(sceneRow.scene_id)
+            : String(row.mission_id),
           revision: Number(sceneRow?.revision ?? 1),
           facts: parseJson(sceneRow?.facts as string, {}),
           actionCounts: parseJson(sceneRow?.action_counts as string, {}),
