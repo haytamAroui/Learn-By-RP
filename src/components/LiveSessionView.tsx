@@ -67,7 +67,7 @@ import {
   syncAuthoredOpportunities,
 } from '../features/roleplay/opportunityRuntime';
 import { getScene } from '../content/scenes';
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
+import { COMMUNICATIVE_SKILLS_CATALOG } from '../content/skills';
 import {
   inheritSupportForRetry,
   mergeAttemptPassages,
