@@ -10,7 +10,8 @@ import {
 import { inferLegacySkillEvidence, projectSkill, projectSkillsV2 } from './skillProjection';
 import { allowedSkillIds, allowedSkillsForMission } from './skillMembership';
 import { SKILL_POLICY } from './policy';
-import { COMMUNICATIVE_SKILLS_CATALOG, MISSION_CATALOG as MISSIONS } from '../../data/missions';
+import { COMMUNICATIVE_SKILLS_CATALOG } from '../../content/skills';
+import { MISSION_CATALOG as MISSIONS } from '../../data/missions';
 import {
   LearningObservation,
   MissionDefinition,
