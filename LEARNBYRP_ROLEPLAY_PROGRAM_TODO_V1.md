@@ -366,32 +366,32 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [ ] Create explicit shared runtime package/module boundary for reducer contracts.
 - [ ] Server is the only authoritative executor in hosted mode.
 - [ ] Client reducer use, if any, is prediction/mirror only.
-- [ ] Add missionId + missionVersion to action request.
-- [ ] Add sceneId + sceneVersion to action request.
-- [ ] Add provider call ID.
-- [ ] Add connection generation.
-- [ ] Append accepted/rejected scene events to an event log.
+- [x] Add missionId + missionVersion to hosted action request. Required at HTTP ingress and pinned to hosted session.
+- [x] Add sceneId + sceneVersion to hosted action request. Required at HTTP ingress and pinned to hosted session.
+- [x] Add provider call ID to hosted action ingress (`providerCallId`).
+- [x] Add connection generation to hosted action ingress (`connectionGeneration`).
+- [x] Append accepted/rejected scene proposals and reducer verdicts to `scene_events`.
 - [ ] Rebuild revision state from event log.
-- [ ] Cross-channel duplicate tool call → one transition.
+- [x] Cross-channel duplicate `actionId` → first persisted verdict is replayed; accepted and rejected actions are both idempotent.
 - [ ] Consequential tool actions block actor confirmation until reducer result.
 
 ---
 
 # 13. Director V1 must be deterministic
 
-- [ ] Define deterministic `DirectorDecision`.
+- [x] Define deterministic `DirectorDecision`. (`director.ts`)
 - [ ] Director runs on scene events/between turns, not per audio frame.
 - [ ] Director chooses only authored:
-  - [ ] opportunity
-  - [ ] complication
+  - [x] opportunity
+  - [x] complication
   - [ ] pressure branch
-  - [ ] completion preparation
-- [ ] Director cannot invent facts.
-- [ ] Director cannot create evidence.
-- [ ] Director cannot add skill IDs.
-- [ ] AI interpretation may return semantic candidate + unknown.
-- [ ] Unknown never becomes a state mutation.
-- [ ] Defer free-form AI Director behavior beyond V1.
+  - [x] completion preparation
+- [x] Director cannot invent facts. Decision output contains no fact mutation.
+- [x] Director cannot create evidence. Decision contract has no evidence output.
+- [x] Director cannot add skill IDs. Skill IDs are returned only from authored opportunity definitions.
+- [x] AI interpretation may return semantic candidate + unknown (`SemanticDirectorCandidate`).
+- [x] Unknown never becomes a state mutation (`acceptSemanticCandidate` is non-executable).
+- [x] Defer free-form AI Director behavior beyond V1.
 
 ---
 
