@@ -1,5 +1,9 @@
 import { LearningObservation, Passage, SkillLapse, SkillObservation, SupportExposure } from '../../types';
 import { LEARNING_POLICY_VERSION } from './policy';
+import {
+  mergeValidatedSkillEvidence,
+  type ValidatedSkillEvidence,
+} from './skillEvidence';
 
 /**
  * Carry support knowledge across an explicit retry/fork.
@@ -65,6 +69,7 @@ export interface FinalizedAttemptEvidence {
   observations: LearningObservation[];
   skillObservations: SkillObservation[];
   skillLapses: SkillLapse[];
+  validatedSkillEvidence: ValidatedSkillEvidence;
 }
 
 /**
@@ -103,6 +108,10 @@ export function mergeFinalizedAttemptEvidence(input: {
     observations: [...observations.values()],
     skillObservations: [...skillObservations.values()],
     skillLapses: [...skillLapses.values()],
+    validatedSkillEvidence: mergeValidatedSkillEvidence([
+      ...input.finalizedAttempts.map(snapshot => snapshot.validatedSkillEvidence),
+      input.current.validatedSkillEvidence,
+    ]),
   };
 }
 
