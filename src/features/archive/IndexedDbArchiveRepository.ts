@@ -77,6 +77,7 @@ interface StoredSession extends Omit<SessionRecord, 'coldAttempt'> {
 }
 
 const PREFERENCES_ID = 'current';
+const TRUSTED_ARCHIVE_RESTORE: unique symbol = Symbol('trusted-archive-restore');
 
 const DEFAULT_PREFERENCES: UserPreferences = {
   learningLanguage: 'es',
@@ -281,6 +282,29 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
   async beginSession(session: SessionRecord): Promise<void> {
     await this.transaction(async tx => {
+      if (trustedRestore !== TRUSTED_ARCHIVE_RESTORE) {
+        const markers = await this.request(
+          tx.objectStore(STORE.deletions).getAll() as IDBRequest<
+            Array<{
+              scope: string;
+              targetId: string | null;
+              createdAt: string;
+            }>
+          >
+        );
+        const sessionStartedAt = Date.parse(session.startedAt);
+        const blocked = markers.some(marker => {
+          if (marker.targetId === session.id) return true;
+          if (marker.scope !== 'all') return false;
+          const deletedAt = Date.parse(marker.createdAt);
+          if (!Number.isFinite(deletedAt) || !Number.isFinite(sessionStartedAt)) {
+            return true;
+          }
+          return deletedAt >= sessionStartedAt;
+        });
+        if (blocked) return;
+      }
+
       const existing = await this.loadSessionIn(tx, session.id);
       const merged: StoredSession = {
         ...(existing ?? session),
@@ -316,7 +340,11 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     });
   }
 
-  async completeSession(session: PersistableSessionRecord): Promise<void> {
+  async completeSession(
+    session: PersistableSessionRecord,
+    _rejectedProposals: { reason: string }[] = [],
+    trustedRestore?: typeof TRUSTED_ARCHIVE_RESTORE
+  ): Promise<void> {
     const now = new Date().toISOString();
 
     await this.transaction(async tx => {
@@ -623,6 +651,10 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   }
 
   async deleteSession(sessionId: string): Promise<void> {
+    // Marker first: once deletion begins, a late completion may no longer
+    // recreate this session or its evidence.
+    await this.markDeleted('session', sessionId);
+
     const observations = await this.readAll<LearningObservation>(STORE.observations);
     const skillObservations = await this.readAll<SkillObservation>(STORE.skillObservations);
     const lapses = await this.readAll<SkillLapse>(STORE.skillLapses);
@@ -652,7 +684,6 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     });
 
     await this.reprojectPhrases();
-    await this.markDeleted('session', sessionId);
   }
 
   async clearAllLearningData(): Promise<void> {
@@ -663,6 +694,10 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       programGoals: [],
       continuityProfile: { facts: [] },
     };
+
+    // A global marker carries a cutoff timestamp: sessions that started before
+    // this clear are blocked, while genuinely new sessions remain writable.
+    await this.markDeleted('all');
 
     await this.transaction(async tx => {
       this.deleteAll(tx, STORE.sessions);
@@ -679,7 +714,6 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       ]);
     });
 
-    await this.markDeleted('all');
   }
 
   // --------------------------------------------------------------------- review
@@ -825,7 +859,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     await this.savePhrases(prepared.value.phrases);
 
     for (const session of prepared.value.sessions) {
-      await this.completeSession(session);
+      await this.completeSession(session, [], TRUSTED_ARCHIVE_RESTORE);
 
       // completeSession intentionally writes active evidence. Restore learner
       // hide/dispute choices afterwards without allowing those flags to become a
