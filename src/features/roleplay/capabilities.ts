@@ -1,17 +1,22 @@
 import { TransportCapabilities } from '../../providers/voice/types';
+import type { CommunicationChallengeType } from '../../contracts/scene';
 
-export type CommunicationChallengeType =
-  | 'fast_speech'
-  | 'scripted_mishearing';
+export type { CommunicationChallengeType } from '../../contracts/scene';
 
 export const COMMUNICATION_CHALLENGE_ORDER = [
   'fast_speech',
+  'unknown_word',
+  'unclear_detail',
   'scripted_mishearing',
+  'unexpected_followup',
 ] as const satisfies readonly CommunicationChallengeType[];
 
 export const COMMUNICATION_CHALLENGE_REQUIREMENTS = {
   fast_speech: ['speechRateControl'],
+  unknown_word: ['scriptedLineInjection'],
+  unclear_detail: ['scriptedLineInjection'],
   scripted_mishearing: ['scriptedLineInjection'],
+  unexpected_followup: ['scriptedLineInjection'],
 } as const satisfies Record<
   CommunicationChallengeType,
   readonly (keyof TransportCapabilities)[]
