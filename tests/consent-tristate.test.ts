@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { consentDecisionsComplete } from '../src/features/consent/ConsentGate';
+import { consentDecisionsComplete } from '../src/features/consent/consentState';
 import type { ConsentRecord } from '../src/features/archive/ArchiveRepository.types';
 
 function decision(
