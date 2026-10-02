@@ -6,6 +6,8 @@ import {
   LearningObservation,
   PhraseItem,
   SessionRecord,
+  SkillLapse,
+  SkillObservation,
   SkillProjectionV2,
 } from '../types';
 import {
@@ -81,23 +83,55 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     );
   }, [observations, selectedPhrase]);
 
+  const explicitSkillEvidence = useMemo<SkillObservation[]>(
+    () => sessions.flatMap(session => session.skillObservations ?? []),
+    [sessions]
+  );
+
+  const skillLapses = useMemo<SkillLapse[]>(
+    () => sessions.flatMap(session => session.skillLapses ?? []),
+    [sessions]
+  );
+
+  const sessionsWithExplicitSkillEvidence = useMemo(
+    () =>
+      new Set(
+        sessions
+          .filter(session => (session.skillObservations?.length ?? 0) > 0)
+          .map(session => session.id)
+      ),
+    [sessions]
+  );
+
+  // Legacy phrase-derived skill evidence is only used for sessions that predate
+  // explicit skill observations. This avoids counting the same modern turn twice.
   const legacySkillEvidence = useMemo(
-    () => inferLegacySkillEvidence(observations),
-    [observations]
+    () =>
+      inferLegacySkillEvidence(
+        observations.filter(
+          observation => !sessionsWithExplicitSkillEvidence.has(observation.sessionId)
+        )
+      ),
+    [observations, sessionsWithExplicitSkillEvidence]
+  );
+
+  const allSkillEvidence = useMemo(
+    () => [...explicitSkillEvidence, ...legacySkillEvidence],
+    [explicitSkillEvidence, legacySkillEvidence]
   );
 
   const skillEvidence = useMemo(() => {
     if (!selectedSkill) return [];
-    return legacySkillEvidence.filter(observation => observation.skillId === selectedSkill.id);
-  }, [legacySkillEvidence, selectedSkill]);
+    return allSkillEvidence.filter(observation => observation.skillId === selectedSkill.id);
+  }, [allSkillEvidence, selectedSkill]);
 
   const skillStats = useMemo(() => {
     const map = new Map<string, SkillProjectionV2>();
-    for (const projection of projectSkillsV2(legacySkillEvidence)) {
+    for (const projection of projectSkillsV2(allSkillEvidence, skillLapses)) {
       map.set(projection.skillId, projection);
     }
     return map;
-  }, [legacySkillEvidence]);
+  }, [allSkillEvidence, skillLapses]);
 
   const localizeSkill = (skill: CommunicativeSkillMeta) => {
     switch (skill.id) {
@@ -127,7 +161,8 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   ];
 
   const statusLabel = (projection?: SkillProjectionV2) => {
-    if (projection?.reviewDue) return t.progress.statusWorthRevisiting;
+    if (projection?.revisit) return t.progress.statusWorthRevisiting;
+    if (projection?.reviewDue) return t.progress.reviewDue;
     switch (projection?.status) {
       case 'steady':
         return t.progress.statusSteady;
@@ -168,7 +203,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   };
 
   const statusTone = (projection?: SkillProjectionV2) => {
-    if (projection?.reviewDue) return STATUS_SURFACE.review;
+    if (projection?.revisit || projection?.reviewDue) return STATUS_SURFACE.review;
     switch (projection?.status) {
       case 'steady':
         return STATUS_SURFACE.steady;
@@ -271,6 +306,11 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                       <Text className="mt-1 text-[13px] leading-[18px] text-muted" numberOfLines={2}>
                         {localized.description}
                       </Text>
+                      {projection?.lastIndependentUseAt ? (
+                        <Text className="mt-1 text-xs text-muted">
+                          {t.progress.lastIndependentUse}: {new Date(projection.lastIndependentUseAt).toLocaleDateString()}
+                        </Text>
+                      ) : null}
                     </View>
 
                     <View className="items-end gap-2">
@@ -436,6 +476,26 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                 {localizeSkill(selectedSkill).description}
               </Text>
             </View>
+
+            {(() => {
+              const projection = skillStats.get(selectedSkill.id);
+              if (!projection) return null;
+              return (
+                <View className="gap-1 rounded-2xl bg-surface-soft p-4">
+                  <Text className="text-sm font-semibold text-ink">
+                    {statusLabel(projection)}
+                  </Text>
+                  <Text className="text-xs leading-5 text-muted">
+                    {projection.explanation}
+                  </Text>
+                  {projection.lastIndependentUseAt ? (
+                    <Text className="text-xs text-muted">
+                      {t.progress.lastIndependentUse}: {new Date(projection.lastIndependentUseAt).toLocaleDateString()}
+                    </Text>
+                  ) : null}
+                </View>
+              );
+            })()}
 
             <View className="gap-2 rounded-2xl bg-surface-soft p-4">
               <SectionLabel>{t.progress.samplePatterns}</SectionLabel>
