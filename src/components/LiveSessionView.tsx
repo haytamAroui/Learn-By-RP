@@ -678,10 +678,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         if (!isGenerationCurrent(generation) || isEndingRef.current) return;
 
         if (response.proposedAction) {
-          void applyProposedSceneAction(
+          const actionAccepted = await applyProposedSceneAction(
             response.proposedAction,
             [userPassageId]
           );
+
+          // The actor may not confirm a consequential world change until the
+          // authoritative reducer accepts it. A rejected/unavailable action
+          // therefore suppresses this generated actor line rather than leaking
+          // a fictional state change into the transcript.
+          if (!actionAccepted) {
+            setVoiceState('idle');
+            return;
+          }
         }
 
         const characterPassage: Passage = {
@@ -708,19 +717,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
         setPassages([...updatedPassages, characterPassage]);
 
-        setSceneState(prev => ({
-          ...prev,
-          revision: prev.revision + 1,
-          checkpoints: [
-            ...prev.checkpoints,
-            {
-              id: `cp-${Date.now()}`,
-              description: `Turn ${updatedPassages.length + 1}`,
-              timestamp: new Date().toISOString(),
-            },
-          ],
-        }));
-
         if (audioPlaybackEnabled && !isSceneFrozenRef.current) {
           setVoiceState('speaking');
           const transport = voiceTransportRef.current;
@@ -734,7 +730,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             } else {
               await speakWithBestAvailable(transport, response.replyText, {
                 language: target.language,
-                speed: negotiatedCapabilities.useSlowSpeech ? effectiveSpeechRate : preferredSpeechRate,
+                speed: slowerSpeechDefault ? effectiveSpeechRate : preferredSpeechRate,
                 style: target.character.voiceStyle,
               });
             }
@@ -775,6 +771,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       attemptId,
       cueLearnerTurn,
       effectiveSpeechRate,
+      preferredSpeechRate,
+      slowerSpeechDefault,
       explanationLanguage,
       mode,
       sessionId,
@@ -814,7 +812,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       sourceTurnIds: string[]
     ) => {
       const mirror = sceneMirrorRef.current;
-      if (!mirror) return;
+      if (!mirror) return true;
 
       const result = await mirror.propose(
         attemptId,
@@ -826,7 +824,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       if (!result) {
         setSceneEventNotice(t.live.sceneDirectorUnavailable);
         setTimeout(() => setSceneEventNotice(null), 4000);
-        return;
+        return false;
       }
 
       if (!result.accepted) {
@@ -836,13 +834,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             : t.live.actionNotPermitted
         );
         setTimeout(() => setSceneEventNotice(null), 4000);
-        return;
+        return false;
       }
 
+      const authoritative = await mirror.reconcile();
       setSceneState(prev => ({
         ...prev,
-        revision: result.revision,
-        facts: result.newFacts,
+        sceneId: authoritative?.sceneId ?? prev.sceneId,
+        revision: authoritative?.revision ?? result.revision,
+        facts: authoritative?.facts ?? result.newFacts,
+        actionCounts: authoritative?.actionCounts ?? prev.actionCounts,
+        checkpoints: authoritative?.checkpoints ?? prev.checkpoints,
+        isFinished: authoritative?.isFinished ?? prev.isFinished,
+        outcome: authoritative?.outcome ?? prev.outcome,
         lastAction: { name: proposedAction.name, actor: mission?.character.name ?? '' },
       }));
 
@@ -855,6 +859,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       }
 
       setTimeout(() => setSceneEventNotice(null), 4000);
+      return true;
     },
     [attemptId, mission?.character.name, t.live]
   );
