@@ -280,7 +280,7 @@ export const SCENE_CASES: SceneCase[] = [
       {
         actionId: 'a2',
         action: 'confirm_takeaway',
-        payload: { takeaway: true },
+        payload: {},
         expectedSceneRevision: 2,
       },
     ],
@@ -337,7 +337,7 @@ export const SCENE_CASES: SceneCase[] = [
       {
         actionId: 'd2',
         action: 'confirm_takeaway',
-        payload: { takeaway: true },
+        payload: {},
         expectedSceneRevision: 1,
       },
     ],
