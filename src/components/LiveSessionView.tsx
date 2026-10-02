@@ -61,6 +61,7 @@ import {
   syncAuthoredOpportunities,
 } from '../features/roleplay/opportunityRuntime';
 import { getScene } from '../content/scenes';
+import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
 import { SceneActionName } from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
@@ -206,6 +207,51 @@ function normalizeSkillItems(
     }));
 }
 
+function normalizeTargetForm(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[¿?¡!.,;:'"“”‘’]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function resolveCoachTarget(
+  mission: MissionDefinition,
+  opportunities: OpportunityInstance[],
+  attemptId: string
+): {
+  targetSkillId: string;
+  targetOpportunityId?: string;
+  targetPhraseId?: string;
+  targetPhraseForm?: string;
+} {
+  const activeOpportunity = [...opportunities]
+    .reverse()
+    .find(
+      opportunity =>
+        opportunity.attemptId === attemptId &&
+        opportunity.status === 'presented' &&
+        opportunity.detection === 'validated'
+    );
+
+  const targetSkillId = activeOpportunity?.skillId ?? mission.primarySkillIds[0];
+  const skill = COMMUNICATIVE_SKILLS_CATALOG.find(candidate => candidate.id === targetSkillId);
+  const sampleForms = new Set(
+    (skill?.samplePhrases ?? []).map(sample => normalizeTargetForm(sample))
+  );
+  const targetPhrase = mission.usefulPhrases.find(phrase =>
+    sampleForms.has(normalizeTargetForm(phrase.form))
+  );
+
+  return {
+    targetSkillId,
+    targetOpportunityId: activeOpportunity?.id,
+    targetPhraseId: targetPhrase?.id,
+    targetPhraseForm: targetPhrase?.form,
+  };
+}
+
 export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   mission,
   initialSession,
@@ -290,7 +336,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       attemptId,
       turnId: passage.id,
       source: 'caption',
-      kind: 'meaning',
+      kind: 'meaning_of_assistant_turn',
       // A caption translation is help with the whole line, not with one curated
       // phrase, so no phrase ids are claimed.
       targetItemIds: [],
@@ -786,13 +832,20 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         .find(p => p.speaker === 'assistant');
 
       try {
+        const target = resolveCoachTarget(
+          mission,
+          opportunityInstancesRef.current,
+          attemptId
+        );
         const data = await api.coachHint({
           step,
+          missionId: mission.id,
           targetLanguage: mission.language,
           explanationLanguage,
           characterName: mission.character.name,
           lastAssistantLine: lastAssistantPassage?.text ?? '',
           learnerGoal: mission.learnerGoal,
+          ...target,
         });
         setActiveCoachAdvice(data.hint);
 
@@ -802,7 +855,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           attemptId,
           source: 'coach',
           kind: step,
-          targetItemIds: mission.usefulPhrases.map(p => p.id),
+          targetSkillId: data.targetSkillId || target.targetSkillId,
+          targetOpportunityId: data.targetOpportunityId ?? target.targetOpportunityId,
+          targetPhraseId: data.targetPhraseId ?? target.targetPhraseId,
+          targetItemIds: (data.targetPhraseId ?? target.targetPhraseId)
+            ? [data.targetPhraseId ?? target.targetPhraseId!]
+            : [],
           exposure: 'visible',
           recordedAt: new Date().toISOString(),
         };
