@@ -11,6 +11,7 @@
     "prebuild": "expo prebuild",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "validate:scenes": "tsx scripts/validate-scenes.mts",
     "generate": "tsx scripts/generate-css.mts && tsx scripts/generate-spec.mts",
     "server:dev": "tsx watch server/index.ts",
     "server:start": "tsx server/index.ts",
