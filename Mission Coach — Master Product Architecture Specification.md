@@ -25,6 +25,10 @@ Every non-trivial claim carries one of these meanings, stated once here rather t
 
 ### 0.2 Precedence when the inputs disagree
 
+For current implementation work, `LEARNBYRP_ROLEPLAY_PROGRAM_TODO_V1.md` is the execution-status authority for roleplay/program/pedagogy correctness, while `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md` is the UI/UX implementation authority. Neither may override the product invariants in this Master Specification.
+
+For the historical source inputs consolidated by this specification:
+
 1. `VOICE_ARCHITECTURE_RESEARCH.md` constrains what transport and provider behavior may be assumed.
 2. `ROLEPLAY_ARCHITECTURE_REVIEW.md` supersedes the Blueprint wherever they conflict (list in Appendix C).
 3. Blueprint §18 (Expo-first) supersedes Blueprint §9's "separate native clients".
