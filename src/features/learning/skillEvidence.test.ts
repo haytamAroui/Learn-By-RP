@@ -1027,6 +1027,9 @@ describe('inferLegacySkillEvidence', () => {
     const inferred = inferLegacySkillEvidence([observation()]);
     expect(inferred.length).toBeGreaterThan(0);
     expect(inferred.every(o => o.evidenceSource === 'legacy_inferred')).toBe(true);
+    expect(inferred.every(o =>
+      o.reasonCodes?.includes('LEGACY_INFERRED_EVIDENCE')
+    )).toBe(true);
   });
 
   it('produces nothing for an unrelated utterance', () => {
