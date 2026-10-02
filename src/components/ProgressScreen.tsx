@@ -33,6 +33,8 @@ interface ProgressScreenProps {
   onSelectSession: (session: SessionRecord) => void;
   onDisputeObservation: (obsId: string) => void;
   onHideObservation: (obsId: string) => void;
+  onDisputeSkillObservation: (obsId: string) => void;
+  onHideSkillObservation: (obsId: string) => void;
 }
 
 type ProgressTab = 'skills' | 'phrases' | 'history';
@@ -62,6 +64,8 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   onSelectSession,
   onDisputeObservation,
   onHideObservation,
+  onDisputeSkillObservation,
+  onHideSkillObservation,
 }) => {
   const { t } = useI18n();
   const [selectedTab, setSelectedTab] = useState<ProgressTab>('skills');
@@ -517,6 +521,22 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                         ? t.recap.unassisted
                         : t.recap.assisted}
                     </Text>
+                    {observation.evidenceSource === 'validated_explicit' ? (
+                      <View className="mt-2 flex-row flex-wrap gap-1">
+                        <Button
+                          label={t.progress.hideEvidence}
+                          onPress={() => onHideSkillObservation(observation.id)}
+                          variant="ghost"
+                          size="sm"
+                        />
+                        <Button
+                          label={t.progress.disputeEvidence}
+                          onPress={() => onDisputeSkillObservation(observation.id)}
+                          variant="ghost"
+                          size="sm"
+                        />
+                      </View>
+                    ) : null}
                   </View>
                 ))
               )}
