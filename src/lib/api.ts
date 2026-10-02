@@ -6,6 +6,9 @@ import type {
   SpeechSynthesisResponse,
 } from '../providers/runtime/contracts';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 function resolveBaseUrl(): string {
   const fromExtra = Constants.expoConfig?.extra?.apiBaseUrl;
@@ -28,6 +31,101 @@ function resolveBaseUrl(): string {
 
 export const API_BASE_URL = resolveBaseUrl();
 
+type ConsentScope = 'voice' | 'saved_analysis';
+
+const GUEST_TOKEN_KEY = 'learnbyrp.guest_access_token.v1';
+
+async function readGuestToken(): Promise<string | null> {
+  if (Platform.OS === 'web') {
+    return AsyncStorage.getItem(GUEST_TOKEN_KEY);
+  }
+
+  try {
+    return await SecureStore.getItemAsync(GUEST_TOKEN_KEY);
+  } catch {
+    return AsyncStorage.getItem(GUEST_TOKEN_KEY);
+  }
+}
+
+async function writeGuestToken(token: string | null): Promise<void> {
+  if (Platform.OS === 'web') {
+    if (token) await AsyncStorage.setItem(GUEST_TOKEN_KEY, token);
+    else await AsyncStorage.removeItem(GUEST_TOKEN_KEY);
+    return;
+  }
+
+  try {
+    if (token) await SecureStore.setItemAsync(GUEST_TOKEN_KEY, token);
+    else await SecureStore.deleteItemAsync(GUEST_TOKEN_KEY);
+  } catch {
+    if (token) await AsyncStorage.setItem(GUEST_TOKEN_KEY, token);
+    else await AsyncStorage.removeItem(GUEST_TOKEN_KEY);
+  }
+}
+
+async function provisionGuestToken(): Promise<string> {
+  const response = await fetch(`${API_BASE_URL}/api/access/guest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: '{}',
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok || typeof payload?.token !== 'string' || !payload.token) {
+    throw new Error(payload?.error || 'Could not provision bounded guest access');
+  }
+
+  await writeGuestToken(payload.token);
+  return payload.token;
+}
+
+async function guestToken(forceRefresh = false): Promise<string> {
+  if (!forceRefresh) {
+    const existing = await readGuestToken();
+    if (existing) return existing;
+  }
+
+  await writeGuestToken(null);
+  return provisionGuestToken();
+}
+
+async function authenticatedHeaders(forceRefresh = false): Promise<Record<string, string>> {
+  return {
+    Authorization: `Bearer ${await guestToken(forceRefresh)}`,
+  };
+}
+
+async function setServerConsent(
+  scope: ConsentScope,
+  granted: boolean,
+  version: string,
+  forceRefresh = false
+): Promise<void> {
+  const response = await fetch(`${API_BASE_URL}/api/access/consent`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      ...(await authenticatedHeaders(forceRefresh)),
+    },
+    body: JSON.stringify({ scope, granted, version }),
+  });
+
+  if (response.status === 401 && !forceRefresh) {
+    await setServerConsent(scope, granted, version, true);
+    return;
+  }
+
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new ApiError(
+      payload?.error || `Consent sync failed with ${response.status}`,
+      response.status,
+      payload
+    );
+  }
+}
+
+
 class ApiError extends Error {
   status: number;
   payload: any;
@@ -40,18 +138,22 @@ class ApiError extends Error {
   }
 }
 
-async function getRequest<T>(path: string, timeoutMs = 10000): Promise<T> {
+async function getRequest<T>(
+  path: string,
+  timeoutMs = 10000,
+  authenticated = false
+): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const init = {
       method: 'GET',
+      headers: authenticated ? await authenticatedHeaders() : undefined,
       signal: controller.signal,
     } as RequestInit;
 
     const response = await fetch(`${API_BASE_URL}${path}`, init);
-
     const text = await response.text();
     const parsed = text ? JSON.parse(text) : null;
 
@@ -69,19 +171,32 @@ async function getRequest<T>(path: string, timeoutMs = 10000): Promise<T> {
   }
 }
 
-async function request<T>(path: string, body: unknown, timeoutMs = 30000): Promise<T> {
+async function request<T>(
+  path: string,
+  body: unknown,
+  timeoutMs = 30000,
+  retryAuth = true
+): Promise<T> {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
     const init = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...(await authenticatedHeaders(!retryAuth)),
+      },
       body: JSON.stringify(body),
       signal: controller.signal,
     } as RequestInit;
 
     const response = await fetch(`${API_BASE_URL}${path}`, init);
+
+    if (response.status === 401 && retryAuth) {
+      clearTimeout(timer);
+      return request<T>(path, body, timeoutMs, false);
+    }
 
     const text = await response.text();
     let parsed: any = null;
@@ -121,6 +236,13 @@ export interface ActorResponse {
 }
 
 export const api = {
+  access: {
+    ensureGuest: async () => {
+      await guestToken();
+    },
+    syncConsent: (scope: ConsentScope, granted: boolean, version: string) =>
+      setServerConsent(scope, granted, version),
+  },
   actorRespond: (body: {
     character: any;
     setting: string;
