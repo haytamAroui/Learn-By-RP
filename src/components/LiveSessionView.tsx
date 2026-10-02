@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { categoriseProviderError, type ProviderError } from '../features/voice/lifecycle';
 import {
   beginGeneration,
@@ -358,9 +359,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
   const typedPreferred = accommodations.enabled.includes('typed_preferred');
   const slowerSpeechDefault = accommodations.enabled.includes('slower_speech_default');
+  const hapticTurnCues = accommodations.enabled.includes('haptic_turn_cues');
   const effectiveSpeechRate = slowerSpeechDefault
     ? Math.min(preferredSpeechRate, 0.8)
     : preferredSpeechRate;
+
+  const cueLearnerTurn = useCallback(() => {
+    if (!hapticTurnCues || Platform.OS === 'web') return;
+    void Haptics.selectionAsync();
+  }, [hapticTurnCues]);
 
   const [showTypedInput, setShowTypedInput] = useState(typedPreferred);
   const [typedMessage, setTypedMessage] = useState('');
@@ -724,6 +731,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 style: target.character.voiceStyle,
               });
             }
+            cueLearnerTurn();
           }
         } else {
           setVoiceState('idle');
@@ -755,7 +763,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         setVoiceState('reconnecting');
       }
     },
-    [audioPlaybackEnabled, attemptId, effectiveSpeechRate, explanationLanguage, mode, sessionId]
+    [
+      audioPlaybackEnabled,
+      attemptId,
+      cueLearnerTurn,
+      effectiveSpeechRate,
+      explanationLanguage,
+      mode,
+      sessionId,
+    ]
   );
 
   /*
@@ -1007,6 +1023,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         speed: effectiveSpeechRate,
         style: mission.character.voiceStyle,
       });
+      cueLearnerTurn();
     };
 
     void startInitialTurn();
@@ -1027,6 +1044,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     sessionId,
     coldAttempt,
     buildInitialGreeting,
+    cueLearnerTurn,
     effectiveSpeechRate,
     handleUserMessage,
   ]);
