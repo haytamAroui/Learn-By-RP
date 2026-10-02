@@ -149,6 +149,7 @@ describe.skipIf(!runRealProviders)('real provider acceptance', () => {
       expect(runtime.realtime).not.toBeNull();
 
       const session = await runtime.realtime!.createSession({
+        missionId: 'mission-fr-boulangerie',
         targetLanguage: 'fr',
         explanationLanguage: 'en',
         instructions:
