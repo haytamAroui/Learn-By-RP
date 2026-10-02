@@ -28,18 +28,18 @@ import {
  * failure is never silently reclassified as positive evidence and never has to be
  * discarded just because it cannot be one.
  */
-function hasRecentLapse(
+function recentLapseCount(
   lapses: SkillLapse[],
   skillId: CommunicativeSkillId,
   now: number
-): boolean {
-  return lapses.some(lapse => {
+): number {
+  return lapses.filter(lapse => {
     if (lapse.skillId !== skillId) return false;
     const at = Date.parse(lapse.recordedAt);
     if (!Number.isFinite(at)) return false;
     const ageDays = (now - at) / 86_400_000;
     return ageDays >= 0 && ageDays <= SKILL_POLICY.lapseReviewWindowDays;
-  });
+  }).length;
 }
 
 
@@ -78,7 +78,14 @@ export function projectSkill(
     o => o.evidenceSource === 'legacy_inferred'
   );
 
-  const reviewDue = hasRecentLapse(lapses, skillId, now);
+  const recentLapses = recentLapseCount(lapses, skillId, now);
+  const reviewDue = recentLapses > 0;
+  const revisit = recentLapses >= SKILL_POLICY.revisitMinRecentLapses;
+  const lastIndependentUseAt = independent
+    .map(observation => observation.recordedAt)
+    .filter(Boolean)
+    .sort()
+    .at(-1);
   const status = deriveStatus({
     independentContexts: independentContexts.length,
     independentDays: independentDays.length,
@@ -97,6 +104,8 @@ export function projectSkill(
     validatedCount: validatedIndependent.length,
     legacyInferredCount: legacyIndependent.length,
     reviewDue,
+    revisit,
+    lastIndependentUseAt,
     explanation: explain(status, {
       independentContexts: independentContexts.length,
       independentDays: independentDays.length,
