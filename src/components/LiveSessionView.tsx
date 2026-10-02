@@ -64,6 +64,7 @@ import {
 } from '../features/roleplay/opportunityRuntime';
 import { getScene } from '../content/scenes';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
+import { inheritSupportForRetry } from '../features/learning/retrySupport';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import { SceneActionName } from '../contracts/scene';
 import { Button, Field } from './ui';
@@ -1085,6 +1086,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     const forkedAttemptId = await sceneMirrorRef.current?.fork('cp-start', true);
     const nextAttemptId = forkedAttemptId ?? `attempt-${Date.now()}`;
 
+    const retryRecordedAt = new Date().toISOString();
+    setSupportExposures(prev =>
+      inheritSupportForRetry({
+        exposures: prev,
+        fromAttemptId: attemptId,
+        toAttemptId: nextAttemptId,
+        recordedAt: retryRecordedAt,
+      })
+    );
     setAttemptId(nextAttemptId);
     setPassages(passagesRef.current.slice(0, 1));
     setIsSceneFrozen(false);
