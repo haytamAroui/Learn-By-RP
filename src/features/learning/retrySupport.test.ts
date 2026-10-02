@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { Passage, SupportExposure } from '../../types';
-import { inheritSupportForRetry, mergeAttemptPassages, mergeFinalizedAttemptEvidence } from './retrySupport';
+import { inheritSupportForRetry, mergeAttemptPassages, mergeFinalizedAttemptEvidence, passagesForAttempt } from './retrySupport';
 
 const EXPOSURE: SupportExposure = {
   id: 'exp-1',
@@ -127,6 +127,36 @@ describe('mergeAttemptPassages', () => {
     expect(new Set(merged.map(item => item.attemptId))).toEqual(
       new Set(['attempt-1', 'attempt-2'])
     );
+  });
+});
+
+
+describe('passagesForAttempt', () => {
+  it('keeps earlier retry context out of the active-attempt assessor', () => {
+    const passage = (id: string, attemptId: string): Passage => ({
+      id,
+      sessionId: 's-1',
+      attemptId,
+      speaker: 'user',
+      revisionKey: 'rev-1',
+      assemblyVersion: 1,
+      status: 'final',
+      text: id,
+      modality: 'spoken',
+      startedAt: '2026-10-02T10:00:00.000Z',
+      fragments: [],
+    });
+
+    const selected = passagesForAttempt(
+      [
+        passage('p-parent', 'attempt-1'),
+        passage('p-retry', 'attempt-2'),
+        passage('p-retry-2', 'attempt-2'),
+      ],
+      'attempt-2'
+    );
+
+    expect(selected.map(item => item.id)).toEqual(['p-retry', 'p-retry-2']);
   });
 });
 
