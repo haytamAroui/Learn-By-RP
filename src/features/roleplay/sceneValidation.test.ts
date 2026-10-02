@@ -83,6 +83,22 @@ describe('finite scene definition validation', () => {
     );
   });
 
+  it('rejects a communication challenge whose opportunity binding is broken', () => {
+    const scene: SceneDefinition = {
+      ...CAFE_SCENE,
+      communicationChallenges: CAFE_SCENE.communicationChallenges.map(
+        challenge =>
+          challenge.id === 'challenge.es.cafe.mishear-service-mode'
+            ? { ...challenge, opportunityId: 'opp.missing' }
+            : challenge
+      ),
+    };
+
+    expect(validateSceneDefinition(scene).errors.join('\n')).toMatch(
+      /opportunity opp\.missing does not exist/i
+    );
+  });
+
   it('rejects opportunity skills not declared by the scene', () => {
     const scene: SceneDefinition = {
       ...CAFE_SCENE,
