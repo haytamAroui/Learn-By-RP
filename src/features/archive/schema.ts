@@ -345,6 +345,13 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE skill_lapses ADD COLUMN reason_code TEXT;`,
     ],
   },
+  {
+    version: 10,
+    name: 'persist_skill_evidence_reason_codes',
+    statements: [
+      `ALTER TABLE skill_observations ADD COLUMN reason_codes TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
