@@ -75,7 +75,7 @@ async function provisionGuestToken(): Promise<string> {
     body: '{}',
   });
 
-  const payload = await response.json().catch(() => ({}));
+  const payload: any = await response.json().catch(() => ({}));
   if (!response.ok || typeof payload?.token !== 'string' || !payload.token) {
     throw new Error(payload?.error || 'Could not provision bounded guest access');
   }
@@ -121,7 +121,7 @@ async function setServerConsent(
   }
 
   if (!response.ok) {
-    const payload = await response.json().catch(() => ({}));
+    const payload: any = await response.json().catch(() => ({}));
     throw new ApiError(
       payload?.error || `Consent sync failed with ${response.status}`,
       response.status,
