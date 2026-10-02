@@ -4,6 +4,7 @@ import {
   classifyAttemptLearningMode,
   isRecoveryEligible,
   isTransferEligible,
+  pressurePolicyForLearningMode,
 } from './rpModes';
 
 const PASSAGE: Passage = {
@@ -124,6 +125,32 @@ describe('RP learning modes', () => {
         consecutiveRecoveries: 0,
       }).eligible
     ).toBe(false);
+  });
+
+  it('caps recovery pressure at manageable even when stretch was requested', () => {
+    expect(
+      pressurePolicyForLearningMode({
+        mode: 'recovery',
+        learnerOptedIn: true,
+        requestedCeiling: 'stretch',
+      })
+    ).toEqual({
+      enabled: true,
+      allowedLevels: ['manageable'],
+    });
+  });
+
+  it('keeps pressure disabled when the learner did not opt in', () => {
+    expect(
+      pressurePolicyForLearningMode({
+        mode: 'recovery',
+        learnerOptedIn: false,
+        requestedCeiling: 'stretch',
+      })
+    ).toEqual({
+      enabled: false,
+      allowedLevels: [],
+    });
   });
 
   it('caps consecutive recoveries and requires an off-ramp', () => {
