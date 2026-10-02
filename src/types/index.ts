@@ -431,6 +431,19 @@ export interface SkillObservation {
   recordedAt: string;
 }
 
+
+/**
+ * Compile-time write capability for positive skill evidence.
+ *
+ * Only the evidence validator (and trusted archive rehydration/migration code)
+ * may mint this type. Product code can read SkillObservation freely, but cannot
+ * accidentally construct a learner-visible capability claim and persist it.
+ */
+declare const validatedSkillObservationBrand: unique symbol;
+export type ValidatedSkillObservation = SkillObservation & {
+  readonly [validatedSkillObservationBrand]: true;
+};
+
 /**
  * A durable record that a cold attempt at a skill did not succeed.
  *
@@ -585,7 +598,7 @@ export interface SessionRecord {
    * Validated skill evidence for this session. Written by the validator, never by
    * the view: the model proposes and this is what survived validation.
    */
-  skillObservations?: SkillObservation[];
+  skillObservations?: ValidatedSkillObservation[];
   /** Cold failures recorded as review signals. Never promotional. */
   skillLapses?: SkillLapse[];
   taskOutcome: 'completed' | 'partly_completed' | 'changed_direction' | 'unknown';
