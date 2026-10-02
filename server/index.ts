@@ -5,7 +5,7 @@ import cors from 'cors';
 // cannot be more generous than the deterministic client core.
 import { matchPhraseInText } from '../src/features/learning/matching';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/content/skills';
-import { allowedSkillsForMission, evidentiarySkillsForMission } from '../src/features/learning/skillMembership';
+import { evidentiarySkillsForMission } from '../src/features/learning/skillMembership';
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 // Scene director + action reducer, mounted under /v1.
