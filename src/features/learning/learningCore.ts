@@ -348,7 +348,7 @@ export function validateDrillReview(input: {
     }),
     originalForm: match.verdict === 'paraphrase' ? match.matchedText || undefined : undefined,
     correctedForm: match.verdict === 'paraphrase' ? input.phrase.form : undefined,
-  } as ValidatedLearningObservation;
+  } as unknown as ValidatedLearningObservation;
 }
 
 /**
