@@ -1,0 +1,141 @@
+import type { LanguageCode, CommunicativeSkillId } from '../types';
+
+export const ROLEPLAY_PROGRAM_CONTRACT_VERSION = 1;
+
+export interface ProgramMissionRef {
+  missionId: string;
+  missionVersion: number;
+  sceneId?: string;
+  sceneVersion?: number;
+}
+
+export interface RoleplayProgram {
+  id: string;
+  version: number;
+  targetLanguage: LanguageCode;
+  /** BCP-47 locale such as es-ES, fr-FR, nl-BE. */
+  targetLocale: string;
+  policyVersion: number;
+  title: string;
+  missionPlan: ProgramMissionRef[];
+  reviewStatus: 'draft' | 'reviewed' | 'released';
+}
+
+/**
+ * Rebuildable state. Never use this as the source of user intent.
+ */
+export interface ProgramProjection {
+  programId: string;
+  programVersion: number;
+  completedMissionIds: string[];
+  currentMissionId?: string;
+  demonstratedSkillIds: CommunicativeSkillId[];
+  reviewSkillIds: CommunicativeSkillId[];
+  rebuiltAt: string;
+}
+
+/**
+ * Durable user choices that are not derivable from evidence.
+ */
+export interface ProgramPreferences {
+  programId: string;
+  skippedMissionIds: string[];
+  pinnedMissionIds: string[];
+  mutedSkillIds: CommunicativeSkillId[];
+}
+
+export type ProgramGoalDomain =
+  | 'travel'
+  | 'relocation'
+  | 'work'
+  | 'social'
+  | 'services'
+  | 'exam';
+
+export interface ProgramGoalInput {
+  targetLanguage: LanguageCode;
+  targetLocale: string;
+  domain: ProgramGoalDomain;
+  contextId: string;
+  /**
+   * Optional ordering constraint only. It must never be converted into a
+   * readiness/competence prediction.
+   */
+  deadline?: string;
+  /** Local-only by product policy; never executable scene input. */
+  personalProfile?: {
+    displayName?: string;
+    notes?: string;
+  };
+}
+
+export interface ProgramContractValidation {
+  valid: boolean;
+  errors: string[];
+}
+
+const BCP47 =
+  /^[A-Za-z]{2,3}(?:-[A-Za-z]{4})?(?:-(?:[A-Za-z]{2}|\d{3}))?(?:-[A-Za-z0-9]{5,8})*$/;
+
+export function validateTargetLocale(locale: string): boolean {
+  return BCP47.test(locale);
+}
+
+export function validateRoleplayProgram(
+  program: RoleplayProgram
+): ProgramContractValidation {
+  const errors: string[] = [];
+
+  if (!program.id.trim()) errors.push('program id is required');
+  if (!Number.isInteger(program.version) || program.version < 1) {
+    errors.push('program version must be a positive integer');
+  }
+  if (!validateTargetLocale(program.targetLocale)) {
+    errors.push(`invalid BCP-47 targetLocale: ${program.targetLocale}`);
+  }
+  if (!Number.isInteger(program.policyVersion) || program.policyVersion < 1) {
+    errors.push('policyVersion must be a positive integer');
+  }
+  if (program.missionPlan.length === 0) {
+    errors.push('missionPlan must contain at least one pinned mission');
+  }
+
+  const missionIds = new Set<string>();
+  for (const [index, entry] of program.missionPlan.entries()) {
+    const path = `missionPlan[${index}]`;
+    if (!entry.missionId.trim()) errors.push(`${path}.missionId is required`);
+    if (!Number.isInteger(entry.missionVersion) || entry.missionVersion < 1) {
+      errors.push(`${path}.missionVersion must be a positive integer`);
+    }
+    if (entry.sceneId && (!entry.sceneVersion || entry.sceneVersion < 1)) {
+      errors.push(`${path}.sceneVersion is required when sceneId is pinned`);
+    }
+    if (!entry.sceneId && entry.sceneVersion !== undefined) {
+      errors.push(`${path}.sceneId is required when sceneVersion is pinned`);
+    }
+    if (missionIds.has(entry.missionId)) {
+      errors.push(`${path}: duplicate missionId ${entry.missionId}`);
+    }
+    missionIds.add(entry.missionId);
+  }
+
+  return { valid: errors.length === 0, errors };
+}
+
+/**
+ * Free text can be collected for later extraction/preview, but it is never a
+ * directly executable goal input in V1.
+ */
+export function isExecutableGoalInput(value: unknown): value is ProgramGoalInput {
+  if (!value || typeof value !== 'object') return false;
+  const goal = value as Partial<ProgramGoalInput> & { freeText?: unknown };
+  if (typeof goal.freeText === 'string') return false;
+  return (
+    typeof goal.targetLanguage === 'string' &&
+    typeof goal.targetLocale === 'string' &&
+    validateTargetLocale(goal.targetLocale) &&
+    typeof goal.domain === 'string' &&
+    typeof goal.contextId === 'string' &&
+    goal.contextId.trim().length > 0
+  );
+}
