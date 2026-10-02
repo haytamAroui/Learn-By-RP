@@ -28,7 +28,9 @@ export interface SceneStore {
 export interface HostedSessionRecord {
   sessionId: string;
   sceneId: string;
+  sceneVersion: number;
   missionId: string;
+  missionVersion: number;
   state: SceneStateSnapshot;
   createdAt: string;
   closedAt?: string;
@@ -57,7 +59,9 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS hosted_sessions (
     session_id TEXT PRIMARY KEY,
     scene_id TEXT NOT NULL,
+    scene_version INTEGER NOT NULL DEFAULT 1,
     mission_id TEXT NOT NULL,
+    mission_version INTEGER NOT NULL DEFAULT 1,
     state_json TEXT NOT NULL,
     attempts_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -98,7 +102,9 @@ export class SqliteSceneStore implements SceneStore {
     return {
       sessionId: String(row.session_id),
       sceneId: String(row.scene_id),
+      sceneVersion: Number(row.scene_version ?? 1),
       missionId: String(row.mission_id),
+      missionVersion: Number(row.mission_version ?? 1),
       state: JSON.parse(String(row.state_json)) as SceneStateSnapshot,
       attempts: JSON.parse(String(row.attempts_json)) as AttemptRecord[],
       createdAt: String(row.created_at),
@@ -110,11 +116,13 @@ export class SqliteSceneStore implements SceneStore {
   async put(record: HostedSessionRecord): Promise<void> {
     await this.db.runAsync(
       `INSERT OR REPLACE INTO hosted_sessions
-        (session_id, scene_id, mission_id, state_json, attempts_json, created_at, closed_at, reconciled_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (session_id, scene_id, scene_version, mission_id, mission_version, state_json, attempts_json, created_at, closed_at, reconciled_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       record.sessionId,
       record.sceneId,
+      record.sceneVersion,
       record.missionId,
+      record.missionVersion,
       JSON.stringify(record.state),
       JSON.stringify(record.attempts),
       record.createdAt,
