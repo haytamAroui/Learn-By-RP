@@ -16,6 +16,10 @@ import { isIndependentSuccess } from '../learning/skillEvidence';
 import { projectSkillsV2 } from '../learning/skillProjection';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
 import { isRecoveryEligible } from './rpModes';
+import type {
+  CommunicationChallengeType,
+  NegotiatedRoleplayCapabilities,
+} from '../roleplay/capabilities';
 
 export const NEXT_RP_POLICY_VERSION = 1;
 
@@ -46,6 +50,11 @@ export interface NextRpRecommendation {
   missionId?: string;
   missionVersion?: number;
   targetSkillId?: CommunicativeSkillId;
+  /**
+   * Present only for `kind: 'challenge'`. The value must come from negotiated
+   * transport capabilities, never from an assumed provider feature.
+   */
+  challengeType?: CommunicationChallengeType;
   reasonCode: NextRpReasonCode;
   requiresLearnerConfirmation: boolean;
 }
@@ -60,6 +69,14 @@ export interface NextRpInput {
   recentScenarioFamilyIds: string[];
   completedMissionIds: string[];
   missionReadiness: MissionReadiness[];
+  /**
+   * Direct output of provider capability negotiation. Challenge selection may
+   * use only challenge types present in this negotiated allowlist.
+   */
+  negotiatedCapabilities: Pick<
+    NegotiatedRoleplayCapabilities,
+    'availableCommunicationChallenges'
+  >;
   consecutiveRecoveries?: number;
   /** Ordering only; never converted into readiness or competence. */
   deadline?: string;
@@ -132,12 +149,31 @@ function recoveryCandidate(input: NextRpInput, skillId: CommunicativeSkillId) {
   );
 }
 
+function compatibleChallengeCandidate(
+  input: NextRpInput,
+  skillId: CommunicativeSkillId
+): { mission: MissionDefinition; challengeType: CommunicationChallengeType } | undefined {
+  const challengeType =
+    input.negotiatedCapabilities.availableCommunicationChallenges[0];
+
+  if (!challengeType) return undefined;
+
+  const mission = orderedAvailableMissions(input).find(
+    candidate =>
+      !input.completedMissionIds.includes(candidate.id) &&
+      missionPractisesSkill(candidate, skillId)
+  );
+
+  return mission ? { mission, challengeType } : undefined;
+}
+
 function recommendationForMission(
   kind: NextRpKind,
   mission: MissionDefinition,
   reasonCode: NextRpReasonCode,
   targetSkillId?: CommunicativeSkillId,
-  requiresLearnerConfirmation = false
+  requiresLearnerConfirmation = false,
+  challengeType?: CommunicationChallengeType
 ): NextRpRecommendation {
   return {
     policyVersion: NEXT_RP_POLICY_VERSION,
@@ -145,6 +181,7 @@ function recommendationForMission(
     missionId: mission.id,
     missionVersion: mission.version,
     targetSkillId,
+    ...(challengeType ? { challengeType } : {}),
     reasonCode,
     requiresLearnerConfirmation,
   };
@@ -238,18 +275,15 @@ export function recommendNextRp(input: NextRpInput): NextRpRecommendation {
       }
 
       if (sameSkillSuccesses.length >= 2) {
-        const challenge = orderedAvailableMissions(input).find(
-          mission =>
-            !input.completedMissionIds.includes(mission.id) &&
-            missionPractisesSkill(mission, latest.skillId)
-        );
+        const challenge = compatibleChallengeCandidate(input, latest.skillId);
         if (challenge) {
           return recommendationForMission(
             'challenge',
-            challenge,
+            challenge.mission,
             'REPEATED_SUCCESS_CHALLENGE',
             latest.skillId,
-            true
+            true,
+            challenge.challengeType
           );
         }
       }
