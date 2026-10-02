@@ -661,6 +661,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           setting: target.setting,
           learnerGoal: target.learnerGoal,
           sceneFacts: sceneStateRef.current.facts,
+          allowedActions:
+            (target.sceneId ? getScene(target.sceneId)?.allowedActions : undefined)?.map(
+              action => action.name
+            ) ?? [],
           mode,
           recentPassages: updatedPassages.slice(-5),
           userMessage: trimmed,
