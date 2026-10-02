@@ -489,13 +489,13 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 
 # 19. V1 authoring modes
 
-- [ ] **Curated programs — V1 launch default.**
-- [ ] **Template programs — after curated path works.**
-- [ ] **AI-composed sequencing — V2 only.**
-- [ ] AI may sequence reviewed missions only.
-- [ ] AI may not generate new executable mission content at runtime in V1.
-- [ ] Exams and regulated domains remain curated/reviewed.
-- [ ] Template free text goes through extraction, screening, caps, preview and discard.
+- [x] **Curated programs — V1 execution default.** (`authoringPolicy.ts`)
+- [x] **Template programs — gated behind extraction + screening + caps + learner preview.**
+- [x] **AI-composed sequencing — V2 only.** V1 policy returns non-executable.
+- [x] AI may sequence reviewed/version-pinned catalog missions only when V2 is enabled.
+- [x] AI may not generate new executable mission content at runtime in V1.
+- [x] Exam goal domain is curated-only in authoring policy.
+- [x] Template free text contract requires extraction, screening, caps, preview and discard state before execution.
 
 ---
 
@@ -525,33 +525,33 @@ Prefer deterministic/versioned policy.
 
 Inputs:
 
-- [ ] validated evidence
-- [ ] relevant support history
-- [ ] strict lapse/revisit state
-- [ ] recent scenario families
-- [ ] program goal
-- [ ] learner preferences
-- [ ] mission readiness
-- [ ] optional deadline ordering
+- [x] validated evidence
+- [x] relevant support history (input preserved for deterministic policy; support semantics remain in scoped ledger)
+- [x] strict lapse/revisit state
+- [x] recent scenario families
+- [x] program goal
+- [x] learner program preferences (skip/pin/mute)
+- [x] mission readiness
+- [x] optional deadline ordering input; never used for competence/readiness prediction
 
 Outputs:
 
-- [ ] continue
-- [ ] transfer
-- [ ] recovery
-- [ ] optional challenge
-- [ ] final simulation
+- [x] continue
+- [x] transfer
+- [x] recovery
+- [x] optional challenge with learner confirmation
+- [x] final simulation recommendation after reviewed core plan is complete
 
 Rules:
 
-- [ ] Independent success → offer same skill in a different family.
-- [ ] Supported success → offer cold attempt in a different manageable family.
-- [ ] Genuine cold failed opportunity → recovery candidate.
-- [ ] No valid opportunity → no weakness inference.
-- [ ] Repeated success → suggest harder variant; learner confirms.
-- [ ] Same evidence + same policy version → same recommendation.
-- [ ] Store reason codes, not model-generated reason prose.
-- [ ] Render localized explanation from reason code.
+- [x] Independent success → offer same skill in a different family.
+- [x] Supported success → offer cold transfer in a different available family.
+- [x] Genuine strict cold lapse → recovery candidate.
+- [x] No valid strict lapse → no weakness inference.
+- [x] Repeated independent success → optional challenge; learner confirmation required.
+- [x] Same evidence + same policy version → same deterministic recommendation.
+- [x] Recommendation stores deterministic reason codes only.
+- [x] Render EN/FR/ES/NL explanation from reason code (`renderNextRpReason`).
 
 ---
 
@@ -561,33 +561,33 @@ These are properties of RP opportunities/attempts, not conventional lesson scree
 
 ## Cold
 
-- [ ] Useful production form not exposed within relevance window.
-- [ ] Captions/accommodations remain available.
-- [ ] No proactive coach answer.
-- [ ] Learner can request help.
+- [x] Cold = no relevant production-form exposure within scoped policy window.
+- [x] Captions/accommodations remain available and are outside production-help ledger.
+- [x] No proactive coach answer; Help is learner-triggered.
+- [x] Learner can request help through the four-step ladder.
 
 ## Guided
 
-- [ ] Minimum necessary help.
-- [ ] Progressive ladder.
-- [ ] Exact scope recorded.
-- [ ] Guided success does not masquerade as cold success.
+- [x] Guided support is scoped to exact target rather than whole mission.
+- [x] Progressive intent → partial → full → explanation ladder.
+- [x] Exact skill/opportunity/phrase scope recorded.
+- [x] Any relevant production support makes the attempt guided/assisted.
 
 ## Transfer
 
-- [ ] Same CommunicativeSkill.
-- [ ] Different scenario family/domain.
-- [ ] Prefer cold start.
-- [ ] Retry never counts.
-- [ ] Pressure/regional variants never count as new context.
+- [x] Transfer recommendation targets the same CommunicativeSkill.
+- [x] Transfer requires a different `scenarioFamilyId`.
+- [x] Transfer recommendation is a cold-transfer policy path.
+- [x] Rehearsal/retry is explicitly ineligible for transfer.
+- [x] Variants sharing a `scenarioFamilyId` do not count as transfer.
 
 ## Recovery
 
-- [ ] Only from strict lapse.
-- [ ] Different family when possible.
+- [x] Recovery is eligible only from a persisted strict `SkillLapse`.
+- [x] Recovery chooses a different recent family when possible.
 - [ ] Lower/manageable pressure.
-- [ ] Cap consecutive recoveries.
-- [ ] Offer off-ramp.
+- [x] Consecutive recovery cap = 2 (`RP_MODE_POLICY`).
+- [x] Recovery cap produces deterministic `RECOVERY_CAP_OFF_RAMP` recommendation.
 - [ ] Return to cold as soon as reasonable.
 
 ---
