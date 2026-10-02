@@ -36,6 +36,8 @@ import {
   SupportExposure,
   SceneState,
   LearningObservation,
+  SkillObservation,
+  SkillLapse,
   OpportunityInstance,
   OperationalTelemetryEvent,
   TaskOutcome,
@@ -70,8 +72,10 @@ import {
 import { getScene } from '../content/scenes';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
 import {
+  FinalizedAttemptEvidence,
   inheritSupportForRetry,
   mergeAttemptPassages,
+  mergeFinalizedAttemptEvidence,
 } from '../features/learning/retrySupport';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import {
@@ -449,6 +453,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const passagesRef = useRef(passages);
   const supportExposuresRef = useRef(supportExposures);
   const priorAttemptPassagesRef = useRef<Passage[]>([]);
+  const finalizedAttemptEvidenceRef = useRef<FinalizedAttemptEvidence[]>([]);
+  const finalizedAttemptIdsRef = useRef<Set<string>>(new Set());
   const opportunityInstancesRef = useRef<OpportunityInstance[]>(
     initialSession.opportunityInstances ?? []
   );
