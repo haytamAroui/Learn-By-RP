@@ -296,7 +296,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     stretchGoal: 'Ask where the consultation counter is and ask for help locating the official label or patient leaflet',
     targetIntents: ['describe_symptoms', 'request_pharmacist', 'ask_label_help'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
-    secondarySkillIds: ['skill-request-substitution'],
+    secondarySkillIds: [],
     usefulPhrases: [
       {
         id: 'phrase.es.tengo_alergia',
@@ -306,14 +306,14 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         difficulty: 'elementary'
       },
       {
-        id: 'phrase.es.que_no_de_sueno',
+        id: 'phrase.es.request_pharmacist',
         form: 'Necesito hablar con el farmacéutico sobre estos síntomas.',
         meaning: 'I need to speak with the pharmacist about these symptoms.',
         usageNote: 'Service-language pattern for requesting the appropriate licensed professional.',
         difficulty: 'intermediate'
       },
       {
-        id: 'phrase.es.como_se_toma',
+        id: 'phrase.es.find_official_leaflet',
         form: '¿Puede ayudarme a encontrar la etiqueta o el prospecto?',
         meaning: 'Can you help me find the label or patient leaflet?',
         usageNote: 'Safe clarification request that keeps medical interpretation with the professional and official product information.',
@@ -481,7 +481,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     stretchGoal: 'Ask where the consultation counter is and ask for help finding the official notice or packaging information',
     targetIntents: ['describe_symptoms', 'request_pharmacist', 'ask_label_help'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
-    secondarySkillIds: ['skill-request-substitution'],
+    secondarySkillIds: [],
     usefulPhrases: [
       {
         id: 'phrase.fr.mal_de_gorge',
@@ -491,14 +491,14 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         difficulty: 'beginner'
       },
       {
-        id: 'phrase.fr.qui_ne_fait_pas_dormir',
+        id: 'phrase.fr.request_pharmacist',
         form: 'Je voudrais parler au pharmacien de mes symptômes.',
         meaning: 'I would like to speak with the pharmacist about my symptoms.',
         usageNote: 'Natural service request that hands clinical questions to the licensed professional.',
         difficulty: 'intermediate'
       },
       {
-        id: 'phrase.fr.combien_de_fois',
+        id: 'phrase.fr.find_official_notice',
         form: 'Pouvez-vous m’aider à trouver la notice officielle ?',
         meaning: 'Can you help me find the official patient leaflet?',
         usageNote: 'Safe clarification request about where to find authoritative product information.',
@@ -727,8 +727,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Explain seasonal allergy symptoms (hay fever, itchy eyes) and ask to speak with the licensed pharmacist',
     stretchGoal: 'Ask where the consultation area is and ask for help finding the official package leaflet',
     targetIntents: ['describe_allergies', 'request_pharmacist', 'ask_label_help'],
-    primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
-    secondarySkillIds: ['skill-communicative-repair'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
+    secondarySkillIds: [],
     usefulPhrases: [
       {
         id: 'phrase.de.heuschnupfen',
@@ -738,14 +738,14 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         difficulty: 'elementary'
       },
       {
-        id: 'phrase.de.nicht_muede',
+        id: 'phrase.de.request_apotheker',
         form: 'Ich möchte mit dem Apotheker über meine Beschwerden sprechen.',
         meaning: 'I would like to speak with the pharmacist about my symptoms.',
         usageNote: 'Natural service request that routes clinical questions to the licensed professional.',
         difficulty: 'intermediate'
       },
       {
-        id: 'phrase.de.wie_oft',
+        id: 'phrase.de.find_packungsbeilage',
         form: 'Können Sie mir helfen, die Packungsbeilage zu finden?',
         meaning: 'Can you help me find the package leaflet?',
         usageNote: 'Safe request for authoritative written product information.',
@@ -975,7 +975,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     stretchGoal: 'Ask where the consultation counter is and ask for help finding the official patient leaflet',
     targetIntents: ['describe_throat_pain', 'request_pharmacist', 'ask_label_help'],
     primarySkillIds: ['skill-inquire-specifications'],
-    secondarySkillIds: ['skill-request-substitution', 'skill-communicative-repair'],
+    secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
       {
         id: 'phrase.it.mal_di_gola',
@@ -985,14 +985,14 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         difficulty: 'beginner'
       },
       {
-        id: 'phrase.it.non_dia_sonnolenza',
+        id: 'phrase.it.request_farmacista',
         form: 'Vorrei parlare con il farmacista dei miei sintomi.',
         meaning: 'I would like to speak with the pharmacist about my symptoms.',
         usageNote: 'Polite service request that leaves clinical decisions to the licensed professional.',
         difficulty: 'intermediate'
       },
       {
-        id: 'phrase.it.prima_o_dopo_pasti',
+        id: 'phrase.it.find_foglietto',
         form: 'Può aiutarmi a trovare il foglietto illustrativo ufficiale?',
         meaning: 'Can you help me find the official patient leaflet?',
         usageNote: 'Safe request for authoritative written product information.',
@@ -1221,8 +1221,8 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Explain you have a headache and ask to speak with the licensed pharmacist',
     stretchGoal: 'Ask where the consultation counter is and ask for help finding the official package leaflet',
     targetIntents: ['describe_headache', 'request_pharmacist', 'ask_label_help'],
-    primarySkillIds: ['skill-inquire-specifications', 'skill-request-substitution'],
-    secondarySkillIds: ['skill-communicative-repair'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
+    secondarySkillIds: [],
     usefulPhrases: [
       {
         id: 'phrase.ja.zutsuu_ga_suru',
@@ -1232,14 +1232,14 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         difficulty: 'elementary'
       },
       {
-        id: 'phrase.ja.nemuku_naranai',
+        id: 'phrase.ja.yakuzaishi_soudan',
         form: 'この症状について薬剤師に相談したいです。',
         meaning: 'I would like to consult the pharmacist about these symptoms.',
         usageNote: 'Natural service phrase for routing a health question to the licensed professional.',
         difficulty: 'intermediate'
       },
       {
-        id: 'phrase.ja.shokugo_nomimasu',
+        id: 'phrase.ja.koushiki_setsumeisho',
         form: '公式の説明書はどこにありますか？',
         meaning: 'Where can I find the official product leaflet?',
         usageNote: 'Safe request for authoritative written product information.',
@@ -1433,19 +1433,15 @@ export const COMMUNICATIVE_SKILLS_CATALOG: CommunicativeSkillMeta[] = [
     ],
     samplePhrases: [
       '¿Tiene leche de avena?',
-      'Est-ce que vous avez des pastilles qui ne font pas dormir ?',
+      'Je voudrais parler au pharmacien de mes symptômes.',
       'Haben Sie Hafermilch?',
       'È possibile averlo senza formaggio o latticini?',
-      '眠くならない薬はありますか？'
+      'この症状について薬剤師に相談したいです。'
     ],
     associatedMissions: [
       'mission-es-cafe-sol',
-      'mission-es-farmacia-sol',
       'mission-fr-boulangerie',
-      'mission-fr-pharmacie',
       'mission-de-baeckerei',
-      'mission-de-apotheke',
-      'mission-it-farmacia',
       'mission-ja-yakkyoku'
     ]
   },
