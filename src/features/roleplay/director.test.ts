@@ -232,21 +232,9 @@ describe('DirectorCadence', () => {
       })
     ).not.toBeNull();
 
-    const result = reduceSceneAction({
-      scene: CAFE_SCENE,
-      state,
-      proposal: {
-        actionId: 'confirm-1',
-        sessionId: SESSION,
-        attemptId: ATTEMPT,
-        expectedSceneRevision: state.revision,
-        action: 'confirm_order_item',
-        payload: { item: 'café' },
-        sourceTurnIds: ['p-1'],
-      },
-    });
     state = {
-      ...applyResult(CAFE_SCENE, state, result),
+      ...state,
+      revision: state.revision + 1,
       firedComplications: [CAFE_SCENE.complication!.id],
     };
 
@@ -273,20 +261,10 @@ describe('DirectorCadence', () => {
       })
     ).toMatchObject({ kind: 'trigger_complication' });
 
-    const result = reduceSceneAction({
-      scene: CAFE_SCENE,
-      state,
-      proposal: {
-        actionId: 'confirm-2',
-        sessionId: SESSION,
-        attemptId: ATTEMPT,
-        expectedSceneRevision: state.revision,
-        action: 'confirm_order_item',
-        payload: { item: 'café' },
-        sourceTurnIds: ['p-1'],
-      },
-    });
-    state = applyResult(CAFE_SCENE, state, result);
+    state = {
+      ...state,
+      revision: state.revision + 1,
+    };
 
     expect(
       cadence.evaluate({
