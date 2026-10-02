@@ -36,6 +36,7 @@ import {
   SceneState,
   LearningObservation,
   OpportunityInstance,
+  OperationalTelemetryEvent,
   TaskOutcome,
 } from '../types';
 import { createVoiceTransport } from '../providers/voice';
@@ -406,6 +407,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const priorAttemptPassagesRef = useRef<Passage[]>([]);
   const opportunityInstancesRef = useRef<OpportunityInstance[]>(
     initialSession.opportunityInstances ?? []
+  );
+  const operationalTelemetryRef = useRef<OperationalTelemetryEvent[]>(
+    initialSession.operationalTelemetry ?? []
   );
   const isMutedRef = useRef(isMuted);
   const isSceneFrozenRef = useRef(isSceneFrozen);
@@ -974,6 +978,23 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         transportId: transport.id,
         ...degradation,
       });
+
+      const id = [
+        'capability',
+        transport.id,
+        degradation.capability,
+        degradation.fallback,
+      ].join(':');
+      if (!operationalTelemetryRef.current.some(event => event.id === id)) {
+        operationalTelemetryRef.current.push({
+          id,
+          kind: 'capability_degradation',
+          providerId: transport.id,
+          capability: degradation.capability,
+          fallback: degradation.fallback,
+          recordedAt: new Date().toISOString(),
+        });
+      }
     }
 
     const conversationProvider = createConversationProvider();
@@ -1418,6 +1439,7 @@ t.live.rehearsalRestored
           : []),
         t.live.feedbackReviewDue,
       ],
+      operationalTelemetry: operationalTelemetryRef.current,
     });
   }, [
     attemptId,
