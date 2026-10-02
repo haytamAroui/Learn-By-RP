@@ -8,9 +8,14 @@ import {
   SkillEvidenceCandidate,
 } from './skillEvidence';
 import { inferLegacySkillEvidence, projectSkill, projectSkillsV2 } from './skillProjection';
-import { allowedSkillIds, allowedSkillsForMission } from './skillMembership';
+import { allowedSkillIds, evidentiarySkillsForMission } from './skillMembership';
 import { SKILL_POLICY } from './policy';
-import { COMMUNICATIVE_SKILLS_CATALOG, MISSION_CATALOG as MISSIONS } from '../../data/missions';
+import { MISSION_CATALOG as MISSIONS } from '../../data/missions';
+import {
+  COMMUNICATIVE_SKILLS_CATALOG,
+  isDirectlyEvidencedSkill,
+  isLaunchVisibleCommunicativeSkill,
+} from '../../content/skills';
 import {
   LearningObservation,
   MissionDefinition,
@@ -638,22 +643,22 @@ describe('the model offer and the validator agree', () => {
   // validator enforces have to come from one place.
   it('offers exactly the skills the validator would accept', () => {
     for (const m of MISSIONS) {
-      const offered = allowedSkillsForMission(m.id).map(s => s.id);
-      const enforced = new Set([...m.primarySkillIds, ...m.secondarySkillIds]);
+      const offered = evidentiarySkillsForMission(m.id).map(s => s.id);
+      const enforced = new Set(
+        [...m.primarySkillIds, ...m.secondarySkillIds].filter(isDirectlyEvidencedSkill)
+      );
 
       expect(new Set(offered)).toEqual(enforced);
     }
   });
 
   it('offers nothing for an unknown mission rather than the whole catalog', () => {
-    expect(allowedSkillsForMission('mission-does-not-exist')).toEqual([]);
-    expect(allowedSkillsForMission(undefined)).toEqual([]);
+    expect(evidentiarySkillsForMission('mission-does-not-exist')).toEqual([]);
+    expect(evidentiarySkillsForMission(undefined)).toEqual([]);
   });
 
   it('offers nothing to a mission that was authored before membership existed', () => {
-    expect(allowedSkillsForMission(undefined)).not.toHaveLength(
-      COMMUNICATIVE_SKILLS_CATALOG.length
-    );
+    expect(evidentiarySkillsForMission(undefined)).toEqual([]);
   });
 
   it('does not repeat a skill listed as both primary and secondary', () => {
@@ -666,9 +671,10 @@ describe('the model offer and the validator agree', () => {
 
   it('would reject any skill it did not offer', () => {
     const m = MISSIONS[0];
-    const offered = new Set(allowedSkillsForMission(m.id).map(s => s.id));
+    const offered = new Set(evidentiarySkillsForMission(m.id).map(s => s.id));
     const notOffered = COMMUNICATIVE_SKILLS_CATALOG
       .map(s => s.id)
+      .filter(isDirectlyEvidencedSkill)
       .filter(id => !offered.has(id));
 
     for (const id of notOffered) {
@@ -719,9 +725,12 @@ describe('mission skill membership is curated', () => {
     }
   });
 
-  it('covers every catalogued skill somewhere', () => {
+  it('covers every launch-visible skill somewhere', () => {
     const used = new Set(MISSIONS.flatMap(m => [...m.primarySkillIds, ...m.secondarySkillIds]));
-    const orphans = COMMUNICATIVE_SKILLS_CATALOG.map(s => s.id).filter(id => !used.has(id));
+    const orphans = COMMUNICATIVE_SKILLS_CATALOG
+      .map(s => s.id)
+      .filter(isLaunchVisibleCommunicativeSkill)
+      .filter(id => !used.has(id));
     expect(orphans).toEqual([]);
   });
 });
@@ -954,7 +963,11 @@ describe('projectSkill', () => {
   });
 
   it('projects every catalogued skill', () => {
-    expect(projectSkillsV2([], [])).toHaveLength(COMMUNICATIVE_SKILLS_CATALOG.length);
+    expect(projectSkillsV2([], [])).toHaveLength(
+      COMMUNICATIVE_SKILLS_CATALOG.filter(skill =>
+        isLaunchVisibleCommunicativeSkill(skill.id)
+      ).length
+    );
   });
 });
 
