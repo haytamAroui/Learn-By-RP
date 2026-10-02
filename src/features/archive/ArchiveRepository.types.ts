@@ -5,8 +5,18 @@ import {
   SessionState,
   SkillLapse,
   SkillObservation,
+  ValidatedLearningObservation,
+  ValidatedSkillObservation,
   UserPreferences,
 } from '../../types';
+
+export type PersistableSessionRecord = Omit<
+  SessionRecord,
+  'observations' | 'skillObservations'
+> & {
+  observations: ValidatedLearningObservation[];
+  skillObservations?: ValidatedSkillObservation[];
+};
 
 /**
  * A consent decision for one processing scope.
@@ -52,7 +62,7 @@ export interface ArchiveRepository {
   beginSession(session: SessionRecord): Promise<void>;
   saveSessionState(sessionId: string, state: SessionState): Promise<void>;
   completeSession(
-    session: SessionRecord,
+    session: PersistableSessionRecord,
     rejectedProposals?: { reason: string }[]
   ): Promise<void>;
   getSessions(): Promise<SessionRecord[]>;
@@ -85,7 +95,6 @@ export interface ArchiveRepository {
   disputeObservation(observationId: string): Promise<void>;
 
   getSkillObservations(): Promise<SkillObservation[]>;
-  saveSkillObservations(observations: SkillObservation[]): Promise<void>;
   hideSkillObservation(observationId: string): Promise<void>;
   disputeSkillObservation(observationId: string): Promise<void>;
 
