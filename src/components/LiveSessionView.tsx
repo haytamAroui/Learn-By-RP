@@ -80,6 +80,7 @@ import type {
   SceneActionName,
   SceneCheckpointSnapshot,
 } from '../contracts/scene';
+import type { PersistableSessionRecord } from '../features/archive/ArchiveRepository.types';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
@@ -106,7 +107,7 @@ interface LiveSessionViewProps {
   initialSession: SessionRecord;
   accommodations?: AccommodationProfile;
   preferredSpeechRate?: number;
-  onEndSession: (session: SessionRecord) => void;
+  onEndSession: (session: PersistableSessionRecord) => void;
 }
 
 /**
