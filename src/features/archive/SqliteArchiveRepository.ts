@@ -222,12 +222,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
       await txn.runAsync(
         `INSERT OR REPLACE INTO scene_state
-          (session_id, mission_id, revision, facts, checkpoints, is_finished, outcome)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          (session_id, mission_id, revision, facts, action_counts, checkpoints, is_finished, outcome)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.sceneState?.revision ?? 1,
         JSON.stringify(session.sceneState?.facts ?? {}),
+        JSON.stringify(session.sceneState?.actionCounts ?? {}),
         JSON.stringify(session.sceneState?.checkpoints ?? []),
         session.sceneState?.isFinished ? 1 : 0,
         session.sceneState?.outcome ?? 'unknown'
@@ -364,12 +365,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
       await txn.runAsync(
         `INSERT OR REPLACE INTO scene_state
-          (session_id, mission_id, revision, facts, checkpoints, is_finished, outcome)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          (session_id, mission_id, revision, facts, action_counts, checkpoints, is_finished, outcome)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.sceneState?.revision ?? 1,
         JSON.stringify(session.sceneState?.facts ?? {}),
+        JSON.stringify(session.sceneState?.actionCounts ?? {}),
         JSON.stringify(session.sceneState?.checkpoints ?? []),
         session.sceneState?.isFinished ? 1 : 0,
         session.sceneState?.outcome ?? 'unknown'
@@ -562,6 +564,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           sceneId: String(row.mission_id),
           revision: Number(sceneRow?.revision ?? 1),
           facts: parseJson(sceneRow?.facts as string, {}),
+          actionCounts: parseJson(sceneRow?.action_counts as string, {}),
           learnerKnows: [],
           characterKnows: [],
           checkpoints: parseJson(sceneRow?.checkpoints as string, []),
