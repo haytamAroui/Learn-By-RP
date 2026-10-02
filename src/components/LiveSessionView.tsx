@@ -76,6 +76,7 @@ import {
   inheritSupportForRetry,
   mergeAttemptPassages,
   mergeFinalizedAttemptEvidence,
+  passagesForAttempt,
 } from '../features/learning/retrySupport';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import {
@@ -1254,8 +1255,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     async (parentAttemptId: string, allPassages: Passage[]) => {
       if (!mission || finalizedAttemptIdsRef.current.has(parentAttemptId)) return;
 
-      const attemptPassages = allPassages.filter(
-        passage => passage.attemptId === parentAttemptId
+      const attemptPassages = passagesForAttempt(
+        allPassages,
+        parentAttemptId
       );
       const learnerPassages = attemptPassages.filter(
         passage => passage.speaker === 'user' && passage.status === 'final'
@@ -1549,8 +1551,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     // Assessment only sees the current attempt. The archive keeps every prior
     // attempt so retry never erases learner evidence or transcript provenance.
     const visiblePassages = passagesRef.current;
-    const currentAttemptPassages = visiblePassages.filter(
-      passage => passage.attemptId === attemptId
+    const currentAttemptPassages = passagesForAttempt(
+      visiblePassages,
+      attemptId
     );
     const evidenceSupportExposures = [
       ...historicalSupportExposures,
