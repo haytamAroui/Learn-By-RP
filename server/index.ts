@@ -7,6 +7,7 @@ import { matchPhraseInText } from '../src/features/learning/matching';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/data/missions';
 import { allowedSkillsForMission } from '../src/features/learning/skillMembership';
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
+import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
@@ -230,14 +231,14 @@ app.post('/api/coach/hint', async (req: Request, res: Response) => {
     };
 
     if (!providers.structured) {
-      const fallbackHints: Record<string, string> = {
-        intent_hint: `Try telling ${characterName} what you would like to drink, or ask if they have a plant milk.`,
-        partial_form: `Start with: "Un café con..." or "¿Tiene leche de...?"`,
-        full_form: `Say: "Un café con leche, por favor." or "¿Tiene leche de avena?"`,
-        explanation: `${characterName} asked what you want. In Spain, "para llevar" means takeaway.`
-      };
       res.json({
-        hint: fallbackHints[step] || fallbackHints.intent_hint,
+        hint: buildCoachFallback({
+          step,
+          targetLanguage,
+          characterName,
+          targetPhraseForm,
+          lastAssistantLine,
+        }),
         ...scopedTargets,
       });
       return;
