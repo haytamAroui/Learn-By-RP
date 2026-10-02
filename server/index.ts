@@ -216,7 +216,35 @@ Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "
  */
 app.post('/api/assessment', async (req: Request, res: Response) => {
   try {
-    const { sessionId, attemptId, passages = [], usefulPhrases = [], language = 'es', missionId } = req.body;
+    const {
+      sessionId,
+      attemptId,
+      passages = [],
+      usefulPhrases = [],
+      language = 'es',
+      missionId,
+      opportunityInstances = [],
+    } = req.body;
+
+    const allowedSkillIdSet = new Set(allowedSkillsForMission(missionId).map(skill => skill.id));
+    const declaredOpportunities = Array.isArray(opportunityInstances)
+      ? opportunityInstances
+          .filter((opportunity: any) =>
+            opportunity &&
+            typeof opportunity.id === 'string' &&
+            typeof opportunity.opportunityId === 'string' &&
+            typeof opportunity.skillId === 'string' &&
+            opportunity.detection === 'validated' &&
+            (opportunity.status === 'presented' || opportunity.status === 'taken') &&
+            allowedSkillIdSet.has(opportunity.skillId)
+          )
+          .map((opportunity: any) => ({
+            id: opportunity.id,
+            opportunityId: opportunity.opportunityId,
+            skillId: opportunity.skillId,
+            status: opportunity.status,
+          }))
+      : [];
 
     const userPassages = passages.filter((p: any) => p.speaker === 'user');
     if (userPassages.length === 0) {
@@ -249,6 +277,9 @@ ${JSON.stringify(usefulPhrases, null, 2)}
 Communicative skills this mission may evidence (the ONLY skillIds you may propose):
 ${JSON.stringify(allowedSkillsForMission(missionId), null, 2)}
 
+Runtime-declared opportunities you may reference (the ONLY opportunityInstanceIds you may propose):
+${JSON.stringify(declaredOpportunities, null, 2)}
+
 Full Transcript:
 ${transcriptDump}
 
@@ -262,11 +293,13 @@ Rules:
 6. Do NOT assess ability, level, grammar quality, or personality. You are extracting evidence, not grading.
 7. "retrievalProposal": propose "unknown". Retrieval is derived on the client from the support-exposure ledger, which you cannot see.
 8. taskOutcome: "achieved" | "partial" | "not_achieved" | "unknown". This describes the SCENE result only. Use "unknown" when the transcript does not settle it.
-9. "skillItems" credit communicative SKILLS, not phrases. Only propose a skillId listed below.
-10. The same quote rules apply: verbatim from a learner passage, with that passage's ID and revision.
-11. Do not propose a skill merely because its topic was mentioned. The learner must have performed it.
-12. Scene outcome and skill demonstration are independent. A learner may demonstrate a skill even when the overall task is not achieved.
-13. Do not report skill failures. A failed cold opportunity is derived deterministically from validated runtime OpportunityInstance records, never from taskOutcome alone.
+9. "skillItems" credit communicative SKILLS, not phrases. Only propose a skillId listed above.
+10. Every skillItem MUST include an "opportunityInstanceId" copied exactly from the runtime-declared opportunities above, and its skillId MUST match that opportunity. If no declared opportunity fits, omit the skillItem.
+11. The same quote rules apply: verbatim from a learner passage, with that passage's ID and revision.
+12. Do not propose a skill merely because its topic was mentioned. The learner must have performed it during that declared opportunity.
+13. Scene outcome and skill demonstration are independent. A learner may demonstrate a skill even when the overall task is not achieved.
+14. Your classification is only a proposal. The deterministic client validates the opportunity, passage, revision, support state and mission/scene authorship before persisting anything.
+15. Do not report skill failures. A failed cold opportunity is derived deterministically from validated runtime OpportunityInstance records, never from taskOutcome alone.
 
 Return JSON matching:
 {
@@ -290,6 +323,7 @@ Return JSON matching:
   "skillItems": [
     {
       "skillId": "one of the ids listed above",
+      "opportunityInstanceId": "one exact runtime opportunity id listed above",
       "quote": "Verbatim substring from the learner's own passage showing the skill performed",
       "sourcePassageId": "passage ID where quote occurred",
       "sourceRevision": "revision key of passage",
