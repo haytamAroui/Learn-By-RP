@@ -1457,6 +1457,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       supportLedgerHighWaterMark: supportExposuresRef.current.length,
     };
 
+    // Freeze the parent attempt's grounded evidence before any scene/passages are
+    // rewound. Failure to reach the assessor never blocks Retry; the local phrase
+    // fallback still preserves grounded production.
+    try {
+      await finalizeAttemptBeforeRetry(attemptId, currentPassages);
+    } catch (error) {
+      console.warn('Could not finalize parent attempt evidence before retry', error);
+    }
+
     // The server verifies checkpoint id + revision against replayed authoritative parent state; semantic opportunity judgments never enter the restore contract.
     const forkedAttemptId = await mirror.fork(checkpoint, true);
     if (!forkedAttemptId) {
