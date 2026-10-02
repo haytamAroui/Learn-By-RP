@@ -10,6 +10,7 @@ import {
   ConsentRecord,
   PersistableSessionRecord,
 } from './ArchiveRepository.types';
+import { api } from '../../lib/api';
 
 interface ArchiveContextValue {
   ready: boolean;
@@ -90,6 +91,20 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setInterruptedSessions(interrupted);
     setVoiceConsent(voice);
     setSavedAnalysisConsent(analysis);
+
+    api.access.setLocalConsentSnapshot({
+      ...(voice
+        ? { voice: { granted: voice.granted, version: voice.version } }
+        : {}),
+      ...(analysis
+        ? {
+            saved_analysis: {
+              granted: analysis.granted,
+              version: analysis.version,
+            },
+          }
+        : {}),
+    });
   }, []);
 
   useEffect(() => {
@@ -98,6 +113,16 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
     (async () => {
       try {
         await refresh();
+
+        // The local archive remains usable offline. When the backend is
+        // reachable, mirror only decisions the learner has actually made.
+        try {
+          await api.access.ensureGuest();
+          await api.access.syncKnownConsents();
+        } catch (syncError) {
+          console.warn('[Consent] Server sync unavailable:', syncError);
+        }
+
         if (!cancelled) setReady(true);
       } catch (err) {
         if (cancelled) return;
@@ -197,6 +222,32 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
           if (scope === 'voice') setVoiceConsent(record);
           else setSavedAnalysisConsent(record);
 
+          api.access.setLocalConsentSnapshot({
+            ...(voiceConsent
+              ? {
+                  voice: {
+                    granted: voiceConsent.granted,
+                    version: voiceConsent.version,
+                  },
+                }
+              : {}),
+            ...(savedAnalysisConsent
+              ? {
+                  saved_analysis: {
+                    granted: savedAnalysisConsent.granted,
+                    version: savedAnalysisConsent.version,
+                  },
+                }
+              : {}),
+            [scope]: { granted: record.granted, version: record.version },
+          });
+
+          try {
+            await api.access.syncConsent(scope, record.granted, record.version);
+          } catch (syncError) {
+            console.warn('[Consent] Decision saved locally; server sync unavailable:', syncError);
+          }
+
           const prefs =
             scope === 'voice'
               ? { ...preferences, voiceProcessingConsent: granted }
@@ -206,8 +257,45 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
         },
         withdrawConsent: async scope => {
           await archiveRepository.withdrawConsent(scope);
-          if (scope === 'voice') setVoiceConsent(null);
-          else setSavedAnalysisConsent(null);
+          const record = await archiveRepository.getConsent(scope);
+
+          if (scope === 'voice') setVoiceConsent(record);
+          else setSavedAnalysisConsent(record);
+
+          api.access.setLocalConsentSnapshot({
+            ...(voiceConsent
+              ? {
+                  voice: {
+                    granted: voiceConsent.granted,
+                    version: voiceConsent.version,
+                  },
+                }
+              : {}),
+            ...(savedAnalysisConsent
+              ? {
+                  saved_analysis: {
+                    granted: savedAnalysisConsent.granted,
+                    version: savedAnalysisConsent.version,
+                  },
+                }
+              : {}),
+            ...(record
+              ? {
+                  [scope]: {
+                    granted: record.granted,
+                    version: record.version,
+                  },
+                }
+              : {}),
+          });
+
+          if (record) {
+            try {
+              await api.access.syncConsent(scope, false, record.version);
+            } catch (syncError) {
+              console.warn('[Consent] Withdrawal saved locally; server sync unavailable:', syncError);
+            }
+          }
 
           const prefs =
             scope === 'voice'
