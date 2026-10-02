@@ -102,6 +102,33 @@ describe('regulated health roleplay policy', () => {
     expect(sanitizeRegulatedHealthActorResponse(safe, 'fr')).toEqual(safe);
   });
 
+  it('does not broker Realtime for regulated-health missions', () => {
+    const server = readFileSync('server/index.ts', 'utf8');
+    const realtime = readFileSync(
+      'src/providers/conversation/openAIRealtimeConversationProvider.ts',
+      'utf8'
+    );
+
+    expect(server).toContain(
+      "realtime_not_allowed_for_regulated_health_mission"
+    );
+    expect(server).toContain('isRegulatedHealthMission(mission)');
+    expect(realtime).toContain(
+      "Regulated-health missions require the HTTP actor boundary"
+    );
+  });
+
+  it('re-applies the deterministic action allowlist to Realtime output', () => {
+    const realtime = readFileSync(
+      'src/providers/conversation/openAIRealtimeConversationProvider.ts',
+      'utf8'
+    );
+
+    expect(realtime).toContain('sanitizeActorAction(');
+    expect(realtime).toContain('input.allowedActions');
+    expect(realtime).toContain('finalizeRealtimeActorResponse');
+  });
+
   it('keeps the server actor boundary mission-pinned and post-sanitized', () => {
     const server = readFileSync('server/index.ts', 'utf8');
 
