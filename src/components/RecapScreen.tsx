@@ -16,6 +16,7 @@ import {
 } from '../data/missions';
 import { archiveRepository } from '../features/archive/archiveRepository';
 import { useI18n } from '../features/i18n';
+import { createRecapPhraseExposures } from '../features/learning/supportSurfaces';
 import { shareTextFile } from '../lib/share';
 import { Button, EmptyState, SectionLabel } from './ui';
 import { Sheet } from './Sheet';
@@ -78,6 +79,22 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
   const handleDispute = (obsId: string) => {
     void archiveRepository.disputeObservation(obsId);
     setObservations(current => current.filter(observation => observation.observationId !== obsId));
+  };
+
+  const handleShowEvidence = async () => {
+    const exposures = createRecapPhraseExposures({
+      existing: session.supportExposures ?? [],
+      sessionId: session.id,
+      observations,
+      recordedAt: new Date().toISOString(),
+    });
+
+    try {
+      await archiveRepository.appendSupportExposures(session.id, exposures);
+      setShowEvidence(true);
+    } catch (error) {
+      console.warn('Could not persist recap support exposure', error);
+    }
   };
 
   const handleShareReceipt = async () => {
@@ -186,7 +203,7 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
 
           <Button
             label={`${t.common.evidence} · ${observations.length}`}
-            onPress={() => setShowEvidence(true)}
+            onPress={() => void handleShowEvidence()}
             variant="ghost"
             icon={<Eye size={17} color={iconColor('brand')} />}
           />
