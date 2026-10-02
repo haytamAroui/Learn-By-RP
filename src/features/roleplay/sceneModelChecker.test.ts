@@ -31,6 +31,15 @@ describe('scene model checker', () => {
     }
   });
 
+  it('proves every authored pressure branch in released scenes is reachable', () => {
+    for (const scene of Object.values(SCENES)) {
+      const report = modelCheckScene(scene);
+      expect(new Set(report.reachablePressureBranchIds)).toEqual(
+        new Set(scene.pressureBranches.map(item => item.id))
+      );
+    }
+  });
+
   it('detects an authored action whose valid precondition can never hold', () => {
     const impossible: SceneDefinition = {
       ...CAFE_SCENE,
@@ -98,6 +107,29 @@ describe('scene model checker', () => {
     expect(report.achievedPath).not.toBeNull();
     expect(report.errors.join('\n')).toMatch(
       /unsafe complication: ingredient-lockout.*ask_about_ingredient.*no achieved state is reachable/i
+    );
+  });
+
+  it('fails an authored pressure branch whose trigger can never become true', () => {
+    const impossible: SceneDefinition = {
+      ...CAFE_SCENE,
+      pressureBranches: [
+        {
+          ...CAFE_SCENE.pressureBranches[0],
+          id: 'pressure.impossible',
+          trigger: {
+            op: 'and',
+            predicates: [
+              { op: 'eq', fact: 'itemConfirmed', value: true },
+              { op: 'eq', fact: 'itemConfirmed', value: false },
+            ],
+          },
+        },
+      ],
+    };
+
+    expect(modelCheckScene(impossible).errors.join('\n')).toMatch(
+      /unreachable pressure branch: pressure\.impossible/i
     );
   });
 
