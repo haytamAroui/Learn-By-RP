@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
-import { Passage, SupportExposure } from '../../types';
+import { Passage, SessionRecord, SupportExposure } from '../../types';
 import {
   isPhraseProductionSupportRelevant,
   isProductionFormExposure,
   isSkillProductionSupportRelevant,
+  selectHistoricalCrossSessionSupport,
 } from './supportScope';
 
 const PASSAGE: Passage = {
@@ -126,4 +127,129 @@ describe('scoped support semantics', () => {
       })
     ).toBe(false);
   });
+
+  it('briefing and recap support carries across attempts only on the same UTC evidence day', () => {
+    const recap = exposure({
+      id: 'recap-1',
+      sessionId: 'prior-session',
+      attemptId: 'prior-attempt',
+      source: 'recap',
+      kind: 'recap_exposure',
+      targetSkillId: undefined,
+      targetOpportunityId: undefined,
+      targetPhraseId: 'phrase-a',
+      targetItemIds: ['phrase-a'],
+      policyVersion: 5,
+      recordedAt: '2026-10-02T00:05:00.000Z',
+    });
+
+    expect(
+      isPhraseProductionSupportRelevant({
+        exposure: recap,
+        phraseId: 'phrase-a',
+        passage: PASSAGE,
+        attemptId: 'attempt-1',
+      })
+    ).toBe(true);
+
+    expect(
+      isPhraseProductionSupportRelevant({
+        exposure: recap,
+        phraseId: 'phrase-b',
+        passage: PASSAGE,
+        attemptId: 'attempt-1',
+      })
+    ).toBe(false);
+
+    expect(
+      isPhraseProductionSupportRelevant({
+        exposure: recap,
+        phraseId: 'phrase-a',
+        passage: {
+          ...PASSAGE,
+          startedAt: '2026-10-03T00:01:00.000Z',
+          endedAt: '2026-10-03T00:01:05.000Z',
+        },
+        attemptId: 'attempt-1',
+      })
+    ).toBe(false);
+  });
+
+  it('selects only earlier same-day historical briefing/recap rows for mission phrases', () => {
+    const historical: SessionRecord = {
+      id: 'old-session',
+      missionId: 'mission-old',
+      missionVersion: 1,
+      language: 'es',
+      mode: 'guided',
+      coldAttempt: false,
+      state: 'recap_ready',
+      startedAt: '2026-10-02T00:00:00.000Z',
+      endedAt: '2026-10-02T00:10:00.000Z',
+      passages: [],
+      supportExposures: [
+        exposure({
+          id: 'briefing-a',
+          sessionId: 'old-session',
+          attemptId: 'attempt-1',
+          source: 'briefing',
+          kind: 'briefing_exposure',
+          targetPhraseId: 'phrase-a',
+          targetItemIds: ['phrase-a'],
+          recordedAt: '2026-10-02T00:01:00.000Z',
+        }),
+        exposure({
+          id: 'recap-b',
+          sessionId: 'old-session',
+          attemptId: 'attempt-1',
+          source: 'recap',
+          kind: 'recap_exposure',
+          targetPhraseId: 'phrase-b',
+          targetItemIds: ['phrase-b'],
+          recordedAt: '2026-10-02T00:09:00.000Z',
+        }),
+        exposure({
+          id: 'coach-a',
+          sessionId: 'old-session',
+          attemptId: 'attempt-1',
+          source: 'coach',
+          kind: 'full_form',
+          targetPhraseId: 'phrase-a',
+          targetItemIds: ['phrase-a'],
+          recordedAt: '2026-10-02T00:02:00.000Z',
+        }),
+      ],
+      observations: [],
+      taskOutcome: 'completed',
+      sceneState: {
+        sceneId: 'scene-old',
+        revision: 1,
+        facts: {},
+        learnerKnows: [],
+        characterKnows: [],
+        checkpoints: [],
+        isFinished: true,
+        outcome: 'achieved',
+      },
+    };
+
+    const selected = selectHistoricalCrossSessionSupport({
+      sessions: [historical],
+      currentSessionId: 'new-session',
+      targetPhraseIds: ['phrase-a'],
+      currentSessionStartedAt: '2026-10-02T01:00:00.000Z',
+    });
+
+    expect(selected.map(item => item.id)).toEqual(['briefing-a']);
+
+    expect(
+      selectHistoricalCrossSessionSupport({
+        sessions: [historical],
+        currentSessionId: 'new-session',
+        targetPhraseIds: ['phrase-a', 'phrase-b'],
+        currentSessionStartedAt: '2026-10-03T01:00:00.000Z',
+      })
+    ).toEqual([]);
+  });
+
 });

@@ -36,6 +36,8 @@ import {
   SupportExposure,
   SceneState,
   LearningObservation,
+  SkillObservation,
+  SkillLapse,
   OpportunityInstance,
   OperationalTelemetryEvent,
   TaskOutcome,
@@ -70,8 +72,11 @@ import {
 import { getScene } from '../content/scenes';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
 import {
+  FinalizedAttemptEvidence,
   inheritSupportForRetry,
   mergeAttemptPassages,
+  mergeFinalizedAttemptEvidence,
+  passagesForAttempt,
 } from '../features/learning/retrySupport';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import {
@@ -112,6 +117,8 @@ interface LiveSessionViewProps {
   initialSession: SessionRecord;
   accommodations?: AccommodationProfile;
   preferredSpeechRate?: number;
+  /** Read-only prior-session briefing/recap rows used for cross-session evidence only. */
+  historicalSupportExposures?: SupportExposure[];
   onEndSession: (session: SessionRecord) => void;
 }
 
@@ -306,6 +313,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   initialSession,
   accommodations = { enabled: [] },
   preferredSpeechRate = 1,
+  historicalSupportExposures = [],
   onEndSession,
 }) => {
   const { t, language } = useI18n();
@@ -446,6 +454,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const passagesRef = useRef(passages);
   const supportExposuresRef = useRef(supportExposures);
   const priorAttemptPassagesRef = useRef<Passage[]>([]);
+  const finalizedAttemptEvidenceRef = useRef<FinalizedAttemptEvidence[]>([]);
+  const finalizedAttemptIdsRef = useRef<Set<string>>(new Set());
   const opportunityInstancesRef = useRef<OpportunityInstance[]>(
     initialSession.opportunityInstances ?? []
   );
@@ -1241,6 +1251,163 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     }
   };
 
+  const finalizeAttemptBeforeRetry = useCallback(
+    async (parentAttemptId: string, allPassages: Passage[]) => {
+      if (!mission || finalizedAttemptIdsRef.current.has(parentAttemptId)) return;
+
+      const attemptPassages = passagesForAttempt(
+        allPassages,
+        parentAttemptId
+      );
+      const learnerPassages = attemptPassages.filter(
+        passage => passage.speaker === 'user' && passage.status === 'final'
+      );
+      if (learnerPassages.length === 0) {
+        finalizedAttemptEvidenceRef.current.push({
+          attemptId: parentAttemptId,
+          observations: [],
+          skillObservations: [],
+          skillLapses: [],
+        });
+        finalizedAttemptIdsRef.current.add(parentAttemptId);
+        return;
+      }
+
+      const evidenceSupportExposures = [
+        ...historicalSupportExposures,
+        ...supportExposuresRef.current,
+      ];
+      const isRehearsalAttempt = parentAttemptId !== 'attempt-1';
+      let lastAssessmentResponse: unknown = null;
+      let proposal: StructuredAssessmentProposal | null = null;
+
+      try {
+        const response = await api.assessment({
+          sessionId,
+          attemptId: parentAttemptId,
+          missionId: mission.id,
+          passages: attemptPassages,
+          supportExposures: evidenceSupportExposures,
+          usefulPhrases: mission.usefulPhrases,
+          language: mission.language,
+          opportunityInstances: opportunityInstancesRef.current
+            .filter(
+              opportunity =>
+                opportunity.attemptId === parentAttemptId &&
+                opportunity.detection === 'validated' &&
+                (opportunity.status === 'presented' || opportunity.status === 'taken')
+            )
+            .map(opportunity => ({
+              id: opportunity.id,
+              opportunityId: opportunity.opportunityId,
+              skillId: opportunity.skillId,
+              status: opportunity.status,
+              detection: opportunity.detection,
+            })),
+        });
+        lastAssessmentResponse = response;
+        proposal = normalizeAssessmentResponse(
+          response,
+          sessionId,
+          parentAttemptId
+        );
+      } catch (error) {
+        console.warn(
+          'Could not remotely assess parent attempt before retry; preserving grounded local phrase evidence only',
+          error
+        );
+      }
+
+      let phraseObservations: LearningObservation[] = [];
+      let proposedOutcome: TaskOutcome = 'unknown';
+
+      if (proposal) {
+        const validated = validateAssessmentProposal(
+          proposal,
+          attemptPassages,
+          evidenceSupportExposures,
+          isRehearsalAttempt
+        );
+        phraseObservations = validated.validatedObservations;
+        proposedOutcome = validated.taskOutcome;
+      }
+
+      const local = buildLocalObservations({
+        sessionId,
+        attemptId: parentAttemptId,
+        passages: attemptPassages,
+        supportExposures: evidenceSupportExposures,
+        candidates: mission.usefulPhrases,
+        isColdAttempt: coldAttempt,
+        isRehearsalAttempt,
+      });
+      const phraseKeys = new Set(
+        phraseObservations.map(
+          observation => `${observation.sourceTurnId}::${observation.itemId}`
+        )
+      );
+      phraseObservations = [
+        ...phraseObservations,
+        ...local.observations.filter(
+          observation =>
+            !phraseKeys.has(
+              `${observation.sourceTurnId}::${observation.itemId}`
+            )
+        ),
+      ];
+
+      const missionSkillIds = [
+        ...mission.primarySkillIds,
+        ...mission.secondarySkillIds,
+      ];
+      const normalizedSkillItems = normalizeSkillItems(
+        lastAssessmentResponse,
+        missionSkillIds
+      );
+      const skillProposal: SkillEvidenceProposal = {
+        schemaVersion: proposal?.schemaVersion ?? 1,
+        sessionId,
+        attemptId: parentAttemptId,
+        taskOutcome: proposedOutcome,
+        skillItems: normalizedSkillItems,
+      };
+      const opportunityAssessmentView = prepareOpportunityAssessmentView({
+        existing: opportunityInstancesRef.current,
+        candidates: normalizedSkillItems,
+        passages: attemptPassages,
+      });
+      const skillValidation = validateSkillEvidenceProposal(skillProposal, {
+        sessionId,
+        attemptId: parentAttemptId,
+        mission,
+        passages: allPassages,
+        supportExposures: evidenceSupportExposures,
+        opportunityInstances: opportunityAssessmentView,
+        isRehearsalAttempt,
+        // A retry is an explicit continuation, not a natural completed failure.
+        // Positive grounded evidence is preserved, but no lapse is derived here.
+        sessionEndReason: 'user_ended',
+        evidenceSource: 'validated_explicit',
+      });
+
+      opportunityInstancesRef.current =
+        commitValidatedOpportunityDemonstrations({
+          existing: opportunityInstancesRef.current,
+          validated: skillValidation.validated,
+          passages: attemptPassages,
+        });
+
+      finalizedAttemptEvidenceRef.current.push({
+        attemptId: parentAttemptId,
+        observations: phraseObservations,
+        skillObservations: skillValidation.validated,
+        skillLapses: skillValidation.lapses,
+      });
+      finalizedAttemptIdsRef.current.add(parentAttemptId);
+    },
+    [coldAttempt, historicalSupportExposures, mission, sessionId]
+  );
+
   const handleRetryCheckpoint = async () => {
     const currentPassages = passagesRef.current;
     const mirror = sceneMirrorRef.current;
@@ -1291,6 +1458,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       // Support shown after the scene checkpoint remains known to the learner.
       supportLedgerHighWaterMark: supportExposuresRef.current.length,
     };
+
+    // Freeze the parent attempt's grounded evidence before any scene/passages are
+    // rewound. Failure to reach the assessor never blocks Retry; the local phrase
+    // fallback still preserves grounded production.
+    try {
+      await finalizeAttemptBeforeRetry(attemptId, currentPassages);
+    } catch (error) {
+      console.warn('Could not finalize parent attempt evidence before retry', error);
+    }
 
     // The server verifies checkpoint id + revision against replayed authoritative parent state; semantic opportunity judgments never enter the restore contract.
     const forkedAttemptId = await mirror.fork(checkpoint, true);
@@ -1374,10 +1550,18 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
     // Assessment only sees the current attempt. The archive keeps every prior
     // attempt so retry never erases learner evidence or transcript provenance.
-    const finalPassages = passagesRef.current;
+    const visiblePassages = passagesRef.current;
+    const currentAttemptPassages = passagesForAttempt(
+      visiblePassages,
+      attemptId
+    );
+    const evidenceSupportExposures = [
+      ...historicalSupportExposures,
+      ...supportExposures,
+    ];
     const archivedPassages = mergeAttemptPassages(
       priorAttemptPassagesRef.current,
-      finalPassages
+      visiblePassages
     );
     const finalSceneState = sceneStateRef.current;
     const wasRehearsal = attemptId !== 'attempt-1';
@@ -1429,8 +1613,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         // Lets the server tell the model which skills are creditable. Membership is
         // still validated client-side; this only narrows what is offered.
         missionId: mission.id,
-        passages: finalPassages,
-        supportExposures,
+        passages: currentAttemptPassages,
+        supportExposures: evidenceSupportExposures,
         usefulPhrases: mission.usefulPhrases,
         language: mission.language,
         opportunityInstances: finalOpportunityInstances
@@ -1463,8 +1647,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     if (proposal) {
       const validated = validateAssessmentProposal(
         proposal,
-        finalPassages,
-        supportExposures,
+        currentAttemptPassages,
+        evidenceSupportExposures,
         wasRehearsal
       );
       finalObservations = validated.validatedObservations;
@@ -1497,7 +1681,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     const opportunityAssessmentView = prepareOpportunityAssessmentView({
       existing: finalOpportunityInstances,
       candidates: normalizedSkillItems,
-      passages: finalPassages,
+      passages: currentAttemptPassages,
     });
 
     const skillValidation = validateSkillEvidenceProposal(skillProposal, {
@@ -1505,7 +1689,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       attemptId,
       mission,
       passages: archivedPassages,
-      supportExposures,
+      supportExposures: evidenceSupportExposures,
       opportunityInstances: opportunityAssessmentView,
       isRehearsalAttempt: wasRehearsal,
       sessionEndReason: endReason,
@@ -1521,7 +1705,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     finalOpportunityInstances = commitValidatedOpportunityDemonstrations({
       existing: finalOpportunityInstances,
       validated: validatedSkillObservations,
-      passages: finalPassages,
+      passages: currentAttemptPassages,
     });
     opportunityInstancesRef.current = finalOpportunityInstances;
 
@@ -1537,8 +1721,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     const local = buildLocalObservations({
       sessionId,
       attemptId,
-      passages: finalPassages,
-      supportExposures,
+      passages: currentAttemptPassages,
+      supportExposures: evidenceSupportExposures,
       candidates: mission.usefulPhrases,
       isColdAttempt: coldAttempt,
       isRehearsalAttempt: wasRehearsal,
@@ -1557,8 +1741,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       );
     }
 
-    const userPassages = finalPassages.filter(p => p.speaker === 'user');
+    const userPassages = currentAttemptPassages.filter(p => p.speaker === 'user');
     const hasLearnerSpeech = userPassages.length > 0;
+
+    const mergedEvidence = mergeFinalizedAttemptEvidence({
+      finalizedAttempts: finalizedAttemptEvidenceRef.current,
+      current: {
+        observations: finalObservations,
+        skillObservations: validatedSkillObservations,
+        skillLapses,
+      },
+    });
 
     // Map the assessor's scene-level outcome onto the receipt's vocabulary.
     // `unknown` is preserved rather than collapsed into a flattering label.
@@ -1593,19 +1786,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       startedAt: initialSession.startedAt,
       endedAt: new Date().toISOString(),
       endReason,
-      passages: finalPassages,
+      passages: archivedPassages,
       supportExposures,
       opportunityInstances: finalOpportunityInstances,
-      observations: finalObservations,
+      observations: mergedEvidence.observations,
       // Only validated evidence reaches the archive, written in the same
       // transaction as the transcript it cites.
-      skillObservations: validatedSkillObservations,
-      skillLapses,
+      skillObservations: mergedEvidence.skillObservations,
+      skillLapses: mergedEvidence.skillLapses,
       taskOutcome: resolvedOutcome,
       sceneState: finalSceneState,
-      summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, finalObservations.length, hasLearnerSpeech),
+      summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, mergedEvidence.observations.length, hasLearnerSpeech),
       actionableFeedback: proposal?.actionableFeedback ?? [
-        ...(finalObservations.length > 0
+        ...(mergedEvidence.observations.length > 0
           ? [t.live.feedbackGoodEngagement]
           : []),
         t.live.feedbackReviewDue,
@@ -1622,6 +1815,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     t.live,
     sessionId,
     supportExposures,
+    historicalSupportExposures,
   ]);
 
   if (!mission) return null;

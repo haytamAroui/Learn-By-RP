@@ -8,6 +8,7 @@ import { Button } from '../../components/ui';
 import { MISSION_CATALOG } from '../../data/missions';
 import { MissionDefinition, SessionRecord } from '../../types';
 import { useSessionCoordinator } from '../../features/session/SessionProvider';
+import { selectHistoricalCrossSessionSupport } from '../../features/learning/supportScope';
 
 export default function SessionScreen() {
   const router = useRouter();
@@ -75,6 +76,13 @@ export default function SessionScreen() {
     );
   }
 
+  const historicalSupportExposures = selectHistoricalCrossSessionSupport({
+    sessions: archive.sessions,
+    currentSessionId: persistedSession.id,
+    targetPhraseIds: mission.usefulPhrases.map(phrase => phrase.id),
+    currentSessionStartedAt: persistedSession.startedAt,
+  });
+
   const handleEndSession = async (session: SessionRecord) => {
     // Persist transcript, exposure ledger, validated observations and the
     // recomputed projection in one transaction.
@@ -100,6 +108,7 @@ export default function SessionScreen() {
           initialSession={persistedSession}
           accommodations={archive.preferences.accommodations}
           preferredSpeechRate={archive.preferences.speechRate ?? 1}
+          historicalSupportExposures={historicalSupportExposures}
           onEndSession={handleEndSession}
         />
       </View>

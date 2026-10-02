@@ -1,7 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
-**Last reconciled with `main`:** `753bda9f9ff0e2861b44848b4eb64c860949ea64` (2026-10-02)  
+**Last reconciled with `main`:** `2de7fc69399220fc0eea658cc3c2ae55bc2abdad` (2026-10-02)  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -113,7 +113,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
   - [x] clarify_misunderstanding
   - [x] paraphrase_when_stuck
 - [x] Attribute one communicative act to one most-specific child skill. (`sameCommunicativeAct` + ancestor rejection; regression-tested)
-- [x] Cap distinct skills credited per passage [Tunable]. (`SKILL_POLICY.maxSkillsCreditedPerPassage = 2`, learning policy v4; cap runs after validation and deterministically prefers mission primary skills; `skillCreditCap.test.ts`)
+- [x] Cap distinct skills credited per passage [Tunable]. (`SKILL_POLICY.maxSkillsCreditedPerPassage = 2`, current learning policy v5; cap runs after validation and deterministically prefers mission primary skills; `skillCreditCap.test.ts`)
 - [x] Add `give_opinion_with_reason`.
 - [x] Add `compare_options`.
 - [x] Add `make_arrangement`.
@@ -244,7 +244,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Intent hint is recorded but does not expose target production form. (`supportScope.ts`)
 - [x] Partial/full/model phrase/typed example affect production evidence for the exact target. (policy semantics in `supportScope.ts`; remaining surfaces still need event instrumentation)
 - [x] Meaning/replay/slow/explanation of character speech do not downgrade production evidence. (`supportScope.ts`)
-- [ ] Briefing/recap exposure affects only shown target items within policy window.
+- [x] Briefing/recap exposure affects only shown target items within policy window. (`supportScope.ts`: exact phrase-scoped historical selector + same-UTC-evidence-day cross-session rule; `SessionScreen` feeds prior rows read-only; `supportScope.test.ts` covers same phrase/different phrase/same day/next day)
 - [x] Support windows are policy-versioned and per target. (`SupportExposure.policyVersion`, SQLite migration v6, `supportScope.ts`)
 - [x] Never mark an entire session assisted because any help occurred.
 - [x] Add regression test: meaning of the character question does not downgrade unrelated production evidence. (`skillEvidence.test.ts`, `supportScope.test.ts`)
@@ -276,7 +276,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Exact form seen before retry is inherited into the new attempt with exact target provenance.
 - [x] Retry after answer reveal remains rehearsal; inherited support is materialized in the retry attempt.
 - [x] Add regression test for retry support inheritance and idempotency. (`retrySupport.test.ts`)
-- [ ] Preserve original attempt and original evidence. Transcript/support provenance is now retained across retries; per-attempt evidence finalization before retry is still open.
+- [x] Preserve original attempt and original evidence. (`LiveSessionView`: parent attempt is finalized before fork with local fallback, Retry cannot create a lapse, active assessment is attempt-isolated, final archive merges all attempt passages + phrase/skill evidence; `retrySupport.ts`/`.test.ts` dedupe and provenance regressions)
 
 ---
 
@@ -862,7 +862,7 @@ Confirmed from `main` after squash merge `fa4564dc19ed36adfff27f916a4486d0745954
 - [x] Scene outcome and skill demonstration are independent, and strict lapses require a validated taken cold opportunity tied to learner evidence.
 - [x] Authored `SkillOpportunityDefinition` → runtime `OpportunityInstance` → assessment → validated evidence is wired end-to-end.
 - [x] Coach support is scoped to exact skill/opportunity/phrase targets; unrelated comprehension assistance does not contaminate production evidence.
-- [x] Retry support uses a high-water ledger and never rewinds learner exposure.
+- [x] Retry support uses a high-water ledger and never rewinds learner exposure; parent-attempt evidence is finalized before fork and merged into the final archive without re-assessing old passages as the active attempt.
 - [x] Finite scene facts, bounded predicate/effect DSL, payload validation and build-time model checking are active.
 - [x] Hosted scene execution is server-authoritative with versioned requests, cross-channel dedupe metadata and append-only event replay.
 - [x] Deterministic Director V1 exists for authored opportunities, complications and completion preparation.
@@ -874,7 +874,7 @@ Confirmed from `main` after squash merge `fa4564dc19ed36adfff27f916a4486d0745954
 - [x] Canonical reviewed ScenarioFamily catalog defines stable family IDs, domain boundaries, inclusion/exclusion reviewer metadata and fail-closed mission/program validation (`src/content/scenarioFamilies.ts`, `scenarioFamilies.test.ts`, `validate-scenes.mts`).
 - [x] Detailed evidence reason codes are deterministic, persisted and localized; scene success still cannot manufacture target-skill evidence (`evidenceReasons.ts`, schema v10, `skillEvidence.test.ts`).
 - [x] Retry checkpoints are deterministic-authority only: semantic opportunity judgments are excluded from the v5 checkpoint contract and rejected if injected at ingress/store boundaries (`scene.ts`, `sceneStore.ts`, `routes.ts`, `sceneStore.test.ts`).
-- [x] Support-surface exposure instrumentation is complete for the §6 exposure-kind list: model phrase audio, rendered captions, explicit typed examples, recap phrase review and briefing preview all have scoped ledger events. Cross-session briefing/recap relevance-window semantics remain separately open above.
+- [x] Support-surface exposure instrumentation is complete for the §6 exposure-kind list, including exact-target same-day cross-session briefing/recap relevance under learning policy v5.
 - [ ] Director pressure branches remain open.
 - [ ] Curated launch content, locale review and final simulation remain open.
 - [ ] Consent/privacy/security hardening and delete-tombstone guarantees remain G0 blockers.

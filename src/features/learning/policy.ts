@@ -15,7 +15,7 @@
  * a validated CEFR alignment.
  */
 
-export const LEARNING_POLICY_VERSION = 4;
+export const LEARNING_POLICY_VERSION = 5;
 
 /**
  * Phrase recall: one item, retrieved over time.
@@ -110,6 +110,13 @@ export const LEARNING_WINDOWS = {
   modeledFormWindowMs: 90_000,
 
   /**
+   * Briefing and recap phrase exposure carries across sessions only within the
+   * same deterministic evidence day. We use UTC because evidence day keys are
+   * persisted from ISO timestamps; this avoids device-timezone-dependent replay.
+   */
+  briefingRecapSameUtcDay: true,
+
+  /**
    * Minimum share of a proposal's quote words that must appear in the learner's
    * own transcript before provenance is accepted.
    */
@@ -131,6 +138,7 @@ export const LEARNING_POLICY = {
   steadyMinSessions: PHRASE_POLICY.steadyMinSessions,
   intervals: PHRASE_POLICY.intervals,
   modeledFormWindowMs: LEARNING_WINDOWS.modeledFormWindowMs,
+  briefingRecapSameUtcDay: LEARNING_WINDOWS.briefingRecapSameUtcDay,
   minQuoteCoverage: LEARNING_WINDOWS.minQuoteCoverage,
 } as const;
 
