@@ -301,6 +301,56 @@ export function buildLocalObservations(input: {
   return { observations, ambiguous };
 }
 
+export function validateDrillReview(input: {
+  phrase: PhraseItem;
+  quote: string;
+  modality: 'spoken' | 'typed';
+  unassisted: boolean;
+  now?: string;
+}): ValidatedLearningObservation | null {
+  const quote = input.quote.trim();
+  if (!quote) return null;
+
+  const match = matchPhraseInText(input.phrase.form, quote);
+  if (match.verdict === 'none' || match.verdict === 'ambiguous') return null;
+
+  const now = input.now ?? new Date().toISOString();
+  const retrieval: RetrievalType =
+    input.unassisted && input.modality === 'spoken'
+      ? 'unassisted'
+      : input.unassisted
+        ? 'unknown'
+        : 'assisted';
+
+  return {
+    observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+    sessionId: 'drill',
+    attemptId: 'drill',
+    sourceTurnId: `drill-${Date.now()}`,
+    sourceRevision: 'rev-drill',
+    itemId: input.phrase.id,
+    candidateForm: input.phrase.form,
+    meaning: input.phrase.meaning,
+    quote: match.matchedText || quote,
+    modality: input.modality,
+    retrieval,
+    taskOutcome: 'achieved',
+    rehearsal: false,
+    supportExposureIds: [],
+    recordedAt: now,
+    category: classifyEvidence({
+      retrieval,
+      modality: input.modality,
+      exposures: [],
+      modelingWithinWindow: false,
+      attemptedButFailed: false,
+      wasCorrected: match.verdict === 'paraphrase',
+    }),
+    originalForm: match.verdict === 'paraphrase' ? match.matchedText || undefined : undefined,
+    correctedForm: match.verdict === 'paraphrase' ? input.phrase.form : undefined,
+  } as ValidatedLearningObservation;
+}
+
 /**
  * Pure projection: Recomputes a phrase's recall status and scheduling interval
  * from its historical ledger of validated observations.
