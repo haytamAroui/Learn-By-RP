@@ -6,8 +6,21 @@ import type {
   SupportExposure,
 } from '../../types';
 import { recommendNextRp, renderNextRpReason } from './nextRp';
+import { negotiateRoleplayCapabilities } from '../roleplay/capabilities';
+import type { TransportCapabilities } from '../../providers/voice/types';
 
 const NOW = Date.parse('2026-10-02T12:00:00.000Z');
+
+const FULL_CAPABILITIES: TransportCapabilities = {
+  speechRateControl: true,
+  endOfTurnDelayControl: true,
+  pushToTalk: true,
+  scriptedLineInjection: true,
+  blockingToolCalls: true,
+  transcriptRevisions: true,
+};
+
+const FULL_NEGOTIATED = negotiateRoleplayCapabilities(FULL_CAPABILITIES, {});
 
 function observation(
   overrides: Partial<SkillObservation> = {}
@@ -86,6 +99,7 @@ const BASE = {
     { missionId: 'mission-es-cafe-sol', ready: true },
     { missionId: 'mission-es-farmacia-sol', ready: true },
   ],
+  negotiatedCapabilities: FULL_NEGOTIATED,
   now: NOW,
 };
 
@@ -219,8 +233,81 @@ describe('deterministic next-RP policy', () => {
       lapses: [],
     });
 
-    expect(result.kind).toBe('challenge');
-    expect(result.requiresLearnerConfirmation).toBe(true);
-    expect(result.reasonCode).toBe('REPEATED_SUCCESS_CHALLENGE');
+    expect(result).toMatchObject({
+      kind: 'challenge',
+      challengeType: 'fast_speech',
+      requiresLearnerConfirmation: true,
+      reasonCode: 'REPEATED_SUCCESS_CHALLENGE',
+    });
+  });
+
+  it('selects only a challenge type allowed by negotiated capabilities', () => {
+    const negotiatedCapabilities = negotiateRoleplayCapabilities(
+      {
+        ...FULL_CAPABILITIES,
+        speechRateControl: false,
+      },
+      {}
+    );
+
+    const result = recommendNextRp({
+      ...BASE,
+      negotiatedCapabilities,
+      completedMissionIds: [],
+      recentScenarioFamilyIds: [
+        'counter-ordering',
+        'pharmacy-consultation',
+      ],
+      observations: [
+        observation({ id: 'obs-1', recordedAt: '2026-09-30T10:00:00.000Z' }),
+        observation({
+          id: 'obs-2',
+          sourcePassageId: 'p-2',
+          recordedAt: '2026-10-01T10:00:00.000Z',
+        }),
+      ],
+      lapses: [],
+    });
+
+    expect(result).toMatchObject({
+      kind: 'challenge',
+      challengeType: 'scripted_mishearing',
+    });
+  });
+
+  it('does not propose a challenge when negotiation allows no challenge type', () => {
+    const negotiatedCapabilities = negotiateRoleplayCapabilities(
+      {
+        ...FULL_CAPABILITIES,
+        speechRateControl: false,
+        scriptedLineInjection: false,
+      },
+      {}
+    );
+
+    const result = recommendNextRp({
+      ...BASE,
+      negotiatedCapabilities,
+      completedMissionIds: [],
+      recentScenarioFamilyIds: [
+        'counter-ordering',
+        'pharmacy-consultation',
+      ],
+      observations: [
+        observation({ id: 'obs-1', recordedAt: '2026-09-30T10:00:00.000Z' }),
+        observation({
+          id: 'obs-2',
+          sourcePassageId: 'p-2',
+          recordedAt: '2026-10-01T10:00:00.000Z',
+        }),
+      ],
+      lapses: [],
+    });
+
+    expect(result).toMatchObject({
+      kind: 'continue',
+      reasonCode: 'PROGRAM_NEXT_READY',
+    });
+    expect(result.challengeType).toBeUndefined();
   });
 });
