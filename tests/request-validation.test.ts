@@ -85,6 +85,7 @@ describe('AI request schemas', () => {
   it('bounds realtime instructions and coach steps', () => {
     expect(
       validateRealtimeSessionRequest({
+        missionId: 'mission-fr-boulangerie',
         targetLanguage: 'fr',
         instructions: 'roleplay',
       }).ok
