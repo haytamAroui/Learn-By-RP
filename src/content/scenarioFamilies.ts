@@ -259,9 +259,10 @@ export function validateScenarioFamilyCatalog(): ScenarioFamilyCatalogValidation
 }
 
 export function validateMissionScenarioFamily(
-  mission: MissionDefinition
+  mission: MissionDefinition,
+  catalog: readonly ScenarioFamilyDefinition[] = SCENARIO_FAMILY_CATALOG
 ): string[] {
-  const family = scenarioFamilyFor(mission.scenarioFamilyId);
+  const family = catalog.find(candidate => candidate.id === mission.scenarioFamilyId);
   if (!family) {
     return [
       `${mission.id}: unknown scenarioFamilyId ${mission.scenarioFamilyId}`,
