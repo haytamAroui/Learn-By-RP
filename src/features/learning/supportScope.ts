@@ -1,4 +1,5 @@
 import { Passage, SupportExposure } from '../../types';
+import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from './policy';
 
 /**
  * Support that can expose the learner's production form.
@@ -35,6 +36,35 @@ export function exposurePrecedesPassage(
   }
 
   return shownAt <= passageEnd;
+}
+
+/**
+ * Versioned temporal relevance for production-form support.
+ *
+ * Newly recorded support uses the current policy. Older persisted support keeps
+ * conservative behavior when no policy version exists, so migration never makes
+ * historical evidence look more independent than it originally was.
+ */
+export function isWithinProductionSupportWindow(
+  exposure: SupportExposure,
+  passage: Passage
+): boolean {
+  const passageEnd = Date.parse(passage.endedAt ?? passage.startedAt ?? '');
+  const shownAt = Date.parse(exposure.recordedAt);
+
+  if (!Number.isFinite(passageEnd) || !Number.isFinite(shownAt)) return true;
+  if (shownAt > passageEnd) return false;
+
+  if (exposure.policyVersion === undefined) return true;
+
+  const elapsed = passageEnd - shownAt;
+  const version = exposure.policyVersion;
+  const windowMs =
+    version >= LEARNING_POLICY_VERSION
+      ? LEARNING_POLICY.modeledFormWindowMs
+      : LEARNING_POLICY.modeledFormWindowMs;
+
+  return elapsed <= windowMs;
 }
 
 /**
@@ -77,6 +107,7 @@ export function isSkillProductionSupportRelevant(input: {
   const { exposure, passage, attemptId, skillId, opportunityInstanceId } = input;
   if (!exposurePrecedesPassage(exposure, passage, attemptId)) return false;
   if (!isProductionFormExposure(exposure)) return false;
+  if (!isWithinProductionSupportWindow(exposure, passage)) return false;
 
   if (exposure.targetOpportunityId) {
     return Boolean(
