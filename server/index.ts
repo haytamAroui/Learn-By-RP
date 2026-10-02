@@ -6,6 +6,7 @@ import cors from 'cors';
 import { matchPhraseInText } from '../src/features/learning/matching';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/data/missions';
 import { allowedSkillsForMission } from '../src/features/learning/skillMembership';
+import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
@@ -83,31 +84,14 @@ function sanitizeActorResponse(
   meaning: string;
   proposedAction: { name: string; payload: Record<string, unknown> } | null;
 } {
-  const allowlist = new Set(
-    Array.isArray(allowedActions)
-      ? allowedActions.filter((name: unknown): name is string => typeof name === 'string')
-      : []
-  );
-
-  const proposedAction =
-    response?.proposedAction &&
-    typeof response.proposedAction.name === 'string' &&
-    allowlist.has(response.proposedAction.name)
-      ? {
-          name: response.proposedAction.name,
-          payload:
-            response.proposedAction.payload &&
-            typeof response.proposedAction.payload === 'object' &&
-            !Array.isArray(response.proposedAction.payload)
-              ? response.proposedAction.payload
-              : {},
-        }
-      : null;
+  const allowlist = Array.isArray(allowedActions)
+    ? allowedActions.filter((name: unknown): name is string => typeof name === 'string')
+    : [];
 
   return {
     replyText: typeof response?.replyText === 'string' ? response.replyText : '',
     meaning: typeof response?.meaning === 'string' ? response.meaning : '',
-    proposedAction,
+    proposedAction: sanitizeActorAction(response?.proposedAction, allowlist),
   };
 }
 
