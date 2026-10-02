@@ -1,7 +1,11 @@
 import { Db } from './db';
 import { withTransaction } from './database';
 import { matchPhraseInText } from '../learning/matching';
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import {
+  COMMUNICATIVE_SKILLS_CATALOG,
+  isDirectlyEvidencedSkill,
+  isLaunchVisibleCommunicativeSkill,
+} from '../../content/skills';
 import { LearningObservation, LexicalItem, SkillItem } from '../../types';
 
 /**
@@ -298,15 +302,20 @@ const VERB_INFINITIVES = new Set([
 
 /** The curated skill catalog, typed as SkillItem. */
 export function buildSkillCatalog(): SkillItem[] {
-  return COMMUNICATIVE_SKILLS_CATALOG.map(skill => ({
-    id: skill.id,
-    name: skill.name,
-    category: skill.category,
-    description: skill.description,
-    evidencePhraseIds: [],
-    samplePhrases: skill.samplePhrases,
-    associatedMissions: skill.associatedMissions,
-  }));
+  return COMMUNICATIVE_SKILLS_CATALOG
+    .filter(skill =>
+      isLaunchVisibleCommunicativeSkill(skill.id) &&
+      isDirectlyEvidencedSkill(skill.id)
+    )
+    .map(skill => ({
+      id: skill.id,
+      name: skill.name,
+      category: skill.category,
+      description: skill.description,
+      evidencePhraseIds: [],
+      samplePhrases: skill.samplePhrases,
+      associatedMissions: skill.associatedMissions,
+    }));
 }
 
 /** Whether a lexical item covers a phrase the learner actually produced. */

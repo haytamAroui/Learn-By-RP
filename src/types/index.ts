@@ -1,5 +1,6 @@
 export type LanguageCode = 'es' | 'fr' | 'de' | 'it' | 'ja';
 
+
 export type Mode = 'immersion' | 'guided' | 'focused';
 
 export type RecallStatus = 'new' | 'supported' | 'growing' | 'steady';
@@ -301,6 +302,56 @@ export interface SkillProjection {
  * in every file that switches on it. Uniqueness is enforced by the catalog test.
  */
 export type CommunicativeSkillId = string;
+
+export type SkillModality = 'production' | 'comprehension' | 'interaction';
+export type SkillEvidencePolicy = 'direct' | 'derived';
+
+export interface CommunicativeSkillDeprecation {
+  sincePolicyVersion: number;
+  successorSkillIds: CommunicativeSkillId[];
+  note: string;
+}
+
+/**
+ * Canonical definition of a communicative capability.
+ *
+ * Missions reference stable ids from this catalog; they never redefine what a
+ * skill means. Parent/derived families may organize skills for pedagogy but are
+ * not themselves eligible for direct evidence.
+ */
+export interface CommunicativeSkillDefinition {
+  id: CommunicativeSkillId;
+  name: string;
+  category: string;
+  description: string;
+  canDo: Record<UiLanguage, string>;
+  positiveExamples: string[];
+  negativeExamples: string[];
+  boundaryNotes: string[];
+  modality: SkillModality;
+  typicalOpportunityPatterns: string[];
+  parentSkillId?: CommunicativeSkillId;
+  evidencePolicy: SkillEvidencePolicy;
+  deprecated: CommunicativeSkillDeprecation | null;
+
+  /** Legacy matcher guidance retained only for old-record reconstruction. */
+  patterns: string[];
+  samplePhrases: string[];
+  /** Content provenance only; runtime mission membership remains authoritative. */
+  associatedMissions: string[];
+}
+
+/**
+ * Learner-facing discovery/pedagogy label.
+ *
+ * PracticeSkills intentionally have no learner status in V1. They help users
+ * discover practice, while evidence and progression belong to CommunicativeSkill.
+ */
+export interface PracticeSkillDefinition {
+  id: string;
+  name: Record<UiLanguage, string>;
+  description: string;
+}
 
 export type DomainId = string;
 export type ScenarioId = string;

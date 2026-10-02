@@ -1,4 +1,5 @@
-import { MISSION_CATALOG, COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import { MISSION_CATALOG } from '../../data/missions';
+import { COMMUNICATIVE_SKILLS_CATALOG, isDirectlyEvidencedSkill } from '../../content/skills';
 import { CommunicativeSkillId, MissionDefinition } from '../../types';
 
 /**
@@ -14,10 +15,17 @@ export function missionFor(missionId: string | undefined): MissionDefinition | u
   return MISSION_CATALOG.find(m => m.id === missionId);
 }
 
-/** Ids the mission declares, primary first. */
+/** All pedagogical ids the mission declares, primary first. */
 export function allowedSkillIds(mission: MissionDefinition | undefined): CommunicativeSkillId[] {
   if (!mission) return [];
   return [...new Set([...mission.primarySkillIds, ...mission.secondarySkillIds])];
+}
+
+/** Only mission skills that may receive direct learning evidence. */
+export function evidentiarySkillIds(
+  mission: MissionDefinition | undefined
+): CommunicativeSkillId[] {
+  return allowedSkillIds(mission).filter(isDirectlyEvidencedSkill);
 }
 
 /** The catalogue entries a model is permitted to propose, with enough to identify them. */
@@ -25,6 +33,23 @@ export function allowedSkillsForMission(
   missionId: string | undefined
 ): Array<{ id: string; name: string; description: string }> {
   const allowed = new Set(allowedSkillIds(missionFor(missionId)));
+
+  return COMMUNICATIVE_SKILLS_CATALOG.filter(skill => allowed.has(skill.id)).map(skill => ({
+    id: skill.id,
+    name: skill.name,
+    description: skill.description,
+  }));
+}
+
+/**
+ * Evidence-facing allowlist used by assessment. Derived families may still be
+ * pedagogically attached to a mission, but the assessor must never propose them
+ * as direct learner evidence.
+ */
+export function evidentiarySkillsForMission(
+  missionId: string | undefined
+): Array<{ id: string; name: string; description: string }> {
+  const allowed = new Set(evidentiarySkillIds(missionFor(missionId)));
 
   return COMMUNICATIVE_SKILLS_CATALOG.filter(skill => allowed.has(skill.id)).map(skill => ({
     id: skill.id,

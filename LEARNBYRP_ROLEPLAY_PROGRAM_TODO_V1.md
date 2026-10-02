@@ -78,52 +78,52 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 
 ## Two-layer model
 
-- [ ] Define `PracticeSkill` as learner-facing discovery/pedagogy labels.
-- [ ] Initial PracticeSkills:
-  - [ ] Start a conversation
-  - [ ] Keep it going
-  - [ ] Explain an idea
-  - [ ] Ask for clarification
-  - [ ] Handle a difficult moment
-  - [ ] Speak for a purpose
-- [ ] PracticeSkills have no learner status in V1 unless an explicit roll-up policy is later approved.
+- [x] Define `PracticeSkill` as learner-facing discovery/pedagogy labels. (`PracticeSkillDefinition`, `src/content/skills.ts`)
+- [x] Initial PracticeSkills: (`PRACTICE_SKILLS` in `src/content/skills.ts`)
+  - [x] Start a conversation
+  - [x] Keep it going
+  - [x] Explain an idea
+  - [x] Ask for clarification
+  - [x] Handle a difficult moment
+  - [x] Speak for a purpose
+- [x] PracticeSkills have no learner status in V1 unless an explicit roll-up policy is later approved. (`PracticeSkillDefinition` has no status field)
 
 ## Canonical CommunicativeSkill catalog
 
-- [ ] Move the canonical skill catalog out of the monolithic mission data file.
-- [ ] Store skills as validated content data.
-- [ ] Give each skill a stable ID.
-- [ ] Add localized can-do statement.
-- [ ] Add positive examples.
-- [ ] Add negative examples.
-- [ ] Add boundary notes vs neighboring skills.
-- [ ] Add modality: production / comprehension / interaction.
-- [ ] Add typical opportunity patterns.
-- [ ] Add deprecation + successor policy.
-- [ ] Never reuse retired skill IDs.
+- [x] Move the canonical skill catalog out of the monolithic mission data file. (`src/content/skills.ts` is the runtime authority; `src/data/missions.ts` only keeps a compatibility re-export)
+- [x] Store skills as validated content data. (`COMMUNICATIVE_SKILLS_CATALOG`)
+- [x] Give each skill a stable ID. (catalog uniqueness regression coverage)
+- [x] Add localized can-do statement. (EN/FR/ES/NL `canDo`)
+- [x] Add positive examples.
+- [x] Add negative examples.
+- [x] Add boundary notes vs neighboring skills.
+- [x] Add modality: production / comprehension / interaction.
+- [x] Add typical opportunity patterns.
+- [x] Add deprecation + successor policy. (`CommunicativeSkillDeprecation`)
+- [x] Never reuse retired skill IDs. (`RETIRED_COMMUNICATIVE_SKILL_IDS` + overlap test)
 
 ## Repair hierarchy
 
-- [ ] Make `communicative_repair` a parent/derived family, not directly evidenced.
-- [ ] Child skills:
-  - [ ] request_repetition
-  - [ ] request_slower_speech
-  - [ ] ask_clarification
-  - [ ] check_understanding
-  - [ ] clarify_misunderstanding
-  - [ ] paraphrase_when_stuck
-- [ ] Attribute one communicative act to one most-specific child skill.
+- [x] Make `communicative_repair` a parent/derived family, not directly evidenced. (`evidencePolicy: derived`; assessment/direct opportunity gates)
+- [x] Child skills: (six direct children of `skill-communicative-repair`; hierarchy tests)
+  - [x] request_repetition
+  - [x] request_slower_speech
+  - [x] ask_clarification
+  - [x] check_understanding
+  - [x] clarify_misunderstanding
+  - [x] paraphrase_when_stuck
+- [x] Attribute one communicative act to one most-specific child skill. (`sameCommunicativeAct` + ancestor rejection; regression-tested)
 - [ ] Cap skills credited per passage [Tunable].
-- [ ] Add `give_opinion_with_reason`.
-- [ ] Add `compare_options`.
-- [ ] Add `make_arrangement`.
-- [ ] Add `narrate_past_event`.
+- [x] Add `give_opinion_with_reason`.
+- [x] Add `compare_options`.
+- [x] Add `make_arrangement`.
+- [x] Add `narrate_past_event`.
 
 ---
 
 # 3. Fix context identity before Transfer
 
-Current code still counts `sessionId` as an independent context in `skillProjection.ts`. This must be removed before Transfer or Steady can be trusted.
+Resolved: context identity is now derived from `domainId + scenarioFamilyId`; `sessionId`, retry and cosmetic variants do not create transfer credit.
 
 - [x] Introduce required `scenarioFamilyId`. (`MissionDefinition.scenarioFamilyId`)
 - [x] Define:
@@ -455,7 +455,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Add deterministic reason codes with SQLite round-trip/backfill.
 - [x] Add policy version to skill observations/lapses.
 - [x] Preserve phrase and skill evidence separately.
-- [ ] One communicative act maps to one most-specific skill.
+- [x] One communicative act maps to one most-specific skill. (`skillHierarchyEvidence.test.ts`)
 - [x] Assessor proposes; deterministic validator persists.
 - [x] Rehearsal cannot count as independent.
 - [x] Provider/session failure cannot produce lapse; lapse requires natural `completed` end + strict taken cold opportunity.
@@ -694,7 +694,7 @@ A program must pass:
 - [x] scene failed without skill lapse. (`skillEvidence.test.ts`: scene failure alone creates no lapse)
 - [x] wrong passage revision rejected. (`skillEvidence.test.ts`)
 - [x] assistant quote rejected. (`skillEvidence.test.ts`)
-- [ ] one communicative act cannot be credited to overlapping parent + child skills.
+- [x] one communicative act cannot be credited to overlapping parent + child skills. (`skillHierarchyEvidence.test.ts`)
 - [x] rehearsal cannot create independent evidence. (`skillEvidence.test.ts`)
 
 ## Support
@@ -756,7 +756,7 @@ A program must pass:
 
 - [x] Required scenarioFamilyId/contextKey.
 - [x] Fix sessionId-as-context in `skillProjection.ts`.
-- [ ] Canonical skill hierarchy/catalog.
+- [x] Canonical skill hierarchy/catalog. (`src/content/skills.ts`; parent/child + direct/derived evidence policy)
 - [x] taskOutcome vs demonstration.
 - [x] OpportunityInstance.
 - [x] scoped support relevance matrix. (`supportScope.ts`, `supportScope.test.ts`)
@@ -869,7 +869,7 @@ Confirmed from `main` after squash merge `dfe61724c6170655c89f8a1191b4b72d816fa5
 - [x] Provider capabilities are negotiated; unsupported communication challenge types cannot be emitted by next-RP policy v2.
 - [x] RoleplayProgram contracts, ProgramProjection/Preferences, deterministic next-RP, Cold/Guided/Transfer/Recovery and recovery caps are implemented.
 - [x] Carry-forward continuity facts have source, sensitivity, mission allowlist, TTL and local-only enforcement.
-- [ ] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution remain open.
+- [x] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution implemented (`src/content/skills.ts`, `skillEvidence.ts`, scene/catalog/hierarchy regression tests; duplicate mission-owned catalog removed).
 - [ ] Non-coach support surfaces still need complete instrumentation for model phrase audio, captions, typed examples and recap exposure.
 - [ ] Director pressure branches remain open.
 - [ ] Curated launch content, locale review and final simulation remain open.

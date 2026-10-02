@@ -1,4 +1,8 @@
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import {
+  isAncestorSkill,
+  isDirectlyEvidencedSkill,
+  isKnownCommunicativeSkill,
+} from '../../content/skills';
 import { getScene } from '../../content/scenes';
 import {
   exposurePrecedesPassage,
@@ -98,6 +102,8 @@ export interface SkillValidationRejection {
   /** The check that failed. Stable, so it can be tested and displayed. */
   check:
     | 'unknown_skill'
+    | 'skill_not_directly_evidenced'
+    | 'less_specific_skill'
     | 'not_in_mission'
     | 'passage_missing'
     | 'passage_not_learner'
@@ -132,7 +138,6 @@ export interface SkillValidationResult {
   taskOutcome: TaskOutcome;
 }
 
-const KNOWN_SKILL_IDS = new Set(COMMUNICATIVE_SKILLS_CATALOG.map(skill => skill.id));
 
 /** Skills a mission is allowed to produce evidence for. */
 export function missionSkillIds(mission: MissionDefinition): {
@@ -143,6 +148,35 @@ export function missionSkillIds(mission: MissionDefinition): {
     primary: new Set(mission.primarySkillIds),
     secondary: new Set(mission.secondarySkillIds),
   };
+}
+
+function sameCommunicativeAct(
+  left: SkillEvidenceCandidate,
+  right: SkillEvidenceCandidate
+): boolean {
+  if (
+    left.sourcePassageId !== right.sourcePassageId ||
+    left.sourceRevision !== right.sourceRevision
+  ) {
+    return false;
+  }
+
+  if (
+    left.opportunityInstanceId &&
+    left.opportunityInstanceId === right.opportunityInstanceId
+  ) {
+    return true;
+  }
+
+  const leftQuote = normalizeText(left.quote);
+  const rightQuote = normalizeText(right.quote);
+  if (!leftQuote || !rightQuote) return false;
+
+  return (
+    leftQuote === rightQuote ||
+    leftQuote.includes(rightQuote) ||
+    rightQuote.includes(leftQuote)
+  );
 }
 
 export function validateSkillEvidenceProposal(
@@ -164,14 +198,41 @@ export function validateSkillEvidenceProposal(
   // can be contradicted by the ledger.
   const allExposureIds = new Set(context.supportExposures.map(e => e.id));
 
+  // One communicative act may not be credited to both a hierarchy parent and a
+  // more-specific child. Candidate order is irrelevant: ancestors are identified
+  // before validation begins, using the same passage/revision and overlapping
+  // quoted learner words as the act boundary.
+  const lessSpecificCandidates = new Set<SkillEvidenceCandidate>();
+  for (let i = 0; i < proposal.skillItems.length; i += 1) {
+    for (let j = 0; j < proposal.skillItems.length; j += 1) {
+      if (i === j) continue;
+      const candidate = proposal.skillItems[i];
+      const other = proposal.skillItems[j];
+      if (
+        sameCommunicativeAct(candidate, other) &&
+        isAncestorSkill(candidate.skillId, other.skillId)
+      ) {
+        lessSpecificCandidates.add(candidate);
+      }
+    }
+  }
+
   for (const candidate of proposal.skillItems) {
     const reject = (check: SkillValidationRejection['check'], reason: string) => {
       rejected.push({ candidate, check, reason });
     };
 
     // 1. Is this a skill we actually have?
-    if (!KNOWN_SKILL_IDS.has(candidate.skillId)) {
+    if (!isKnownCommunicativeSkill(candidate.skillId)) {
       reject('unknown_skill', `"${candidate.skillId}" is not in the curated skill catalog`);
+      continue;
+    }
+
+    if (lessSpecificCandidates.has(candidate)) {
+      reject(
+        'less_specific_skill',
+        `${candidate.skillId} is an ancestor of a more-specific skill proposed for the same learner act`
+      );
       continue;
     }
 
@@ -253,6 +314,18 @@ export function validateSkillEvidenceProposal(
         );
         continue;
       }
+    }
+
+    // Derived families organize more-specific skills but never receive direct
+    // evidence. This check follows opportunity integrity checks deliberately:
+    // malformed/invented runtime opportunity links are rejected on their own
+    // authority boundary before the pedagogical hierarchy is considered.
+    if (!isDirectlyEvidencedSkill(candidate.skillId)) {
+      reject(
+        'skill_not_directly_evidenced',
+        `${candidate.skillId} is a derived/organizational skill and cannot receive direct evidence`
+      );
+      continue;
     }
 
     // 3. Does the cited passage exist?
@@ -454,6 +527,7 @@ export function deriveLapses(
   for (const opportunity of context.opportunityInstances ?? []) {
     // A declared or merely presented opportunity is not a failed attempt.
     if (opportunity.attemptId !== context.attemptId) continue;
+    if (!isDirectlyEvidencedSkill(opportunity.skillId)) continue;
     if (opportunity.detection !== 'validated') continue;
     if (opportunity.status !== 'taken') continue;
     if (opportunity.demonstration !== 'attempted_not_demonstrated') continue;

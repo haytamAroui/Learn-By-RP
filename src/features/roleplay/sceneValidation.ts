@@ -4,6 +4,10 @@ import {
   SceneFactDefinition,
   SceneFactValue,
 } from '../../contracts/scene';
+import {
+  isDirectlyEvidencedSkill,
+  isKnownCommunicativeSkill,
+} from '../../content/skills';
 
 export const MAX_PREDICATE_DEPTH = 8;
 
@@ -187,6 +191,11 @@ export function validateSceneDefinition(scene: SceneDefinition): SceneValidation
     const path = `opportunityDefinitions[${index}]`;
     if (!declaredSkills.has(opportunity.skillId)) {
       errors.push(`${path}: skill ${opportunity.skillId} is not declared by scene.skillIds`);
+    }
+    if (!isKnownCommunicativeSkill(opportunity.skillId)) {
+      errors.push(`${path}: skill ${opportunity.skillId} is not in the canonical skill catalog`);
+    } else if (!isDirectlyEvidencedSkill(opportunity.skillId)) {
+      errors.push(`${path}: skill ${opportunity.skillId} is derived and cannot own an opportunity`);
     }
     for (const action of opportunity.relevantActionIds ?? []) {
       if (!availableActions.has(action)) {

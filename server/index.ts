@@ -4,8 +4,8 @@ import cors from 'cors';
 // Shared with the client: one matching implementation, so the offline fallback
 // cannot be more generous than the deterministic client core.
 import { matchPhraseInText } from '../src/features/learning/matching';
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/data/missions';
-import { allowedSkillsForMission } from '../src/features/learning/skillMembership';
+import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/content/skills';
+import { evidentiarySkillsForMission } from '../src/features/learning/skillMembership';
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 // Scene director + action reducer, mounted under /v1.
@@ -216,7 +216,7 @@ app.post('/api/coach/hint', async (req: Request, res: Response) => {
       targetPhraseForm = '',
     } = req.body;
 
-    const missionSkills = allowedSkillsForMission(missionId);
+    const missionSkills = evidentiarySkillsForMission(missionId);
     const scopedSkill = missionSkills.find(skill => skill.id === targetSkillId);
     if (!scopedSkill) {
       res.status(400).json({ error: 'targetSkillId must be declared by the mission' });
@@ -295,7 +295,7 @@ app.post('/api/assessment', async (req: Request, res: Response) => {
       opportunityInstances = [],
     } = req.body;
 
-    const allowedSkillIdSet = new Set(allowedSkillsForMission(missionId).map(skill => skill.id));
+    const allowedSkillIdSet = new Set(evidentiarySkillsForMission(missionId).map(skill => skill.id));
     const declaredOpportunities = Array.isArray(opportunityInstances)
       ? opportunityInstances
           .filter((opportunity: any) =>
@@ -344,7 +344,7 @@ Target Useful Phrases to look for:
 ${JSON.stringify(usefulPhrases, null, 2)}
 
 Communicative skills this mission may evidence (the ONLY skillIds you may propose):
-${JSON.stringify(allowedSkillsForMission(missionId), null, 2)}
+${JSON.stringify(evidentiarySkillsForMission(missionId), null, 2)}
 
 Runtime-declared opportunities you may reference (the ONLY opportunityInstanceIds you may propose):
 ${JSON.stringify(declaredOpportunities, null, 2)}

@@ -412,4 +412,9 @@ describe('buildSkillCatalog', () => {
     expect(skills.length).toBeGreaterThan(0);
     expect(skills.every(skill => skill.samplePhrases.length > 0)).toBe(true);
   });
+
+  it('does not expose a derived family as a learner-status skill', () => {
+    expect(buildSkillCatalog().map(skill => skill.id))
+      .not.toContain('skill-communicative-repair');
+  });
 });

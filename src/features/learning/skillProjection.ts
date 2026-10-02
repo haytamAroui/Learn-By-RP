@@ -1,4 +1,8 @@
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import {
+  COMMUNICATIVE_SKILLS_CATALOG,
+  isDirectlyEvidencedSkill,
+  isLaunchVisibleCommunicativeSkill,
+} from '../../content/skills';
 import { SKILL_POLICY } from './policy';
 import { matchPhraseInText } from './matching';
 import { isIndependentSuccess, observationDay } from './skillEvidence';
@@ -166,15 +170,24 @@ function explain(
   }
 }
 
-/** Every catalogued skill, whether or not it has evidence. */
+/**
+ * Every launch-visible skill that can actually receive evidence.
+ *
+ * Derived/organizational parents stay in the canonical hierarchy but do not get a
+ * learner status until an explicit roll-up policy exists; otherwise a parent such
+ * as communicative repair would remain misleadingly "new" forever.
+ */
 export function projectSkillsV2(
   observations: SkillObservation[],
   lapses: SkillLapse[] = [],
   now: number = Date.now()
 ): SkillProjectionV2[] {
-  return COMMUNICATIVE_SKILLS_CATALOG.map(skill =>
-    projectSkill(skill.id, observations, lapses, now)
-  );
+  return COMMUNICATIVE_SKILLS_CATALOG
+    .filter(skill =>
+      isLaunchVisibleCommunicativeSkill(skill.id) &&
+      isDirectlyEvidencedSkill(skill.id)
+    )
+    .map(skill => projectSkill(skill.id, observations, lapses, now));
 }
 
 /**
@@ -195,6 +208,7 @@ export function inferLegacySkillEvidence(
     if (!quote.trim()) continue;
 
     for (const skill of COMMUNICATIVE_SKILLS_CATALOG) {
+      if (!isDirectlyEvidencedSkill(skill.id)) continue;
       if (!matchesAnySample(quote, skill.samplePhrases)) continue;
 
       inferred.push({
