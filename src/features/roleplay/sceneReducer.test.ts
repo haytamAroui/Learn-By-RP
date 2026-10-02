@@ -239,6 +239,7 @@ describe('finite effects', () => {
           effects: [{ set: 'trainDepartsSoon', value: false }],
         },
       ],
+      opportunityDefinitions: [],
     };
 
     const result = reduceSceneAction({
