@@ -11,6 +11,7 @@ describe('AI request schemas', () => {
   it('accepts a bounded actor request and rejects missing or oversized input', () => {
     expect(
       validateActorRequest({
+        missionId: 'mission-fr-boulangerie',
         userMessage: 'Bonjour',
         recentPassages: [],
         allowedActions: [],
@@ -20,6 +21,7 @@ describe('AI request schemas', () => {
     expect(validateActorRequest({}).ok).toBe(false);
     expect(
       validateActorRequest({
+        missionId: 'mission-fr-boulangerie',
         userMessage: 'x',
         recentPassages: [
           {
