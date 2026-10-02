@@ -956,6 +956,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   useEffect(() => {
     if (!mission) return;
 
+    // Effects may restart without the component unmounting (for example after a
+    // retry changes attemptId through handleUserMessage). Cleanup marks the old
+    // async work unmounted; the fresh lifecycle must explicitly become live again
+    // before accepting its authoritative scene snapshot.
+    mountedRef.current = true;
     isEndingRef.current = false;
 
     // Attach the scene mirror when this mission has a released SceneDefinition.
