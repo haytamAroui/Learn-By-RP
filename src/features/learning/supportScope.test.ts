@@ -42,8 +42,8 @@ describe('scoped support semantics', () => {
   it('a hint for one phrase affects only that phrase', () => {
     const scoped = exposure();
 
-    expect(isPhraseProductionSupportRelevant(scoped, 'phrase-a')).toBe(true);
-    expect(isPhraseProductionSupportRelevant(scoped, 'phrase-b')).toBe(false);
+    expect(isPhraseProductionSupportRelevant({ exposure: scoped, phraseId: 'phrase-a', passage: PASSAGE, attemptId: 'attempt-1' })).toBe(true);
+    expect(isPhraseProductionSupportRelevant({ exposure: scoped, phraseId: 'phrase-b', passage: PASSAGE, attemptId: 'attempt-1' })).toBe(false);
   });
 
   it('meaning of the character turn is not production-form support', () => {
@@ -56,7 +56,7 @@ describe('scoped support semantics', () => {
     });
 
     expect(isProductionFormExposure(meaning)).toBe(false);
-    expect(isPhraseProductionSupportRelevant(meaning, 'phrase-a')).toBe(false);
+    expect(isPhraseProductionSupportRelevant({ exposure: meaning, phraseId: 'phrase-a', passage: PASSAGE, attemptId: 'attempt-1' })).toBe(false);
   });
 
   it('intent guidance is recorded without downgrading production', () => {
@@ -83,6 +83,22 @@ describe('scoped support semantics', () => {
         attemptId: 'attempt-1',
         skillId: 'skill-request-substitution',
         opportunityInstanceId: 'opp-other',
+      })
+    ).toBe(false);
+  });
+
+  it('versioned production support expires outside the policy window', () => {
+    const oldSupport = exposure({
+      policyVersion: 3,
+      recordedAt: '2026-10-02T00:55:00.000Z',
+    });
+
+    expect(
+      isPhraseProductionSupportRelevant({
+        exposure: oldSupport,
+        phraseId: 'phrase-a',
+        passage: PASSAGE,
+        attemptId: 'attempt-1',
       })
     ).toBe(false);
   });
