@@ -88,7 +88,7 @@ function observation(
     rehearsal: false,
     supportExposureIds: [],
     recordedAt: T0,
-  } as ValidatedLearningObservation;
+  } as unknown as ValidatedLearningObservation;
 }
 
 function session(
