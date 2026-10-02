@@ -5,7 +5,14 @@ import { __setDatabaseForTesting, migrate } from './database';
 import { archiveRepository as sqliteRepository } from './SqliteArchiveRepository';
 import { IndexedDbArchiveRepository } from './IndexedDbArchiveRepository';
 import { ArchiveRepository } from './ArchiveRepository.types';
-import { LearningObservation, Passage, SessionRecord, SupportExposure } from '../../types';
+import {
+  LearningObservation,
+  Passage,
+  SessionRecord,
+  SkillLapse,
+  SkillObservation,
+  SupportExposure,
+} from '../../types';
 
 /**
  * Native/web parity.
@@ -109,6 +116,51 @@ function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
   };
 }
 
+function rawSkillObservation(): SkillObservation {
+  return {
+    id: 'raw-skill-obs',
+    skillId: 'skill-request-substitution',
+    sessionId: 'session-1',
+    attemptId: 'attempt-1',
+    sourcePassageId: 'p-1',
+    sourceRevision: 'rev-1',
+    contextKey: {
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.es.cafe.breakfast',
+    },
+    modality: 'spoken',
+    retrieval: 'unassisted',
+    taskOutcome: 'achieved',
+    demonstration: 'demonstrated',
+    opportunityInstanceId: 'raw-opportunity',
+    supportExposureIds: [],
+    evidenceSource: 'validated_explicit',
+    quote: 'quisiera un café con leche',
+    recordedAt: T0,
+  };
+}
+
+function rawSkillLapse(): SkillLapse {
+  return {
+    id: 'raw-skill-lapse',
+    skillId: 'skill-request-substitution',
+    sessionId: 'session-1',
+    attemptId: 'attempt-1',
+    sourcePassageId: 'p-1',
+    sourceRevision: 'rev-1',
+    contextKey: {
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.es.cafe.breakfast',
+    },
+    opportunityInstanceId: 'raw-opportunity',
+    demonstration: 'attempted_not_demonstrated',
+    basis: 'cold_attempt_failed',
+    recordedAt: T0,
+  };
+}
+
 /** The observable shape a learner sees, per implementation. */
 async function snapshot(repo: ArchiveRepository) {
   const [sessions, observations, phrases, preferences, lapses] = await Promise.all([
@@ -153,6 +205,24 @@ describe('native and web agree on the same archive', () => {
     expect(await snapshot(web)).toEqual(await snapshot(sqliteRepository));
   });
 
+
+  it('both refuse raw SessionRecord skill evidence without a validator bundle', async () => {
+    const poisoned = session({
+      skillObservations: [rawSkillObservation()],
+      skillLapses: [rawSkillLapse()],
+    });
+
+    for (const repo of [sqliteRepository, web]) {
+      await repo.beginSession(poisoned);
+      await repo.completeSession(poisoned);
+      expect(await repo.getSkillObservations()).toEqual([]);
+      expect(await repo.getSkillLapses()).toEqual([]);
+
+      const stored = await repo.getSessionById('session-1');
+      expect(stored?.skillObservations ?? []).toEqual([]);
+      expect(stored?.skillLapses ?? []).toEqual([]);
+    }
+  });
 
   it('both append post-session support exposures idempotently', async () => {
     const recapExposure: SupportExposure = {
@@ -274,6 +344,27 @@ describe('native and web agree on the same archive', () => {
     // The pre-existing archive survived both rejections.
     expect((await web.getSessions()).length).toBe(1);
     expect((await sqliteRepository.getSessions()).length).toBe(1);
+  });
+
+  it('does not promote imported embedded skill arrays into evidence stores', async () => {
+    const poisoned = session({
+      skillObservations: [rawSkillObservation()],
+      skillLapses: [rawSkillLapse()],
+    });
+    const payload = JSON.stringify({
+      version: 1,
+      schemaVersion: 1,
+      sessions: [poisoned],
+      phrases: [],
+      observations: [],
+    });
+
+    for (const repo of [sqliteRepository, web]) {
+      expect((await repo.importArchiveJson(payload)).success).toBe(true);
+      await repo.completeSession(poisoned);
+      expect(await repo.getSkillObservations()).toEqual([]);
+      expect(await repo.getSkillLapses()).toEqual([]);
+    }
   });
 
   it('both report interrupted sessions the same way', async () => {
