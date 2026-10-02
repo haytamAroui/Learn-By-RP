@@ -63,11 +63,11 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 
 ## Privacy/security/safety baseline
 
-- [ ] Confirm voice consent is tri-state and enforced server-side.
-- [ ] Confirm saved-analysis consent is independently enforced server-side.
-- [ ] Confirm AI endpoints require bounded authenticated/guest access.
-- [ ] Confirm rate limits and request schemas on AI endpoints.
-- [ ] Confirm delete tombstones block late assessment/provider writes.
+- [x] Confirm voice consent is tri-state and enforced server-side. (`consentState.ts`, `guestAccess.ts`; Realtime requires a server-side `voice` grant; explicit refusal remains a completed decision; `consent-tristate.test.ts`, `guest-access.test.ts`)
+- [x] Confirm saved-analysis consent is independently enforced server-side. (`/api/assessment` requires the independent `saved_analysis` grant; local client also fails closed before sending; `guest-access.test.ts`, `server-access-boundary.test.ts`)
+- [x] Confirm AI endpoints require bounded authenticated/guest access. (opaque hashed 24-hour guest tokens; Bearer auth for Actor/Coach/TTS and scoped auth for Realtime/Assessment; invalid/expired guests fail closed)
+- [x] Confirm rate limits and request schemas on AI endpoints. (`rateLimit.ts`, `requestValidation.ts`; 1 MB JSON body cap, per-guest AI limits, IP-limited guest bootstrap; `rate-limit.test.ts`, `request-validation.test.ts`)
+- [x] Confirm delete tombstones block late assessment/provider writes. (`completeSession` checks tombstones transactionally on SQLite/IndexedDB; delete markers are written first; clear-all uses a cutoff; explicit backup restore has a module-private trusted bypass; parity race tests)
 - [ ] Confirm regulated-domain content has no diagnosis/dosage/treatment advice.
 - [ ] Add character-behavior policy for hostility, discrimination, harassment, sexual content and simulated abuse.
 - [ ] Decide audience/age gate before public release.
