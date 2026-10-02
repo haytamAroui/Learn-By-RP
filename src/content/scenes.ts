@@ -210,7 +210,12 @@ export const CAFE_SCENE: SceneDefinition = {
     'phrase.es.para_llevar',
     'phrase.es.cuanto_cuesta',
   ],
-  skillIds: ['skill-request-substitution', 'skill-request-item', 'skill-clarify-service'],
+  skillIds: [
+    'skill-request-substitution',
+    'skill-inquire-specifications',
+    'skill-propose-alternative',
+    'skill-communicative-repair',
+  ],
 
   opportunityDefinitions: [
     {
@@ -367,7 +372,11 @@ export const PHARMACY_SCENE: SceneDefinition = {
   ],
 
   phraseIds: ['phrase.es.sin_somnio', 'phrase.es.dolor_cabeza'],
-  skillIds: ['skill-request-substitution', 'skill-clarify-service'],
+  skillIds: [
+    'skill-inquire-specifications',
+    'skill-communicative-repair',
+    'skill-request-substitution',
+  ],
   opportunityDefinitions: [
     {
       id: 'opp.es.pharmacy.inquire-specifications.open',
