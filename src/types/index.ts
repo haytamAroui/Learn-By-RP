@@ -602,6 +602,58 @@ export interface AccommodationProfile {
   enabled: AccommodationKind[];
 }
 
+export type ProgramGoalDomain =
+  | 'travel'
+  | 'relocation'
+  | 'work'
+  | 'social'
+  | 'services'
+  | 'exam';
+
+export interface ProgramGoalInput {
+  targetLanguage: LanguageCode;
+  targetLocale: string;
+  domain: ProgramGoalDomain;
+  contextId: string;
+  deadline?: string;
+  personalProfile?: {
+    displayName?: string;
+    notes?: string;
+  };
+  /** Local archive timestamp used for retention cleanup. */
+  recordedAt?: string;
+}
+
+export interface ProgramPreferences {
+  programId: string;
+  skippedMissionIds: string[];
+  pinnedMissionIds: string[];
+  mutedSkillIds: CommunicativeSkillId[];
+}
+
+export type CarryForwardSensitivity = 'low' | 'medium' | 'high';
+
+export interface CarryForwardFact {
+  id: string;
+  key: string;
+  value: string | boolean | number;
+  sensitivity: CarryForwardSensitivity;
+  source: {
+    sessionId: string;
+    missionId: string;
+    recordedAt: string;
+  };
+  allowedMissionIds: string[];
+  expiresAt?: string;
+  localOnly: true;
+  learnerEditable: true;
+}
+
+export interface LearnerContinuityProfile {
+  alias?: string;
+  facts: CarryForwardFact[];
+}
+
 export interface UserPreferences {
   learningLanguage: LanguageCode;
   explanationLanguage: UiLanguage;
@@ -618,4 +670,8 @@ export interface UserPreferences {
    * support-exposure ledger.
    */
   accommodations?: AccommodationProfile;
+  /** Learner-owned, local program data. Included in export and delete-all scope. */
+  programPreferences?: ProgramPreferences[];
+  programGoals?: ProgramGoalInput[];
+  continuityProfile?: LearnerContinuityProfile;
 }
