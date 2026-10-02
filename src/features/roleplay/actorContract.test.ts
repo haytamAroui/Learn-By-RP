@@ -36,8 +36,10 @@ describe('actor contract', () => {
         actionId: 'a-1',
         accepted: false,
         reason: 'precondition_failed',
+        permissibleOptions: ['confirm_order_item'],
         newFacts: {},
         revision: 1,
+        deduplicated: false,
         appliedAt: '2026-10-02T00:00:00.000Z',
       })
     ).toBe(false);
@@ -46,7 +48,9 @@ describe('actor contract', () => {
         actionId: 'a-1',
         accepted: true,
         newFacts: { itemConfirmed: true },
+        appliedAction: 'confirm_order_item',
         revision: 2,
+        deduplicated: false,
         appliedAt: '2026-10-02T00:00:00.000Z',
       })
     ).toBe(true);
