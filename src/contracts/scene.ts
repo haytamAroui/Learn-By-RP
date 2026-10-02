@@ -160,6 +160,13 @@ export interface SceneActionProposal {
   actionId: string;
   sessionId: string;
   attemptId: string;
+  /** Hosted-runtime identity pins. Required by HTTP/realtime ingress. */
+  missionId?: string;
+  missionVersion?: number;
+  sceneId?: string;
+  sceneVersion?: number;
+  providerCallId?: string;
+  connectionGeneration?: number;
   expectedSceneRevision: number;
   action: string;
   payload: unknown;
