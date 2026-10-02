@@ -76,6 +76,7 @@ import {
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import {
   createModelPhraseAudioExposure,
+  createTypedExampleExposure,
   mergeVisibleCaptionViewExposures,
 } from '../features/learning/supportSurfaces';
 import { negotiateRoleplayCapabilities } from '../features/roleplay/capabilities';
@@ -1721,6 +1722,25 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     sessionId,
   ]);
 
+  const useCoachTypedExample = useCallback(() => {
+    if (!activeCoachAudioTarget) return;
+
+    const exposure = createTypedExampleExposure({
+      sessionId,
+      attemptId,
+      targetSkillId: activeCoachAudioTarget.targetSkillId,
+      targetOpportunityId: activeCoachAudioTarget.targetOpportunityId,
+      targetPhraseId: activeCoachAudioTarget.targetPhraseId,
+      recordedAt: new Date().toISOString(),
+    });
+
+    setSupportExposures(prev =>
+      prev.some(existing => existing.id === exposure.id) ? prev : [...prev, exposure]
+    );
+    setTypedMessage(activeCoachAudioTarget.targetPhraseForm);
+    setShowTypedInput(true);
+  }, [activeCoachAudioTarget, attemptId, sessionId]);
+
   const requestSupport = (
     kind: 'intent_hint' | 'partial_form' | 'full_form' | 'explanation'
   ) => {
@@ -1898,14 +1918,21 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 <Text className="text-sm font-medium leading-5 text-ink">
                   {activeCoachAudioTarget.targetPhraseForm}
                 </Text>
-                <Button
-                  label={t.common.listen}
-                  onPress={() => void playCoachModelPhrase()}
-                  size="sm"
-                  variant="ghost"
-                  className="self-start"
-                  icon={<Volume2 size={15} color={iconColor('brand')} />}
-                />
+                <View className="flex-row flex-wrap gap-2">
+                  <Button
+                    label={t.common.listen}
+                    onPress={() => void playCoachModelPhrase()}
+                    size="sm"
+                    variant="ghost"
+                    icon={<Volume2 size={15} color={iconColor('brand')} />}
+                  />
+                  <Button
+                    label={t.live.useTypedExample}
+                    onPress={useCoachTypedExample}
+                    size="sm"
+                    variant="secondary"
+                  />
+                </View>
               </View>
             ) : null}
 
