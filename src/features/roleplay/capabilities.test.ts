@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  communicationChallengeCompatibility,
   negotiateRoleplayCapabilities,
   supportedCommunicationChallenges,
 } from './capabilities';
@@ -125,5 +126,31 @@ describe('roleplay capability negotiation', () => {
     );
 
     expect(result.availableCommunicationChallenges).toEqual([]);
+  });
+
+  it('reports the exact missing capabilities for a challenge contract', () => {
+    expect(
+      communicationChallengeCompatibility('fast_speech', {
+        ...FULL,
+        speechRateControl: false,
+      })
+    ).toEqual({
+      challengeType: 'fast_speech',
+      requiredCapabilities: ['speechRateControl'],
+      missingCapabilities: ['speechRateControl'],
+      supported: false,
+    });
+
+    expect(
+      communicationChallengeCompatibility('scripted_mishearing', {
+        ...FULL,
+        scriptedLineInjection: true,
+      })
+    ).toMatchObject({
+      challengeType: 'scripted_mishearing',
+      requiredCapabilities: ['scriptedLineInjection'],
+      missingCapabilities: [],
+      supported: true,
+    });
   });
 });
