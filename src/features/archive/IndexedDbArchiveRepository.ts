@@ -1,6 +1,10 @@
 import { INITIAL_PHRASE_ITEMS, MISSION_CATALOG } from '../../data/missions';
 import { projectPhraseState } from '../learning/learningCore';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
+import {
+  assertValidatedSkillEvidence,
+  type ValidatedSkillEvidence,
+} from '../learning/skillEvidence';
 import { CONSENT_VERSION } from './schema';
 import {
   IDBDatabase,
@@ -309,7 +313,12 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     });
   }
 
-  async completeSession(session: SessionRecord): Promise<void> {
+  async completeSession(
+    session: SessionRecord,
+    _rejectedProposals: { reason: string }[] = [],
+    skillEvidence?: ValidatedSkillEvidence
+  ): Promise<void> {
+    if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
     const now = new Date().toISOString();
 
     await this.transaction(async tx => {
@@ -327,8 +336,16 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
             : existing?.supportExposures ?? [],
         observations:
           session.observations.length > 0 ? session.observations : existing?.observations ?? [],
-        skillObservations: session.skillObservations ?? existing?.skillObservations ?? [],
-        skillLapses: session.skillLapses ?? existing?.skillLapses ?? [],
+        // Raw SessionRecord skill fields are read-model compatibility only.
+        // Non-empty writes require the opaque validator-issued bundle.
+        skillObservations:
+          skillEvidence?.observations.length
+            ? [...skillEvidence.observations]
+            : existing?.skillObservations ?? [],
+        skillLapses:
+          skillEvidence?.lapses.length
+            ? [...skillEvidence.lapses]
+            : existing?.skillLapses ?? [],
       };
 
       this.putAll(tx, STORE.sessions, [{ key: stored.id, value: stored }]);
@@ -528,13 +545,6 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       .filter(o => !o.hidden)
       .map(o => ({ ...o, reasonCodes: o.reasonCodes ?? [] }))
       .sort((a, b) => (b.recordedAt ?? '').localeCompare(a.recordedAt ?? ''));
-  }
-
-  async saveSkillObservations(observations: SkillObservation[]): Promise<void> {
-    if (observations.length === 0) return;
-    await this.transaction(async tx => {
-      this.putDocs(tx, STORE.skillObservations, observations, o => o.id);
-    });
   }
 
   async hideSkillObservation(observationId: string): Promise<void> {
