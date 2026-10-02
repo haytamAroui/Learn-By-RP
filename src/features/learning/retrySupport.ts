@@ -105,3 +105,12 @@ export function mergeFinalizedAttemptEvidence(input: {
     skillLapses: [...skillLapses.values()],
   };
 }
+
+
+/** Return only passages owned by one attempt for assessment. */
+export function passagesForAttempt(
+  passages: readonly Passage[],
+  attemptId: string
+): Passage[] {
+  return passages.filter(passage => passage.attemptId === attemptId);
+}
