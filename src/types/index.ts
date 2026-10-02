@@ -583,5 +583,5 @@ export interface UserPreferences {
    * Accessibility preferences are not pedagogical help and never enter the
    * support-exposure ledger.
    */
-  accommodations: AccommodationProfile;
+  accommodations?: AccommodationProfile;
 }
