@@ -20,7 +20,11 @@ export function syncAuthoredOpportunities(input: {
     throw new Error(`Scene state ${state.sceneId} does not match definition ${scene.id}`);
   }
 
-  const byDefinition = new Map(input.existing.map(instance => [instance.opportunityId, instance]));
+  const byDefinition = new Map(
+    input.existing
+      .filter(instance => instance.attemptId === state.attemptId)
+      .map(instance => [instance.opportunityId, instance])
+  );
   const next = [...input.existing];
 
   for (const definition of scene.opportunityDefinitions) {
@@ -103,7 +107,11 @@ export function finalizeNotPresentedOpportunities(input: {
   existing: OpportunityInstance[];
   recordedAt: string;
 }): OpportunityInstance[] {
-  const byDefinition = new Map(input.existing.map(instance => [instance.opportunityId, instance]));
+  const byDefinition = new Map(
+    input.existing
+      .filter(instance => instance.attemptId === input.state.attemptId)
+      .map(instance => [instance.opportunityId, instance])
+  );
   const next = [...input.existing];
 
   for (const definition of input.scene.opportunityDefinitions) {
@@ -125,4 +133,81 @@ export function finalizeNotPresentedOpportunities(input: {
 
 export function opportunityInstanceId(attemptId: string, opportunityId: string): string {
   return `opportunity:${attemptId}:${opportunityId}`;
+}
+
+
+export interface OpportunityAssessmentCandidate {
+  opportunityInstanceId?: string;
+  sourcePassageId: string;
+  sourceRevision: string;
+}
+
+/**
+ * Build a temporary assessment view in which model-proposed links can be checked
+ * by the deterministic evidence validator.
+ *
+ * Nothing returned here should be persisted directly. A proposal may be wrong;
+ * only `commitValidatedOpportunityDemonstrations` turns accepted observations
+ * into durable opportunity state.
+ */
+export function prepareOpportunityAssessmentView(input: {
+  existing: OpportunityInstance[];
+  candidates: OpportunityAssessmentCandidate[];
+  passages: Passage[];
+}): OpportunityInstance[] {
+  const candidatesByOpportunity = new Map(
+    input.candidates
+      .filter(candidate => Boolean(candidate.opportunityInstanceId))
+      .map(candidate => [candidate.opportunityInstanceId as string, candidate])
+  );
+  const passagesById = new Map(input.passages.map(passage => [passage.id, passage]));
+
+  return input.existing.map(instance => {
+    const candidate = candidatesByOpportunity.get(instance.id);
+    if (!candidate || instance.status !== 'presented' || instance.detection !== 'validated') {
+      return instance;
+    }
+
+    const passage = passagesById.get(candidate.sourcePassageId);
+    if (
+      !passage ||
+      passage.revisionKey !== candidate.sourceRevision ||
+      passage.attemptId !== instance.attemptId ||
+      passage.speaker !== 'user' ||
+      passage.status !== 'final'
+    ) {
+      return instance;
+    }
+
+    return classifyOpportunity(takeOpportunity(instance, passage), 'demonstrated');
+  });
+}
+
+/**
+ * Commit only opportunity demonstrations that survived evidence validation.
+ * Rejected assessor proposals leave the original runtime opportunity untouched.
+ */
+export function commitValidatedOpportunityDemonstrations(input: {
+  existing: OpportunityInstance[];
+  validatedOpportunityInstanceIds: string[];
+  passages: Passage[];
+}): OpportunityInstance[] {
+  const accepted = new Set(input.validatedOpportunityInstanceIds);
+  const passagesById = new Map(input.passages.map(passage => [passage.id, passage]));
+
+  return input.existing.map(instance => {
+    if (!accepted.has(instance.id) || instance.status !== 'presented') return instance;
+
+    // A validated observation necessarily names the learner passage the validator
+    // accepted. Find the candidate passage already tentatively linked by id/revision.
+    const passage = input.passages.find(
+      candidate =>
+        candidate.attemptId === instance.attemptId &&
+        candidate.speaker === 'user' &&
+        candidate.status === 'final'
+    );
+    if (!passage) return instance;
+
+    return classifyOpportunity(takeOpportunity(instance, passage), 'demonstrated');
+  });
 }
