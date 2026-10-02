@@ -962,10 +962,16 @@ describe('projectSkill', () => {
     expect(projectSkill(SKILL, [], [], now).explanation).toMatch(/No evidence/i);
   });
 
+  it('does not project derived families as learner statuses without a roll-up policy', () => {
+    expect(projectSkillsV2([], []).map(skill => skill.skillId))
+      .not.toContain('skill-communicative-repair');
+  });
+
   it('projects every catalogued skill', () => {
     expect(projectSkillsV2([], [])).toHaveLength(
       COMMUNICATIVE_SKILLS_CATALOG.filter(skill =>
-        isLaunchVisibleCommunicativeSkill(skill.id)
+        isLaunchVisibleCommunicativeSkill(skill.id) &&
+        isDirectlyEvidencedSkill(skill.id)
       ).length
     );
   });
