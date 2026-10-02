@@ -26,7 +26,10 @@ interface DuePhrasesPracticeModalProps {
     phrase: PhraseItem;
     quote: string;
     modality: 'spoken' | 'typed';
-    unassisted: boolean;
+    selfReportedResult: 'remembered' | 'supported';
+    learnerAttemptCaptured: boolean;
+    answerRevealedBeforeAttempt: boolean;
+    modelAudioPlayedBeforeAttempt: boolean;
   }) => Promise<void>;
 }
 
@@ -53,6 +56,8 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   const [showTypedInput, setShowTypedInput] = useState(false);
   const [typedAnswer, setTypedAnswer] = useState('');
   const [modalityUsed, setModalityUsed] = useState<Modality>('spoken');
+  const [answerRevealedBeforeAttempt, setAnswerRevealedBeforeAttempt] = useState(false);
+  const [modelAudioPlayedBeforeAttempt, setModelAudioPlayedBeforeAttempt] = useState(false);
   const [reviewedItems, setReviewedItems] = useState<ReviewedItem[]>([]);
   const [isFinished, setIsFinished] = useState(false);
 
@@ -68,7 +73,11 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
       setInterimText('');
       setTypedAnswer('');
       setShowTypedInput(false);
+      setAnswerRevealedBeforeAttempt(false);
+      setModelAudioPlayedBeforeAttempt(false);
       setModalityUsed('spoken');
+      setAnswerRevealedBeforeAttempt(false);
+      setModelAudioPlayedBeforeAttempt(false);
       setReviewedItems([]);
       setIsFinished(false);
     }
@@ -126,9 +135,25 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
 
   const handlePlayAudio = () => {
     if (!currentPhrase) return;
+    const learnerAttemptCaptured = Boolean(
+      userTranscript.trim() || typedAnswer.trim()
+    );
+    if (!learnerAttemptCaptured) {
+      setModelAudioPlayedBeforeAttempt(true);
+    }
     voiceTransportRef.current?.playSpeech(currentPhrase.form, {
       lang: currentPhrase.language,
     });
+  };
+
+  const handleRevealAnswer = () => {
+    const learnerAttemptCaptured = Boolean(
+      userTranscript.trim() || typedAnswer.trim()
+    );
+    if (!learnerAttemptCaptured) {
+      setAnswerRevealedBeforeAttempt(true);
+    }
+    setRevealed(true);
   };
 
   const handleTypedSubmit = () => {
@@ -147,21 +172,31 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   const recordEvaluation = (result: 'remembered' | 'supported') => {
     if (!currentPhrase) return;
 
-    const quote = userTranscript || typedAnswer || currentPhrase.form;
-    const isUnassisted = result === 'remembered';
+    const quote = (userTranscript || typedAnswer).trim();
+    const learnerAttemptCaptured = Boolean(quote);
+    const effectiveResult =
+      result === 'remembered' &&
+      learnerAttemptCaptured &&
+      !answerRevealedBeforeAttempt &&
+      !modelAudioPlayedBeforeAttempt
+        ? 'remembered'
+        : 'supported';
 
-    // The archive owns the write, so the projection is recomputed inside the
-    // same transaction as the observation itself.
+    // The UI reports observable facts. validateDrillReview() owns the retrieval
+    // decision and the archive accepts only its opaque evidence bundle.
     void onRecordReview({
       phrase: currentPhrase,
       quote,
       modality: modalityUsed,
-      unassisted: isUnassisted,
+      selfReportedResult: result,
+      learnerAttemptCaptured,
+      answerRevealedBeforeAttempt,
+      modelAudioPlayedBeforeAttempt,
     });
 
     setReviewedItems(prev => [
       ...prev,
-      { phrase: currentPhrase, result, quote, modality: modalityUsed },
+      { phrase: currentPhrase, result: effectiveResult, quote, modality: modalityUsed },
     ]);
 
     if (currentIndex + 1 < duePhrases.length) {
@@ -320,7 +355,7 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
                 <Text className="text-xs text-muted">·</Text>
 
                 <Pressable
-                  onPress={() => setRevealed(true)}
+                  onPress={handleRevealAnswer}
                   accessibilityRole="button"
                   className="flex-row items-center gap-1.5"
                 >
