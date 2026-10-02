@@ -254,6 +254,18 @@ export interface LearningObservation {
   correctedForm?: string;
 }
 
+
+/**
+ * Compile-time write capability for phrase/lexical learning evidence.
+ *
+ * Validators and deterministic evidence builders mint this type. Read models use
+ * plain LearningObservation so persisted history stays easy to consume.
+ */
+declare const validatedLearningObservationBrand: unique symbol;
+export type ValidatedLearningObservation = LearningObservation & {
+  readonly [validatedLearningObservationBrand]: true;
+};
+
 /**
  * A lemma or word, as distinct from a curated phrase (§10.1).
  *
