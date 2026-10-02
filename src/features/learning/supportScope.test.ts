@@ -63,6 +63,18 @@ describe('scoped support semantics', () => {
     expect(isProductionFormExposure(exposure({ kind: 'intent_hint' }))).toBe(false);
   });
 
+  it('caption/replay/slow/explanation are comprehension accommodations, not production help', () => {
+    for (const kind of [
+      'caption_view',
+      'assistant_audio_replay',
+      'assistant_audio_slow',
+      'meaning_of_assistant_turn',
+      'explanation',
+    ] as const) {
+      expect(isProductionFormExposure(exposure({ kind })), kind).toBe(false);
+    }
+  });
+
   it('skill support must match the exact opportunity when one is scoped', () => {
     const scoped = exposure();
 
