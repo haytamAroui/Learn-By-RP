@@ -144,7 +144,9 @@ export interface MissionDefinition {
 export interface SceneState {
   sceneId: string;
   revision: number;
-  facts: Record<string, any>;
+  facts: Record<string, boolean | string | number>;
+  /** Optional for archives created before scene contract v3. */
+  actionCounts?: Record<string, number>;
   learnerKnows: string[];
   characterKnows: string[];
   checkpoints: { id: string; description: string; timestamp: string }[];
