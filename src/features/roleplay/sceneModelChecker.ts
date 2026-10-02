@@ -20,6 +20,7 @@ export interface SceneModelCheckReport {
   reachableActions: SceneActionName[];
   reachableOpportunityIds: string[];
   reachableCommunicationChallengeIds: string[];
+  reachablePressureBranchIds: string[];
 }
 
 interface QueueEntry {
@@ -48,6 +49,7 @@ function countCaps(scene: SceneDefinition): Partial<Record<SceneActionName, numb
     ...scene.checkpoints.map(entry => entry.after),
     ...scene.opportunityDefinitions.map(entry => entry.sceneCondition),
     ...scene.communicationChallenges.map(entry => entry.trigger),
+    ...scene.pressureBranches.map(entry => entry.trigger),
     ...(scene.complication ? [scene.complication.trigger] : []),
   ];
 
@@ -113,6 +115,7 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
   const reachableActions = new Set<SceneActionName>();
   const reachableOpportunities = new Set<string>();
   const reachableCommunicationChallenges = new Set<string>();
+  const reachablePressureBranches = new Set<string>();
   const caps = countCaps(scene);
 
   const initial = createInitialScene(scene, 'model-check', 'attempt-1');
@@ -150,6 +153,18 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
         )
       ) {
         reachableCommunicationChallenges.add(challenge.id);
+      }
+    }
+
+    for (const pressureBranch of scene.pressureBranches) {
+      if (
+        evaluatePredicate(
+          pressureBranch.trigger,
+          state.facts,
+          state.actionCounts
+        )
+      ) {
+        reachablePressureBranches.add(pressureBranch.id);
       }
     }
 
@@ -299,6 +314,12 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
     }
   }
 
+  for (const pressureBranch of scene.pressureBranches) {
+    if (!reachablePressureBranches.has(pressureBranch.id)) {
+      errors.push(`unreachable pressure branch: ${pressureBranch.id}`);
+    }
+  }
+
   return {
     sceneId: scene.id,
     reachableStateCount: visited.size,
@@ -308,5 +329,6 @@ export function modelCheckScene(scene: SceneDefinition): SceneModelCheckReport {
     reachableActions: [...reachableActions],
     reachableOpportunityIds: [...reachableOpportunities],
     reachableCommunicationChallengeIds: [...reachableCommunicationChallenges],
+    reachablePressureBranchIds: [...reachablePressureBranches],
   };
 }
