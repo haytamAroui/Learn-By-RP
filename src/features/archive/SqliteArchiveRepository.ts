@@ -1040,6 +1040,39 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     );
   }
 
+  async appendSupportExposures(
+    sessionId: string,
+    exposures: SupportExposure[]
+  ): Promise<void> {
+    if (exposures.length === 0) return;
+
+    await withTransaction(async txn => {
+      for (const exposure of exposures) {
+        if (exposure.sessionId !== sessionId) continue;
+
+        await txn.runAsync(
+          `INSERT OR REPLACE INTO support_exposures
+            (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
+             target_skill_id, target_opportunity_id, target_phrase_id, policy_version, exposure, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+          exposure.id,
+          exposure.sessionId,
+          exposure.attemptId,
+          exposure.turnId ?? null,
+          exposure.source,
+          exposure.kind,
+          JSON.stringify(exposure.targetItemIds ?? []),
+          exposure.targetSkillId ?? null,
+          exposure.targetOpportunityId ?? null,
+          exposure.targetPhraseId ?? null,
+          exposure.policyVersion ?? LEARNING_POLICY_VERSION,
+          exposure.exposure,
+          exposure.recordedAt
+        );
+      }
+    });
+  }
+
   async markDeleted(scope: 'session' | 'all', targetId?: string): Promise<string> {
     const db = await getDatabase();
     const id = `del-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
