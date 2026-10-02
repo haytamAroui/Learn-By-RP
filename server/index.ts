@@ -12,9 +12,11 @@ import { allowedSkillsForMission } from '../src/features/learning/skillMembershi
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 import {
+  containsRegulatedHealthAdvice,
   isRegulatedHealthMission,
   REGULATED_HEALTH_ACTOR_RULES,
   regulatedHealthBoundaryReply,
+  regulatedHealthCoachHint,
   regulatedHealthPromptFacts,
   sanitizeRegulatedHealthActorResponse,
 } from '../src/features/roleplay/regulatedHealthPolicy';
@@ -359,50 +361,75 @@ app.post(
   aiRateLimits.coach,
   validateBody(validateCoachRequest),
   async (req: Request, res: Response) => {
-  try {
-    const {
-      step = 'intent_hint',
-      missionId,
-      targetLanguage = 'Spanish',
-      explanationLanguage = 'English',
-      characterName = 'the character',
-      lastAssistantLine = '',
-      learnerGoal = 'Order a drink',
-      targetSkillId,
-      targetOpportunityId,
-      targetPhraseId,
-      targetPhraseForm = '',
-    } = req.body;
+    try {
+      const {
+        step = 'intent_hint',
+        missionId,
+        explanationLanguage = 'English',
+        lastAssistantLine = '',
+        targetSkillId,
+        targetOpportunityId,
+        targetPhraseId,
+      } = req.body;
 
-    const missionSkills = allowedSkillsForMission(missionId);
-    const scopedSkill = missionSkills.find(skill => skill.id === targetSkillId);
-    if (!scopedSkill) {
-      res.status(400).json({ error: 'targetSkillId must be declared by the mission' });
-      return;
-    }
+      const mission = MISSION_CATALOG.find(item => item.id === missionId);
+      if (!mission) {
+        res.status(400).json({ error: 'missionId must identify a released mission' });
+        return;
+      }
 
-    const scopedTargets = {
-      targetSkillId: scopedSkill.id,
-      targetOpportunityId:
-        typeof targetOpportunityId === 'string' ? targetOpportunityId : undefined,
-      targetPhraseId: typeof targetPhraseId === 'string' ? targetPhraseId : undefined,
-    };
+      const missionSkills = allowedSkillsForMission(missionId);
+      const scopedSkill = missionSkills.find(skill => skill.id === targetSkillId);
+      if (!scopedSkill) {
+        res.status(400).json({
+          error: 'targetSkillId must be declared by the mission',
+        });
+        return;
+      }
 
-    if (!providers.structured) {
-      res.json({
-        hint: buildCoachFallback({
-          step,
-          targetLanguage,
-          characterName,
-          targetPhraseForm,
-          lastAssistantLine,
-        }),
-        ...scopedTargets,
-      });
-      return;
-    }
+      const scopedPhrase =
+        typeof targetPhraseId === 'string'
+          ? mission.usefulPhrases.find(phrase => phrase.id === targetPhraseId)
+          : undefined;
 
-    const systemInstruction = `You are a warm, concise language coach.
+      if (targetPhraseId && !scopedPhrase) {
+        res.status(400).json({
+          error: 'targetPhraseId must be declared by the mission',
+        });
+        return;
+      }
+
+      const targetLanguage = mission.language;
+      const characterName = mission.character.name;
+      const learnerGoal = mission.learnerGoal;
+      const targetPhraseForm = scopedPhrase?.form ?? '';
+      const regulatedHealth = isRegulatedHealthMission(mission);
+
+      const scopedTargets = {
+        targetSkillId: scopedSkill.id,
+        targetOpportunityId:
+          typeof targetOpportunityId === 'string'
+            ? targetOpportunityId
+            : undefined,
+        targetPhraseId: scopedPhrase?.id,
+      };
+
+      if (!providers.structured) {
+        const hint = regulatedHealth
+          ? regulatedHealthCoachHint(targetLanguage)
+          : buildCoachFallback({
+              step,
+              targetLanguage,
+              characterName,
+              targetPhraseForm,
+              lastAssistantLine,
+            });
+
+        res.json({ hint, ...scopedTargets });
+        return;
+      }
+
+      const systemInstruction = `You are a warm, concise language coach.
 Learner Goal: ${learnerGoal}.
 The character just said: "${lastAssistantLine}".
 Target Language: ${targetLanguage}.
@@ -411,30 +438,36 @@ Requested Hint Step: "${step}".
 Target Communicative Skill: ${scopedSkill.name} (${scopedSkill.id}).
 Target Phrase, when explicitly scoped: ${targetPhraseForm || 'none'}.
 - 'intent_hint': Give a 1-sentence strategic guidance about WHAT to communicate (do NOT reveal the exact foreign words).
-- 'partial_form': Give a sentence starter or partial grammar scaffold (e.g. "Start with: 'Quisiera...'").
+- 'partial_form': Give a sentence starter or partial grammar scaffold.
 - 'full_form': Give a natural, complete sentence example in ${targetLanguage} with ${explanationLanguage} translation.
 - 'explanation': Explain what ${characterName} said, clarifying cultural or vocabulary nuance in 2 sentences.
 
-Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "..."}`;
+Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "..."}
+${regulatedHealth ? `\n${REGULATED_HEALTH_ACTOR_RULES}` : ''}`;
 
-    const parsed = await providers.structured.generateJson({
-      task: 'coach',
-      systemInstruction,
-      input: `Provide step '${step}' hint:`,
-      temperature: 0.4,
-    });
+      const parsed = await providers.structured.generateJson({
+        task: 'coach',
+        systemInstruction,
+        input: `Provide step '${step}' hint:`,
+        temperature: 0.4,
+      });
 
-    res.json({
-      hint:
+      const proposedHint =
         typeof parsed?.hint === 'string'
           ? parsed.hint
-          : 'Try expressing the target idea in a simple sentence.',
-      ...scopedTargets,
-    });
-  } catch (err: any) {
-    console.error('Error in /api/coach/hint:', err);
-    res.json({ hint: 'Try expressing what you would like in a simple sentence.' });
-  }
+          : 'Try expressing the target idea in a simple sentence.';
+
+      res.json({
+        hint:
+          regulatedHealth && containsRegulatedHealthAdvice(proposedHint)
+            ? regulatedHealthCoachHint(targetLanguage)
+            : proposedHint,
+        ...scopedTargets,
+      });
+    } catch (err: any) {
+      console.error('Error in /api/coach/hint:', err);
+      res.json({ hint: 'Try expressing what you would like in a simple sentence.' });
+    }
   }
 );
 
