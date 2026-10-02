@@ -216,7 +216,7 @@ app.post('/api/coach/hint', async (req: Request, res: Response) => {
       targetPhraseForm = '',
     } = req.body;
 
-    const missionSkills = allowedSkillsForMission(missionId);
+    const missionSkills = evidentiarySkillsForMission(missionId);
     const scopedSkill = missionSkills.find(skill => skill.id === targetSkillId);
     if (!scopedSkill) {
       res.status(400).json({ error: 'targetSkillId must be declared by the mission' });
