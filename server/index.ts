@@ -75,6 +75,42 @@ app.post('/api/realtime/session', async (req: Request, res: Response) => {
  * 1. Actor Response (Conversational Character)
  * Compact instruction packet: character role, bounded knowledge, short spoken turns (1-2 sentences).
  */
+function sanitizeActorResponse(
+  response: any,
+  allowedActions: unknown
+): {
+  replyText: string;
+  meaning: string;
+  proposedAction: { name: string; payload: Record<string, unknown> } | null;
+} {
+  const allowlist = new Set(
+    Array.isArray(allowedActions)
+      ? allowedActions.filter((name: unknown): name is string => typeof name === 'string')
+      : []
+  );
+
+  const proposedAction =
+    response?.proposedAction &&
+    typeof response.proposedAction.name === 'string' &&
+    allowlist.has(response.proposedAction.name)
+      ? {
+          name: response.proposedAction.name,
+          payload:
+            response.proposedAction.payload &&
+            typeof response.proposedAction.payload === 'object' &&
+            !Array.isArray(response.proposedAction.payload)
+              ? response.proposedAction.payload
+              : {},
+        }
+      : null;
+
+  return {
+    replyText: typeof response?.replyText === 'string' ? response.replyText : '',
+    meaning: typeof response?.meaning === 'string' ? response.meaning : '',
+    proposedAction,
+  };
+}
+
 app.post('/api/actor/respond', async (req: Request, res: Response) => {
   try {
     const {
@@ -97,8 +133,13 @@ app.post('/api/actor/respond', async (req: Request, res: Response) => {
 
     if (!providers.structured) {
       // Offline / fallback intelligent actor
-      const fallbackReply = generateFallbackActorReply(character?.name, userMessage, sceneFacts, targetLanguage);
-      res.json(fallbackReply);
+      const fallbackReply = generateFallbackActorReply(
+        character?.name,
+        userMessage,
+        sceneFacts,
+        targetLanguage
+      );
+      res.json(sanitizeActorResponse(fallbackReply, allowedActions));
       return;
     }
 
@@ -142,36 +183,23 @@ Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`
       temperature: 0.7,
     });
 
-    const allowlist = new Set(
-      Array.isArray(allowedActions)
-        ? allowedActions.filter((name: unknown): name is string => typeof name === 'string')
-        : []
-    );
-    const proposedAction =
-      response?.proposedAction &&
-      typeof response.proposedAction.name === 'string' &&
-      allowlist.has(response.proposedAction.name)
-        ? {
-            name: response.proposedAction.name,
-            payload:
-              response.proposedAction.payload &&
-              typeof response.proposedAction.payload === 'object'
-                ? response.proposedAction.payload
-                : {},
-          }
-        : null;
-
-    res.json({
-      replyText:
-        typeof response?.replyText === 'string' ? response.replyText : '',
-      meaning: typeof response?.meaning === 'string' ? response.meaning : '',
-      proposedAction,
-    });
+    res.json(sanitizeActorResponse(response, allowedActions));
   } catch (err: any) {
     console.error('Error in /api/actor/respond:', err);
-    const { character, userMessage = '', sceneFacts, targetLanguage = 'Spanish' } = req.body || {};
-    const fallbackReply = generateFallbackActorReply(character?.name, userMessage, sceneFacts, targetLanguage);
-    res.json(fallbackReply);
+    const {
+      character,
+      userMessage = '',
+      sceneFacts,
+      targetLanguage = 'Spanish',
+      allowedActions = [],
+    } = req.body || {};
+    const fallbackReply = generateFallbackActorReply(
+      character?.name,
+      userMessage,
+      sceneFacts,
+      targetLanguage
+    );
+    res.json(sanitizeActorResponse(fallbackReply, allowedActions));
   }
 });
 
