@@ -189,24 +189,34 @@ export function prepareOpportunityAssessmentView(input: {
  */
 export function commitValidatedOpportunityDemonstrations(input: {
   existing: OpportunityInstance[];
-  validatedOpportunityInstanceIds: string[];
+  validated: Array<{
+    opportunityInstanceId?: string;
+    sourcePassageId: string;
+    sourceRevision: string;
+  }>;
   passages: Passage[];
 }): OpportunityInstance[] {
-  const accepted = new Set(input.validatedOpportunityInstanceIds);
+  const acceptedByOpportunity = new Map(
+    input.validated
+      .filter(item => Boolean(item.opportunityInstanceId))
+      .map(item => [item.opportunityInstanceId as string, item])
+  );
   const passagesById = new Map(input.passages.map(passage => [passage.id, passage]));
 
   return input.existing.map(instance => {
-    if (!accepted.has(instance.id) || instance.status !== 'presented') return instance;
+    const accepted = acceptedByOpportunity.get(instance.id);
+    if (!accepted || instance.status !== 'presented') return instance;
 
-    // A validated observation necessarily names the learner passage the validator
-    // accepted. Find the candidate passage already tentatively linked by id/revision.
-    const passage = input.passages.find(
-      candidate =>
-        candidate.attemptId === instance.attemptId &&
-        candidate.speaker === 'user' &&
-        candidate.status === 'final'
-    );
-    if (!passage) return instance;
+    const passage = passagesById.get(accepted.sourcePassageId);
+    if (
+      !passage ||
+      passage.revisionKey !== accepted.sourceRevision ||
+      passage.attemptId !== instance.attemptId ||
+      passage.speaker !== 'user' ||
+      passage.status !== 'final'
+    ) {
+      return instance;
+    }
 
     return classifyOpportunity(takeOpportunity(instance, passage), 'demonstrated');
   });
