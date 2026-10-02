@@ -101,7 +101,7 @@ function opportunity(overrides: Partial<OpportunityInstance> = {}): OpportunityI
     skillId: SKILL,
     status: 'taken',
     detection: 'validated',
-    demonstration: 'demonstrated',
+    demonstration: 'attempted_not_demonstrated',
     learnerAttemptPassageId: 'p-1',
     learnerAttemptRevision: 'rev-1',
     recordedAt: '2026-09-20T09:00:04.000Z',
@@ -117,7 +117,7 @@ const context = (
   mission: mission(),
   passages: [passage()],
   supportExposures: [] as SupportExposure[],
-  opportunityInstances: [opportunity()] as OpportunityInstance[],
+  opportunityInstances: [opportunity({ demonstration: 'demonstrated' })] as OpportunityInstance[],
   sessionEndReason: 'completed' as const,
   ...overrides,
 } as Parameters<typeof validateSkillEvidenceProposal>[1]);
@@ -186,7 +186,7 @@ describe('validateSkillEvidenceProposal', () => {
   });
 
   it('links a demonstrated skill to a validated taken opportunity when supplied', () => {
-    const instance = opportunity();
+    const instance = opportunity({ demonstration: 'demonstrated' });
     const result = validateSkillEvidenceProposal(
       proposal([candidate({ opportunityInstanceId: instance.id })]),
       context({ opportunityInstances: [instance] })
@@ -319,12 +319,12 @@ describe('validateSkillEvidenceProposal', () => {
   // there is no field for it to lie in.
   it('takes context identifiers from runtime state, not the proposal', () => {
     const result = validateSkillEvidenceProposal(proposal([candidate()]), context({
-      mission: mission({ id: 'mission-fr-bistro', category: 'cafes', sceneId: undefined }),
+      mission: mission({ id: 'mission-fr-bistro', category: 'cafes' }),
     }));
 
     expect(result.validated[0].sessionId).toBe('s-1');
     expect(result.validated[0].attemptId).toBe('attempt-1');
-    expect(result.validated[0].scenarioId).toBeUndefined();
+    expect(result.validated[0].scenarioId).toBe('scene.es.cafe.breakfast');
   });
 });
 
