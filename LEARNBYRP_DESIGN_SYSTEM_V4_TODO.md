@@ -11,7 +11,8 @@ This document supersedes:
 - `MISSION_COACH_MOBILE_FIRST_DESIGN_SYSTEM_V3.md`
 
 It does **not** supersede the Master Product Architecture, evidence rules, archive model,
-scene runtime, mission semantics, or session state machine.
+scene runtime, mission semantics, or session state machine. Roleplay/program/pedagogy execution
+status belongs to `LEARNBYRP_ROLEPLAY_PROGRAM_TODO_V1.md`; V4 owns UI/UX work only.
 
 ---
 
