@@ -80,19 +80,26 @@ export function decideAuthoringExecution(input: {
       return { executable: false, reason: 'template_requires_review_pipeline' };
     }
 
-    const refs = draft.extractedMissionIds
-      .map(id => {
+    const refs = draft.extractedMissionIds.reduce<ProgramMissionRef[]>(
+      (acc, id) => {
         const mission = MISSION_CATALOG.find(item => item.id === id);
-        if (!mission) return null;
+        if (!mission) return acc;
+
         const scene = mission.sceneId ? getScene(mission.sceneId) : undefined;
-        return {
+        acc.push({
           missionId: mission.id,
           missionVersion: mission.version,
-          sceneId: scene?.id,
-          sceneVersion: scene?.version,
-        } satisfies ProgramMissionRef;
-      })
-      .filter((ref): ref is ProgramMissionRef => Boolean(ref));
+          ...(scene
+            ? {
+                sceneId: scene.id,
+                sceneVersion: scene.version,
+              }
+            : {}),
+        });
+        return acc;
+      },
+      []
+    );
 
     return (
       refs.length === draft.extractedMissionIds.length &&
