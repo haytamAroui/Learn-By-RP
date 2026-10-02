@@ -50,6 +50,34 @@ describe('roleplay program contract', () => {
     expect(result.errors.join('\n')).toMatch(/sceneVersion/i);
   });
 
+  it('enforces final simulation safety semantics', () => {
+    const safe = validateRoleplayProgram({
+      ...PROGRAM,
+      finalSimulation: {
+        mission: PROGRAM.missionPlan[0],
+        supportHiddenByDefault: true,
+        preserveAccommodations: true,
+        helpAvailable: true,
+        evidencePolicy: 'same_as_program',
+        scoring: 'none',
+      },
+    });
+    expect(safe.valid).toBe(true);
+
+    const unsafe = validateRoleplayProgram({
+      ...PROGRAM,
+      finalSimulation: {
+        mission: PROGRAM.missionPlan[0],
+        supportHiddenByDefault: false as true,
+        preserveAccommodations: true,
+        helpAvailable: true,
+        evidencePolicy: 'same_as_program',
+        scoring: 'none',
+      },
+    });
+    expect(unsafe.errors.join('\n')).toMatch(/supportHiddenByDefault/i);
+  });
+
   it('validates BCP-47 locale shape', () => {
     expect(validateTargetLocale('es-ES')).toBe(true);
     expect(validateTargetLocale('nl-BE')).toBe(true);
