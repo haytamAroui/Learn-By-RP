@@ -35,6 +35,7 @@ import {
   SupportExposure,
   SceneState,
   LearningObservation,
+  ValidatedLearningObservation,
   OpportunityInstance,
   OperationalTelemetryEvent,
   TaskOutcome,
@@ -1422,7 +1423,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       console.warn('Remote assessment unavailable, using local grounded evaluation:', fetchErr);
     }
 
-    let finalObservations: LearningObservation[] = [];
+    let finalObservations: ValidatedLearningObservation[] = [];
     let rejectedCount = 0;
     let ambiguousCount = 0;
     let proposedOutcome: TaskOutcome = 'unknown';
