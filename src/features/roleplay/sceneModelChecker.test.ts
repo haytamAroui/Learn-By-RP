@@ -22,6 +22,15 @@ describe('scene model checker', () => {
     }
   });
 
+  it('proves every authored communication challenge in released scenes is reachable', () => {
+    for (const scene of Object.values(SCENES)) {
+      const report = modelCheckScene(scene);
+      expect(new Set(report.reachableCommunicationChallengeIds)).toEqual(
+        new Set(scene.communicationChallenges.map(item => item.id))
+      );
+    }
+  });
+
   it('detects an authored action whose valid precondition can never hold', () => {
     const impossible: SceneDefinition = {
       ...CAFE_SCENE,
