@@ -5,7 +5,7 @@ import type {
   SkillObservation,
   SupportExposure,
 } from '../../types';
-import { recommendNextRp } from './nextRp';
+import { recommendNextRp, renderNextRpReason } from './nextRp';
 
 const NOW = Date.parse('2026-10-02T12:00:00.000Z');
 
@@ -146,6 +146,15 @@ describe('deterministic next-RP policy', () => {
       missionId: 'mission-es-farmacia-sol',
       reasonCode: 'PROGRAM_NEXT_READY',
     });
+  });
+
+  it('renders localized explanation from a deterministic reason code', () => {
+    expect(renderNextRpReason('INDEPENDENT_SUCCESS_TRANSFER', 'fr')).toMatch(
+      /autonome/
+    );
+    expect(renderNextRpReason('INDEPENDENT_SUCCESS_TRANSFER', 'nl')).toMatch(
+      /zelfstandig/
+    );
   });
 
   it('is deterministic for identical evidence and policy input', () => {
