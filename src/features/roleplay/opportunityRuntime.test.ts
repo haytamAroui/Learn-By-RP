@@ -4,8 +4,10 @@ import { Passage } from '../../types';
 import { applyResult, createInitialScene, reduceSceneAction } from './sceneReducer';
 import {
   classifyOpportunity,
+  commitValidatedOpportunityDemonstrations,
   declineOpportunity,
   finalizeNotPresentedOpportunities,
+  prepareOpportunityAssessmentView,
   syncAuthoredOpportunities,
   takeOpportunity,
 } from './opportunityRuntime';
@@ -143,6 +145,138 @@ describe('authored opportunity runtime', () => {
       status: 'declined',
       demonstration: 'unknown',
     });
+  });
+
+
+
+  it('creates a distinct instance for the same authored opportunity on a retry attempt', () => {
+    let firstState = createInitialScene(CAFE_SCENE, SESSION, ATTEMPT);
+    const firstResult = reduceSceneAction({
+      scene: CAFE_SCENE,
+      state: firstState,
+      proposal: {
+        actionId: 'director-alternative-first',
+        sessionId: SESSION,
+        attemptId: ATTEMPT,
+        expectedSceneRevision: 1,
+        action: 'offer_alternative',
+        payload: { alternative: 'leche de almendra' },
+        sourceTurnIds: ['assistant-1'],
+      },
+    });
+    firstState = applyResult(CAFE_SCENE, firstState, firstResult);
+    const firstInstances = syncAuthoredOpportunities({
+      scene: CAFE_SCENE,
+      state: firstState,
+      existing: [],
+      recordedAt: NOW,
+    });
+
+    const retryState = {
+      ...firstState,
+      attemptId: 'attempt-retry',
+    };
+    const withRetry = syncAuthoredOpportunities({
+      scene: CAFE_SCENE,
+      state: retryState,
+      existing: firstInstances,
+      recordedAt: '2026-10-02T00:01:00.000Z',
+    });
+
+    const substitutionInstances = withRetry.filter(instance =>
+      instance.opportunityId.includes('request-substitution')
+    );
+    expect(substitutionInstances).toHaveLength(2);
+    expect(new Set(substitutionInstances.map(instance => instance.attemptId))).toEqual(
+      new Set([ATTEMPT, 'attempt-retry'])
+    );
+  });
+
+  it('uses assessor links only as a temporary validation view', () => {
+    const presented = {
+      id: 'opportunity:test',
+      attemptId: ATTEMPT,
+      opportunityId: 'opp.test',
+      skillId: 'skill-request-substitution',
+      status: 'presented' as const,
+      detection: 'validated' as const,
+      demonstration: 'unknown' as const,
+      recordedAt: NOW,
+    };
+    const passage = learnerPassage();
+
+    const view = prepareOpportunityAssessmentView({
+      existing: [presented],
+      candidates: [
+        {
+          opportunityInstanceId: presented.id,
+          sourcePassageId: passage.id,
+          sourceRevision: passage.revisionKey,
+        },
+      ],
+      passages: [passage],
+    });
+
+    expect(presented.status).toBe('presented');
+    expect(presented.demonstration).toBe('unknown');
+    expect(view[0]).toMatchObject({
+      status: 'taken',
+      demonstration: 'demonstrated',
+      learnerAttemptPassageId: passage.id,
+      learnerAttemptRevision: passage.revisionKey,
+    });
+  });
+
+  it('commits only validator-accepted opportunity demonstrations to the exact passage', () => {
+    const presented = {
+      id: 'opportunity:test',
+      attemptId: ATTEMPT,
+      opportunityId: 'opp.test',
+      skillId: 'skill-request-substitution',
+      status: 'presented' as const,
+      detection: 'validated' as const,
+      demonstration: 'unknown' as const,
+      recordedAt: NOW,
+    };
+    const passage = learnerPassage();
+
+    const rejected = commitValidatedOpportunityDemonstrations({
+      existing: [presented],
+      validated: [],
+      passages: [passage],
+    });
+    expect(rejected[0]).toEqual(presented);
+
+    const accepted = commitValidatedOpportunityDemonstrations({
+      existing: [presented],
+      validated: [
+        {
+          opportunityInstanceId: presented.id,
+          sourcePassageId: passage.id,
+          sourceRevision: passage.revisionKey,
+        },
+      ],
+      passages: [passage],
+    });
+    expect(accepted[0]).toMatchObject({
+      status: 'taken',
+      demonstration: 'demonstrated',
+      learnerAttemptPassageId: passage.id,
+      learnerAttemptRevision: passage.revisionKey,
+    });
+
+    const stale = commitValidatedOpportunityDemonstrations({
+      existing: [presented],
+      validated: [
+        {
+          opportunityInstanceId: presented.id,
+          sourcePassageId: passage.id,
+          sourceRevision: 'rev-stale',
+        },
+      ],
+      passages: [passage],
+    });
+    expect(stale[0]).toEqual(presented);
   });
 
   it('finalises unreachable authored definitions as not_presented audit records', () => {
