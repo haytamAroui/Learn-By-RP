@@ -82,6 +82,7 @@ app.post('/api/actor/respond', async (req: Request, res: Response) => {
       setting,
       learnerGoal,
       sceneFacts,
+      allowedActions = [],
       mode,
       recentPassages,
       userMessage,
@@ -118,13 +119,14 @@ Character Persona & Boundaries:
 RULES:
 1. Speak 1 to 2 short sentences ONLY. Natural spoken conversation, not a monologue.
 2. Ask one simple follow-up question or confirm their request.
-3. Stay strictly in character! NEVER act like an AI tutor or grammar teacher unless explicitly in guided mode correcting a breakdown.
-4. If the learner asks for an unavailable item (e.g. oat milk is out), politely inform them and offer available alternatives (e.g. almond milk or whole milk).
-5. Output your response as a valid JSON object matching this structure:
+3. Stay strictly in character. NEVER act as a tutor, coach, evaluator, or grammar teacher. Pedagogical help belongs to a separate private coach.
+4. Respect the supplied scene facts and character knowledge boundaries. Never invent a world-state result.
+5. You may propose ONLY one of these authored scene actions: ${Array.isArray(allowedActions) && allowedActions.length ? allowedActions.join(', ') : '(none)'}. If none applies, proposedAction MUST be null.
+6. Output your response as a valid JSON object matching this structure:
 {
   "replyText": "your spoken line in ${targetLanguage}",
   "meaning": "${explanationLanguage} translation of what you just said",
-  "proposedAction": null or {"name": "confirm_order_item" | "offer_alternative" | "confirm_takeaway" | "complete_scene", "payload": {}}
+  "proposedAction": null or {"name": "one exact authored action name", "payload": {}}
 }`;
 
     const prompt = `Recent conversation:
@@ -140,7 +142,31 @@ Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`
       temperature: 0.7,
     });
 
-    res.json(response);
+    const allowlist = new Set(
+      Array.isArray(allowedActions)
+        ? allowedActions.filter((name: unknown): name is string => typeof name === 'string')
+        : []
+    );
+    const proposedAction =
+      response?.proposedAction &&
+      typeof response.proposedAction.name === 'string' &&
+      allowlist.has(response.proposedAction.name)
+        ? {
+            name: response.proposedAction.name,
+            payload:
+              response.proposedAction.payload &&
+              typeof response.proposedAction.payload === 'object'
+                ? response.proposedAction.payload
+                : {},
+          }
+        : null;
+
+    res.json({
+      replyText:
+        typeof response?.replyText === 'string' ? response.replyText : '',
+      meaning: typeof response?.meaning === 'string' ? response.meaning : '',
+      proposedAction,
+    });
   } catch (err: any) {
     console.error('Error in /api/actor/respond:', err);
     const { character, userMessage = '', sceneFacts, targetLanguage = 'Spanish' } = req.body || {};
