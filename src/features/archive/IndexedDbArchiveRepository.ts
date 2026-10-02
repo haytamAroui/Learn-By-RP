@@ -11,7 +11,11 @@ import {
 } from './idb';
 
 declare const indexedDB: IDBFactory | undefined;
-import { ArchiveRepository, ConsentRecord } from './ArchiveRepository.types';
+import {
+  ArchiveRepository,
+  ConsentRecord,
+  PersistableSessionRecord,
+} from './ArchiveRepository.types';
 import {
   LanguageCode,
   LearningObservation,
@@ -485,13 +489,6 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     return observations
       .filter(o => !o.hidden)
       .sort((a, b) => (b.recordedAt ?? '').localeCompare(a.recordedAt ?? ''));
-  }
-
-  async saveSkillObservations(observations: SkillObservation[]): Promise<void> {
-    if (observations.length === 0) return;
-    await this.transaction(async tx => {
-      this.putDocs(tx, STORE.skillObservations, observations, o => o.id);
-    });
   }
 
   async hideSkillObservation(observationId: string): Promise<void> {
