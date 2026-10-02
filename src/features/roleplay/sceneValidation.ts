@@ -180,6 +180,18 @@ export function validateSceneDefinition(scene: SceneDefinition): SceneValidation
     validatePredicate(scene, scene.complication.trigger, 'complication.trigger', errors);
   }
 
+  const pressureBranchIds = scene.pressureBranches.map(item => item.id);
+  if (new Set(pressureBranchIds).size !== pressureBranchIds.length) {
+    errors.push('pressureBranches: duplicate pressure branch id');
+  }
+  for (const [index, branch] of scene.pressureBranches.entries()) {
+    const path = `pressureBranches[${index}]`;
+    if (!branch.actorInstruction.trim()) {
+      errors.push(`${path}: actorInstruction must not be empty`);
+    }
+    validatePredicate(scene, branch.trigger, `${path}.trigger`, errors);
+  }
+
   const challengeIds = scene.communicationChallenges.map(item => item.id);
   if (new Set(challengeIds).size !== challengeIds.length) {
     errors.push('communicationChallenges: duplicate challenge id');
