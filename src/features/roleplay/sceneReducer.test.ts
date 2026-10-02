@@ -394,11 +394,11 @@ describe('the reducer is not specialised to one scene', () => {
     const result = reduceSceneAction({
       scene: PHARMACY_SCENE,
       state,
-      proposal: proposal({ action: 'ask_about_ingredient', payload: { ingredient: 'somnio' } }),
+      proposal: proposal({ action: 'request_pharmacist', payload: {} }),
     });
 
     expect(result.accepted).toBe(true);
-    expect(result.newFacts.ingredientQuestionAsked).toBe(true);
+    expect(result.newFacts.pharmacistRequested).toBe(true);
   });
 
   it('rejects an action allowlisted only in the other scene', () => {
