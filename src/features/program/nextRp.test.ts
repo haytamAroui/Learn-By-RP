@@ -120,14 +120,11 @@ describe('deterministic next-RP policy', () => {
     });
   });
 
-  it('uses only repeated strict lapses to trigger recovery', () => {
+  it('uses a genuine strict lapse to trigger recovery', () => {
     const result = recommendNextRp({
       ...BASE,
       observations: [],
-      lapses: [
-        lapse('1', '2026-10-01T10:00:00.000Z'),
-        lapse('2', '2026-09-30T10:00:00.000Z'),
-      ],
+      lapses: [lapse('1', '2026-10-01T10:00:00.000Z')],
     });
 
     expect(result).toMatchObject({
