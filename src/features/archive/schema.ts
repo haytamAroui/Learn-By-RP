@@ -305,6 +305,15 @@ export const MIGRATIONS: Migration[] = [
         ON opportunity_instances (session_id, attempt_id);`,
     ],
   },
+  {
+    version: 5,
+    name: 'scope_support_exposures',
+    statements: [
+      `ALTER TABLE support_exposures ADD COLUMN target_skill_id TEXT;`,
+      `ALTER TABLE support_exposures ADD COLUMN target_opportunity_id TEXT;`,
+      `ALTER TABLE support_exposures ADD COLUMN target_phrase_id TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
