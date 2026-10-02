@@ -119,6 +119,19 @@ describe('regulated health roleplay policy', () => {
     expect(sanitizeRegulatedHealthActorResponse(safe, 'fr')).toEqual(safe);
   });
 
+  it('keeps pharmacy Coach targets mission-authoritative and post-filtered', () => {
+    const server = readFileSync('server/index.ts', 'utf8');
+
+    expect(server).toContain(
+      "mission.usefulPhrases.find(phrase => phrase.id === targetPhraseId)"
+    );
+    expect(server).toContain(
+      "error: 'targetPhraseId must be declared by the mission'"
+    );
+    expect(server).toContain('regulatedHealthCoachHint(targetLanguage)');
+    expect(server).toContain('containsRegulatedHealthAdvice(proposedHint)');
+  });
+
   it('does not broker Realtime for regulated-health missions', () => {
     const server = readFileSync('server/index.ts', 'utf8');
     const realtime = readFileSync(
