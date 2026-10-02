@@ -10,6 +10,7 @@ import {
   markSessionReconciled,
 } from '../../src/features/roleplay/sceneStore';
 import { getScene, SCENES } from '../../src/content/scenes';
+import { MISSION_CATALOG } from '../../src/data/missions';
 import {
   SceneActionProposal,
   SceneForkRequest,
@@ -59,7 +60,14 @@ function wrap(handler: (req: Request, res: Response) => Promise<unknown>) {
 roleplayRouter.post(
   '/v1/voice/sessions',
   wrap(async (req, res) => {
-    const { sessionId, sceneId, missionId, attemptId } = req.body ?? {};
+    const {
+      sessionId,
+      sceneId,
+      sceneVersion,
+      missionId,
+      missionVersion,
+      attemptId,
+    } = req.body ?? {};
 
     const id = requireString(sessionId, 'sessionId');
     const scene = getScene(requireString(sceneId, 'sceneId'));
@@ -82,10 +90,35 @@ roleplayRouter.post(
       return;
     }
 
+    const pinnedMissionId = requireString(missionId ?? scene.missionId, 'missionId');
+    const mission = MISSION_CATALOG.find(item => item.id === pinnedMissionId);
+    if (!mission) {
+      res.status(404).json({ error: `Unknown mission: ${pinnedMissionId}` });
+      return;
+    }
+
+    const requestedSceneVersion =
+      sceneVersion === undefined ? scene.version : requireNumber(sceneVersion, 'sceneVersion');
+    const requestedMissionVersion =
+      missionVersion === undefined
+        ? mission.version
+        : requireNumber(missionVersion, 'missionVersion');
+
+    if (requestedSceneVersion !== scene.version) {
+      res.status(409).json({ error: 'sceneVersion does not match released scene' });
+      return;
+    }
+    if (requestedMissionVersion !== mission.version) {
+      res.status(409).json({ error: 'missionVersion does not match released mission' });
+      return;
+    }
+
     const record = await createHostedSession({
       sessionId: id,
       sceneId: scene.id,
-      missionId: requireString(missionId ?? scene.missionId, 'missionId'),
+      sceneVersion: requestedSceneVersion,
+      missionId: pinnedMissionId,
+      missionVersion: requestedMissionVersion,
       attemptId: typeof attemptId === 'string' ? attemptId : undefined,
     });
 
@@ -149,6 +182,15 @@ roleplayRouter.post(
       actionId: requireString(body.actionId, 'actionId'),
       sessionId: requireString(body.sessionId ?? req.params.id, 'sessionId'),
       attemptId: requireString(body.attemptId, 'attemptId'),
+      missionId: requireString(body.missionId, 'missionId'),
+      missionVersion: requireNumber(body.missionVersion, 'missionVersion'),
+      sceneId: requireString(body.sceneId, 'sceneId'),
+      sceneVersion: requireNumber(body.sceneVersion, 'sceneVersion'),
+      providerCallId: requireString(body.providerCallId, 'providerCallId'),
+      connectionGeneration: requireNumber(
+        body.connectionGeneration,
+        'connectionGeneration'
+      ),
       expectedSceneRevision: requireNumber(body.expectedSceneRevision, 'expectedSceneRevision'),
       action: requireString(body.action, 'action'),
       payload: body.payload ?? {},
