@@ -359,6 +359,41 @@ export type ScenarioFamilyId = string;
 export type ExamProgramId = string;
 export type ExamTaskId = string;
 
+
+export type ScenarioFamilyReviewStatus = 'draft' | 'reviewed' | 'retired';
+
+/**
+ * Canonical reviewer-owned definition of a scenario family.
+ *
+ * A family is broader than one mission or scene and narrower than a domain.
+ * Transfer depends on these reviewed boundaries, so mission authors may only
+ * reference ids from the canonical catalog.
+ */
+export interface ScenarioFamilyDefinition {
+  /** Stable id. Never recycle a retired id for a different meaning. */
+  id: ScenarioFamilyId;
+  version: number;
+  reviewStatus: ScenarioFamilyReviewStatus;
+
+  /** Mission domains in which this family is valid. */
+  domainIds: MissionDefinition['category'][];
+
+  /** Short learner-facing label used when the family needs to be explained. */
+  learnerLabel: Record<UiLanguage, string>;
+
+  /** Internal reviewer definition: what makes two scenarios the same family. */
+  internalDescription: string;
+
+  /** Concrete situations that belong inside this family boundary. */
+  includedContexts: string[];
+  /** Near-neighbour situations that must be classified elsewhere. */
+  excludedContexts: string[];
+
+  reviewedAt?: string;
+  reviewedBy?: string;
+  reviewNote?: string;
+}
+
 /**
  * Stable pedagogical context identity for communicative-skill evidence.
  *

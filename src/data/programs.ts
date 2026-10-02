@@ -2,6 +2,7 @@ import { RoleplayProgram, validateRoleplayProgram } from '../contracts/program';
 import { MISSION_CATALOG } from './missions';
 import { getScene } from '../content/scenes';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
+import { validateMissionScenarioFamily } from '../content/scenarioFamilies';
 
 /**
  * First executable consumer of the curated-program contract.
@@ -65,6 +66,10 @@ export function validateProgramAgainstCatalog(
       errors.push(
         `${path}: mission language ${mission.language} != program ${program.targetLanguage}`
       );
+    }
+
+    for (const familyError of validateMissionScenarioFamily(mission)) {
+      errors.push(`${path}: ${familyError}`);
     }
 
     if (entry.sceneId) {

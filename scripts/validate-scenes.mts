@@ -1,8 +1,30 @@
 import { SCENES } from '../src/content/scenes';
+import {
+  validateMissionScenarioFamily,
+  validateScenarioFamilyCatalog,
+} from '../src/content/scenarioFamilies';
+import { MISSION_CATALOG } from '../src/data/missions';
 import { modelCheckScene } from '../src/features/roleplay/sceneModelChecker';
 import { validateSceneDefinition } from '../src/features/roleplay/sceneValidation';
 
 let failed = false;
+
+const familyCatalog = validateScenarioFamilyCatalog();
+if (!familyCatalog.valid) {
+  failed = true;
+  for (const error of familyCatalog.errors) {
+    console.error(`  ERROR scenario-family catalog: ${error}`);
+  }
+}
+
+for (const mission of MISSION_CATALOG) {
+  const errors = validateMissionScenarioFamily(mission);
+  if (errors.length === 0) continue;
+  failed = true;
+  for (const error of errors) {
+    console.error(`  ERROR mission scenario-family: ${error}`);
+  }
+}
 
 for (const scene of Object.values(SCENES)) {
   if (scene.reviewStatus !== 'released') continue;
@@ -50,4 +72,4 @@ if (failed) {
   process.exit(1);
 }
 
-console.log('\nAll released scenes passed static validation and finite-state model checking.');
+console.log('\nAll released scenes and mission scenario-family references passed content validation.');

@@ -1,7 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
-**Last reconciled with `main`:** `dfe61724c6170655c89f8a1191b4b72d816fa593` (2026-10-02)  
+**Last reconciled with `main`:** `582d8c89efa88d6a8ab10a2dd8531b686919d1f3` (2026-10-02)  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -142,7 +142,7 @@ interface SkillContextKey {
 - [x] Pressure variant does not create a new context. (variant metadata excluded from context identity)
 - [x] Regional/locale variant does not create a new context. (locale excluded from context identity)
 - [x] Same-family mission variant does not create a new context.
-- [ ] Add family definition/reviewer metadata.
+- [x] Add family definition/reviewer metadata. (`ScenarioFamilyDefinition`, `src/content/scenarioFamilies.ts`; reviewed domain/inclusion/exclusion boundaries + build-time mission reference validation)
 - [x] Update `SkillObservation` to carry required `contextKey`; persisted in SQLite schema v3.
 - [x] Update `SkillProjection` to derive contexts from `contextKey`, never `sessionId`.
 - [x] Add regression test: Café A → Café B in same family adds no transfer context. (`skillContext.test.ts`)
@@ -847,7 +847,7 @@ And the system can prove:
 - [ ] support was target-scoped and window-limited.
 - [ ] accommodations were not penalized.
 - [x] provider/session failures created no lapse.
-- [ ] same-family variants did not fake transfer.
+- [x] same-family variants did not fake transfer. (`skillContext.test.ts`; same domain + same reviewed family collapses to one context, while domain + family identity remains explicit)
 - [ ] retry never masqueraded as transfer.
 - [ ] scene completion is reachable and deadlock-free.
 - [ ] program decisions are reproducible under the same policy version.
@@ -856,7 +856,7 @@ And the system can prove:
 
 # 31. Immediate known code deltas
 
-Confirmed from `main` after squash merge `dfe61724c6170655c89f8a1191b4b72d816fa593`:
+Confirmed from `main` after squash merge `582d8c89efa88d6a8ab10a2dd8531b686919d1f3`:
 
 - [x] Context identity is domain + `scenarioFamilyId`; session/retry/cosmetic variants do not create transfer contexts.
 - [x] Scene outcome and skill demonstration are independent, and strict lapses require a validated taken cold opportunity tied to learner evidence.
@@ -870,6 +870,7 @@ Confirmed from `main` after squash merge `dfe61724c6170655c89f8a1191b4b72d816fa5
 - [x] RoleplayProgram contracts, ProgramProjection/Preferences, deterministic next-RP, Cold/Guided/Transfer/Recovery and recovery caps are implemented.
 - [x] Carry-forward continuity facts have source, sensitivity, mission allowlist, TTL and local-only enforcement.
 - [x] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution implemented (`src/content/skills.ts`, `skillEvidence.ts`, scene/catalog/hierarchy regression tests; duplicate mission-owned catalog removed).
+- [x] Canonical reviewed ScenarioFamily catalog defines stable family IDs, domain boundaries, inclusion/exclusion reviewer metadata and fail-closed mission/program validation (`src/content/scenarioFamilies.ts`, `scenarioFamilies.test.ts`, `validate-scenes.mts`).
 - [ ] Non-coach support surfaces still need complete instrumentation for model phrase audio, captions, typed examples and recap exposure.
 - [ ] Director pressure branches remain open.
 - [ ] Curated launch content, locale review and final simulation remain open.
