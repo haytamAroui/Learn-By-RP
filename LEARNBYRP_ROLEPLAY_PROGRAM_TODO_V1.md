@@ -1,6 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
+**Last reconciled with `main`:** `dfe61724c6170655c89f8a1191b4b72d816fa593` (2026-10-02)  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -45,7 +46,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 - [x] Support exposure exists in the runtime.
 - [ ] Enforce validator-only observation write path by type/API boundary.
 - [ ] Confirm reveal/listen cannot create unassisted phrase evidence.
-- [ ] Confirm transcript revision invalidates stale derived evidence.
+- [x] Confirm transcript revision invalidates stale derived evidence. (`skillEvidence.test.ts`, transcript/archive regression coverage)
 
 ## Scene baseline
 
@@ -55,10 +56,10 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 - [x] Duplicate action IDs are handled idempotently in current reducer/store flow.
 - [x] Stale revision is rejected.
 - [x] Retry/fork infrastructure exists.
-- [ ] Add missionVersion and sceneVersion to every authoritative action request.
-- [ ] Add provider call ID + connection generation for cross-channel dedupe.
-- [ ] Move authoritative reducer execution contract into an explicitly shared pure package executed on the server.
-- [ ] Add append-only scene event log so revision N can be replayed.
+- [x] Add missionVersion and sceneVersion to every authoritative action request. (`server/roleplay/routes.ts`, `SceneMirror.ts`)
+- [x] Add provider call ID + connection generation for cross-channel dedupe. (`providerCallId`, `connectionGeneration`)
+- [x] Move authoritative reducer execution contract into an explicitly shared pure package executed on the server. (`src/features/roleplay/runtime/index.ts`)
+- [x] Add append-only scene event log so revision N can be replayed. (`scene_events`, `rebuildSceneStateFromEventLog`)
 
 ## Privacy/security/safety baseline
 
@@ -125,7 +126,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 Current code still counts `sessionId` as an independent context in `skillProjection.ts`. This must be removed before Transfer or Steady can be trusted.
 
 - [x] Introduce required `scenarioFamilyId`. (`MissionDefinition.scenarioFamilyId`)
-- [ ] Define:
+- [x] Define:
 
 ```ts
 interface SkillContextKey {
@@ -254,7 +255,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 # 7. Accessibility accommodations are not pedagogical help
 
 - [x] Add `Accommodation` profile records. (`AccommodationProfile` persisted in `UserPreferences`; backward-compatible for old archives)
-- [ ] Initial kinds:
+- [x] Initial kinds:
   - [x] captions_always
   - [x] slower_speech_default
   - [x] typed_preferred
@@ -300,7 +301,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] One strict lapse does not demote status. It sets `reviewDue` only; regression-tested.
 - [x] Second lapse within policy window may flag revisit [Tunable]. (`SKILL_POLICY.revisitMinRecentLapses = 2`)
 - [x] Do not implement automatic demotion in V1.
-- [ ] Cap consecutive recovery missions per skill [Tunable].
+- [x] Cap consecutive recovery missions per skill [Tunable]. (`RP_MODE_POLICY.maxConsecutiveRecoveries = 2`)
 - [ ] Offer off-ramps: guided practice / different skill / break / mute skill.
 
 ---
@@ -471,7 +472,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Add program policy version.
 - [x] Pin every plan entry to mission ID + missionVersion.
 - [x] Pin referenced sceneId + sceneVersion; catalog validation rejects drift.
-- [ ] Split:
+- [x] Split:
   - [x] `ProgramProjection` — derived/rebuildable
   - [x] `ProgramPreferences` — skipped/pinned/muted source data
 
@@ -548,7 +549,7 @@ Rules:
 - [x] Supported success → offer cold transfer in a different available family.
 - [x] Genuine strict cold lapse → recovery candidate.
 - [x] No valid strict lapse → no weakness inference.
-- [x] Repeated independent success → optional challenge; learner confirmation required.
+- [x] Repeated independent success → optional challenge; learner confirmation required, and the recommendation carries only a negotiated compatible `challengeType` (next-RP policy v2).
 - [x] Same evidence + same policy version → same deterministic recommendation.
 - [x] Recommendation stores deterministic reason codes only.
 - [x] Render EN/FR/ES/NL explanation from reason code (`renderNextRpReason`).
@@ -605,16 +606,16 @@ These are properties of RP opportunities/attempts, not conventional lesson scree
 
 # 24. Connected-world continuity
 
-- [ ] Replace bare fact-key carry-forward with `CarryForwardFact`.
-- [ ] Add sensitivity.
-- [ ] Add source.
-- [ ] Add mission allowlist.
-- [ ] Add expiry/TTL.
+- [x] Replace bare fact-key carry-forward with `CarryForwardFact`. (`types/index.ts`, `continuity.ts`)
+- [x] Add sensitivity. (`CarryForwardSensitivity`)
+- [x] Add source. (`CarryForwardFact.source`)
+- [x] Add mission allowlist. (`allowedMissionIds`)
+- [x] Add expiry/TTL. (`expiresAt`; expired facts fail closed)
 - [ ] Use learner alias rather than real name by default.
 - [ ] Learner sees "What this place remembers".
 - [ ] Learner can edit/clear.
-- [ ] Local-only by default.
-- [ ] Higher-sensitivity facts never carry across scenes.
+- [x] Local-only by default. (`localOnly: true`)
+- [x] Higher-sensitivity facts never carry across scenes. (`canCarryFactToMission` rejects `high`)
 
 ---
 
@@ -683,48 +684,48 @@ A program must pass:
 
 ## Identity
 
-- [ ] same-family Café A → Café B adds no context.
+- [x] same-family Café A → Café B adds no context. (`skillContext.test.ts`)
 - [ ] pressure variant adds no context.
 - [ ] retry adds no context.
 
 ## Evidence
 
 - [ ] scene achieved without skill demonstration.
-- [ ] scene failed without skill lapse.
-- [ ] wrong passage revision rejected.
-- [ ] assistant quote rejected.
+- [x] scene failed without skill lapse. (`skillEvidence.test.ts`: scene failure alone creates no lapse)
+- [x] wrong passage revision rejected. (`skillEvidence.test.ts`)
+- [x] assistant quote rejected. (`skillEvidence.test.ts`)
 - [ ] one communicative act cannot be credited to overlapping parent + child skills.
-- [ ] rehearsal cannot create independent evidence.
+- [x] rehearsal cannot create independent evidence. (`skillEvidence.test.ts`)
 
 ## Support
 
-- [ ] hint about one phrase affects one target only.
-- [ ] meaning of character turn does not downgrade production.
-- [ ] accessibility captions do not downgrade unrelated production.
+- [x] hint about one phrase affects one target only. (`supportScope.test.ts`)
+- [x] meaning of character turn does not downgrade production. (`supportScope.test.ts`)
+- [x] accessibility captions do not downgrade unrelated production. (`supportScope.test.ts`)
 - [x] support shown after checkpoint still applies after retry (`retrySupport.test.ts`, high-water regression).
 
 ## Runtime
 
 - [ ] forged facts ignored.
-- [ ] duplicate client + sideband action → one transition.
-- [ ] stale revision rejected.
-- [ ] consequential action result returns before character confirms.
-- [ ] event-log replay reconstructs revision.
+- [x] duplicate client + sideband action → one transition. (`sceneStore.test.ts`; actionId first-verdict replay/idempotency)
+- [x] stale revision rejected. (`sceneReducer.test.ts`, `sceneStore.test.ts`)
+- [x] consequential action result returns before character confirms. (`actorContract.test.ts`)
+- [x] event-log replay reconstructs revision. (`sceneStore.test.ts`)
 
 ## Scene verification
 
-- [ ] unreachable completion fails build.
-- [ ] deadlock fails build.
-- [ ] unsatisfiable opportunity fails build.
+- [x] unreachable completion fails build. (`sceneModelChecker.test.ts`, `validate:scenes`)
+- [x] deadlock fails build. (`sceneModelChecker.test.ts`, `validate:scenes`)
+- [x] unsatisfiable opportunity fails build. (`sceneModelChecker.test.ts`)
 - [ ] unsafe complication path fails build.
 
 ## Lapse/recovery
 
-- [ ] silence → no lapse.
-- [ ] disconnect → no lapse.
-- [ ] ASR failure → no lapse.
-- [ ] real failed cold opportunity can create revisit/recovery.
-- [ ] recovery cap/off-ramp works.
+- [x] silence → no lapse. (`skillEvidence.test.ts`)
+- [x] disconnect → no lapse. (`skillEvidence.test.ts`)
+- [x] ASR failure → no lapse. (`skillEvidence.test.ts`)
+- [x] real failed cold opportunity can create revisit/recovery. (`skillEvidence.test.ts`, `nextRp.test.ts`)
+- [x] recovery cap/off-ramp works. (`nextRp.test.ts`)
 
 ## Privacy/security
 
@@ -734,7 +735,7 @@ A program must pass:
 
 ## Program
 
-- [ ] same evidence + same policy version → same next-RP decision.
+- [x] same evidence + same policy version → same next-RP decision. (`nextRp.test.ts`)
 - [ ] policy bump rebuilds reproducibly.
 - [ ] unreviewed mission cannot enter active program.
 
@@ -758,10 +759,10 @@ A program must pass:
 - [ ] Canonical skill hierarchy/catalog.
 - [x] taskOutcome vs demonstration.
 - [x] OpportunityInstance.
-- [ ] scoped support relevance matrix.
-- [ ] accommodations.
+- [x] scoped support relevance matrix. (`supportScope.ts`, `supportScope.test.ts`)
+- [x] accommodations. (`AccommodationProfile`; Settings + evidence regression coverage)
 - [x] support high-water mark (retry inherits every parent-attempt exposure below the captured mark, including support shown after the scene checkpoint; regression-tested).
-- [ ] strict lapse/revisit semantics. (strict lapse eligibility complete; revisit policy remains)
+- [x] strict lapse/revisit semantics. (`skillEvidence.ts`, `skillProjection.ts`; reviewDue/revisit remain separate from status)
 - [ ] consent/privacy/security G0 confirmations.
 
 ## P1 — scene/mission runtime hardening
@@ -771,18 +772,18 @@ A program must pass:
 - [x] append-only scene event log (accepted/rejected proposal + verdict persisted by actionId).
 - [x] typed finite facts (`SceneFactSchema`).
 - [x] predicate/effect DSL (bounded data-only predicates + finite set effects).
-- [ ] model checker.
-- [ ] deterministic Director.
+- [x] model checker. (`sceneModelChecker.ts`; `npm run validate:scenes`)
+- [x] deterministic Director. (`director.ts`; authored opportunity/complication/completion selection; pressure branch remains separately open in §13)
 - [x] blocking consequential actions (`mayCommitActorReply` + authoritative reducer acceptance).
 - [x] provider capability negotiation (`features/roleplay/capabilities.ts`; challenge gating + degradation telemetry).
 
 ## P2 — evidence loop V1
 
-- [ ] demonstration validator. (positive demonstration contract landed; authored opportunity requirement for all positive evidence remains)
-- [ ] opportunity-linked evidence. (contracts/persistence landed; runtime generation/linkage remains)
-- [ ] reason codes.
-- [ ] revisit + last independent use.
-- [ ] learner dispute flow.
+- [x] demonstration validator. (`skillEvidence.ts`; exact validated opportunity linkage required for positive skill evidence)
+- [x] opportunity-linked evidence. (`OpportunityInstance` runtime generation, assessment linkage, SQLite/IndexedDB persistence)
+- [x] reason codes. (`SkillObservation.reasonCode`, `SkillLapse.reasonCode`; persistence/backfill)
+- [x] revisit + last independent use. (`skillProjection.ts`, Progress UI)
+- [x] learner dispute flow. (hide/dispute preserves raw history and excludes disputed evidence)
 - [ ] calibration fixtures.
 
 ## P3 — curated programs
@@ -790,22 +791,22 @@ A program must pass:
 - [ ] choose launch language/locale.
 - [ ] choose first two programs.
 - [ ] author/review mission set.
-- [ ] ProgramProjection + ProgramPreferences.
-- [ ] deterministic next-RP engine.
+- [x] ProgramProjection + ProgramPreferences. (`contracts/program.ts`, persisted learner preferences)
+- [x] deterministic next-RP engine. (`nextRp.ts`, policy v2)
 - [ ] Program UI.
 
 ## P4 — pedagogy loop
 
-- [ ] Cold.
-- [ ] Guided.
-- [ ] Transfer.
-- [ ] Recovery.
-- [ ] Retry distinction.
-- [ ] recovery caps/off-ramps.
+- [x] Cold. (`rpModes.ts`, scoped support semantics)
+- [x] Guided. (`rpModes.ts`, four-step coach ladder)
+- [x] Transfer. (`rpModes.ts`, `nextRp.ts`)
+- [x] Recovery. (`rpModes.ts`, `nextRp.ts`)
+- [x] Retry distinction. (rehearsal is not transfer; support ledger high-water is inherited)
+- [x] recovery caps/off-ramps. (`RP_MODE_POLICY`, `RECOVERY_CAP_OFF_RAMP`)
 
 ## P5 — template programs
 
-- [ ] slot-based goal input.
+- [x] slot-based goal input. (`ProgramGoalInput`, `isExecutableGoalInput`)
 - [ ] reviewed program templates.
 - [ ] preview.
 - [ ] free-text extraction/screening/discard.
@@ -855,21 +856,25 @@ And the system can prove:
 
 # 31. Immediate known code deltas
 
-Confirmed from current `main` during this TODO update:
+Confirmed from `main` after squash merge `dfe61724c6170655c89f8a1191b4b72d816fa593`:
 
-- [x] `src/features/learning/skillProjection.ts` derives independent contexts from required domain + scenario family, not `sessionId`.
-- [x] Scene `taskOutcome` is independent from `SkillObservation.demonstration`; a failed scene alone cannot create a lapse.
-- [x] `OpportunityInstance` is persisted and strict lapse derivation requires a validated, taken, failed opportunity tied to a learner passage.
-- [x] Authored `SkillOpportunityDefinition` and deterministic runtime opportunity generation are wired through live assessment. (`scene.ts`, `opportunityRuntime.ts`, `LiveSessionView.tsx`, `server/index.ts`)
-- [ ] Coach support in `LiveSessionView` still needs exact skill/opportunity/phrase targeting rather than mission-wide phrase targeting.
-- [ ] Current scene reducer still uses broad `Record<string, unknown>` facts/mutations; finite fact schemas and model checking remain open.
-- [x] Hosted roleplay routes already document server ownership of scene truth.
-- [x] Client scene mirror already exists.
-- [x] Current reducer already rejects stale revisions and supports action-id idempotency.
-- [ ] Action request still needs mission/scene versions and cross-channel dedupe metadata.
-- [ ] Append-only scene event replay remains open.
-- [ ] Deterministic Director remains open.
-- [ ] First-class RoleplayProgram runtime remains open.
+- [x] Context identity is domain + `scenarioFamilyId`; session/retry/cosmetic variants do not create transfer contexts.
+- [x] Scene outcome and skill demonstration are independent, and strict lapses require a validated taken cold opportunity tied to learner evidence.
+- [x] Authored `SkillOpportunityDefinition` → runtime `OpportunityInstance` → assessment → validated evidence is wired end-to-end.
+- [x] Coach support is scoped to exact skill/opportunity/phrase targets; unrelated comprehension assistance does not contaminate production evidence.
+- [x] Retry support uses a high-water ledger and never rewinds learner exposure.
+- [x] Finite scene facts, bounded predicate/effect DSL, payload validation and build-time model checking are active.
+- [x] Hosted scene execution is server-authoritative with versioned requests, cross-channel dedupe metadata and append-only event replay.
+- [x] Deterministic Director V1 exists for authored opportunities, complications and completion preparation.
+- [x] Provider capabilities are negotiated; unsupported communication challenge types cannot be emitted by next-RP policy v2.
+- [x] RoleplayProgram contracts, ProgramProjection/Preferences, deterministic next-RP, Cold/Guided/Transfer/Recovery and recovery caps are implemented.
+- [x] Carry-forward continuity facts have source, sensitivity, mission allowlist, TTL and local-only enforcement.
+- [ ] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution remain open.
+- [ ] Non-coach support surfaces still need complete instrumentation for model phrase audio, captions, typed examples and recap exposure.
+- [ ] Director pressure branches remain open.
+- [ ] Curated launch content, locale review and final simulation remain open.
+- [ ] Consent/privacy/security hardening and delete-tombstone guarantees remain G0 blockers.
+- [ ] Physical Android/iPhone native voice and cloud → native fallback verification remain open.
 
 ---
 
