@@ -1,4 +1,8 @@
-import { COMMUNICATIVE_SKILLS_CATALOG, isDirectlyEvidencedSkill } from '../../content/skills';
+import {
+  COMMUNICATIVE_SKILLS_CATALOG,
+  isDirectlyEvidencedSkill,
+  isLaunchVisibleCommunicativeSkill,
+} from '../../content/skills';
 import { SKILL_POLICY } from './policy';
 import { matchPhraseInText } from './matching';
 import { isIndependentSuccess, observationDay } from './skillEvidence';
@@ -166,14 +170,14 @@ function explain(
   }
 }
 
-/** Every catalogued skill, whether or not it has evidence. */
+/** Every launch-visible skill family/capability, including derived families. */
 export function projectSkillsV2(
   observations: SkillObservation[],
   lapses: SkillLapse[] = [],
   now: number = Date.now()
 ): SkillProjectionV2[] {
   return COMMUNICATIVE_SKILLS_CATALOG
-    .filter(skill => isDirectlyEvidencedSkill(skill.id))
+    .filter(skill => isLaunchVisibleCommunicativeSkill(skill.id))
     .map(skill => projectSkill(skill.id, observations, lapses, now));
 }
 
