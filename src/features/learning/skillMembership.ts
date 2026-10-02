@@ -1,4 +1,5 @@
-import { MISSION_CATALOG, COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import { MISSION_CATALOG } from '../../data/missions';
+import { COMMUNICATIVE_SKILLS_CATALOG, isDirectlyEvidencedSkill } from '../../content/skills';
 import { CommunicativeSkillId, MissionDefinition } from '../../types';
 
 /**
@@ -26,7 +27,9 @@ export function allowedSkillsForMission(
 ): Array<{ id: string; name: string; description: string }> {
   const allowed = new Set(allowedSkillIds(missionFor(missionId)));
 
-  return COMMUNICATIVE_SKILLS_CATALOG.filter(skill => allowed.has(skill.id)).map(skill => ({
+  return COMMUNICATIVE_SKILLS_CATALOG.filter(
+    skill => allowed.has(skill.id) && isDirectlyEvidencedSkill(skill.id)
+  ).map(skill => ({
     id: skill.id,
     name: skill.name,
     description: skill.description,
