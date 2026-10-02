@@ -4,7 +4,7 @@ import cors from 'cors';
 // Shared with the client: one matching implementation, so the offline fallback
 // cannot be more generous than the deterministic client core.
 import { matchPhraseInText } from '../src/features/learning/matching';
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/data/missions';
+import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/content/skills';
 import { allowedSkillsForMission } from '../src/features/learning/skillMembership';
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
