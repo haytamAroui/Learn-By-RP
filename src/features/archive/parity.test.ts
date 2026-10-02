@@ -316,6 +316,9 @@ describe('native and web agree on the same archive', () => {
       expect(parsed.version).toBe(1);
       expect(parsed.sessions).toHaveLength(1);
     }
+
+    expect('saveSkillObservations' in native).toBe(false);
+    expect('saveSkillObservations' in webRepo).toBe(false);
   });
 });
 
@@ -343,7 +346,6 @@ describe('the contract is enforced at compile time', () => {
       'hideObservation',
       'disputeObservation',
       'getSkillObservations',
-      'saveSkillObservations',
       'hideSkillObservation',
       'disputeSkillObservation',
       'getSkillLapses',
