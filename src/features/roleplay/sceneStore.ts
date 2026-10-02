@@ -57,7 +57,9 @@ async function getStore(): Promise<SceneStore> {
 export async function createHostedSession(params: {
   sessionId: string;
   sceneId: string;
+  sceneVersion?: number;
   missionId: string;
+  missionVersion?: number;
   attemptId?: string;
 }): Promise<HostedSessionRecord> {
   const scene = getScene(params.sceneId);
@@ -72,7 +74,9 @@ export async function createHostedSession(params: {
   const record: HostedSessionRecord = {
     sessionId: params.sessionId,
     sceneId: scene.id,
+    sceneVersion: params.sceneVersion ?? scene.version,
     missionId: params.missionId,
+    missionVersion: params.missionVersion ?? 1,
     state: createInitialScene(scene, params.sessionId, attemptId),
     attempts: [{ attemptId, rehearsal: false, createdAt: now }],
     createdAt: now,
@@ -114,6 +118,22 @@ export async function applySceneAction(
   const scene = getScene(record.sceneId);
   if (!scene) {
     throw new Error(`Unknown scene: ${record.sceneId}`);
+  }
+
+  if (proposal.sceneId && proposal.sceneId !== record.sceneId) {
+    throw new Error('Proposal sceneId does not match hosted session');
+  }
+  if (proposal.sceneVersion !== undefined && proposal.sceneVersion !== record.sceneVersion) {
+    throw new Error('Proposal sceneVersion does not match hosted session');
+  }
+  if (proposal.missionId && proposal.missionId !== record.missionId) {
+    throw new Error('Proposal missionId does not match hosted session');
+  }
+  if (
+    proposal.missionVersion !== undefined &&
+    proposal.missionVersion !== record.missionVersion
+  ) {
+    throw new Error('Proposal missionVersion does not match hosted session');
   }
 
   // Already applied? Return the stored result without re-evaluating.
