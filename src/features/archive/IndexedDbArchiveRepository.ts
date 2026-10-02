@@ -1,5 +1,9 @@
 import { INITIAL_PHRASE_ITEMS, MISSION_CATALOG } from '../../data/missions';
-import { projectPhraseState } from '../learning/learningCore';
+import {
+  assertValidatedPhraseEvidence,
+  projectPhraseState,
+  type ValidatedPhraseEvidence,
+} from '../learning/learningCore';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
 import {
   assertValidatedSkillEvidence,
@@ -78,10 +82,11 @@ interface StoredSession extends Omit<SessionRecord, 'coldAttempt'> {
  * validator-issued bundle during completion, but a caller-supplied SessionRecord
  * must never smuggle skill truth into IndexedDB.
  */
-function stripRawSkillEvidence(
+function stripRawEvidence(
   session: SessionRecord
-): Omit<SessionRecord, 'skillObservations' | 'skillLapses'> {
+): Omit<SessionRecord, 'observations' | 'skillObservations' | 'skillLapses'> {
   const {
+    observations: _observations,
     skillObservations: _skillObservations,
     skillLapses: _skillLapses,
     ...safe
@@ -295,7 +300,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   async beginSession(session: SessionRecord): Promise<void> {
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
-      const safeSession = stripRawSkillEvidence(session);
+      const safeSession = stripRawEvidence(session);
       const merged: StoredSession = {
         ...(existing ?? safeSession),
         ...safeSession,
@@ -308,8 +313,9 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
             : existing?.supportExposures ?? [],
         opportunityInstances:
           session.opportunityInstances ?? existing?.opportunityInstances ?? [],
-        observations:
-          session.observations.length > 0 ? session.observations : existing?.observations ?? [],
+        observations: phraseEvidence
+          ? [...phraseEvidence.observations]
+          : existing?.observations ?? [],
         // Never accept these fields from the caller. Existing values can only have
         // originated from an earlier validator-issued completion on this device.
         skillObservations: existing?.skillObservations ?? [],
@@ -337,15 +343,17 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   async completeSession(
     session: SessionRecord,
     _rejectedProposals: { reason: string }[] = [],
-    skillEvidence?: ValidatedSkillEvidence
+    skillEvidence?: ValidatedSkillEvidence,
+    phraseEvidence?: ValidatedPhraseEvidence
   ): Promise<void> {
     if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
+    if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
     const now = new Date().toISOString();
 
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
 
-      const safeSession = stripRawSkillEvidence(session);
+      const safeSession = stripRawEvidence(session);
       const stored: StoredSession = {
         ...safeSession,
         endedAt: session.endedAt ?? now,
@@ -371,8 +379,14 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
       // Evidence is written in the same transaction as the transcript it cites, so
       // a recap can never render a claim the archive does not hold.
-      const observations: LearningObservation[] = [...stored.observations, ...(existing?.observations ?? [])];
-      this.putDocs(tx, STORE.observations, observations, o => this.observationKey(o));
+      if (phraseEvidence) {
+        this.putDocs(
+          tx,
+          STORE.observations,
+          [...phraseEvidence.observations],
+          o => this.observationKey(o)
+        );
+      }
 
       // Dedicated skill-evidence stores have exactly one write authority:
       // the opaque bundle returned by validateSkillEvidenceProposal().
@@ -766,38 +780,26 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
   async recordDrillReview(input: {
     phrase: PhraseItem;
-    quote: string;
-    modality: 'spoken' | 'typed';
-    unassisted: boolean;
+    evidence: ValidatedPhraseEvidence;
   }): Promise<void> {
-    const { phrase, quote, modality, unassisted } = input;
-    const now = new Date().toISOString();
+    const { phrase, evidence } = input;
+    assertValidatedPhraseEvidence(evidence);
+    const observations = [...evidence.observations];
 
-    const observation: LearningObservation = {
-      observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sessionId: 'drill',
-      attemptId: 'drill',
-      sourceTurnId: `drill-${Date.now()}`,
-      sourceRevision: 'rev-drill',
-      itemId: phrase.id,
-      candidateForm: phrase.form,
-      meaning: phrase.meaning,
-      quote,
-      modality,
-      retrieval: unassisted ? 'unassisted' : 'assisted',
-      taskOutcome: 'achieved',
-      rehearsal: false,
-      supportExposureIds: [],
-      recordedAt: now,
-    };
+    for (const observation of observations) {
+      if (observation.itemId !== phrase.id) {
+        throw new Error('Phrase evidence item does not match drill phrase');
+      }
+    }
+    if (observations.length === 0) return;
 
     const phrases = await this.getPhrases();
     const updated = phrases.map(p =>
-      p.id === phrase.id ? projectPhraseState(p, [observation]) : p
+      p.id === phrase.id ? projectPhraseState(p, observations) : p
     );
 
     await this.transaction(async tx => {
-      this.putDocs(tx, STORE.observations, [observation], o => this.observationKey(o));
+      this.putDocs(tx, STORE.observations, observations, o => this.observationKey(o));
       this.putDocs(tx, STORE.phrases, updated, p => p.id);
     });
   }
@@ -952,6 +954,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       }
       for (const session of parsed.sessions) {
         const {
+          observations: _observations,
           skillObservations: _skillObservations,
           skillLapses: _skillLapses,
           ...safeImportedSession
@@ -962,8 +965,9 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
             value: {
               ...safeImportedSession,
               coldAttempt: true,
-              // Imported raw skill claims are not promoted into live learning
-              // truth. Dedicated skill evidence must be regenerated/validated.
+              // Imported embedded evidence is not promoted into live learning
+              // truth. Dedicated evidence must pass a validator-owned path.
+              observations: [],
               skillObservations: [],
               skillLapses: [],
             } as StoredSession,
