@@ -16,13 +16,14 @@ import { validateMissionScenarioFamily } from '../../content/scenarioFamilies';
 import { isIndependentSuccess } from '../learning/skillEvidence';
 import { projectSkillsV2 } from '../learning/skillProjection';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
-import { isRecoveryEligible } from './rpModes';
+import { isRecoveryEligible, RP_MODE_POLICY } from './rpModes';
 import type {
   CommunicationChallengeType,
   NegotiatedRoleplayCapabilities,
 } from '../roleplay/capabilities';
+import type { RoleplayPressureLevel } from '../../contracts/scene';
 
-export const NEXT_RP_POLICY_VERSION = 2;
+export const NEXT_RP_POLICY_VERSION = 3;
 
 export type NextRpKind =
   | 'continue'
@@ -56,6 +57,11 @@ export interface NextRpRecommendation {
    * transport capabilities, never from an assumed provider feature.
    */
   challengeType?: CommunicationChallengeType;
+  /**
+   * Maximum authored pressure level allowed when this recommendation is launched.
+   * Recovery is deliberately capped at manageable; absence means no special cap.
+   */
+  pressureCeiling?: RoleplayPressureLevel;
   reasonCode: NextRpReasonCode;
   requiresLearnerConfirmation: boolean;
 }
@@ -175,7 +181,8 @@ function recommendationForMission(
   reasonCode: NextRpReasonCode,
   targetSkillId?: CommunicativeSkillId,
   requiresLearnerConfirmation = false,
-  challengeType?: CommunicationChallengeType
+  challengeType?: CommunicationChallengeType,
+  pressureCeiling?: RoleplayPressureLevel
 ): NextRpRecommendation {
   return {
     policyVersion: NEXT_RP_POLICY_VERSION,
@@ -184,6 +191,7 @@ function recommendationForMission(
     missionVersion: mission.version,
     targetSkillId,
     ...(challengeType ? { challengeType } : {}),
+    ...(pressureCeiling ? { pressureCeiling } : {}),
     reasonCode,
     requiresLearnerConfirmation,
   };
@@ -237,7 +245,10 @@ export function recommendNextRp(input: NextRpInput): NextRpRecommendation {
           'recovery',
           mission,
           'STRICT_LAPSE_RECOVERY',
-          recoverySignal.skillId
+          recoverySignal.skillId,
+          false,
+          undefined,
+          RP_MODE_POLICY.recoveryPressureCeiling
         );
       }
     } else if (recovery.offRampRequired) {
