@@ -125,6 +125,70 @@ export interface SkillValidationRejection {
   reason: string;
 }
 
+const VALIDATED_SKILL_EVIDENCE_BRAND = Symbol('learnbyrp.validated-skill-evidence');
+
+/**
+ * Opaque archive-write capability for skill evidence.
+ *
+ * Only this module can construct a non-empty instance because the brand symbol is
+ * private. Archive APIs accept this bundle rather than raw SkillObservation /
+ * SkillLapse arrays, so a view/model result cannot be persisted by structural
+ * coincidence. Runtime assertions also reject forged/cast objects.
+ */
+export type ValidatedSkillEvidence = Readonly<{
+  observations: readonly SkillObservation[];
+  lapses: readonly SkillLapse[];
+  [VALIDATED_SKILL_EVIDENCE_BRAND]: true;
+}>;
+
+function validatedSkillEvidence(
+  observations: readonly SkillObservation[],
+  lapses: readonly SkillLapse[]
+): ValidatedSkillEvidence {
+  return Object.freeze({
+    observations: Object.freeze([...observations]),
+    lapses: Object.freeze([...lapses]),
+    [VALIDATED_SKILL_EVIDENCE_BRAND]: true as const,
+  });
+}
+
+export const EMPTY_VALIDATED_SKILL_EVIDENCE: ValidatedSkillEvidence =
+  validatedSkillEvidence([], []);
+
+export function assertValidatedSkillEvidence(
+  value: unknown
+): asserts value is ValidatedSkillEvidence {
+  if (
+    !value ||
+    typeof value !== 'object' ||
+    (value as Record<PropertyKey, unknown>)[VALIDATED_SKILL_EVIDENCE_BRAND] !== true
+  ) {
+    throw new Error('Skill evidence write rejected: validator-issued evidence bundle required');
+  }
+}
+
+export function mergeValidatedSkillEvidence(
+  bundles: readonly ValidatedSkillEvidence[]
+): ValidatedSkillEvidence {
+  const observations = new Map<string, SkillObservation>();
+  const lapses = new Map<string, SkillLapse>();
+
+  for (const bundle of bundles) {
+    assertValidatedSkillEvidence(bundle);
+    for (const observation of bundle.observations) {
+      observations.set(observation.id, observation);
+    }
+    for (const lapse of bundle.lapses) {
+      lapses.set(lapse.id, lapse);
+    }
+  }
+
+  return validatedSkillEvidence(
+    [...observations.values()],
+    [...lapses.values()]
+  );
+}
+
 export interface SkillValidationResult {
   validated: SkillObservation[];
   rejected: SkillValidationRejection[];
@@ -136,6 +200,11 @@ export interface SkillValidationResult {
    * success, and a false lapse demotes a skill the learner has actually shown.
    */
   lapses: SkillLapse[];
+  /**
+   * The only non-empty skill-evidence value archive write APIs accept.
+   * It contains exactly the post-validator rows above.
+   */
+  evidence: ValidatedSkillEvidence;
   /** The retrieval the validator settled on, which may differ from the proposal. */
   taskOutcome: TaskOutcome;
 }
@@ -594,10 +663,13 @@ export function validateSkillEvidenceProposal(
     rejected,
   });
 
+  const lapses = deriveLapses(proposal, context);
+
   return {
     validated,
     rejected,
-    lapses: deriveLapses(proposal, context),
+    lapses,
+    evidence: validatedSkillEvidence(validated, lapses),
     taskOutcome: proposal.taskOutcome,
   };
 }
