@@ -180,7 +180,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.endReason ?? null,
         session.startedAt,
         session.endedAt ?? null,
-        null,
+        JSON.stringify(session.operationalTelemetry ?? []),
         session.coldAttempt ? 1 : 0
       );
 
@@ -270,7 +270,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.endReason ?? null,
         session.startedAt,
         session.endedAt ?? new Date().toISOString(),
-        null,
+        JSON.stringify(session.operationalTelemetry ?? []),
         session.coldAttempt ? 1 : 0
       );
 
@@ -561,6 +561,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         supportExposures: exposureRows.map(mapExposureRow),
         opportunityInstances: opportunityRows.map(mapOpportunityInstanceRow),
         observations: observationRows.map(mapObservationRow),
+        operationalTelemetry: parseJson(row.usage_json as string, []),
         taskOutcome: 'unknown',
         sceneState: {
           sceneId: sceneRow?.scene_id
