@@ -263,7 +263,7 @@ export const PHARMACY_SCENE: SceneDefinition = {
 
   characters: [
     {
-      id: 'pharmacist',
+      id: 'pharmacy-counter-staff',
       name: 'Elena',
       role: 'pharmacy counter staff',
       voiceStyle: 'Calm, precise, brief',
@@ -277,26 +277,28 @@ export const PHARMACY_SCENE: SceneDefinition = {
   ],
 
   factSchema: {
-    drowsinessMedicineAvailable: { type: 'boolean' },
-    nonDrowsyMedicineAvailable: { type: 'boolean' },
-    ingredientQuestionAsked: { type: 'boolean' },
-    itemConfirmed: { type: 'boolean' },
-    alternativeOffered: { type: 'boolean' },
+    pharmacistAvailable: { type: 'boolean' },
+    labelHelpAvailable: { type: 'boolean' },
+    pharmacistRequested: { type: 'boolean' },
+    labelHelpRequested: { type: 'boolean' },
+    handoffOffered: { type: 'boolean' },
     closedByLearner: { type: 'boolean' },
   },
 
   initialFacts: {
-    drowsinessMedicineAvailable: true,
-    nonDrowsyMedicineAvailable: true,
-    ingredientQuestionAsked: false,
-    itemConfirmed: false,
-    alternativeOffered: false,
+    pharmacistAvailable: true,
+    labelHelpAvailable: true,
+    pharmacistRequested: false,
+    labelHelpRequested: false,
+    handoffOffered: false,
     closedByLearner: false,
   },
 
-  learnerKnows: ['They have symptoms they want to describe and need to ask for the licensed pharmacist.'],
+  learnerKnows: [
+    'They have symptoms they want to describe and need to ask for the licensed pharmacist.',
+  ],
   characterKnows: {
-    pharmacist: [
+    'pharmacy-counter-staff': [
       'The licensed pharmacist can be requested at the consultation counter.',
       'Official product labels and patient leaflets are available.',
     ],
@@ -304,52 +306,64 @@ export const PHARMACY_SCENE: SceneDefinition = {
 
   allowedActions: [
     {
-      name: 'ask_about_ingredient',
+      name: 'request_pharmacist',
       actor: 'character',
-      description: 'Learner asks for the pharmacist or asks where to find official label/leaflet information.',
-      preconditions: [],
-      effects: [{ set: 'ingredientQuestionAsked', value: true }],
+      description:
+        'Records that the learner asks to speak with the licensed pharmacist.',
+      preconditions: [
+        { op: 'eq', fact: 'pharmacistAvailable', value: true },
+      ],
+      effects: [{ set: 'pharmacistRequested', value: true }],
     },
     {
-      name: 'confirm_order_item',
+      name: 'request_label_help',
       actor: 'character',
-      description: 'Records that the learner accepts a handoff to the licensed pharmacist.',
-      preconditions: [],
-      effects: [{ set: 'itemConfirmed', value: true }],
+      description:
+        'Records that the learner asks where to find official label or leaflet information.',
+      preconditions: [
+        { op: 'eq', fact: 'labelHelpAvailable', value: true },
+      ],
+      effects: [{ set: 'labelHelpRequested', value: true }],
     },
     {
-      name: 'offer_alternative',
+      name: 'offer_pharmacist_handoff',
       actor: 'director',
-      description: 'Offers a handoff to the licensed pharmacist or points to official product information.',
-      preconditions: [{ op: 'eq', fact: 'alternativeOffered', value: false }],
-      effects: [{ set: 'alternativeOffered', value: true }],
+      description:
+        'Offers the learner a handoff to the licensed pharmacist.',
+      preconditions: [
+        { op: 'eq', fact: 'pharmacistAvailable', value: true },
+        { op: 'eq', fact: 'handoffOffered', value: false },
+      ],
+      effects: [{ set: 'handoffOffered', value: true }],
     },
     {
       name: 'complete_scene',
       actor: 'director',
-      description: 'Closes the scene.',
-      preconditions: [{ op: 'eq', fact: 'itemConfirmed', value: true }],
+      description: 'Closes the scene after the professional handoff is secured.',
+      preconditions: [
+        { op: 'eq', fact: 'pharmacistRequested', value: true },
+      ],
       effects: [{ set: 'closedByLearner', value: true }],
     },
   ],
 
   actionSchemas: {
-    ask_about_ingredient: {
+    request_pharmacist: {
       type: 'object',
       required: [],
-      properties: { ingredient: { type: 'string' } },
+      properties: {},
       additionalProperties: false,
     },
-    confirm_order_item: {
+    request_label_help: {
       type: 'object',
-      required: ['item'],
-      properties: { item: { type: 'string' } },
+      required: [],
+      properties: {},
       additionalProperties: false,
     },
-    offer_alternative: {
+    offer_pharmacist_handoff: {
       type: 'object',
-      required: ['alternative'],
-      properties: { alternative: { type: 'string' } },
+      required: [],
+      properties: {},
       additionalProperties: false,
     },
     complete_scene: {
@@ -362,21 +376,32 @@ export const PHARMACY_SCENE: SceneDefinition = {
 
   completion: [
     {
-      // The task is complete when the learner secures the licensed-pharmacist handoff.
       name: 'achieved',
-      predicate: { op: 'eq', fact: 'itemConfirmed', value: true },
+      predicate: {
+        op: 'eq',
+        fact: 'pharmacistRequested',
+        value: true,
+      },
     },
     {
       name: 'partial',
-      predicate: { op: 'eq', fact: 'ingredientQuestionAsked', value: true },
+      predicate: {
+        op: 'eq',
+        fact: 'labelHelpRequested',
+        value: true,
+      },
     },
   ],
 
   checkpoints: [
     {
-      id: 'cp-item-confirmed',
+      id: 'cp-pharmacist-requested',
       description: 'Licensed pharmacist requested',
-      after: { op: 'eq', fact: 'itemConfirmed', value: true },
+      after: {
+        op: 'eq',
+        fact: 'pharmacistRequested',
+        value: true,
+      },
     },
   ],
 
@@ -388,25 +413,30 @@ export const PHARMACY_SCENE: SceneDefinition = {
   skillIds: [
     'skill-inquire-specifications',
     'skill-communicative-repair',
-    'skill-request-substitution',
   ],
   opportunityDefinitions: [
     {
-      id: 'opp.es.pharmacy.inquire-specifications.open',
+      id: 'opp.es.pharmacy.inquire-authoritative-help.open',
       skillId: 'skill-inquire-specifications',
       sceneCondition: {
         op: 'eq',
-        fact: 'nonDrowsyMedicineAvailable',
+        fact: 'pharmacistAvailable',
         value: true,
       },
       positiveExamples: [
-        'Describes a concrete symptom, asks for the licensed pharmacist, or asks where to find official label/leaflet information.',
+        'Describes a concrete symptom, asks for the licensed pharmacist, or asks where to find official label or leaflet information.',
       ],
       negativeExamples: [
-        'Requests diagnosis, treatment selection, or dosage instead of practising a communication handoff.'
+        'Requests diagnosis, treatment selection, or dosage instead of practising a communication handoff.',
       ],
-      relevantActionIds: ['ask_about_ingredient'],
-      relevantIntentIds: ['request_pharmacist', 'ask_label_help'],
+      relevantActionIds: [
+        'request_pharmacist',
+        'request_label_help',
+      ],
+      relevantIntentIds: [
+        'request_pharmacist',
+        'ask_label_help',
+      ],
     },
   ],
   reviewStatus: 'released',
