@@ -1,7 +1,7 @@
 import { Db } from './db';
 import { withTransaction } from './database';
 import { matchPhraseInText } from '../learning/matching';
-import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import { COMMUNICATIVE_SKILLS_CATALOG, isDirectlyEvidencedSkill } from '../../content/skills';
 import { LearningObservation, LexicalItem, SkillItem } from '../../types';
 
 /**
@@ -298,7 +298,7 @@ const VERB_INFINITIVES = new Set([
 
 /** The curated skill catalog, typed as SkillItem. */
 export function buildSkillCatalog(): SkillItem[] {
-  return COMMUNICATIVE_SKILLS_CATALOG.map(skill => ({
+  return COMMUNICATIVE_SKILLS_CATALOG.filter(skill => isDirectlyEvidencedSkill(skill.id)).map(skill => ({
     id: skill.id,
     name: skill.name,
     category: skill.category,
