@@ -79,7 +79,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 ## Two-layer model
 
 - [x] Define `PracticeSkill` as learner-facing discovery/pedagogy labels. (`PracticeSkillDefinition`, `src/content/skills.ts`)
-- [ ] Initial PracticeSkills:
+- [x] Initial PracticeSkills: (`PRACTICE_SKILLS` in `src/content/skills.ts`)
   - [x] Start a conversation
   - [x] Keep it going
   - [x] Explain an idea
@@ -90,7 +90,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 
 ## Canonical CommunicativeSkill catalog
 
-- [x] Move the canonical skill catalog out of the monolithic mission data file. (`src/content/skills.ts` is the runtime authority; production imports use it)
+- [x] Move the canonical skill catalog out of the monolithic mission data file. (`src/content/skills.ts` is the runtime authority; `src/data/missions.ts` only keeps a compatibility re-export)
 - [x] Store skills as validated content data. (`COMMUNICATIVE_SKILLS_CATALOG`)
 - [x] Give each skill a stable ID. (catalog uniqueness regression coverage)
 - [x] Add localized can-do statement. (EN/FR/ES/NL `canDo`)
@@ -105,7 +105,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 ## Repair hierarchy
 
 - [x] Make `communicative_repair` a parent/derived family, not directly evidenced. (`evidencePolicy: derived`; assessment/direct opportunity gates)
-- [ ] Child skills:
+- [x] Child skills: (six direct children of `skill-communicative-repair`; hierarchy tests)
   - [x] request_repetition
   - [x] request_slower_speech
   - [x] ask_clarification
@@ -123,7 +123,7 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 
 # 3. Fix context identity before Transfer
 
-Current code still counts `sessionId` as an independent context in `skillProjection.ts`. This must be removed before Transfer or Steady can be trusted.
+Resolved: context identity is now derived from `domainId + scenarioFamilyId`; `sessionId`, retry and cosmetic variants do not create transfer credit.
 
 - [x] Introduce required `scenarioFamilyId`. (`MissionDefinition.scenarioFamilyId`)
 - [x] Define:
@@ -869,7 +869,7 @@ Confirmed from `main` after squash merge `dfe61724c6170655c89f8a1191b4b72d816fa5
 - [x] Provider capabilities are negotiated; unsupported communication challenge types cannot be emitted by next-RP policy v2.
 - [x] RoleplayProgram contracts, ProgramProjection/Preferences, deterministic next-RP, Cold/Guided/Transfer/Recovery and recovery caps are implemented.
 - [x] Carry-forward continuity facts have source, sensitivity, mission allowlist, TTL and local-only enforcement.
-- [x] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution implemented (`src/content/skills.ts`, `skillEvidence.ts`, catalog/hierarchy regression tests).
+- [x] Canonical PracticeSkill/CommunicativeSkill hierarchy and most-specific parent/child attribution implemented (`src/content/skills.ts`, `skillEvidence.ts`, scene/catalog/hierarchy regression tests; duplicate mission-owned catalog removed).
 - [ ] Non-coach support surfaces still need complete instrumentation for model phrase audio, captions, typed examples and recap exposure.
 - [ ] Director pressure branches remain open.
 - [ ] Curated launch content, locale review and final simulation remain open.
