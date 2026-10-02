@@ -885,6 +885,49 @@ describe('projectSkill', () => {
     expect(projection.reviewDue).toBe(true);
   });
 
+  it('keeps one recent lapse as review only, without activating revisit', () => {
+    const projection = projectSkill(SKILL, steadyHistory(), [lapse()], now);
+
+    expect(projection.status).toBe('steady');
+    expect(projection.reviewDue).toBe(true);
+    expect(projection.revisit).toBe(false);
+  });
+
+  it('activates revisit after two recent strict lapses without demoting status', () => {
+    const projection = projectSkill(
+      SKILL,
+      steadyHistory(),
+      [
+        lapse({ id: 'lapse-1', recordedAt: new Date(now - day).toISOString() }),
+        lapse({ id: 'lapse-2', recordedAt: new Date(now - 2 * day).toISOString() }),
+      ],
+      now
+    );
+
+    expect(projection.status).toBe('steady');
+    expect(projection.reviewDue).toBe(true);
+    expect(projection.revisit).toBe(true);
+  });
+
+  it('reports the latest qualifying independent use and ignores assisted use', () => {
+    const observations = [
+      skillObservation({ id: 'old', recordedAt: '2026-09-20T09:00:00.000Z' }),
+      skillObservation({
+        id: 'assisted-later',
+        retrieval: 'assisted',
+        recordedAt: '2026-09-30T09:00:00.000Z',
+      }),
+      skillObservation({
+        id: 'independent-latest',
+        contextKey: { domainId: 'test', scenarioFamilyId: 'family-2' },
+        recordedAt: '2026-09-25T09:00:00.000Z',
+      }),
+    ];
+
+    expect(projectSkill(SKILL, observations, [], now).lastIndependentUseAt)
+      .toBe('2026-09-25T09:00:00.000Z');
+  });
+
   it('does not flag review for a lapse outside the window', () => {
     const old = lapse({
       recordedAt: new Date(now - (SKILL_POLICY.lapseReviewWindowDays + 5) * day).toISOString(),
