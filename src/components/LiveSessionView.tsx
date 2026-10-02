@@ -1250,6 +1250,162 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     }
   };
 
+  const finalizeAttemptBeforeRetry = useCallback(
+    async (parentAttemptId: string, allPassages: Passage[]) => {
+      if (!mission || finalizedAttemptIdsRef.current.has(parentAttemptId)) return;
+
+      const attemptPassages = allPassages.filter(
+        passage => passage.attemptId === parentAttemptId
+      );
+      const learnerPassages = attemptPassages.filter(
+        passage => passage.speaker === 'user' && passage.status === 'final'
+      );
+      if (learnerPassages.length === 0) {
+        finalizedAttemptEvidenceRef.current.push({
+          attemptId: parentAttemptId,
+          observations: [],
+          skillObservations: [],
+          skillLapses: [],
+        });
+        finalizedAttemptIdsRef.current.add(parentAttemptId);
+        return;
+      }
+
+      const evidenceSupportExposures = [
+        ...historicalSupportExposures,
+        ...supportExposuresRef.current,
+      ];
+      const isRehearsalAttempt = parentAttemptId !== 'attempt-1';
+      let lastAssessmentResponse: unknown = null;
+      let proposal: StructuredAssessmentProposal | null = null;
+
+      try {
+        const response = await api.assessment({
+          sessionId,
+          attemptId: parentAttemptId,
+          missionId: mission.id,
+          passages: attemptPassages,
+          supportExposures: evidenceSupportExposures,
+          usefulPhrases: mission.usefulPhrases,
+          language: mission.language,
+          opportunityInstances: opportunityInstancesRef.current
+            .filter(
+              opportunity =>
+                opportunity.attemptId === parentAttemptId &&
+                opportunity.detection === 'validated' &&
+                (opportunity.status === 'presented' || opportunity.status === 'taken')
+            )
+            .map(opportunity => ({
+              id: opportunity.id,
+              opportunityId: opportunity.opportunityId,
+              skillId: opportunity.skillId,
+              status: opportunity.status,
+              detection: opportunity.detection,
+            })),
+        });
+        lastAssessmentResponse = response;
+        proposal = normalizeAssessmentResponse(
+          response,
+          sessionId,
+          parentAttemptId
+        );
+      } catch (error) {
+        console.warn(
+          'Could not remotely assess parent attempt before retry; preserving grounded local phrase evidence only',
+          error
+        );
+      }
+
+      let phraseObservations: LearningObservation[] = [];
+      let proposedOutcome: TaskOutcome = 'unknown';
+
+      if (proposal) {
+        const validated = validateAssessmentProposal(
+          proposal,
+          attemptPassages,
+          evidenceSupportExposures,
+          isRehearsalAttempt
+        );
+        phraseObservations = validated.validatedObservations;
+        proposedOutcome = validated.taskOutcome;
+      }
+
+      const local = buildLocalObservations({
+        sessionId,
+        attemptId: parentAttemptId,
+        passages: attemptPassages,
+        supportExposures: evidenceSupportExposures,
+        candidates: mission.usefulPhrases,
+        isColdAttempt: coldAttempt,
+        isRehearsalAttempt,
+      });
+      const phraseKeys = new Set(
+        phraseObservations.map(
+          observation => `${observation.sourceTurnId}::${observation.itemId}`
+        )
+      );
+      phraseObservations = [
+        ...phraseObservations,
+        ...local.observations.filter(
+          observation =>
+            !phraseKeys.has(
+              `${observation.sourceTurnId}::${observation.itemId}`
+            )
+        ),
+      ];
+
+      const missionSkillIds = [
+        ...mission.primarySkillIds,
+        ...mission.secondarySkillIds,
+      ];
+      const normalizedSkillItems = normalizeSkillItems(
+        lastAssessmentResponse,
+        missionSkillIds
+      );
+      const skillProposal: SkillEvidenceProposal = {
+        schemaVersion: proposal?.schemaVersion ?? 1,
+        sessionId,
+        attemptId: parentAttemptId,
+        taskOutcome: proposedOutcome,
+        skillItems: normalizedSkillItems,
+      };
+      const opportunityAssessmentView = prepareOpportunityAssessmentView({
+        existing: opportunityInstancesRef.current,
+        candidates: normalizedSkillItems,
+        passages: attemptPassages,
+      });
+      const skillValidation = validateSkillEvidenceProposal(skillProposal, {
+        sessionId,
+        attemptId: parentAttemptId,
+        mission,
+        passages: allPassages,
+        supportExposures: evidenceSupportExposures,
+        opportunityInstances: opportunityAssessmentView,
+        isRehearsalAttempt,
+        // A retry is an explicit continuation, not a natural completed failure.
+        // Positive grounded evidence is preserved, but no lapse is derived here.
+        sessionEndReason: 'user_ended',
+        evidenceSource: 'validated_explicit',
+      });
+
+      opportunityInstancesRef.current =
+        commitValidatedOpportunityDemonstrations({
+          existing: opportunityInstancesRef.current,
+          validated: skillValidation.validated,
+          passages: attemptPassages,
+        });
+
+      finalizedAttemptEvidenceRef.current.push({
+        attemptId: parentAttemptId,
+        observations: phraseObservations,
+        skillObservations: skillValidation.validated,
+        skillLapses: skillValidation.lapses,
+      });
+      finalizedAttemptIdsRef.current.add(parentAttemptId);
+    },
+    [coldAttempt, historicalSupportExposures, mission, sessionId]
+  );
+
   const handleRetryCheckpoint = async () => {
     const currentPassages = passagesRef.current;
     const mirror = sceneMirrorRef.current;
