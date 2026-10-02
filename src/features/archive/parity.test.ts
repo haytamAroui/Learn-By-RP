@@ -4,8 +4,15 @@ import { createNodeSqliteAdapter, Db } from './db';
 import { __setDatabaseForTesting, migrate } from './database';
 import { archiveRepository as sqliteRepository } from './SqliteArchiveRepository';
 import { IndexedDbArchiveRepository } from './IndexedDbArchiveRepository';
-import { ArchiveRepository } from './ArchiveRepository.types';
-import { LearningObservation, Passage, SessionRecord } from '../../types';
+import {
+  ArchiveRepository,
+  PersistableSessionRecord,
+} from './ArchiveRepository.types';
+import {
+  LearningObservation,
+  Passage,
+  ValidatedLearningObservation,
+} from '../../types';
 
 /**
  * Native/web parity.
@@ -60,7 +67,11 @@ function passage(id: string, speaker: 'user' | 'assistant', text: string, rev = 
   };
 }
 
-function observation(id: string, turnId: string, rev = 'rev-1'): LearningObservation {
+function observation(
+  id: string,
+  turnId: string,
+  rev = 'rev-1'
+): ValidatedLearningObservation {
   return {
     observationId: id,
     sessionId: 'session-1',
@@ -77,10 +88,12 @@ function observation(id: string, turnId: string, rev = 'rev-1'): LearningObserva
     rehearsal: false,
     supportExposureIds: [],
     recordedAt: T0,
-  };
+  } as ValidatedLearningObservation;
 }
 
-function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
+function session(
+  overrides: Partial<PersistableSessionRecord> = {}
+): PersistableSessionRecord {
   return {
     id: 'session-1',
     missionId: 'mission-es-cafe-sol',
@@ -311,7 +324,6 @@ describe('the contract is enforced at compile time', () => {
       'hideObservation',
       'disputeObservation',
       'getSkillObservations',
-      'saveSkillObservations',
       'hideSkillObservation',
       'disputeSkillObservation',
       'getSkillLapses',
