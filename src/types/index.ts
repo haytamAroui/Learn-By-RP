@@ -610,7 +610,7 @@ export interface SessionRecord {
    * Validated skill evidence for this session. Written by the validator, never by
    * the view: the model proposes and this is what survived validation.
    */
-  skillObservations?: ValidatedSkillObservation[];
+  skillObservations?: SkillObservation[];
   /** Cold failures recorded as review signals. Never promotional. */
   skillLapses?: SkillLapse[];
   taskOutcome: 'completed' | 'partly_completed' | 'changed_direction' | 'unknown';
