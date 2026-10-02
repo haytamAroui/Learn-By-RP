@@ -5,9 +5,9 @@ export type { CommunicationChallengeType } from '../../contracts/scene';
 
 export const COMMUNICATION_CHALLENGE_ORDER = [
   'fast_speech',
+  'scripted_mishearing',
   'unknown_word',
   'unclear_detail',
-  'scripted_mishearing',
   'unexpected_followup',
 ] as const satisfies readonly CommunicationChallengeType[];
 
