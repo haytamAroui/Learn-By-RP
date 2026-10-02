@@ -20,6 +20,7 @@ import {
   RetrievalType,
   SkillLapse,
   SkillObservation,
+  ValidatedSkillObservation,
   SupportExposure,
   TaskOutcome,
 } from '../../types';
@@ -118,7 +119,7 @@ export interface SkillValidationRejection {
 }
 
 export interface SkillValidationResult {
-  validated: SkillObservation[];
+  validated: ValidatedSkillObservation[];
   rejected: SkillValidationRejection[];
   /**
    * Cold failures, derived rather than proposed.
@@ -149,7 +150,7 @@ export function validateSkillEvidenceProposal(
   proposal: SkillEvidenceProposal,
   context: SkillValidationContext
 ): SkillValidationResult {
-  const validated: SkillObservation[] = [];
+  const validated: ValidatedSkillObservation[] = [];
   const rejected: SkillValidationRejection[] = [];
   const evidenceSource: EvidenceSource = context.evidenceSource ?? 'validated_explicit';
 
@@ -410,7 +411,7 @@ export function validateSkillEvidenceProposal(
           : 'legacy_inferred_demonstration',
       policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: passage.endedAt ?? passage.startedAt ?? new Date().toISOString(),
-    });
+    } as ValidatedSkillObservation);
   }
 
   return {
