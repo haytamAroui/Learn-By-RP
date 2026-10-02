@@ -48,6 +48,10 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   audioPlaybackEnabled: true,
   autoPlaySpeech: true,
   speechRate: 1.0,
+  accommodations: { enabled: [] },
+  programPreferences: [],
+  programGoals: [],
+  continuityProfile: { facts: [] },
 };
 
 function parseJson<T>(raw: string | null | undefined, fallback: T): T {
@@ -179,7 +183,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.endReason ?? null,
         session.startedAt,
         session.endedAt ?? null,
-        null,
+        JSON.stringify(session.operationalTelemetry ?? []),
         session.coldAttempt ? 1 : 0
       );
 
@@ -199,8 +203,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO support_exposures
             (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
-             exposure, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             target_skill_id, target_opportunity_id, target_phrase_id, policy_version, exposure, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           exposure.id,
           exposure.sessionId,
           exposure.attemptId,
@@ -208,6 +212,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           exposure.source,
           exposure.kind,
           JSON.stringify(exposure.targetItemIds ?? []),
+          exposure.targetSkillId ?? null,
+          exposure.targetOpportunityId ?? null,
+          exposure.targetPhraseId ?? null,
+          exposure.policyVersion ?? LEARNING_POLICY_VERSION,
           exposure.exposure,
           exposure.recordedAt
         );
@@ -217,12 +225,14 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
       await txn.runAsync(
         `INSERT OR REPLACE INTO scene_state
-          (session_id, mission_id, revision, facts, checkpoints, is_finished, outcome)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          (session_id, mission_id, scene_id, revision, facts, action_counts, checkpoints, is_finished, outcome)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
+        session.sceneState?.sceneId ?? session.missionId,
         session.sceneState?.revision ?? 1,
         JSON.stringify(session.sceneState?.facts ?? {}),
+        JSON.stringify(session.sceneState?.actionCounts ?? {}),
         JSON.stringify(session.sceneState?.checkpoints ?? []),
         session.sceneState?.isFinished ? 1 : 0,
         session.sceneState?.outcome ?? 'unknown'
@@ -263,7 +273,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.endReason ?? null,
         session.startedAt,
         session.endedAt ?? new Date().toISOString(),
-        null,
+        JSON.stringify(session.operationalTelemetry ?? []),
         session.coldAttempt ? 1 : 0
       );
 
@@ -320,8 +330,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO support_exposures
             (id, session_id, attempt_id, turn_id, source, kind, target_item_ids,
-             exposure, recorded_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             target_skill_id, target_opportunity_id, target_phrase_id, policy_version, exposure, recorded_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           exposure.id,
           exposure.sessionId,
           exposure.attemptId,
@@ -329,6 +339,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           exposure.source,
           exposure.kind,
           JSON.stringify(exposure.targetItemIds ?? []),
+          exposure.targetSkillId ?? null,
+          exposure.targetOpportunityId ?? null,
+          exposure.targetPhraseId ?? null,
+          exposure.policyVersion ?? LEARNING_POLICY_VERSION,
           exposure.exposure,
           exposure.recordedAt
         );
@@ -355,12 +369,14 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
       await txn.runAsync(
         `INSERT OR REPLACE INTO scene_state
-          (session_id, mission_id, revision, facts, checkpoints, is_finished, outcome)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+          (session_id, mission_id, scene_id, revision, facts, action_counts, checkpoints, is_finished, outcome)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
+        session.sceneState?.sceneId ?? session.missionId,
         session.sceneState?.revision ?? 1,
         JSON.stringify(session.sceneState?.facts ?? {}),
+        JSON.stringify(session.sceneState?.actionCounts ?? {}),
         JSON.stringify(session.sceneState?.checkpoints ?? []),
         session.sceneState?.isFinished ? 1 : 0,
         session.sceneState?.outcome ?? 'unknown'
@@ -416,8 +432,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
            domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
            task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
-           evidence_source, quote, policy_version, hidden, user_disputed, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+           evidence_source, quote, day_key, reason_code, policy_version, hidden, user_disputed, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
         observation.id,
         observation.skillId,
         observation.sessionId,
@@ -437,7 +453,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         JSON.stringify(observation.supportExposureIds),
         observation.evidenceSource,
         observation.quote,
-        LEARNING_POLICY_VERSION,
+        observation.dayKey ?? observation.recordedAt.slice(0, 10),
+        observation.reasonCode ??
+          (observation.evidenceSource === 'legacy_inferred'
+            ? 'legacy_inferred_demonstration'
+            : 'validated_demonstration'),
+        observation.policyVersion ?? LEARNING_POLICY_VERSION,
         observation.recordedAt
       );
     }
@@ -447,8 +468,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         `INSERT OR REPLACE INTO skill_lapses
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
            domain_id, scenario_family_id, scenario_id, opportunity_instance_id,
-           demonstration, basis, policy_version, hidden, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+           demonstration, basis, day_key, reason_code, policy_version, hidden, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
         lapse.id,
         lapse.skillId,
         lapse.sessionId,
@@ -461,7 +482,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         lapse.opportunityInstanceId,
         lapse.demonstration,
         lapse.basis,
-        LEARNING_POLICY_VERSION,
+        lapse.dayKey ?? lapse.recordedAt.slice(0, 10),
+        lapse.reasonCode ?? 'cold_taken_opportunity_not_demonstrated',
+        lapse.policyVersion ?? LEARNING_POLICY_VERSION,
         lapse.recordedAt
       );
     }
@@ -501,6 +524,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     const rows = await db.getAllAsync<Record<string, unknown>>(
       'SELECT * FROM sessions ORDER BY started_at DESC'
     );
+    const [allSkillObservations, allSkillLapses] = await Promise.all([
+      this.getSkillObservations(),
+      this.getSkillLapses(),
+    ]);
 
     const sessions: SessionRecord[] = [];
 
@@ -548,11 +575,19 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         supportExposures: exposureRows.map(mapExposureRow),
         opportunityInstances: opportunityRows.map(mapOpportunityInstanceRow),
         observations: observationRows.map(mapObservationRow),
+        skillObservations: allSkillObservations.filter(
+          observation => observation.sessionId === sessionId
+        ),
+        skillLapses: allSkillLapses.filter(lapse => lapse.sessionId === sessionId),
+        operationalTelemetry: parseJson(row.usage_json as string, []),
         taskOutcome: 'unknown',
         sceneState: {
-          sceneId: String(row.mission_id),
+          sceneId: sceneRow?.scene_id
+            ? String(sceneRow.scene_id)
+            : String(row.mission_id),
           revision: Number(sceneRow?.revision ?? 1),
           facts: parseJson(sceneRow?.facts as string, {}),
+          actionCounts: parseJson(sceneRow?.action_counts as string, {}),
           learnerKnows: [],
           characterKnows: [],
           checkpoints: parseJson(sceneRow?.checkpoints as string, []),
@@ -674,8 +709,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
             (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
              domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
              task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
-             evidence_source, quote, policy_version, hidden, user_disputed, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+             evidence_source, quote, day_key, reason_code, policy_version, hidden, user_disputed, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
           observation.id,
           observation.skillId,
           observation.sessionId,
@@ -695,7 +730,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           JSON.stringify(observation.supportExposureIds),
           observation.evidenceSource,
           observation.quote,
-          LEARNING_POLICY_VERSION,
+          observation.dayKey ?? observation.recordedAt.slice(0, 10),
+          observation.reasonCode ??
+            (observation.evidenceSource === 'legacy_inferred'
+              ? 'legacy_inferred_demonstration'
+              : 'validated_demonstration'),
+          observation.policyVersion ?? LEARNING_POLICY_VERSION,
           observation.recordedAt
         );
       }
@@ -739,6 +779,15 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       supportExposureIds: parseJson<string[]>(String(row.support_exposure_ids ?? '[]'), []),
       evidenceSource: String(row.evidence_source) as EvidenceSource,
       quote: String(row.quote),
+      dayKey: row.day_key ? String(row.day_key) : String(row.created_at).slice(0, 10),
+      reasonCode: row.reason_code
+        ? (String(row.reason_code) as SkillObservation['reasonCode'])
+        : String(row.evidence_source) === 'legacy_inferred'
+          ? 'legacy_inferred_demonstration'
+          : 'validated_demonstration',
+      policyVersion: Number(row.policy_version ?? LEARNING_POLICY_VERSION),
+      hidden: bool(row.hidden),
+      userDisputed: bool(row.user_disputed),
       recordedAt: String(row.created_at),
     }));
   }
@@ -770,6 +819,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         : 'legacy-opportunity-unknown',
       demonstration: 'attempted_not_demonstrated',
       basis: String(row.basis) as SkillLapse['basis'],
+      dayKey: row.day_key ? String(row.day_key) : String(row.created_at).slice(0, 10),
+      reasonCode: row.reason_code
+        ? (String(row.reason_code) as SkillLapse['reasonCode'])
+        : 'cold_taken_opportunity_not_demonstrated',
+      policyVersion: Number(row.policy_version ?? LEARNING_POLICY_VERSION),
+      hidden: bool(row.hidden),
       recordedAt: String(row.created_at),
     }));
   }
@@ -1035,6 +1090,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async clearAllLearningData(): Promise<void> {
     const db = await getDatabase();
+    const current = await this.getPreferences();
+    const clearedPreferences: UserPreferences = {
+      ...current,
+      programPreferences: [],
+      programGoals: [],
+      continuityProfile: { facts: [] },
+    };
 
     await this.markDeleted('all');
 
@@ -1052,6 +1114,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync('DELETE FROM attempts');
       await txn.runAsync('DELETE FROM sessions');
       await txn.runAsync('DELETE FROM phrases');
+      await txn.runAsync('DELETE FROM pending_jobs');
+      await txn.runAsync(
+        `INSERT OR REPLACE INTO preferences (id, payload, updated_at) VALUES (?, ?, ?)`,
+        PREFERENCES_ID,
+        JSON.stringify(clearedPreferences),
+        new Date().toISOString()
+      );
 
       // The catalog is seeded again on the next read, so a cleared archive still
       // has a working Progress screen rather than an empty one.
@@ -1369,6 +1438,12 @@ function mapExposureRow(row: Record<string, unknown>): SupportExposure {
     source: String(row.source) as SupportExposure['source'],
     kind: String(row.kind) as SupportExposure['kind'],
     targetItemIds: parseJson<string[]>(String(row.target_item_ids ?? '[]'), []),
+    targetSkillId: row.target_skill_id ? String(row.target_skill_id) : undefined,
+    targetOpportunityId: row.target_opportunity_id
+      ? String(row.target_opportunity_id)
+      : undefined,
+    targetPhraseId: row.target_phrase_id ? String(row.target_phrase_id) : undefined,
+    policyVersion: row.policy_version ? Number(row.policy_version) : undefined,
     exposure: String(row.exposure) as SupportExposure['exposure'],
     recordedAt: String(row.recorded_at),
   };

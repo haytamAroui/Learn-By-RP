@@ -1,3 +1,12 @@
+export interface TransportCapabilities {
+  speechRateControl: boolean;
+  endOfTurnDelayControl: boolean;
+  pushToTalk: boolean;
+  scriptedLineInjection: boolean;
+  blockingToolCalls: boolean;
+  transcriptRevisions: boolean;
+}
+
 export interface VoiceEvent {
   type:
     | 'listening_start'
@@ -21,6 +30,7 @@ export interface VoicePlaybackOptions {
 
 export interface VoiceTransport {
   readonly id: string;
+  readonly capabilities: TransportCapabilities;
   setLanguage(languageCode: string, preferredLocale?: string): void;
   subscribe(listener: (event: VoiceEvent) => void): () => void;
   startListening(): Promise<boolean>;

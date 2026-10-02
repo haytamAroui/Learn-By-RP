@@ -34,12 +34,30 @@ export const CAFE_SCENE: SceneDefinition = {
     },
   ],
 
+  factSchema: {
+    menuVisible: { type: 'boolean' },
+    oatMilkAvailable: { type: 'boolean' },
+    almondMilkAvailable: { type: 'boolean' },
+    wholeMilkAvailable: { type: 'boolean' },
+    trainDepartsSoon: { type: 'boolean' },
+    itemConfirmed: { type: 'boolean' },
+    alternativeOffered: { type: 'boolean' },
+    serviceMode: { type: 'enum', values: ['unset', 'takeaway', 'for_here'] },
+    ingredientQuestionAsked: { type: 'boolean' },
+    closedByLearner: { type: 'boolean' },
+  },
+
   initialFacts: {
     menuVisible: true,
     oatMilkAvailable: false,
     almondMilkAvailable: true,
     wholeMilkAvailable: true,
     trainDepartsSoon: true,
+    itemConfirmed: false,
+    alternativeOffered: false,
+    serviceMode: 'unset',
+    ingredientQuestionAsked: false,
+    closedByLearner: false,
   },
 
   learnerKnows: [
@@ -62,47 +80,42 @@ export const CAFE_SCENE: SceneDefinition = {
         'Accepts whatever item the learner names, however it is phrased. Equivalence is judged from the transcript, not from the words used.',
       // No wording precondition on purpose: a clumsy request still orders.
       preconditions: [],
-      effects: [
-        { set: 'orderedItem', from: 'item', default: 'unspecified' },
-        { set: 'itemConfirmed', default: true },
-      ],
+      effects: [{ set: 'itemConfirmed', value: true }],
     },
     {
       name: 'offer_alternative',
       actor: 'director',
       description: 'Offers a substitute when the requested item is unavailable.',
-      preconditions: [{ notFact: 'alternativeOffered' }],
-      effects: [
-        { set: 'alternativeOffered', from: 'alternative', default: 'leche de almendra' },
-      ],
+      preconditions: [{ op: 'eq', fact: 'alternativeOffered', value: false }],
+      effects: [{ set: 'alternativeOffered', value: true }],
     },
     {
       name: 'confirm_takeaway',
       actor: 'character',
       description: 'Confirms the order is for here rather than to go.',
-      preconditions: [{ fact: 'itemConfirmed' }],
-      effects: [{ set: 'takeaway', from: 'takeaway', default: false }],
+      preconditions: [{ op: 'eq', fact: 'itemConfirmed', value: true }],
+      effects: [{ set: 'serviceMode', value: 'takeaway' }],
     },
     {
       name: 'confirm_for_here',
       actor: 'character',
       description: 'Confirms the order is to be served in the café.',
-      preconditions: [{ fact: 'itemConfirmed' }],
-      effects: [{ set: 'forHere', default: true }],
+      preconditions: [{ op: 'eq', fact: 'itemConfirmed', value: true }],
+      effects: [{ set: 'serviceMode', value: 'for_here' }],
     },
     {
       name: 'ask_about_ingredient',
       actor: 'character',
       description: 'The learner asks whether an item contains something.',
-      preconditions: [{ fact: 'itemConfirmed' }],
-      effects: [{ set: 'ingredientQuestionAsked', default: true }],
+      preconditions: [{ op: 'eq', fact: 'itemConfirmed', value: true }],
+      effects: [{ set: 'ingredientQuestionAsked', value: true }],
     },
     {
       name: 'complete_scene',
       actor: 'director',
       description: 'Closes the scene explicitly when the learner is done.',
-      preconditions: [{ fact: 'itemConfirmed' }],
-      effects: [{ set: 'closedByLearner', default: true }],
+      preconditions: [{ op: 'eq', fact: 'itemConfirmed', value: true }],
+      effects: [{ set: 'closedByLearner', value: true }],
     },
   ],
 
@@ -122,7 +135,7 @@ export const CAFE_SCENE: SceneDefinition = {
     confirm_takeaway: {
       type: 'object',
       required: [],
-      properties: { takeaway: { type: 'boolean' } },
+      properties: {},
       additionalProperties: false,
     },
     confirm_for_here: {
@@ -149,7 +162,7 @@ export const CAFE_SCENE: SceneDefinition = {
     id: 'oat-milk-unavailable',
     description:
       'Oat milk is out of stock. This follows from an authored fact, not from a manufactured misunderstanding.',
-    trigger: { fact: 'oatMilkAvailable', equals: false },
+    trigger: { op: 'eq', fact: 'oatMilkAvailable', value: false },
     maxPerScene: 1,
   },
 
@@ -158,24 +171,35 @@ export const CAFE_SCENE: SceneDefinition = {
       // §9.3: an available item is confirmed AND a service mode is settled.
       name: 'achieved',
       predicate: {
-        all: [
-          { fact: 'itemConfirmed' },
-          { any: [{ fact: 'takeaway' }, { fact: 'forHere' }] },
+        op: 'and',
+        predicates: [
+          { op: 'eq', fact: 'itemConfirmed', value: true },
+          { op: 'in', fact: 'serviceMode', values: ['takeaway', 'for_here'] },
         ],
       },
     },
     {
       name: 'partial',
-      predicate: { fact: 'itemConfirmed' },
+      predicate: { op: 'eq', fact: 'itemConfirmed', value: true },
     },
   ],
 
   checkpoints: [
-    { id: 'cp-item-confirmed', description: 'An item is on the order', after: { fact: 'itemConfirmed' } },
+    {
+      id: 'cp-item-confirmed',
+      description: 'An item is on the order',
+      after: { op: 'eq', fact: 'itemConfirmed', value: true },
+    },
     {
       id: 'cp-service-settled',
       description: 'Service mode settled',
-      after: { all: [{ fact: 'itemConfirmed' }, { any: [{ fact: 'takeaway' }, { fact: 'forHere' }] }] },
+      after: {
+        op: 'and',
+        predicates: [
+          { op: 'eq', fact: 'itemConfirmed', value: true },
+          { op: 'in', fact: 'serviceMode', values: ['takeaway', 'for_here'] },
+        ],
+      },
     },
   ],
 
@@ -186,7 +210,43 @@ export const CAFE_SCENE: SceneDefinition = {
     'phrase.es.para_llevar',
     'phrase.es.cuanto_cuesta',
   ],
-  skillIds: ['skill-request-substitution', 'skill-request-item', 'skill-clarify-service'],
+  skillIds: [
+    'skill-request-substitution',
+    'skill-inquire-specifications',
+    'skill-propose-alternative',
+    'skill-communicative-repair',
+  ],
+
+  opportunityDefinitions: [
+    {
+      id: 'opp.es.cafe.request-substitution.after-alternative',
+      skillId: 'skill-request-substitution',
+      sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
+      positiveExamples: [
+        'Accepts or requests a viable substitute after learning the preferred option is unavailable.',
+        'Asks for another available milk or changes the order to an available option.',
+      ],
+      negativeExamples: [
+        'Repeats the unavailable option without adapting.',
+        'Changes topic without addressing the unavailable item.',
+      ],
+      relevantActionIds: ['confirm_order_item'],
+      relevantIntentIds: ['request_substitution'],
+    },
+    {
+      id: 'opp.es.cafe.inquire-specifications.after-item',
+      skillId: 'skill-inquire-specifications',
+      sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
+      positiveExamples: [
+        'Asks a concrete follow-up about the confirmed item, ingredient, price, or service condition.',
+      ],
+      negativeExamples: [
+        'Makes an unrelated comment that does not seek information about the order.',
+      ],
+      relevantActionIds: ['ask_about_ingredient'],
+      relevantIntentIds: ['ask_specification'],
+    },
+  ],
 
   reviewStatus: 'released',
 };
@@ -212,10 +272,22 @@ export const PHARMACY_SCENE: SceneDefinition = {
     },
   ],
 
+  factSchema: {
+    drowsinessMedicineAvailable: { type: 'boolean' },
+    nonDrowsyMedicineAvailable: { type: 'boolean' },
+    ingredientQuestionAsked: { type: 'boolean' },
+    itemConfirmed: { type: 'boolean' },
+    alternativeOffered: { type: 'boolean' },
+    closedByLearner: { type: 'boolean' },
+  },
+
   initialFacts: {
     drowsinessMedicineAvailable: true,
     nonDrowsyMedicineAvailable: true,
-    symptomKnown: false,
+    ingredientQuestionAsked: false,
+    itemConfirmed: false,
+    alternativeOffered: false,
+    closedByLearner: false,
   },
 
   learnerKnows: ['They have a headache and want something that will not make them sleepy.'],
@@ -227,31 +299,28 @@ export const PHARMACY_SCENE: SceneDefinition = {
       actor: 'character',
       description: 'Learner asks whether a medicine causes drowsiness.',
       preconditions: [],
-      effects: [{ set: 'ingredientQuestionAsked', default: true }],
+      effects: [{ set: 'ingredientQuestionAsked', value: true }],
     },
     {
       name: 'confirm_order_item',
       actor: 'character',
       description: 'Accepts the medicine the learner names.',
       preconditions: [],
-      effects: [
-        { set: 'orderedItem', from: 'item', default: 'unspecified' },
-        { set: 'itemConfirmed', default: true },
-      ],
+      effects: [{ set: 'itemConfirmed', value: true }],
     },
     {
       name: 'offer_alternative',
       actor: 'director',
       description: 'Offers the non-drowsy alternative.',
-      preconditions: [{ notFact: 'alternativeOffered' }],
-      effects: [{ set: 'alternativeOffered', from: 'alternative', default: 'no somnolencia' }],
+      preconditions: [{ op: 'eq', fact: 'alternativeOffered', value: false }],
+      effects: [{ set: 'alternativeOffered', value: true }],
     },
     {
       name: 'complete_scene',
       actor: 'director',
       description: 'Closes the scene.',
-      preconditions: [{ fact: 'itemConfirmed' }],
-      effects: [{ set: 'closedByLearner', default: true }],
+      preconditions: [{ op: 'eq', fact: 'itemConfirmed', value: true }],
+      effects: [{ set: 'closedByLearner', value: true }],
     },
   ],
 
@@ -286,23 +355,47 @@ export const PHARMACY_SCENE: SceneDefinition = {
     {
       // The task is complete when the learner secures a non-drowsy option.
       name: 'achieved',
-      predicate: {
-        all: [
-          { fact: 'itemConfirmed' },
-          { any: [{ fact: 'alternativeOffered' }, { fact: 'itemConfirmed' }] },
-        ],
-      },
+      predicate: { op: 'eq', fact: 'itemConfirmed', value: true },
     },
-    { name: 'partial', predicate: { fact: 'ingredientQuestionAsked' } },
+    {
+      name: 'partial',
+      predicate: { op: 'eq', fact: 'ingredientQuestionAsked', value: true },
+    },
   ],
 
   checkpoints: [
-    { id: 'cp-symptom-known', description: 'Symptom described', after: { fact: 'symptomKnown' } },
-    { id: 'cp-item-confirmed', description: 'Medicine chosen', after: { fact: 'itemConfirmed' } },
+    {
+      id: 'cp-item-confirmed',
+      description: 'Medicine chosen',
+      after: { op: 'eq', fact: 'itemConfirmed', value: true },
+    },
   ],
 
   phraseIds: ['phrase.es.sin_somnio', 'phrase.es.dolor_cabeza'],
-  skillIds: ['skill-request-substitution', 'skill-clarify-service'],
+  skillIds: [
+    'skill-inquire-specifications',
+    'skill-communicative-repair',
+    'skill-request-substitution',
+  ],
+  opportunityDefinitions: [
+    {
+      id: 'opp.es.pharmacy.inquire-specifications.open',
+      skillId: 'skill-inquire-specifications',
+      sceneCondition: {
+        op: 'eq',
+        fact: 'nonDrowsyMedicineAvailable',
+        value: true,
+      },
+      positiveExamples: [
+        'Asks whether an option causes drowsiness or asks another concrete product-condition question.',
+      ],
+      negativeExamples: [
+        'Names a product without asking about the relevant condition.',
+      ],
+      relevantActionIds: ['ask_about_ingredient'],
+      relevantIntentIds: ['ask_dosage', 'request_medicine'],
+    },
+  ],
   reviewStatus: 'released',
 };
 

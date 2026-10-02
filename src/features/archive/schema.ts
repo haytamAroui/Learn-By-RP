@@ -305,6 +305,46 @@ export const MIGRATIONS: Migration[] = [
         ON opportunity_instances (session_id, attempt_id);`,
     ],
   },
+  {
+    version: 5,
+    name: 'scope_support_exposures',
+    statements: [
+      `ALTER TABLE support_exposures ADD COLUMN target_skill_id TEXT;`,
+      `ALTER TABLE support_exposures ADD COLUMN target_opportunity_id TEXT;`,
+      `ALTER TABLE support_exposures ADD COLUMN target_phrase_id TEXT;`,
+    ],
+  },
+  {
+    version: 6,
+    name: 'version_support_exposure_policy',
+    statements: [
+      `ALTER TABLE support_exposures ADD COLUMN policy_version INTEGER;`,
+    ],
+  },
+  {
+    version: 7,
+    name: 'persist_scene_action_counts',
+    statements: [
+      `ALTER TABLE scene_state ADD COLUMN action_counts TEXT;`,
+    ],
+  },
+  {
+    version: 8,
+    name: 'persist_scene_id',
+    statements: [
+      `ALTER TABLE scene_state ADD COLUMN scene_id TEXT;`,
+    ],
+  },
+  {
+    version: 9,
+    name: 'persist_skill_evidence_audit_metadata',
+    statements: [
+      `ALTER TABLE skill_observations ADD COLUMN day_key TEXT;`,
+      `ALTER TABLE skill_observations ADD COLUMN reason_code TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN day_key TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN reason_code TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

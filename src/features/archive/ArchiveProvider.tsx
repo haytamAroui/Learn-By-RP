@@ -30,6 +30,8 @@ interface ArchiveContextValue {
 
   hideObservation: (id: string) => Promise<void>;
   disputeObservation: (id: string) => Promise<void>;
+  hideSkillObservation: (id: string) => Promise<void>;
+  disputeSkillObservation: (id: string) => Promise<void>;
   resetPhrase: (id: string) => Promise<void>;
   deleteSession: (id: string) => Promise<void>;
   clearAllLearningData: () => Promise<void>;
@@ -149,6 +151,14 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
       },
       disputeObservation: async id => {
         await archiveRepository.disputeObservation(id);
+        await refresh();
+      },
+      hideSkillObservation: async id => {
+        await archiveRepository.hideSkillObservation(id);
+        await refresh();
+      },
+      disputeSkillObservation: async id => {
+        await archiveRepository.disputeSkillObservation(id);
         await refresh();
       },
       resetPhrase: async id => {

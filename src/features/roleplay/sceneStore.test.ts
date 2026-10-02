@@ -10,10 +10,15 @@ import {
   getSceneSnapshot,
   listAbandonedSessions,
   markSessionReconciled,
+  rebuildSceneStateFromEventLog,
+  reconcileHostedSession,
 } from './sceneStore';
 import { SqliteSceneStore } from './SqliteSceneStore';
 import { CAFE_SCENE } from '../../content/scenes';
-import { SceneActionProposal } from '../../contracts/scene';
+import type {
+  RoleplayCheckpoint,
+  SceneActionProposal,
+} from '../../contracts/scene';
 
 const SESSION = 'hosted-1';
 
@@ -36,6 +41,19 @@ async function seedSession(sessionId = SESSION, attemptId = 'attempt-1') {
     missionId: CAFE_SCENE.missionId,
     attemptId,
   });
+}
+
+function retryCheckpoint(
+  overrides: Partial<RoleplayCheckpoint> = {}
+): RoleplayCheckpoint {
+  return {
+    id: 'cp-item-confirmed',
+    sceneRevision: 2,
+    passageIndex: 1,
+    supportLedgerHighWaterMark: 2,
+    completedOpportunityIds: [],
+    ...overrides,
+  };
 }
 
 function proposal(overrides: Partial<SceneActionProposal> = {}): SceneActionProposal {
@@ -95,12 +113,12 @@ describe('double tool request produces one transition (test #3)', () => {
     const first = await applySceneAction(proposal({ payload: { item: 'tarta' } }));
     const second = await applySceneAction(proposal({ payload: { item: 'café con leche' } }));
 
-    expect(first.newFacts.orderedItem).toBe('tarta');
+    expect(first.newFacts.itemConfirmed).toBe(true);
     expect(second.deduplicated).toBe(true);
-    expect(second.newFacts.orderedItem).toBe('tarta');
+    expect(second.newFacts).toEqual(first.newFacts);
 
     const snapshot = await getSceneSnapshot(SESSION);
-    expect(snapshot?.facts.orderedItem).toBe('tarta');
+    expect(snapshot?.facts.itemConfirmed).toBe(true);
   });
 
   it('does not write a second scene event for a duplicate', async () => {
@@ -116,6 +134,35 @@ describe('double tool request produces one transition (test #3)', () => {
   });
 });
 
+describe('rejected actions are idempotent across channels', () => {
+  it('replays the first rejection for the same actionId without a second event', async () => {
+    await seedSession();
+
+    const first = await applySceneAction(
+      proposal({ actionId: 'reject-1', action: 'hand_over_free_coffee' })
+    );
+    const second = await applySceneAction(
+      proposal({
+        actionId: 'reject-1',
+        action: 'confirm_order_item',
+        payload: { item: 'changed payload' },
+      })
+    );
+
+    expect(first.accepted).toBe(false);
+    expect(second.accepted).toBe(false);
+    expect(second.deduplicated).toBe(true);
+    expect(second.reason).toBe(first.reason);
+
+    const rows = await driver.db.getAllAsync<{ count: number }>(
+      'SELECT COUNT(*) as count FROM scene_events WHERE session_id = ? AND action_id = ?',
+      SESSION,
+      'reject-1'
+    );
+    expect(rows[0].count).toBe(1);
+  });
+});
+
 describe('stale revision is refused (test #6)', () => {
   it('rejects a proposal built against revision 1 once at revision 2', async () => {
     await seedSession();
@@ -126,7 +173,7 @@ describe('stale revision is refused (test #6)', () => {
         actionId: 'act-2',
         expectedSceneRevision: 1,
         action: 'confirm_takeaway',
-        payload: { takeaway: true },
+        payload: {},
       })
     );
 
@@ -144,7 +191,7 @@ describe('stale revision is refused (test #6)', () => {
         actionId: 'act-3',
         expectedSceneRevision: 2,
         action: 'confirm_takeaway',
-        payload: { takeaway: true },
+        payload: {},
       })
     );
 
@@ -178,7 +225,7 @@ describe('retry forks an attempt and preserves the earlier one (test #7)', () =>
     await seedSession();
     await applySceneAction(proposal());
 
-    const fork = await forkScene(SESSION, { checkpointId: 'cp-start', rehearsal: true });
+    const fork = await forkScene(SESSION, { checkpoint: retryCheckpoint(), rehearsal: true });
     expect(fork.attemptId).not.toBe('attempt-1');
     expect(fork.parentAttemptId).toBe('attempt-1');
     expect(fork.rehearsal).toBe(true);
@@ -188,21 +235,54 @@ describe('retry forks an attempt and preserves the earlier one (test #7)', () =>
     expect(record?.attempts[0].attemptId).toBe('attempt-1');
   });
 
-  it('rolls scene facts back to the start of the scene', async () => {
+  it('restores the exact authored checkpoint instead of resetting to scene start', async () => {
     await seedSession();
     await applySceneAction(proposal());
+    await applySceneAction(
+      proposal({
+        actionId: 'settle-1',
+        expectedSceneRevision: 2,
+        action: 'confirm_takeaway',
+        payload: {},
+      })
+    );
 
-    const fork = await forkScene(SESSION, { checkpointId: 'cp-start', rehearsal: false });
+    const fork = await forkScene(SESSION, {
+      checkpoint: retryCheckpoint(),
+      rehearsal: false,
+    });
     const snapshot = await getSceneSnapshot(SESSION);
 
     expect(snapshot?.attemptId).toBe(fork.attemptId);
-    expect(snapshot?.facts.itemConfirmed).toBeUndefined();
+    expect(snapshot?.revision).toBe(2);
+    expect(snapshot?.facts.itemConfirmed).toBe(true);
+    expect(snapshot?.facts.serviceMode).toBe('unset');
+    expect(snapshot?.checkpoints).toContainEqual(
+      expect.objectContaining({
+        id: 'cp-item-confirmed',
+        sceneRevision: 2,
+      })
+    );
+  });
+
+  it('rejects a forged checkpoint that is not present in the parent replay', async () => {
+    await seedSession();
+    await applySceneAction(proposal());
+
+    await expect(
+      forkScene(SESSION, {
+        checkpoint: retryCheckpoint({
+          id: 'cp-not-authored',
+        }),
+        rehearsal: true,
+      })
+    ).rejects.toThrow(/not an authored checkpoint/i);
   });
 
   it('rejects a proposal from the pre-fork attempt', async () => {
     await seedSession();
     await applySceneAction(proposal());
-    await forkScene(SESSION, { checkpointId: 'cp-start', rehearsal: true });
+    await forkScene(SESSION, { checkpoint: retryCheckpoint(), rehearsal: true });
 
     const orphaned = await applySceneAction(
       proposal({ actionId: 'act-9', attemptId: 'attempt-1', expectedSceneRevision: 1 })
@@ -248,7 +328,69 @@ describe('durability', () => {
     await applySceneAction(proposal({ sessionId: 'hosted-2' }));
 
     expect((await getSceneSnapshot('hosted-2'))?.facts.itemConfirmed).toBe(true);
-    expect((await getSceneSnapshot(SESSION))?.facts.itemConfirmed).toBeUndefined();
+    expect((await getSceneSnapshot(SESSION))?.facts.itemConfirmed).toBe(false);
+  });
+});
+
+describe('event-log scene recovery', () => {
+  it('repairs a stale snapshot from an accepted durable event', async () => {
+    const initial = await seedSession();
+    await applySceneAction(proposal());
+
+    // Simulate the crash window after scene_events commit but before state_json commit.
+    await driver.db.runAsync(
+      'UPDATE hosted_sessions SET state_json = ? WHERE session_id = ?',
+      JSON.stringify(initial.state),
+      SESSION
+    );
+
+    const stale = await getSceneSnapshot(SESSION);
+    expect(stale?.revision).toBe(1);
+
+    const rebuilt = await rebuildSceneStateFromEventLog(SESSION);
+    expect(rebuilt.revision).toBe(2);
+    expect(rebuilt.facts.itemConfirmed).toBe(true);
+
+    const reconciled = await reconcileHostedSession(SESSION);
+    expect(reconciled.state.revision).toBe(2);
+    expect((await getSceneSnapshot(SESSION))?.facts.itemConfirmed).toBe(true);
+  });
+
+  it('keeps rejected events audit-only during replay', async () => {
+    await seedSession();
+    await applySceneAction(
+      proposal({ actionId: 'reject-replay', action: 'hand_over_free_coffee' })
+    );
+
+    const rebuilt = await rebuildSceneStateFromEventLog(SESSION);
+    expect(rebuilt.revision).toBe(1);
+    expect(rebuilt.facts.itemConfirmed).toBe(false);
+  });
+
+  it('replays only the current fork attempt', async () => {
+    await seedSession();
+    await applySceneAction(proposal());
+
+    const fork = await forkScene(SESSION, {
+      checkpoint: retryCheckpoint(),
+      rehearsal: true,
+    });
+
+    await applySceneAction(
+      proposal({
+        actionId: 'fork-act',
+        attemptId: fork.attemptId,
+        expectedSceneRevision: 2,
+        action: 'confirm_takeaway',
+        payload: {},
+      })
+    );
+
+    const rebuilt = await rebuildSceneStateFromEventLog(SESSION);
+    expect(rebuilt.attemptId).toBe(fork.attemptId);
+    expect(rebuilt.revision).toBe(3);
+    expect(rebuilt.facts.itemConfirmed).toBe(true);
+    expect(rebuilt.facts.serviceMode).toBe('takeaway');
   });
 });
 

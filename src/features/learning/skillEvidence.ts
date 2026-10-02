@@ -1,6 +1,15 @@
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../../data/missions';
+import { getScene } from '../../content/scenes';
+import {
+  exposurePrecedesPassage,
+  isSkillProductionSupportRelevant,
+} from './supportScope';
 import { normalizeText } from './matching';
-import { LEARNING_WINDOWS, SKILL_POLICY } from './policy';
+import {
+  LEARNING_POLICY_VERSION,
+  LEARNING_WINDOWS,
+  SKILL_POLICY,
+} from './policy';
 import {
   CommunicativeSkillId,
   EvidenceSource,
@@ -97,9 +106,14 @@ export interface SkillValidationRejection {
     | 'support_reference_unknown'
     | 'support_contradicts_retrieval'
     | 'rehearsal_not_independent'
+    | 'opportunity_required'
     | 'opportunity_unknown'
+    | 'opportunity_not_declared'
     | 'opportunity_skill_mismatch'
-    | 'opportunity_not_taken';
+    | 'opportunity_not_validated'
+    | 'opportunity_not_taken'
+    | 'opportunity_passage_mismatch'
+    | 'opportunity_not_demonstrated';
   reason: string;
 }
 
@@ -175,16 +189,46 @@ export function validateSkillEvidenceProposal(
       continue;
     }
 
-    // If the live runtime supplied an opportunity link, validate it. During the
-    // migration period an older assessor may omit the link; that can still create
-    // positive evidence, but never a lapse.
+    // 3. Positive validated evidence must come from a first-class authored
+    // opportunity. Mission membership alone is not enough: the scene must have
+    // actually created a concrete chance to demonstrate this exact skill.
+    if (evidenceSource === 'validated_explicit' && !candidate.opportunityInstanceId) {
+      reject(
+        'opportunity_required',
+        'Validated skill evidence requires a declared runtime opportunity'
+      );
+      continue;
+    }
+
     let opportunity: OpportunityInstance | undefined;
     if (candidate.opportunityInstanceId) {
       opportunity = opportunitiesById.get(candidate.opportunityInstanceId);
       if (!opportunity || opportunity.attemptId !== context.attemptId) {
         reject(
           'opportunity_unknown',
-          `Opportunity ${candidate.opportunityInstanceId} is not a validated runtime opportunity for this attempt`
+          `Opportunity ${candidate.opportunityInstanceId} is not a runtime opportunity for this attempt`
+        );
+        continue;
+      }
+
+      const scene = context.mission.sceneId ? getScene(context.mission.sceneId) : undefined;
+      const authoredDefinition = scene?.opportunityDefinitions.find(
+        definition => definition.id === opportunity!.opportunityId
+      );
+      if (evidenceSource === 'validated_explicit' && !authoredDefinition) {
+        reject(
+          'opportunity_not_declared',
+          `Opportunity ${opportunity.opportunityId} is not declared by scene ${context.mission.sceneId ?? 'none'}`
+        );
+        continue;
+      }
+      if (
+        authoredDefinition &&
+        authoredDefinition.skillId !== opportunity.skillId
+      ) {
+        reject(
+          'opportunity_skill_mismatch',
+          `Authored opportunity ${authoredDefinition.id} belongs to ${authoredDefinition.skillId}, not ${opportunity.skillId}`
         );
         continue;
       }
@@ -192,6 +236,13 @@ export function validateSkillEvidenceProposal(
         reject(
           'opportunity_skill_mismatch',
           `Opportunity ${opportunity.id} belongs to ${opportunity.skillId}, not ${candidate.skillId}`
+        );
+        continue;
+      }
+      if (opportunity.detection !== 'validated') {
+        reject(
+          'opportunity_not_validated',
+          `Opportunity ${opportunity.id} is only ${opportunity.detection}`
         );
         continue;
       }
@@ -226,6 +277,29 @@ export function validateSkillEvidenceProposal(
       continue;
     }
 
+    if (opportunity) {
+      if (
+        opportunity.learnerAttemptPassageId !== candidate.sourcePassageId ||
+        opportunity.learnerAttemptRevision !== candidate.sourceRevision
+      ) {
+        reject(
+          'opportunity_passage_mismatch',
+          `Opportunity ${opportunity.id} is linked to a different learner passage or revision`
+        );
+        continue;
+      }
+      if (
+        evidenceSource === 'validated_explicit' &&
+        opportunity.demonstration !== 'demonstrated'
+      ) {
+        reject(
+          'opportunity_not_demonstrated',
+          `Opportunity ${opportunity.id} is classified as ${opportunity.demonstration}`
+        );
+        continue;
+      }
+    }
+
     // 6. Is the quoted text actually in that passage?
     if (!quoteAppearsIn(candidate.quote, passage.text)) {
       reject(
@@ -254,7 +328,13 @@ export function validateSkillEvidenceProposal(
     //    therefore computed here from timestamps — support recorded before the end
     //    of the cited passage, within the same attempt.
     const relevantSupport = context.supportExposures.filter(exposure =>
-      isRelevantToPassage(exposure, passage, context.attemptId)
+      isSkillProductionSupportRelevant({
+        exposure,
+        passage,
+        attemptId: context.attemptId,
+        skillId: candidate.skillId,
+        opportunityInstanceId: candidate.opportunityInstanceId,
+      })
     );
     const hadSupport = relevantSupport.length > 0;
     const retrieval = deriveRetrieval({
@@ -323,6 +403,12 @@ export function validateSkillEvidenceProposal(
       supportExposureIds: supportReferenceIds,
       evidenceSource,
       quote: candidate.quote,
+      dayKey: (passage.endedAt ?? passage.startedAt ?? new Date().toISOString()).slice(0, 10),
+      reasonCode:
+        evidenceSource === 'validated_explicit'
+          ? 'validated_demonstration'
+          : 'legacy_inferred_demonstration',
+      policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: passage.endedAt ?? passage.startedAt ?? new Date().toISOString(),
     });
   }
@@ -393,7 +479,13 @@ export function deriveLapses(
     // passage-time rule: any support relevant to this exact attempt/passage means
     // the failure was not cold.
     const relevantSupport = context.supportExposures.filter(exposure =>
-      isRelevantToPassage(exposure, passage, context.attemptId)
+      isSkillProductionSupportRelevant({
+        exposure,
+        passage,
+        attemptId: context.attemptId,
+        skillId: opportunity.skillId,
+        opportunityInstanceId: opportunity.id,
+      })
     );
     if (relevantSupport.length > 0) continue;
 
@@ -414,6 +506,14 @@ export function deriveLapses(
       opportunityInstanceId: opportunity.id,
       demonstration: 'attempted_not_demonstrated',
       basis: 'cold_attempt_failed',
+      dayKey: (
+        opportunity.recordedAt ??
+        passage.endedAt ??
+        passage.startedAt ??
+        new Date().toISOString()
+      ).slice(0, 10),
+      reasonCode: 'cold_taken_opportunity_not_demonstrated',
+      policyVersion: LEARNING_POLICY_VERSION,
       recordedAt:
         opportunity.recordedAt ??
         passage.endedAt ??
@@ -437,18 +537,7 @@ export function isRelevantToPassage(
   passage: Passage,
   attemptId: string
 ): boolean {
-  if (exposure.attemptId && exposure.attemptId !== attemptId) return false;
-
-  const passageEnd = Date.parse(passage.endedAt ?? passage.startedAt ?? '');
-  const shownAt = Date.parse(exposure.recordedAt);
-
-  if (!Number.isFinite(passageEnd) || !Number.isFinite(shownAt)) {
-    // Without usable timestamps, an exposure in this session cannot be ruled out,
-    // and assuming it did not happen would overstate independent recall.
-    return true;
-  }
-
-  return shownAt <= passageEnd;
+  return exposurePrecedesPassage(exposure, passage, attemptId);
 }
 
 /**

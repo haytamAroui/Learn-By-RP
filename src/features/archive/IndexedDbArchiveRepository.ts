@@ -81,6 +81,10 @@ const DEFAULT_PREFERENCES: UserPreferences = {
   audioPlaybackEnabled: true,
   autoPlaySpeech: true,
   speechRate: 1.0,
+  accommodations: { enabled: [] },
+  programPreferences: [],
+  programGoals: [],
+  continuityProfile: { facts: [] },
 };
 
 function isDue(nextReviewAt: string, now: number): boolean {
@@ -651,12 +655,27 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   }
 
   async clearAllLearningData(): Promise<void> {
+    const current = await this.getPreferences();
+    const clearedPreferences: UserPreferences = {
+      ...current,
+      programPreferences: [],
+      programGoals: [],
+      continuityProfile: { facts: [] },
+    };
+
     await this.transaction(async tx => {
       this.deleteAll(tx, STORE.sessions);
       this.deleteAll(tx, STORE.observations);
       this.deleteAll(tx, STORE.skillObservations);
       this.deleteAll(tx, STORE.skillLapses);
       this.deleteAll(tx, STORE.phrases);
+      this.deleteAll(tx, STORE.jobs);
+      this.putAll(tx, STORE.meta, [
+        {
+          key: PREFERENCES_ID,
+          value: { id: PREFERENCES_ID, payload: clearedPreferences },
+        },
+      ]);
     });
 
     await this.markDeleted('all');

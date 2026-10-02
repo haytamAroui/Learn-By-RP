@@ -1,9 +1,10 @@
-import {
+import type {
   SceneActionName,
   SceneActionProposal,
   SceneActionResult,
+  SceneForkRequest,
   SceneStateSnapshot,
-} from '../../contracts/scene';
+} from './runtime';
 import { API_BASE_URL } from '../../lib/api';
 
 /**
@@ -18,11 +19,14 @@ export class SceneMirror {
   private state: SceneStateSnapshot | null = null;
   private appliedActionIds = new Set<string>();
   private listeners = new Set<(state: SceneStateSnapshot | null) => void>();
+  private connectionGeneration = 0;
 
   constructor(
     private readonly sessionId: string,
     private readonly sceneId: string,
-    private readonly missionId: string
+    private readonly sceneVersion: number,
+    private readonly missionId: string,
+    private readonly missionVersion: number
   ) {}
 
   subscribe(listener: (state: SceneStateSnapshot | null) => void): () => void {
@@ -62,13 +66,16 @@ export class SceneMirror {
    */
   async begin(attemptId?: string): Promise<SceneStateSnapshot | null> {
     try {
+      this.connectionGeneration += 1;
       const response = await fetch(`${API_BASE_URL}/v1/voice/sessions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           sessionId: this.sessionId,
           sceneId: this.sceneId,
+          sceneVersion: this.sceneVersion,
           missionId: this.missionId,
+          missionVersion: this.missionVersion,
           attemptId,
         }),
       });
@@ -86,6 +93,7 @@ export class SceneMirror {
   /** Re-reads authoritative state. Used to reconcile after a connection loss. */
   async reconcile(): Promise<SceneStateSnapshot | null> {
     try {
+      this.connectionGeneration += 1;
       const response = await fetch(
         `${API_BASE_URL}/v1/voice/sessions/${this.sessionId}/scene`
       );
@@ -129,6 +137,12 @@ export class SceneMirror {
       actionId,
       sessionId: this.sessionId,
       attemptId,
+      missionId: this.missionId,
+      missionVersion: this.missionVersion,
+      sceneId: this.sceneId,
+      sceneVersion: this.sceneVersion,
+      providerCallId: `${actionId}:provider:${this.connectionGeneration}`,
+      connectionGeneration: this.connectionGeneration,
       expectedSceneRevision: this.state?.revision ?? 1,
       action,
       payload,
@@ -171,14 +185,17 @@ export class SceneMirror {
   }
 
   /** Retry from a checkpoint. The earlier attempt keeps its own transcript. */
-  async fork(checkpointId: string, rehearsal: boolean): Promise<string | null> {
+  async fork(
+    checkpoint: SceneForkRequest['checkpoint'],
+    rehearsal: boolean
+  ): Promise<string | null> {
     try {
       const response = await fetch(
         `${API_BASE_URL}/v1/voice/sessions/${this.sessionId}/scene/fork`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ checkpointId, rehearsal }),
+          body: JSON.stringify({ checkpoint, rehearsal }),
         }
       );
       if (!response.ok) return null;

@@ -1,4 +1,9 @@
-import { SceneActionResult, SceneStateSnapshot } from '../../contracts/scene';
+import type {
+  SceneActionProposal,
+  SceneActionResult,
+  SceneForkRequest,
+  SceneStateSnapshot,
+} from './runtime';
 
 /**
  * Durable storage for hosted scene truth (§13.4).
@@ -12,7 +17,12 @@ export interface SceneStore {
   get(sessionId: string): Promise<HostedSessionRecord | null>;
   put(record: HostedSessionRecord): Promise<void>;
   getResult(sessionId: string, actionId: string): Promise<SceneActionResult | null>;
-  putResult(sessionId: string, result: SceneActionResult): Promise<void>;
+  putResult(
+    sessionId: string,
+    proposal: SceneActionProposal,
+    result: SceneActionResult
+  ): Promise<void>;
+  listEvents(sessionId: string, attemptId: string): Promise<StoredSceneEvent[]>;
   listAbandoned(olderThanMs: number): Promise<AbandonedSession[]>;
   markReconciled(sessionId: string): Promise<void>;
 }
@@ -20,7 +30,9 @@ export interface SceneStore {
 export interface HostedSessionRecord {
   sessionId: string;
   sceneId: string;
+  sceneVersion: number;
   missionId: string;
+  missionVersion: number;
   state: SceneStateSnapshot;
   createdAt: string;
   closedAt?: string;
@@ -32,9 +44,23 @@ export interface HostedSessionRecord {
 export interface AttemptRecord {
   attemptId: string;
   parentAttemptId?: string;
+  /**
+   * Full retry checkpoint. The support high-water mark is metadata, not a
+   * rewind position; it records what the learner had already been shown.
+   */
+  checkpoint?: SceneForkRequest['checkpoint'];
+  /** Legacy field retained only so old persisted attempt JSON remains readable. */
   checkpointId?: string;
   rehearsal: boolean;
   createdAt: string;
+}
+
+export interface StoredSceneEvent {
+  sessionId: string;
+  actionId: string;
+  attemptId: string;
+  result: SceneActionResult;
+  appliedAt: string;
 }
 
 export interface AbandonedSession {
@@ -49,7 +75,9 @@ const SCHEMA = [
   `CREATE TABLE IF NOT EXISTS hosted_sessions (
     session_id TEXT PRIMARY KEY,
     scene_id TEXT NOT NULL,
+    scene_version INTEGER NOT NULL DEFAULT 1,
     mission_id TEXT NOT NULL,
+    mission_version INTEGER NOT NULL DEFAULT 1,
     state_json TEXT NOT NULL,
     attempts_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
@@ -77,6 +105,19 @@ export class SqliteSceneStore implements SceneStore {
     for (const statement of SCHEMA) {
       await db.execAsync(statement);
     }
+
+    // Forward-compatible columns for stores created before runtime contract v3.
+    for (const migration of [
+      `ALTER TABLE hosted_sessions ADD COLUMN scene_version INTEGER NOT NULL DEFAULT 1;`,
+      `ALTER TABLE hosted_sessions ADD COLUMN mission_version INTEGER NOT NULL DEFAULT 1;`,
+    ]) {
+      try {
+        await db.execAsync(migration);
+      } catch (error) {
+        if (!String(error).toLowerCase().includes('duplicate column')) throw error;
+      }
+    }
+
     return new SqliteSceneStore(db);
   }
 
@@ -90,7 +131,9 @@ export class SqliteSceneStore implements SceneStore {
     return {
       sessionId: String(row.session_id),
       sceneId: String(row.scene_id),
+      sceneVersion: Number(row.scene_version ?? 1),
       missionId: String(row.mission_id),
+      missionVersion: Number(row.mission_version ?? 1),
       state: JSON.parse(String(row.state_json)) as SceneStateSnapshot,
       attempts: JSON.parse(String(row.attempts_json)) as AttemptRecord[],
       createdAt: String(row.created_at),
@@ -102,11 +145,13 @@ export class SqliteSceneStore implements SceneStore {
   async put(record: HostedSessionRecord): Promise<void> {
     await this.db.runAsync(
       `INSERT OR REPLACE INTO hosted_sessions
-        (session_id, scene_id, mission_id, state_json, attempts_json, created_at, closed_at, reconciled_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        (session_id, scene_id, scene_version, mission_id, mission_version, state_json, attempts_json, created_at, closed_at, reconciled_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       record.sessionId,
       record.sceneId,
+      record.sceneVersion,
       record.missionId,
+      record.missionVersion,
       JSON.stringify(record.state),
       JSON.stringify(record.attempts),
       record.createdAt,
@@ -124,22 +169,49 @@ export class SqliteSceneStore implements SceneStore {
     return row ? (JSON.parse(row.result_json) as SceneActionResult) : null;
   }
 
-  async putResult(sessionId: string, result: SceneActionResult): Promise<void> {
-    if (!result.accepted) return;
-
+  async putResult(
+    sessionId: string,
+    proposal: SceneActionProposal,
+    result: SceneActionResult
+  ): Promise<void> {
+    // Accepted and rejected proposals share the same idempotency log. This makes
+    // retries deterministic across HTTP/realtime channels: the first reducer
+    // verdict for an actionId is the only verdict that can ever be observed.
     await this.db.runAsync(
       `INSERT OR IGNORE INTO scene_events
         (session_id, action_id, attempt_id, action_name, payload_json, result_json, revision, applied_at)
        VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
       sessionId,
       result.actionId,
-      '',
-      '',
-      null,
+      proposal.attemptId,
+      proposal.action,
+      JSON.stringify(proposal.payload ?? {}),
       JSON.stringify(result),
       result.revision,
       result.appliedAt
     );
+  }
+
+  async listEvents(
+    sessionId: string,
+    attemptId: string
+  ): Promise<StoredSceneEvent[]> {
+    const rows = await this.db.getAllAsync<Record<string, unknown>>(
+      `SELECT session_id, action_id, attempt_id, result_json, applied_at
+       FROM scene_events
+       WHERE session_id = ? AND attempt_id = ?
+       ORDER BY applied_at ASC, rowid ASC`,
+      sessionId,
+      attemptId
+    );
+
+    return rows.map(row => ({
+      sessionId: String(row.session_id),
+      actionId: String(row.action_id),
+      attemptId: String(row.attempt_id),
+      result: JSON.parse(String(row.result_json)) as SceneActionResult,
+      appliedAt: String(row.applied_at),
+    }));
   }
 
   /**

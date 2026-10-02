@@ -51,6 +51,9 @@ const EXPOSURE: SupportExposure = {
   attemptId: 'attempt-1',
   source: 'coach',
   kind: 'full_form',
+  targetSkillId: 'skill-request-substitution',
+  targetOpportunityId: 'opp-positive-1',
+  targetPhraseId: 'phrase.es.1',
   targetItemIds: ['phrase.es.1'],
   exposure: 'visible',
   recordedAt: '2026-09-20T09:00:02.000Z',
@@ -72,21 +75,52 @@ function modelProposal(overrides: Record<string, unknown> = {}) {
         sourceRevision: 'rev-1',
         modality: 'spoken',
         retrievalProposal: 'unassisted',
+        opportunityInstanceId: 'opp-positive-1',
       },
     ],
     ...overrides,
   };
 }
 
+function positiveOpportunity(
+  overrides: Partial<OpportunityInstance> = {}
+): OpportunityInstance {
+  return {
+    id: 'opp-positive-1',
+    attemptId: 'attempt-1',
+    opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
+    skillId: 'skill-request-substitution',
+    status: 'taken',
+    detection: 'validated',
+    demonstration: 'demonstrated',
+    learnerAttemptPassageId: 'p-1',
+    learnerAttemptRevision: 'rev-1',
+    recordedAt: '2026-09-20T09:00:04.000Z',
+    ...overrides,
+  };
+}
+
 /** The runtime facts, which the model has no say over. */
 function runtimeFacts(overrides: Partial<Parameters<typeof validateSkillEvidenceProposal>[1]> = {}) {
+  const attemptId = overrides.attemptId ?? 'attempt-1';
+  const passages = overrides.passages ?? [PASSAGE];
+  const learnerPassage = passages.find(p => p.speaker === 'user') ?? PASSAGE;
+
   return {
     sessionId: 'sess-1',
-    attemptId: 'attempt-1',
+    attemptId,
     mission: MISSION,
-    passages: [PASSAGE],
+    passages,
     supportExposures: [] as SupportExposure[],
-    opportunityInstances: [] as OpportunityInstance[],
+    opportunityInstances:
+      overrides.opportunityInstances ??
+      [
+        positiveOpportunity({
+          attemptId,
+          learnerAttemptPassageId: learnerPassage.id,
+          learnerAttemptRevision: learnerPassage.revisionKey,
+        }),
+      ],
     isRehearsalAttempt: false,
     sessionEndReason: 'completed' as const,
     evidenceSource: 'validated_explicit' as const,
@@ -98,7 +132,7 @@ function failedOpportunity(overrides: Partial<OpportunityInstance> = {}): Opport
   return {
     id: 'opp-failed-1',
     attemptId: 'attempt-1',
-    opportunityId: 'opportunity-request-substitution',
+    opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
     skillId: 'skill-request-substitution',
     status: 'taken',
     detection: 'validated',
@@ -163,6 +197,9 @@ describe('a live session persists validated skill evidence', () => {
       sourcePassageId: 'p-1',
       sourceRevision: 'rev-1',
       evidenceSource: 'validated_explicit',
+      dayKey: '2026-09-20',
+      reasonCode: 'validated_demonstration',
+      policyVersion: 3,
     });
   });
 
@@ -227,6 +264,7 @@ describe('a live session persists validated skill evidence', () => {
             sourceRevision: 'rev-1',
             modality: 'spoken',
             retrievalProposal: 'assisted',
+            opportunityInstanceId: 'opp-positive-1',
           },
         ],
       }) as any,
@@ -269,6 +307,7 @@ describe('a live session persists validated skill evidence', () => {
             sourceRevision: 'rev-superseded',
             modality: 'spoken',
             retrievalProposal: 'unassisted',
+            opportunityInstanceId: 'opp-positive-1',
           },
         ],
       }) as any,
@@ -336,7 +375,12 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
 
     const lapses = await archiveRepository.getSkillLapses();
     expect(lapses.length).toBeGreaterThan(0);
-    expect(lapses[0].basis).toBe('cold_attempt_failed');
+    expect(lapses[0]).toMatchObject({
+      basis: 'cold_attempt_failed',
+      dayKey: '2026-09-20',
+      reasonCode: 'cold_taken_opportunity_not_demonstrated',
+      policyVersion: 3,
+    });
     expect(await archiveRepository.getSkillObservations()).toHaveLength(0);
   });
 

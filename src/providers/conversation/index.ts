@@ -1,7 +1,11 @@
 import Constants from 'expo-constants';
 import { api } from '../../lib/api';
 import type { ActorResponse } from '../../lib/api';
-import type { ConversationProvider, ConversationTurnInput } from './types';
+import type {
+  ConversationProvider,
+  ConversationProviderEventListener,
+  ConversationTurnInput,
+} from './types';
 import { HttpConversationProvider } from './httpConversationProvider';
 import { OpenAIRealtimeConversationProvider } from './openAIRealtimeConversationProvider';
 
@@ -31,6 +35,19 @@ class ResilientConversationProvider implements ConversationProvider {
   ) {
     this.active = primary;
     this.id = `${primary.id}->${fallback.id}`;
+  }
+
+  subscribe(listener: ConversationProviderEventListener): () => void {
+    const unsubscribePrimary = this.primary.subscribe(listener);
+    const unsubscribeFallback =
+      this.fallback === this.primary
+        ? () => {}
+        : this.fallback.subscribe(listener);
+
+    return () => {
+      unsubscribePrimary();
+      unsubscribeFallback();
+    };
   }
 
   async connect() {
@@ -79,6 +96,24 @@ class ResilientConversationProvider implements ConversationProvider {
 class AutoConversationProvider implements ConversationProvider {
   readonly id = 'auto';
   private resolved: ConversationProvider | null = null;
+  private listeners = new Set<ConversationProviderEventListener>();
+  private unsubscribeResolved: (() => void) | null = null;
+
+  private setResolved(provider: ConversationProvider): ConversationProvider {
+    this.resolved = provider;
+    this.unsubscribeResolved?.();
+    this.unsubscribeResolved = provider.subscribe(event => {
+      for (const listener of [...this.listeners]) listener(event);
+    });
+    return provider;
+  }
+
+  subscribe(listener: ConversationProviderEventListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
 
   private async resolve(): Promise<ConversationProvider> {
     if (this.resolved) return this.resolved;
@@ -86,18 +121,18 @@ class AutoConversationProvider implements ConversationProvider {
     try {
       const capabilities = await api.providers();
       if (capabilities.realtime?.available) {
-        this.resolved = new ResilientConversationProvider(
-          new OpenAIRealtimeConversationProvider(),
-          new HttpConversationProvider()
+        return this.setResolved(
+          new ResilientConversationProvider(
+            new OpenAIRealtimeConversationProvider(),
+            new HttpConversationProvider()
+          )
         );
-        return this.resolved;
       }
     } catch (error) {
       console.warn('Provider discovery failed; using HTTP conversation provider:', error);
     }
 
-    this.resolved = new HttpConversationProvider();
-    return this.resolved;
+    return this.setResolved(new HttpConversationProvider());
   }
 
   async connect() {
@@ -115,8 +150,11 @@ class AutoConversationProvider implements ConversationProvider {
   }
 
   dispose() {
+    this.unsubscribeResolved?.();
+    this.unsubscribeResolved = null;
     this.resolved?.dispose();
     this.resolved = null;
+    this.listeners.clear();
   }
 }
 

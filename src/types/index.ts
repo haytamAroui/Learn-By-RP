@@ -144,10 +144,18 @@ export interface MissionDefinition {
 export interface SceneState {
   sceneId: string;
   revision: number;
-  facts: Record<string, any>;
+  facts: Record<string, boolean | string | number>;
+  /** Optional for archives created before scene contract v3. */
+  actionCounts?: Record<string, number>;
   learnerKnows: string[];
   characterKnows: string[];
-  checkpoints: { id: string; description: string; timestamp: string }[];
+  checkpoints: {
+    id: string;
+    description: string;
+    timestamp: string;
+    /** Optional only for archives written before scene contract v4. */
+    sceneRevision?: number;
+  }[];
   lastAction?: { name: string; actor: string; payload?: any };
   isFinished: boolean;
   outcome: TaskOutcome;
@@ -158,10 +166,37 @@ export interface SupportExposure {
   sessionId: string;
   attemptId: string;
   turnId?: string;
-  source: 'briefing' | 'actor' | 'coach' | 'caption' | 'retry';
-  kind: 'intent_hint' | 'meaning' | 'partial_form' | 'full_form' | 'repeat';
+  source: 'briefing' | 'actor' | 'coach' | 'caption' | 'retry' | 'recap';
+  kind:
+    | 'intent_hint'
+    | 'partial_form'
+    | 'full_form'
+    | 'explanation'
+    | 'meaning_of_assistant_turn'
+    | 'model_phrase_audio'
+    | 'assistant_audio_replay'
+    | 'assistant_audio_slow'
+    | 'caption_view'
+    | 'typed_example'
+    | 'recap_exposure'
+    | 'briefing_exposure'
+    /** Legacy values retained for previously persisted sessions. */
+    | 'meaning'
+    | 'repeat';
+  /** Exact communicative-skill scope for new coach support. */
+  targetSkillId?: CommunicativeSkillId;
+  /** Runtime OpportunityInstance id, never a model-invented semantic label. */
+  targetOpportunityId?: string;
+  /** At most one exact phrase target for newly generated form support. */
+  targetPhraseId?: string;
+  /**
+   * Legacy multi-item scope. New coach exposures should use targetPhraseId
+   * instead; retained so old archives remain readable.
+   */
   targetItemIds: string[];
   exposure: 'visible' | 'played' | 'partial' | 'uncertain';
+  /** Learning policy that determined relevance/window semantics. */
+  policyVersion?: number;
   recordedAt: string;
 }
 
@@ -385,6 +420,14 @@ export interface SkillObservation {
   /** The words the learner actually produced, kept as provenance. */
   quote: string;
 
+  /** Stable calendar key used by projection/rebuild without timezone re-derivation. */
+  dayKey?: string;
+  /** Deterministic reason code; localized prose is rendered separately. */
+  reasonCode?: 'validated_demonstration' | 'legacy_inferred_demonstration';
+  policyVersion?: number;
+  hidden?: boolean;
+  userDisputed?: boolean;
+
   recordedAt: string;
 }
 
@@ -423,6 +466,10 @@ export interface SkillLapse {
 
   /** Why this counts as a lapse rather than an ordinary failure. */
   basis: 'cold_attempt_failed';
+  dayKey?: string;
+  reasonCode?: 'cold_taken_opportunity_not_demonstrated';
+  policyVersion?: number;
+  hidden?: boolean;
 
   recordedAt: string;
 }
@@ -460,6 +507,15 @@ export interface SkillProjectionV2 {
    * would tell the learner something untrue about what they can already do.
    */
   reviewDue: boolean;
+
+  /**
+   * Stronger recovery signal than reviewDue. Multiple recent strict lapses may
+   * request a revisit, but never demote the demonstrated status.
+   */
+  revisit: boolean;
+
+  /** Most recent qualifying independent spoken use, when one exists. */
+  lastIndependentUseAt?: string;
 
   /** Why this status, in words a developer can show. */
   explanation: string;
@@ -500,6 +556,15 @@ export interface CommunicativeSkill {
   status: 'emerging' | 'demonstrated' | 'steady';
 }
 
+export interface OperationalTelemetryEvent {
+  id: string;
+  kind: 'capability_degradation';
+  providerId: string;
+  capability: string;
+  fallback: string;
+  recordedAt: string;
+}
+
 export interface SessionRecord {
   id: string;
   missionId: string;
@@ -527,9 +592,77 @@ export interface SessionRecord {
   sceneState: SceneState;
   summary?: string;
   actionableFeedback?: string[];
+  /** Operational diagnostics only; never used for learning evidence or projection. */
+  operationalTelemetry?: OperationalTelemetryEvent[];
 }
 
 export type UiLanguage = 'en' | 'fr' | 'es' | 'nl';
+
+export type AccommodationKind =
+  | 'captions_always'
+  | 'slower_speech_default'
+  | 'typed_preferred'
+  | 'haptic_turn_cues';
+
+export interface AccommodationProfile {
+  enabled: AccommodationKind[];
+}
+
+export type ProgramGoalDomain =
+  | 'travel'
+  | 'relocation'
+  | 'work'
+  | 'social'
+  | 'services'
+  | 'exam';
+
+export interface ProgramGoalInput {
+  targetLanguage: LanguageCode;
+  targetLocale: string;
+  domain: ProgramGoalDomain;
+  contextId: string;
+  deadline?: string;
+  /**
+   * Learner-owned profile context. This is local archive data only and must be
+   * removed before a goal crosses an execution/provider boundary.
+   */
+  personalProfile?: {
+    displayName?: string;
+    notes?: string;
+  };
+  /** Local archive timestamp used for retention cleanup; never execution input. */
+  recordedAt?: string;
+}
+
+export interface ProgramPreferences {
+  programId: string;
+  skippedMissionIds: string[];
+  pinnedMissionIds: string[];
+  mutedSkillIds: CommunicativeSkillId[];
+}
+
+export type CarryForwardSensitivity = 'low' | 'medium' | 'high';
+
+export interface CarryForwardFact {
+  id: string;
+  key: string;
+  value: string | boolean | number;
+  sensitivity: CarryForwardSensitivity;
+  source: {
+    sessionId: string;
+    missionId: string;
+    recordedAt: string;
+  };
+  allowedMissionIds: string[];
+  expiresAt?: string;
+  localOnly: true;
+  learnerEditable: true;
+}
+
+export interface LearnerContinuityProfile {
+  alias?: string;
+  facts: CarryForwardFact[];
+}
 
 export interface UserPreferences {
   learningLanguage: LanguageCode;
@@ -542,4 +675,13 @@ export interface UserPreferences {
   audioPlaybackEnabled: boolean;
   autoPlaySpeech: boolean;
   speechRate?: number;
+  /**
+   * Accessibility preferences are not pedagogical help and never enter the
+   * support-exposure ledger.
+   */
+  accommodations?: AccommodationProfile;
+  /** Learner-owned, local program data. Included in export and delete-all scope. */
+  programPreferences?: ProgramPreferences[];
+  programGoals?: ProgramGoalInput[];
+  continuityProfile?: LearnerContinuityProfile;
 }

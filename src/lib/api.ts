@@ -126,6 +126,7 @@ export const api = {
     setting: string;
     learnerGoal: string;
     sceneFacts: any;
+    allowedActions: string[];
     mode: string;
     recentPassages: any[];
     userMessage: string;
@@ -141,12 +142,23 @@ export const api = {
    */
   coachHint: (body: {
     step: string;
+    missionId: string;
     targetLanguage: string;
     explanationLanguage: string;
     characterName: string;
     lastAssistantLine: string;
     learnerGoal: string;
-  }) => request<{ hint: string }>('/api/coach/hint', body),
+    targetSkillId: string;
+    targetOpportunityId?: string;
+    targetPhraseId?: string;
+    targetPhraseForm?: string;
+  }) =>
+    request<{
+      hint: string;
+      targetSkillId: string;
+      targetOpportunityId?: string;
+      targetPhraseId?: string;
+    }>('/api/coach/hint', body),
 
   assessment: (body: {
     sessionId: string;
@@ -157,6 +169,14 @@ export const api = {
     supportExposures: any[];
     usefulPhrases: any[];
     language: string;
+    /** Runtime-created opportunities the assessor may reference. */
+    opportunityInstances?: Array<{
+      id: string;
+      opportunityId: string;
+      skillId: string;
+      status: string;
+      detection: string;
+    }>;
   }) => request<any>('/api/assessment', body, 60000),
 
   providers: () =>

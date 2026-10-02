@@ -34,6 +34,9 @@ jobs:
       - name: Typecheck
         run: npm run typecheck
 
+      - name: Scene content validation
+        run: npm run validate:scenes
+
       - name: Unit and design tests
         run: npm test
 

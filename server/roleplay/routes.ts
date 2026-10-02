@@ -7,14 +7,15 @@ import {
   getHostedSession,
   getSceneSnapshot,
   listAbandonedSessions,
-  markSessionReconciled,
+  reconcileHostedSession,
 } from '../../src/features/roleplay/sceneStore';
 import { getScene, SCENES } from '../../src/content/scenes';
+import { MISSION_CATALOG } from '../../src/data/missions';
 import {
-  SceneActionProposal,
-  SceneForkRequest,
   SCENE_CONTRACT_VERSION,
-} from '../../src/contracts/scene';
+  type SceneActionProposal,
+  type SceneForkRequest,
+} from '../../src/features/roleplay/runtime';
 
 /**
  * Hosted session + scene runtime (§11.9, §14).
@@ -41,6 +42,21 @@ function requireNumber(value: unknown, field: string): number {
   return value;
 }
 
+function requireInteger(
+  value: unknown,
+  field: string,
+  minimum = 0
+): number {
+  const number = requireNumber(value, field);
+  if (!Number.isInteger(number) || number < minimum) {
+    throw Object.assign(
+      new Error(`${field} must be an integer >= ${minimum}`),
+      { status: 400 }
+    );
+  }
+  return number;
+}
+
 /** Every handler is async; this keeps the error mapping in one place. */
 function wrap(handler: (req: Request, res: Response) => Promise<unknown>) {
   return (req: Request, res: Response) => {
@@ -59,7 +75,14 @@ function wrap(handler: (req: Request, res: Response) => Promise<unknown>) {
 roleplayRouter.post(
   '/v1/voice/sessions',
   wrap(async (req, res) => {
-    const { sessionId, sceneId, missionId, attemptId } = req.body ?? {};
+    const {
+      sessionId,
+      sceneId,
+      sceneVersion,
+      missionId,
+      missionVersion,
+      attemptId,
+    } = req.body ?? {};
 
     const id = requireString(sessionId, 'sessionId');
     const scene = getScene(requireString(sceneId, 'sceneId'));
@@ -82,10 +105,35 @@ roleplayRouter.post(
       return;
     }
 
+    const pinnedMissionId = requireString(missionId ?? scene.missionId, 'missionId');
+    const mission = MISSION_CATALOG.find(item => item.id === pinnedMissionId);
+    if (!mission) {
+      res.status(404).json({ error: `Unknown mission: ${pinnedMissionId}` });
+      return;
+    }
+
+    const requestedSceneVersion =
+      sceneVersion === undefined ? scene.version : requireNumber(sceneVersion, 'sceneVersion');
+    const requestedMissionVersion =
+      missionVersion === undefined
+        ? mission.version
+        : requireNumber(missionVersion, 'missionVersion');
+
+    if (requestedSceneVersion !== scene.version) {
+      res.status(409).json({ error: 'sceneVersion does not match released scene' });
+      return;
+    }
+    if (requestedMissionVersion !== mission.version) {
+      res.status(409).json({ error: 'missionVersion does not match released mission' });
+      return;
+    }
+
     const record = await createHostedSession({
       sessionId: id,
       sceneId: scene.id,
-      missionId: requireString(missionId ?? scene.missionId, 'missionId'),
+      sceneVersion: requestedSceneVersion,
+      missionId: pinnedMissionId,
+      missionVersion: requestedMissionVersion,
       attemptId: typeof attemptId === 'string' ? attemptId : undefined,
     });
 
@@ -149,6 +197,15 @@ roleplayRouter.post(
       actionId: requireString(body.actionId, 'actionId'),
       sessionId: requireString(body.sessionId ?? req.params.id, 'sessionId'),
       attemptId: requireString(body.attemptId, 'attemptId'),
+      missionId: requireString(body.missionId, 'missionId'),
+      missionVersion: requireNumber(body.missionVersion, 'missionVersion'),
+      sceneId: requireString(body.sceneId, 'sceneId'),
+      sceneVersion: requireNumber(body.sceneVersion, 'sceneVersion'),
+      providerCallId: requireString(body.providerCallId, 'providerCallId'),
+      connectionGeneration: requireNumber(
+        body.connectionGeneration,
+        'connectionGeneration'
+      ),
       expectedSceneRevision: requireNumber(body.expectedSceneRevision, 'expectedSceneRevision'),
       action: requireString(body.action, 'action'),
       payload: body.payload ?? {},
@@ -170,8 +227,37 @@ roleplayRouter.post(
 roleplayRouter.post(
   '/v1/voice/sessions/:id/scene/fork',
   wrap(async (req, res) => {
+    const rawCheckpoint = req.body?.checkpoint ?? {};
+    if (
+      !Array.isArray(rawCheckpoint.completedOpportunityIds) ||
+      rawCheckpoint.completedOpportunityIds.some(
+        (id: unknown) => typeof id !== 'string' || !id
+      )
+    ) {
+      throw Object.assign(
+        new Error('checkpoint.completedOpportunityIds must be an array of ids'),
+        { status: 400 }
+      );
+    }
+
     const request: SceneForkRequest = {
-      checkpointId: requireString(req.body?.checkpointId, 'checkpointId'),
+      checkpoint: {
+        id: requireString(rawCheckpoint.id, 'checkpoint.id'),
+        sceneRevision: requireInteger(
+          rawCheckpoint.sceneRevision,
+          'checkpoint.sceneRevision',
+          1
+        ),
+        passageIndex: requireInteger(
+          rawCheckpoint.passageIndex,
+          'checkpoint.passageIndex'
+        ),
+        supportLedgerHighWaterMark: requireInteger(
+          rawCheckpoint.supportLedgerHighWaterMark,
+          'checkpoint.supportLedgerHighWaterMark'
+        ),
+        completedOpportunityIds: rawCheckpoint.completedOpportunityIds,
+      },
       rehearsal: Boolean(req.body?.rehearsal),
     };
 
@@ -194,14 +280,13 @@ roleplayRouter.get(
 roleplayRouter.post(
   '/v1/voice/sessions/:id/reconcile',
   wrap(async (req, res) => {
-    // Idempotent: reconciling twice is safe.
-    await markSessionReconciled(req.params.id);
-    const record = await getHostedSession(req.params.id);
-    if (!record) {
-      res.status(404).json({ error: 'Unknown session' });
-      return;
-    }
-    res.json({ sessionId: record.sessionId, reconciledAt: record.reconciledAt, state: record.state });
+    // Idempotent: replaying the same accepted verdicts yields the same snapshot.
+    const record = await reconcileHostedSession(req.params.id);
+    res.json({
+      sessionId: record.sessionId,
+      reconciledAt: record.reconciledAt,
+      state: record.state,
+    });
   })
 );
 

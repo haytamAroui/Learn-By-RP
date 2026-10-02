@@ -1,6 +1,11 @@
 import type { ActorResponse } from '../../lib/api';
 import { api } from '../../lib/api';
-import type { ConversationProvider, ConversationTurnInput } from './types';
+import type {
+  ConversationProvider,
+  ConversationProviderEvent,
+  ConversationProviderEventListener,
+  ConversationTurnInput,
+} from './types';
 
 interface RealtimeSocket {
   readonly readyState: number;
@@ -45,15 +50,16 @@ Character speaking style: ${input.character?.voiceStyle || 'natural and conversa
 Current scene facts: ${JSON.stringify(input.sceneFacts || {})}.
 Speak naturally and briefly in ${input.targetLanguage}.
 Stay in character and respect these knowledge boundaries: ${boundaries || 'Only know what the character reasonably knows.'}
+Never act as a tutor, coach, evaluator, or grammar teacher. Help and correction belong to a separate private coach.
+You may propose only these authored scene actions: ${input.allowedActions.length ? input.allowedActions.join(', ') : '(none)'}.
 Recent context:
 ${recentContext || '(start of conversation)'}.
 
 Return ONLY a compact JSON object:
 {"replyText":"1-2 natural spoken sentences in ${input.targetLanguage}","meaning":"${input.explanationLanguage} translation","proposedAction":null}
 
-If a scene action is clearly required, proposedAction may instead be:
-{"name":"confirm_order_item"|"offer_alternative"|"confirm_takeaway"|"complete_scene","payload":{}}.
-Never include markdown.`;
+If a scene action is clearly required, proposedAction may use exactly one name from the authored allowlist above. If no listed action fits, return null.
+Never invent scene facts, actions, coaching, evidence, or learner evaluation. Never include markdown.`;
 }
 
 function responseDoneText(event: any): string {
@@ -102,9 +108,34 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
 
   private socket: RealtimeSocket | null = null;
   private pending: PendingTurn | null = null;
+  private listeners = new Set<ConversationProviderEventListener>();
   private connected = false;
+  private connectionGeneration = 0;
   private connectPromise: Promise<void> | null = null;
   private lastInstructions = '';
+
+  subscribe(listener: ConversationProviderEventListener): () => void {
+    this.listeners.add(listener);
+    return () => {
+      this.listeners.delete(listener);
+    };
+  }
+
+  private emit(event: ConversationProviderEvent) {
+    for (const listener of [...this.listeners]) {
+      try {
+        listener(event);
+      } catch (error) {
+        console.warn('Conversation event listener failed:', error);
+      }
+    }
+  }
+
+  private responseId(event: any): string | undefined {
+    if (typeof event?.response_id === 'string') return event.response_id;
+    if (typeof event?.response?.id === 'string') return event.response.id;
+    return undefined;
+  }
 
   async connect(): Promise<void> {
     if (this.connected && this.socket?.readyState === WebSocket.OPEN) return;
@@ -142,17 +173,33 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       ws.onopen = () => {
         clearTimeout(timer);
         this.connected = true;
+        this.connectionGeneration += 1;
+        this.emit({
+          type: 'connected',
+          providerId: this.id,
+          connectionGeneration: this.connectionGeneration,
+        });
         resolve();
       };
 
       ws.onerror = () => {
         clearTimeout(timer);
         this.connected = false;
+        this.emit({
+          type: 'error',
+          providerId: this.id,
+          message: 'Realtime connection failed',
+        });
         reject(new Error('Realtime connection failed'));
       };
 
       ws.onclose = () => {
         this.connected = false;
+        this.emit({
+          type: 'disconnected',
+          providerId: this.id,
+          connectionGeneration: this.connectionGeneration,
+        });
         if (this.pending) {
           clearTimeout(this.pending.timer);
           this.pending.reject(new Error('Realtime connection closed'));
@@ -231,8 +278,23 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
 
     if (!this.pending) return;
 
+    if (event.type === 'response.created') {
+      this.emit({
+        type: 'response_started',
+        providerId: this.id,
+        responseId: this.responseId(event),
+      });
+      return;
+    }
+
     if (event.type === 'response.output_text.delta' && typeof event.delta === 'string') {
       this.pending.text += event.delta;
+      this.emit({
+        type: 'response_text_delta',
+        providerId: this.id,
+        responseId: this.responseId(event),
+        delta: event.delta,
+      });
       return;
     }
 
@@ -244,7 +306,14 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       const pending = this.pending;
       this.pending = null;
       clearTimeout(pending.timer);
-      pending.resolve(parseActorResponse(text));
+      const response = parseActorResponse(text);
+      this.emit({
+        type: 'response_completed',
+        providerId: this.id,
+        responseId: this.responseId(event),
+        response,
+      });
+      pending.resolve(response);
       return;
     }
 
@@ -254,9 +323,23 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       clearTimeout(pending.timer);
       const text = pending.text.trim() || responseDoneText(event).trim();
       if (text) {
-        pending.resolve(parseActorResponse(text));
+        const response = parseActorResponse(text);
+        this.emit({
+          type: 'response_completed',
+          providerId: this.id,
+          responseId: this.responseId(event),
+          response,
+        });
+        pending.resolve(response);
       } else {
-        pending.reject(new Error('Realtime response completed without text'));
+        const message = 'Realtime response completed without text';
+        this.emit({
+          type: 'error',
+          providerId: this.id,
+          responseId: this.responseId(event),
+          message,
+        });
+        pending.reject(new Error(message));
       }
       return;
     }
@@ -265,9 +348,15 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       const pending = this.pending;
       this.pending = null;
       clearTimeout(pending.timer);
-      pending.reject(
-        new Error(event.error?.message || 'Realtime provider returned an error')
-      );
+      const message =
+        event.error?.message || 'Realtime provider returned an error';
+      this.emit({
+        type: 'error',
+        providerId: this.id,
+        responseId: this.responseId(event),
+        message,
+      });
+      pending.reject(new Error(message));
     }
   }
 
@@ -283,6 +372,10 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       clearTimeout(this.pending.timer);
       this.pending.reject(new Error('Realtime turn cancelled'));
       this.pending = null;
+      this.emit({
+        type: 'response_cancelled',
+        providerId: this.id,
+      });
     }
   }
 
@@ -296,5 +389,6 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
     this.socket = null;
     this.connected = false;
     this.connectPromise = null;
+    this.listeners.clear();
   }
 }

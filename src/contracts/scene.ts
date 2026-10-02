@@ -6,7 +6,7 @@
  * Bump SCENE_CONTRACT_VERSION when a shape changes incompatibly.
  */
 
-export const SCENE_CONTRACT_VERSION = 1;
+export const SCENE_CONTRACT_VERSION = 4;
 
 /** Allowlisted action names. Anything else is rejected without being evaluated. */
 export type SceneActionName =
@@ -20,27 +20,43 @@ export type SceneActionName =
 /** Who may propose or trigger an action. */
 export type SceneActionActor = 'character' | 'director';
 
-export type Predicate =
-  /** A fact must be present and truthy. */
-  | { fact: string }
-  /** A fact must be absent or falsy. */
-  | { notFact: string }
-  /** A fact must equal a value. */
-  | { fact: string; equals: unknown }
-  /** Every listed predicate must hold. */
-  | { all: Predicate[] }
-  /** At least one listed predicate must hold. */
-  | { any: Predicate[] };
+export type SceneFactValue = boolean | string | number;
 
-export type Mutation =
-  /** Set a fact to a payload field, defaulting when the field is absent. */
-  | { set: string; from?: string; default?: unknown }
-  /** Remove a fact. */
-  | { unset: string }
-  /** Merge a payload object into a fact object, keeping existing sibling keys. */
-  | { merge: string; from?: string }
-  /** Set a dotted path inside a fact object, e.g. "order.item". */
-  | { setPath: string; from?: string; default?: unknown };
+export type SceneFactDefinition =
+  | { type: 'boolean' }
+  | { type: 'enum'; values: string[] }
+  | { type: 'bounded_integer'; min: number; max: number };
+
+export type SceneFactSchema = Record<string, SceneFactDefinition>;
+
+export type Predicate =
+  | { op: 'eq'; fact: string; value: SceneFactValue }
+  | { op: 'neq'; fact: string; value: SceneFactValue }
+  | { op: 'in'; fact: string; values: SceneFactValue[] }
+  | { op: 'and'; predicates: Predicate[] }
+  | { op: 'or'; predicates: Predicate[] }
+  | { op: 'not'; predicate: Predicate }
+  | { op: 'exists'; fact: string }
+  | { op: 'lte'; fact: string; value: number }
+  | { op: 'gte'; fact: string; value: number }
+  | {
+      op: 'countOf';
+      action: SceneActionName;
+      comparator: 'eq' | 'lte' | 'gte';
+      value: number;
+    };
+
+/**
+ * Finite scene effect language.
+ *
+ * Free-form payload values are deliberately not writable into facts. Payloads
+ * may contain natural-language details for the actor/event log, while the
+ * authoritative state changes only through finite authored values.
+ */
+export type Mutation = {
+  set: string;
+  value: SceneFactValue;
+};
 
 export interface AllowedAction {
   name: SceneActionName;
@@ -68,6 +84,29 @@ export interface CompletionPredicate {
   predicate: Predicate;
 }
 
+/**
+ * Authored chance to demonstrate exactly one communicative skill.
+ *
+ * Opportunity availability comes only from deterministic scene facts. Semantic
+ * interpretation may later classify what the learner did with the opportunity,
+ * but it may never invent the opportunity itself.
+ */
+export interface SkillOpportunityDefinition {
+  /** Stable content id; never reuse a retired id for a different challenge. */
+  id: string;
+  /** Exactly one most-specific communicative skill. */
+  skillId: string;
+  /** Facts that make this opportunity available to the learner. */
+  sceneCondition: Predicate;
+  /** Reviewer examples for assessor guidance; never executable scene logic. */
+  positiveExamples: string[];
+  negativeExamples: string[];
+  /** Authored world actions that can satisfy or advance this opportunity. */
+  relevantActionIds?: SceneActionName[];
+  /** Mission/actor semantic intents relevant to this opportunity. */
+  relevantIntentIds?: string[];
+}
+
 export interface Complication {
   id: string;
   description: string;
@@ -92,7 +131,10 @@ export interface SceneDefinition {
     /** What this character may know about scenes the learner has not reached. */
     mayKnowAboutPriorScenes: string[];
   }>;
-  initialFacts: Record<string, unknown>;
+  /** Finite declaration of every executable scene fact. */
+  factSchema: SceneFactSchema;
+  /** Must contain exactly the declared facts and valid finite values. */
+  initialFacts: Record<string, SceneFactValue>;
   learnerKnows: string[];
   characterKnows: Record<string, string[]>;
   allowedActions: AllowedAction[];
@@ -103,6 +145,11 @@ export interface SceneDefinition {
   /** Curated mappings only. Never model-generated. */
   phraseIds: string[];
   skillIds: string[];
+  /**
+   * First-class authored communicative opportunities. Runtime instances are
+   * derived from these definitions plus authoritative scene state.
+   */
+  opportunityDefinitions: SkillOpportunityDefinition[];
   reviewStatus: 'draft' | 'reviewed' | 'released';
 }
 
@@ -113,6 +160,13 @@ export interface SceneActionProposal {
   actionId: string;
   sessionId: string;
   attemptId: string;
+  /** Hosted-runtime identity pins. Required by HTTP/realtime ingress. */
+  missionId?: string;
+  missionVersion?: number;
+  sceneId?: string;
+  sceneVersion?: number;
+  providerCallId?: string;
+  connectionGeneration?: number;
   expectedSceneRevision: number;
   action: string;
   payload: unknown;
@@ -125,11 +179,21 @@ export interface SceneActionResult {
   /** Present on rejection, and always accompanied by what is still possible. */
   reason?: string;
   permissibleOptions?: SceneActionName[];
-  newFacts: Record<string, unknown>;
+  newFacts: Record<string, SceneFactValue>;
+  /** Accepted action, used for deterministic countOf predicates. */
+  appliedAction?: SceneActionName;
   revision: number;
   /** True when this actionId had already been applied; the prior result is returned. */
   deduplicated: boolean;
   appliedAt: string;
+}
+
+export interface SceneCheckpointSnapshot {
+  id: string;
+  description: string;
+  timestamp: string;
+  /** Authoritative revision at which the authored checkpoint became true. */
+  sceneRevision: number;
 }
 
 export interface SceneStateSnapshot {
@@ -137,15 +201,32 @@ export interface SceneStateSnapshot {
   sessionId: string;
   attemptId: string;
   revision: number;
-  facts: Record<string, unknown>;
-  checkpoints: Array<{ id: string; description: string; timestamp: string }>;
+  facts: Record<string, SceneFactValue>;
+  actionCounts: Partial<Record<SceneActionName, number>>;
+  checkpoints: SceneCheckpointSnapshot[];
   isFinished: boolean;
   outcome: 'achieved' | 'partial' | 'not_achieved' | 'unknown';
   firedComplications: string[];
 }
 
+/**
+ * Conversation-level checkpoint metadata supplied when a retry forks.
+ *
+ * sceneRevision is server-verifiable. Passage/support positions are learner
+ * history coordinates and are deliberately not used to mutate scene truth.
+ */
+export interface RoleplayCheckpoint {
+  id: string;
+  sceneRevision: number;
+  passageIndex: number;
+  /** Highest support-ledger position visible before the retry began. Never rewound. */
+  supportLedgerHighWaterMark: number;
+  /** Runtime opportunities completed and validated by this checkpoint. */
+  completedOpportunityIds: string[];
+}
+
 export interface SceneForkRequest {
-  checkpointId: string;
+  checkpoint: RoleplayCheckpoint;
   /** Set when the learner already saw the answer, so the attempt is rehearsal. */
   rehearsal: boolean;
 }
@@ -153,7 +234,7 @@ export interface SceneForkRequest {
 export interface SceneForkResult {
   attemptId: string;
   parentAttemptId: string;
-  checkpointId: string;
+  checkpoint: RoleplayCheckpoint;
   rehearsal: boolean;
   /** Transcripts after the checkpoint that the earlier attempt still owns. */
   supersededTurnIds: string[];

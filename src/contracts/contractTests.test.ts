@@ -25,15 +25,20 @@ const runCase = (testCase: TranscriptCase) => {
     fragments: [],
   };
 
+  const passageTime = Date.parse(passage.startedAt);
   const exposures: SupportExposure[] = (testCase.exposures ?? []).map((exposure, index) => ({
     id: `exp-${testCase.id}-${index}`,
     sessionId: 'fixture-session',
     attemptId: 'attempt-1',
     source: exposure.source,
     kind: exposure.kind,
+    targetPhraseId: testCase.target.id,
     targetItemIds: [testCase.target.id],
-    exposure: 'visible',
-    recordedAt: new Date(Date.now() - (exposure.minutesAgo ?? 0) * 60_000).toISOString(),
+    exposure: exposure.kind.includes('audio') ? 'played' : 'visible',
+    policyVersion: 3,
+    recordedAt: new Date(
+      passageTime - (exposure.minutesAgo ?? 0) * 60_000
+    ).toISOString(),
   }));
 
   return buildLocalObservations({

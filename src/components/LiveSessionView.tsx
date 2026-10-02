@@ -8,6 +8,7 @@ import {
   View,
 } from 'react-native';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import * as Haptics from 'expo-haptics';
 import { categoriseProviderError, type ProviderError } from '../features/voice/lifecycle';
 import {
   beginGeneration,
@@ -26,6 +27,7 @@ import {
   X,
 } from 'lucide-react-native';
 import {
+  AccommodationProfile,
   MissionDefinition,
   Mode,
   Passage,
@@ -34,12 +36,16 @@ import {
   SceneState,
   LearningObservation,
   OpportunityInstance,
+  OperationalTelemetryEvent,
   TaskOutcome,
 } from '../types';
 import { createVoiceTransport } from '../providers/voice';
 import type { VoiceEvent, VoiceTransport } from '../providers/voice';
 import { createConversationProvider } from '../providers/conversation';
-import type { ConversationProvider } from '../providers/conversation/types';
+import type {
+  ConversationProvider,
+  ConversationProviderEvent,
+} from '../providers/conversation/types';
 import { speakWithBestAvailable } from '../providers/voice/speechOutput';
 import { useI18n } from '../features/i18n';
 import {
@@ -54,14 +60,52 @@ import {
 } from '../features/learning/skillEvidence';
 import { api } from '../lib/api';
 import { SceneMirror } from '../features/roleplay/SceneMirror';
-import { SceneActionName } from '../contracts/scene';
+import {
+  commitValidatedOpportunityDemonstrations,
+  finalizeNotPresentedOpportunities,
+  prepareOpportunityAssessmentView,
+  syncAuthoredOpportunities,
+} from '../features/roleplay/opportunityRuntime';
+import { getScene } from '../content/scenes';
+import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
+import {
+  inheritSupportForRetry,
+  mergeAttemptPassages,
+} from '../features/learning/retrySupport';
+import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
+import { negotiateRoleplayCapabilities } from '../features/roleplay/capabilities';
+import { mayCommitActorReply } from '../features/roleplay/actorContract';
+import type {
+  RoleplayCheckpoint,
+  SceneActionName,
+  SceneCheckpointSnapshot,
+} from '../contracts/scene';
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
 
+function toRuntimeCheckpoints(
+  checkpoints: SceneState['checkpoints']
+): SceneCheckpointSnapshot[] {
+  return checkpoints.flatMap(checkpoint =>
+    typeof checkpoint.sceneRevision === 'number'
+      ? [
+          {
+            id: checkpoint.id,
+            description: checkpoint.description,
+            timestamp: checkpoint.timestamp,
+            sceneRevision: checkpoint.sceneRevision,
+          },
+        ]
+      : []
+  );
+}
+
 interface LiveSessionViewProps {
   mission: MissionDefinition | null;
   initialSession: SessionRecord;
+  accommodations?: AccommodationProfile;
+  preferredSpeechRate?: number;
   onEndSession: (session: SessionRecord) => void;
 }
 
@@ -191,15 +235,64 @@ function normalizeSkillItems(
       )
         ? item.retrievalProposal
         : ('unknown' as const),
+      opportunityInstanceId:
+        typeof item.opportunityInstanceId === 'string' ? item.opportunityInstanceId : undefined,
       supportExposureIds: Array.isArray(item.supportExposureIds)
         ? item.supportExposureIds.filter((id: unknown): id is string => typeof id === 'string')
         : [],
     }));
 }
 
+function normalizeTargetForm(value: string): string {
+  return value
+    .normalize('NFKC')
+    .toLocaleLowerCase()
+    .replace(/[¿?¡!.,;:'"“”‘’]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function resolveCoachTarget(
+  mission: MissionDefinition,
+  opportunities: OpportunityInstance[],
+  attemptId: string
+): {
+  targetSkillId: string;
+  targetOpportunityId?: string;
+  targetPhraseId?: string;
+  targetPhraseForm?: string;
+} {
+  const activeOpportunity = [...opportunities]
+    .reverse()
+    .find(
+      opportunity =>
+        opportunity.attemptId === attemptId &&
+        opportunity.status === 'presented' &&
+        opportunity.detection === 'validated'
+    );
+
+  const targetSkillId = activeOpportunity?.skillId ?? mission.primarySkillIds[0];
+  const skill = COMMUNICATIVE_SKILLS_CATALOG.find(candidate => candidate.id === targetSkillId);
+  const sampleForms = new Set(
+    (skill?.samplePhrases ?? []).map(sample => normalizeTargetForm(sample))
+  );
+  const targetPhrase = mission.usefulPhrases.find(phrase =>
+    sampleForms.has(normalizeTargetForm(phrase.form))
+  );
+
+  return {
+    targetSkillId,
+    targetOpportunityId: activeOpportunity?.id,
+    targetPhraseId: targetPhrase?.id,
+    targetPhraseForm: targetPhrase?.form,
+  };
+}
+
 export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   mission,
   initialSession,
+  accommodations = { enabled: [] },
+  preferredSpeechRate = 1,
   onEndSession,
 }) => {
   const { t, language } = useI18n();
@@ -281,11 +374,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       attemptId,
       turnId: passage.id,
       source: 'caption',
-      kind: 'meaning',
+      kind: 'meaning_of_assistant_turn',
       // A caption translation is help with the whole line, not with one curated
       // phrase, so no phrase ids are claimed.
       targetItemIds: [],
       exposure: 'visible',
+      policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: new Date().toISOString(),
     };
 
@@ -294,7 +388,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     );
   }, [passages, showMeaningLine, sessionId, attemptId]);
 
-  const [showTypedInput, setShowTypedInput] = useState(false);
+  const typedPreferred = accommodations.enabled.includes('typed_preferred');
+  const slowerSpeechDefault = accommodations.enabled.includes('slower_speech_default');
+  const hapticTurnCues = accommodations.enabled.includes('haptic_turn_cues');
+  const effectiveSpeechRate = slowerSpeechDefault
+    ? Math.min(preferredSpeechRate, 0.8)
+    : preferredSpeechRate;
+
+  const cueLearnerTurn = useCallback(() => {
+    if (!hapticTurnCues || Platform.OS === 'web') return;
+    void Haptics.selectionAsync();
+  }, [hapticTurnCues]);
+
+  const [showTypedInput, setShowTypedInput] = useState(typedPreferred);
   const [typedMessage, setTypedMessage] = useState('');
   /*
     The last assistant failure, kept so recovery can be offered rather than the
@@ -323,8 +429,13 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const scrollRef = useRef<ScrollView | null>(null);
   const sceneStateRef = useRef(sceneState);
   const passagesRef = useRef(passages);
+  const supportExposuresRef = useRef(supportExposures);
+  const priorAttemptPassagesRef = useRef<Passage[]>([]);
   const opportunityInstancesRef = useRef<OpportunityInstance[]>(
     initialSession.opportunityInstances ?? []
+  );
+  const operationalTelemetryRef = useRef<OperationalTelemetryEvent[]>(
+    initialSession.operationalTelemetry ?? []
   );
   const isMutedRef = useRef(isMuted);
   const isSceneFrozenRef = useRef(isSceneFrozen);
@@ -333,8 +444,43 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
   sceneStateRef.current = sceneState;
   passagesRef.current = passages;
+  supportExposuresRef.current = supportExposures;
   isMutedRef.current = isMuted;
   isSceneFrozenRef.current = isSceneFrozen;
+
+  useEffect(() => {
+    if (!mission?.sceneId) return;
+    const scene = getScene(mission.sceneId);
+    if (!scene || sceneState.sceneId !== scene.id) return;
+
+    opportunityInstancesRef.current = syncAuthoredOpportunities({
+      scene,
+      state: {
+        sceneId: sceneState.sceneId,
+        sessionId,
+        attemptId,
+        revision: sceneState.revision,
+        facts: sceneState.facts,
+        actionCounts: sceneState.actionCounts ?? {},
+        checkpoints: toRuntimeCheckpoints(sceneState.checkpoints),
+        isFinished: sceneState.isFinished,
+        outcome: sceneState.outcome,
+        firedComplications: [],
+      },
+      existing: opportunityInstancesRef.current,
+      recordedAt: new Date().toISOString(),
+    });
+  }, [
+    attemptId,
+    mission?.sceneId,
+    sceneState.checkpoints,
+    sceneState.facts,
+    sceneState.isFinished,
+    sceneState.outcome,
+    sceneState.revision,
+    sceneState.sceneId,
+    sessionId,
+  ]);
 
   const explanationLanguage = EXPLANATION_LANGUAGE_NAMES[language] ?? 'English';
 
@@ -546,6 +692,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           setting: target.setting,
           learnerGoal: target.learnerGoal,
           sceneFacts: sceneStateRef.current.facts,
+          allowedActions:
+            (target.sceneId ? getScene(target.sceneId)?.allowedActions : undefined)?.map(
+              action => action.name
+            ) ?? [],
           mode,
           recentPassages: updatedPassages.slice(-5),
           userMessage: trimmed,
@@ -563,10 +713,18 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         if (!isGenerationCurrent(generation) || isEndingRef.current) return;
 
         if (response.proposedAction) {
-          void applyProposedSceneAction(
+          const actionResult = await applyProposedSceneAction(
             response.proposedAction,
             [userPassageId]
           );
+
+          // The actor may not confirm a consequential world change until the
+          // authoritative reducer accepts it. A missing mirror, network failure,
+          // stale revision, or reducer rejection all suppress this actor line.
+          if (!mayCommitActorReply(response.proposedAction, actionResult)) {
+            setVoiceState('idle');
+            return;
+          }
         }
 
         const characterPassage: Passage = {
@@ -593,19 +751,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
         setPassages([...updatedPassages, characterPassage]);
 
-        setSceneState(prev => ({
-          ...prev,
-          revision: prev.revision + 1,
-          checkpoints: [
-            ...prev.checkpoints,
-            {
-              id: `cp-${Date.now()}`,
-              description: `Turn ${updatedPassages.length + 1}`,
-              timestamp: new Date().toISOString(),
-            },
-          ],
-        }));
-
         if (audioPlaybackEnabled && !isSceneFrozenRef.current) {
           setVoiceState('speaking');
           const transport = voiceTransportRef.current;
@@ -619,9 +764,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             } else {
               await speakWithBestAvailable(transport, response.replyText, {
                 language: target.language,
+                speed: slowerSpeechDefault ? effectiveSpeechRate : preferredSpeechRate,
                 style: target.character.voiceStyle,
               });
             }
+            cueLearnerTurn();
           }
         } else {
           setVoiceState('idle');
@@ -653,7 +800,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         setVoiceState('reconnecting');
       }
     },
-    [audioPlaybackEnabled, attemptId, explanationLanguage, mode, sessionId]
+    [
+      audioPlaybackEnabled,
+      attemptId,
+      cueLearnerTurn,
+      effectiveSpeechRate,
+      preferredSpeechRate,
+      slowerSpeechDefault,
+      explanationLanguage,
+      mode,
+      sessionId,
+    ]
   );
 
   /*
@@ -689,7 +846,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       sourceTurnIds: string[]
     ) => {
       const mirror = sceneMirrorRef.current;
-      if (!mirror) return;
+      if (!mirror) return null;
 
       const result = await mirror.propose(
         attemptId,
@@ -701,7 +858,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       if (!result) {
         setSceneEventNotice(t.live.sceneDirectorUnavailable);
         setTimeout(() => setSceneEventNotice(null), 4000);
-        return;
+        return null;
       }
 
       if (!result.accepted) {
@@ -711,13 +868,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             : t.live.actionNotPermitted
         );
         setTimeout(() => setSceneEventNotice(null), 4000);
-        return;
+        return result;
       }
 
+      const authoritative = await mirror.reconcile();
       setSceneState(prev => ({
         ...prev,
-        revision: result.revision,
-        facts: result.newFacts,
+        sceneId: authoritative?.sceneId ?? prev.sceneId,
+        revision: authoritative?.revision ?? result.revision,
+        facts: authoritative?.facts ?? result.newFacts,
+        actionCounts: authoritative?.actionCounts ?? prev.actionCounts,
+        checkpoints: authoritative?.checkpoints ?? prev.checkpoints,
+        isFinished: authoritative?.isFinished ?? prev.isFinished,
+        outcome: authoritative?.outcome ?? prev.outcome,
         lastAction: { name: proposedAction.name, actor: mission?.character.name ?? '' },
       }));
 
@@ -730,12 +893,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       }
 
       setTimeout(() => setSceneEventNotice(null), 4000);
+      return result;
     },
     [attemptId, mission?.character.name, t.live]
   );
 
   const requestCoachHint = useCallback(
-    async (step: 'intent_hint' | 'partial_form' | 'full_form') => {
+    async (
+      step: 'intent_hint' | 'partial_form' | 'full_form' | 'explanation'
+    ) => {
       if (!mission) return;
       setIsCoachLoading(true);
 
@@ -744,13 +910,20 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         .find(p => p.speaker === 'assistant');
 
       try {
+        const target = resolveCoachTarget(
+          mission,
+          opportunityInstancesRef.current,
+          attemptId
+        );
         const data = await api.coachHint({
           step,
+          missionId: mission.id,
           targetLanguage: mission.language,
           explanationLanguage,
           characterName: mission.character.name,
           lastAssistantLine: lastAssistantPassage?.text ?? '',
           learnerGoal: mission.learnerGoal,
+          ...target,
         });
         setActiveCoachAdvice(data.hint);
 
@@ -760,8 +933,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           attemptId,
           source: 'coach',
           kind: step,
-          targetItemIds: mission.usefulPhrases.map(p => p.id),
+          targetSkillId: data.targetSkillId || target.targetSkillId,
+          targetOpportunityId: data.targetOpportunityId ?? target.targetOpportunityId,
+          targetPhraseId: data.targetPhraseId ?? target.targetPhraseId,
+          targetItemIds: (data.targetPhraseId ?? target.targetPhraseId)
+            ? [data.targetPhraseId ?? target.targetPhraseId!]
+            : [],
           exposure: 'visible',
+          policyVersion: LEARNING_POLICY_VERSION,
           recordedAt: new Date().toISOString(),
         };
         setSupportExposures(prev => [...prev, exposure]);
@@ -783,15 +962,26 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     // Without one the session still runs; the client just does not mirror
     // server scene truth, and no action is proposed.
     if (mission.sceneId) {
-      const mirror = new SceneMirror(sessionId, mission.sceneId, mission.id);
+      const scene = getScene(mission.sceneId);
+      const mirror = new SceneMirror(
+        sessionId,
+        mission.sceneId,
+        scene?.version ?? 1,
+        mission.id,
+        mission.version
+      );
       sceneMirrorRef.current = mirror;
-      void mirror.begin('attempt-1').then(snapshot => {
+      void mirror.begin(attemptId).then(snapshot => {
         if (!snapshot || !mountedRef.current) return;
         setSceneState(prev => ({
           ...prev,
           sceneId: snapshot.sceneId,
           revision: snapshot.revision,
           facts: snapshot.facts,
+          actionCounts: snapshot.actionCounts,
+          checkpoints: snapshot.checkpoints,
+          isFinished: snapshot.isFinished,
+          outcome: snapshot.outcome,
         }));
       });
     } else {
@@ -805,8 +995,57 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     transport.setLanguage(mission.language);
     voiceTransportRef.current = transport;
 
+    const negotiatedCapabilities = negotiateRoleplayCapabilities(
+      transport.capabilities,
+      {
+        wantsSlowSpeech: slowerSpeechDefault,
+        wantsLongThinkingTime: false,
+        wantsScriptedLineInjection: true,
+        requiresBlockingToolCalls: Boolean(mission.sceneId),
+        needsTranscriptRevisions: true,
+      }
+    );
+    for (const degradation of negotiatedCapabilities.degradations) {
+      console.info('Roleplay capability degradation', {
+        transportId: transport.id,
+        ...degradation,
+      });
+
+      const id = [
+        'capability',
+        transport.id,
+        degradation.capability,
+        degradation.fallback,
+      ].join(':');
+      if (!operationalTelemetryRef.current.some(event => event.id === id)) {
+        operationalTelemetryRef.current.push({
+          id,
+          kind: 'capability_degradation',
+          providerId: transport.id,
+          capability: degradation.capability,
+          fallback: degradation.fallback,
+          recordedAt: new Date().toISOString(),
+        });
+      }
+    }
+
     const conversationProvider = createConversationProvider();
     conversationProviderRef.current = conversationProvider;
+    const unsubscribeConversation = conversationProvider.subscribe(
+      (event: ConversationProviderEvent) => {
+        if (isEndingRef.current) return;
+        switch (event.type) {
+          case 'response_started':
+            setVoiceState('connecting');
+            break;
+          case 'disconnected':
+            setVoiceState('reconnecting');
+            break;
+          default:
+            break;
+        }
+      }
+    );
     void conversationProvider.connect?.().catch(error => {
       console.warn('Conversation provider preconnect failed:', error);
     });
@@ -889,8 +1128,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
       await speakWithBestAvailable(transport, greeting, {
         language: mission.language,
+        speed: effectiveSpeechRate,
         style: mission.character.voiceStyle,
       });
+      cueLearnerTurn();
     };
 
     void startInitialTurn();
@@ -899,6 +1140,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       isEndingRef.current = true;
       mountedRef.current = false;
       unsubscribe();
+      unsubscribeConversation();
       transport.dispose();
       voiceTransportRef.current = null;
       conversationProvider.dispose();
@@ -906,7 +1148,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       void sceneMirrorRef.current?.close();
       sceneMirrorRef.current = null;
     };
-  }, [mission, sessionId, coldAttempt, buildInitialGreeting, handleUserMessage]);
+  }, [
+    mission,
+    sessionId,
+    coldAttempt,
+    buildInitialGreeting,
+    cueLearnerTurn,
+    effectiveSpeechRate,
+    preferredSpeechRate,
+    slowerSpeechDefault,
+    handleUserMessage,
+  ]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -935,22 +1187,119 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   };
 
   const handleRetryCheckpoint = async () => {
-    if (passagesRef.current.length <= 1) return;
+    const currentPassages = passagesRef.current;
+    const mirror = sceneMirrorRef.current;
+    if (currentPassages.length <= 1 || !mirror) return;
+
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
 
-    // Fork a new attempt on the server too. The earlier attempt keeps its own
-    // transcript and is marked rehearsal, because the learner has seen the turn.
-    const forkedAttemptId = await sceneMirrorRef.current?.fork('cp-start', true);
-    const nextAttemptId = forkedAttemptId ?? `attempt-${Date.now()}`;
+    const authoritative = mirror.snapshot;
+    const currentRevision =
+      authoritative?.revision ?? sceneStateRef.current.revision;
+    const runtimeCheckpoints = (
+      authoritative?.checkpoints ?? sceneStateRef.current.checkpoints
+    )
+      .filter(
+        checkpoint =>
+          typeof checkpoint.sceneRevision === 'number' &&
+          checkpoint.sceneRevision < currentRevision
+      )
+      .sort(
+        (a, b) =>
+          (a.sceneRevision ?? 0) - (b.sceneRevision ?? 0)
+      );
 
-    setAttemptId(nextAttemptId);
-    setPassages(passagesRef.current.slice(0, 1));
+    // Never invent an authored checkpoint. If no prior checkpoint exists, the
+    // only synthetic restore point is the deterministic initial scene revision.
+    const selected = runtimeCheckpoints.at(-1);
+    let passageIndex = 0;
+    if (selected) {
+      const checkpointTime = Date.parse(selected.timestamp);
+      for (let index = 0; index < currentPassages.length; index += 1) {
+        const passageTime = Date.parse(currentPassages[index].startedAt);
+        if (
+          Number.isFinite(checkpointTime) &&
+          Number.isFinite(passageTime) &&
+          passageTime <= checkpointTime
+        ) {
+          passageIndex = index;
+        }
+      }
+    }
+
+    const retainedPassageIds = new Set(
+      currentPassages
+        .slice(0, passageIndex + 1)
+        .map(passage => passage.id)
+    );
+    const checkpoint: RoleplayCheckpoint = {
+      id: selected?.id ?? 'scene-start',
+      sceneRevision: selected?.sceneRevision ?? 1,
+      passageIndex,
+      // This is intentionally captured at retry time, not checkpoint time.
+      // Support shown after the scene checkpoint remains known to the learner.
+      supportLedgerHighWaterMark: supportExposuresRef.current.length,
+      completedOpportunityIds: opportunityInstancesRef.current
+        .filter(
+          opportunity =>
+            opportunity.attemptId === attemptId &&
+            opportunity.detection === 'validated' &&
+            opportunity.status === 'taken' &&
+            Boolean(
+              opportunity.learnerAttemptPassageId &&
+                retainedPassageIds.has(opportunity.learnerAttemptPassageId)
+            )
+        )
+        .map(opportunity => opportunity.id),
+    };
+
+    // The server verifies checkpoint id + revision against replayed parent state.
+    const forkedAttemptId = await mirror.fork(checkpoint, true);
+    if (!forkedAttemptId) {
+      setSceneEventNotice(t.live.sceneDirectorUnavailable);
+      setTimeout(() => setSceneEventNotice(null), 4000);
+      voiceTransportRef.current?.startListening();
+      return;
+    }
+
+    const retryRecordedAt = new Date().toISOString();
+    priorAttemptPassagesRef.current = mergeAttemptPassages(
+      priorAttemptPassagesRef.current,
+      currentPassages
+    );
+
+    setSupportExposures(prev => {
+      const inherited = inheritSupportForRetry({
+        exposures: prev,
+        fromAttemptId: attemptId,
+        toAttemptId: forkedAttemptId,
+        supportLedgerHighWaterMark: checkpoint.supportLedgerHighWaterMark,
+        recordedAt: retryRecordedAt,
+      });
+      supportExposuresRef.current = inherited;
+      return inherited;
+    });
+
+    const forkState = mirror.snapshot;
+    if (forkState) {
+      setSceneState(prev => ({
+        ...prev,
+        sceneId: forkState.sceneId,
+        revision: forkState.revision,
+        facts: forkState.facts,
+        actionCounts: forkState.actionCounts,
+        checkpoints: forkState.checkpoints,
+        isFinished: forkState.isFinished,
+        outcome: forkState.outcome,
+      }));
+    }
+
+    setAttemptId(forkedAttemptId);
+    setPassages(currentPassages.slice(0, checkpoint.passageIndex + 1));
     setIsSceneFrozen(false);
     setActiveCoachAdvice(null);
-    setSceneEventNotice(
-t.live.rehearsalRestored
-    );
+    setSceneEventNotice(t.live.rehearsalRestored);
     setTimeout(() => setSceneEventNotice(null), 4000);
     voiceTransportRef.current?.startListening();
   };
@@ -984,9 +1333,46 @@ t.live.rehearsalRestored
     voiceTransportRef.current?.stopListening();
     setVoiceState('ending');
 
+    // Assessment only sees the current attempt. The archive keeps every prior
+    // attempt so retry never erases learner evidence or transcript provenance.
     const finalPassages = passagesRef.current;
+    const archivedPassages = mergeAttemptPassages(
+      priorAttemptPassagesRef.current,
+      finalPassages
+    );
     const finalSceneState = sceneStateRef.current;
     const wasRehearsal = attemptId !== 'attempt-1';
+
+    let finalOpportunityInstances = opportunityInstancesRef.current;
+    const authoredScene = mission.sceneId ? getScene(mission.sceneId) : undefined;
+    if (authoredScene && finalSceneState.sceneId === authoredScene.id) {
+      const authoritativeSnapshot = {
+        sceneId: finalSceneState.sceneId,
+        sessionId,
+        attemptId,
+        revision: finalSceneState.revision,
+        facts: finalSceneState.facts,
+        actionCounts: finalSceneState.actionCounts ?? {},
+        checkpoints: toRuntimeCheckpoints(finalSceneState.checkpoints),
+        isFinished: finalSceneState.isFinished,
+        outcome: finalSceneState.outcome,
+        firedComplications: [] as string[],
+      };
+
+      finalOpportunityInstances = syncAuthoredOpportunities({
+        scene: authoredScene,
+        state: authoritativeSnapshot,
+        existing: finalOpportunityInstances,
+        recordedAt: new Date().toISOString(),
+      });
+      finalOpportunityInstances = finalizeNotPresentedOpportunities({
+        scene: authoredScene,
+        state: authoritativeSnapshot,
+        existing: finalOpportunityInstances,
+        recordedAt: new Date().toISOString(),
+      });
+      opportunityInstancesRef.current = finalOpportunityInstances;
+    }
 
     // The assessor proposes; the deterministic core decides. If the model is
     // unreachable we fall back to the same local rules rather than a looser
@@ -1008,6 +1394,20 @@ t.live.rehearsalRestored
         supportExposures,
         usefulPhrases: mission.usefulPhrases,
         language: mission.language,
+        opportunityInstances: finalOpportunityInstances
+          .filter(
+            opportunity =>
+              opportunity.attemptId === attemptId &&
+              opportunity.detection === 'validated' &&
+              (opportunity.status === 'presented' || opportunity.status === 'taken')
+          )
+          .map(opportunity => ({
+            id: opportunity.id,
+            opportunityId: opportunity.opportunityId,
+            skillId: opportunity.skillId,
+            status: opportunity.status,
+            detection: opportunity.detection,
+          })),
       });
       lastAssessmentResponse = response;
       proposal = normalizeAssessmentResponse(response, sessionId, attemptId);
@@ -1046,21 +1446,28 @@ t.live.rehearsalRestored
      * learner was never in.
      */
     const missionSkillIds = [...mission.primarySkillIds, ...mission.secondarySkillIds];
+    const normalizedSkillItems = normalizeSkillItems(lastAssessmentResponse, missionSkillIds);
     const skillProposal: SkillEvidenceProposal = {
       schemaVersion: proposal?.schemaVersion ?? 1,
       sessionId,
       attemptId,
       taskOutcome: proposedOutcome,
-      skillItems: normalizeSkillItems(lastAssessmentResponse, missionSkillIds),
+      skillItems: normalizedSkillItems,
     };
+
+    const opportunityAssessmentView = prepareOpportunityAssessmentView({
+      existing: finalOpportunityInstances,
+      candidates: normalizedSkillItems,
+      passages: finalPassages,
+    });
 
     const skillValidation = validateSkillEvidenceProposal(skillProposal, {
       sessionId,
       attemptId,
       mission,
-      passages: finalPassages,
+      passages: archivedPassages,
       supportExposures,
-      opportunityInstances: opportunityInstancesRef.current,
+      opportunityInstances: opportunityAssessmentView,
       isRehearsalAttempt: wasRehearsal,
       sessionEndReason: endReason,
       // A live session only ever writes validated evidence. `legacy_inferred` is
@@ -1071,6 +1478,13 @@ t.live.rehearsalRestored
     const validatedSkillObservations = skillValidation.validated;
     const skillEvidenceIssues = skillValidation.rejected;
     const skillLapses = skillValidation.lapses;
+
+    finalOpportunityInstances = commitValidatedOpportunityDemonstrations({
+      existing: finalOpportunityInstances,
+      validated: validatedSkillObservations,
+      passages: finalPassages,
+    });
+    opportunityInstancesRef.current = finalOpportunityInstances;
 
     if (skillEvidenceIssues.length > 0) {
       console.warn(
@@ -1142,7 +1556,7 @@ t.live.rehearsalRestored
       endReason,
       passages: finalPassages,
       supportExposures,
-      opportunityInstances: opportunityInstancesRef.current,
+      opportunityInstances: finalOpportunityInstances,
       observations: finalObservations,
       // Only validated evidence reaches the archive, written in the same
       // transaction as the transcript it cites.
@@ -1157,6 +1571,7 @@ t.live.rehearsalRestored
           : []),
         t.live.feedbackReviewDue,
       ],
+      operationalTelemetry: operationalTelemetryRef.current,
     });
   }, [
     attemptId,
@@ -1196,7 +1611,47 @@ t.live.rehearsalRestored
                     ? t.live.voiceFailed
                     : t.live.tapToSpeak;
 
-  const requestSupport = (kind: 'intent_hint' | 'partial_form' | 'full_form') => {
+  const recordAssistantAudioExposure = useCallback(
+    (passage: Passage, kind: 'assistant_audio_replay' | 'assistant_audio_slow') => {
+      const exposure: SupportExposure = {
+        id: `exp-${kind}-${passage.id}-${Date.now()}`,
+        sessionId,
+        attemptId,
+        turnId: passage.id,
+        source: 'actor',
+        kind,
+        targetItemIds: [],
+        exposure: 'played',
+        policyVersion: LEARNING_POLICY_VERSION,
+        recordedAt: new Date().toISOString(),
+      };
+      setSupportExposures(prev => [...prev, exposure]);
+    },
+    [attemptId, sessionId]
+  );
+
+  const replayAssistantLine = useCallback(
+    async (passage: Passage, speed = 1) => {
+      const transport = voiceTransportRef.current;
+      if (!transport) return;
+
+      recordAssistantAudioExposure(
+        passage,
+        speed < 1 ? 'assistant_audio_slow' : 'assistant_audio_replay'
+      );
+
+      await speakWithBestAvailable(transport, passage.text, {
+        language: mission.language,
+        speed,
+        style: mission.character.voiceStyle,
+      });
+    },
+    [mission.character.voiceStyle, mission.language, recordAssistantAudioExposure]
+  );
+
+  const requestSupport = (
+    kind: 'intent_hint' | 'partial_form' | 'full_form' | 'explanation'
+  ) => {
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
     setIsSceneFrozen(true);
@@ -1575,17 +2030,25 @@ t.live.rehearsalRestored
             variant="secondary"
           />
           <Button
+            label={t.live.coachStepExpl}
+            onPress={() => requestSupport('explanation')}
+            variant="secondary"
+          />
+          <Button
+            label={t.common.listen}
+            onPress={() => {
+              if (latestAssistantPassage) {
+                void replayAssistantLine(latestAssistantPassage, 1);
+              }
+              setShowHelpSheet(false);
+            }}
+            variant="ghost"
+          />
+          <Button
             label={t.settings.speedSlower}
             onPress={() => {
               if (latestAssistantPassage) {
-                const transport = voiceTransportRef.current;
-                if (transport) {
-                  void speakWithBestAvailable(transport, latestAssistantPassage.text, {
-                    language: mission.language,
-                    speed: 0.75,
-                    style: mission.character.voiceStyle,
-                  });
-                }
+                void replayAssistantLine(latestAssistantPassage, 0.75);
               }
               setShowHelpSheet(false);
             }}

@@ -14,7 +14,13 @@ import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations } from '../../features/i18n';
 import { useTheme } from '../../features/theme';
 import { ThemePreference } from '../../lib/themePreference';
-import { LanguageCode, Mode, UiLanguage, UserPreferences } from '../../types';
+import {
+  AccommodationKind,
+  LanguageCode,
+  Mode,
+  UiLanguage,
+  UserPreferences,
+} from '../../types';
 import { Button, ChipRow, SectionLabel } from '../../components/ui';
 import { iconColor } from '../../design/iconColor';
 
@@ -50,6 +56,13 @@ export default function SettingsScreen() {
 
   const patch = (updates: Partial<UserPreferences>) =>
     void archive.savePreferences({ ...archive.preferences, ...updates });
+
+  const toggleAccommodation = (kind: AccommodationKind, enabled: boolean) => {
+    const current = new Set(archive.preferences.accommodations?.enabled ?? []);
+    if (enabled) current.add(kind);
+    else current.delete(kind);
+    patch({ accommodations: { enabled: [...current] } });
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
@@ -187,6 +200,30 @@ export default function SettingsScreen() {
               accessibilityLabel={t.settings.autoPlayLabel}
             />
           </View>
+        </View>
+
+        <View className="gap-4">
+          <SectionLabel>{t.settings.accommodationsLabel}</SectionLabel>
+          {([
+            ['captions_always', t.settings.captionsAlwaysLabel],
+            ['slower_speech_default', t.settings.slowerSpeechDefaultLabel],
+            ['typed_preferred', t.settings.typedPreferredLabel],
+            ['haptic_turn_cues', t.settings.hapticTurnCuesLabel],
+          ] as Array<[AccommodationKind, string]>).map(([kind, label]) => (
+            <View key={kind} className="min-h-12 flex-row items-center justify-between gap-4">
+              <Text className="flex-1 text-sm font-medium text-ink">{label}</Text>
+              <Switch
+                value={(archive.preferences.accommodations?.enabled ?? []).includes(kind)}
+                onValueChange={value => toggleAccommodation(kind, value)}
+                trackColor={{
+                  false: iconColor('borderSubtle'),
+                  true: iconColor('brandButton'),
+                }}
+                thumbColor={iconColor('brandText')}
+                accessibilityLabel={label}
+              />
+            </View>
+          ))}
         </View>
 
         <View className="gap-3">

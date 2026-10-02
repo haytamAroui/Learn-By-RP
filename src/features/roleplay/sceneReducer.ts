@@ -18,21 +18,25 @@ import {
   SceneActionName,
   SceneActionResult,
   SceneDefinition,
+  SceneFactValue,
   SceneStateSnapshot,
   SCENE_CONTRACT_VERSION,
 } from '../../contracts/scene';
+import { assertValidSceneDefinition } from './sceneValidation';
 
 export function createInitialScene(
   scene: SceneDefinition,
   sessionId: string,
   attemptId: string
 ): SceneStateSnapshot {
+  assertValidSceneDefinition(scene);
   return {
     sceneId: scene.id,
     sessionId,
     attemptId,
     revision: 1,
     facts: { ...scene.initialFacts },
+    actionCounts: {},
     checkpoints: [],
     isFinished: false,
     outcome: 'unknown',
@@ -42,90 +46,54 @@ export function createInitialScene(
 
 // ------------------------------------------------------------------ predicates
 
-export function evaluatePredicate(predicate: Predicate, facts: Record<string, unknown>): boolean {
-  if ('all' in predicate) {
-    return predicate.all.every(child => evaluatePredicate(child, facts));
+export function evaluatePredicate(
+  predicate: Predicate,
+  facts: Record<string, SceneFactValue>,
+  actionCounts: Partial<Record<SceneActionName, number>> = {}
+): boolean {
+  switch (predicate.op) {
+    case 'and':
+      return predicate.predicates.every(child =>
+        evaluatePredicate(child, facts, actionCounts)
+      );
+    case 'or':
+      return predicate.predicates.some(child =>
+        evaluatePredicate(child, facts, actionCounts)
+      );
+    case 'not':
+      return !evaluatePredicate(predicate.predicate, facts, actionCounts);
+    case 'exists':
+      return Object.prototype.hasOwnProperty.call(facts, predicate.fact);
+    case 'eq':
+      return facts[predicate.fact] === predicate.value;
+    case 'neq':
+      return facts[predicate.fact] !== predicate.value;
+    case 'in':
+      return predicate.values.includes(facts[predicate.fact]);
+    case 'lte': {
+      const value = facts[predicate.fact];
+      return typeof value === 'number' && value <= predicate.value;
+    }
+    case 'gte': {
+      const value = facts[predicate.fact];
+      return typeof value === 'number' && value >= predicate.value;
+    }
+    case 'countOf': {
+      const count = actionCounts[predicate.action] ?? 0;
+      if (predicate.comparator === 'eq') return count === predicate.value;
+      if (predicate.comparator === 'lte') return count <= predicate.value;
+      return count >= predicate.value;
+    }
   }
-  if ('any' in predicate) {
-    return predicate.any.some(child => evaluatePredicate(child, facts));
-  }
-  if ('notFact' in predicate) {
-    return !truthy(facts[predicate.notFact]);
-  }
-  if ('equals' in predicate) {
-    return facts[predicate.fact] === predicate.equals;
-  }
-  if ('fact' in predicate) {
-    return truthy(facts[predicate.fact]);
-  }
-  return false;
-}
-
-function truthy(value: unknown): boolean {
-  return value !== undefined && value !== null && value !== false && value !== '';
 }
 
 // ------------------------------------------------------------------- mutations
 
 function applyMutation(
   mutation: Mutation,
-  facts: Record<string, unknown>,
-  payload: Record<string, unknown>
-): Record<string, unknown> {
-  if ('set' in mutation) {
-    const from = mutation.from;
-    const value = from && from in payload ? payload[from] : mutation.default;
-    return { ...facts, [mutation.set]: value };
-  }
-  if ('unset' in mutation) {
-    const next = { ...facts };
-    delete next[mutation.unset];
-    return next;
-  }
-  if ('merge' in mutation) {
-    const from = mutation.from;
-    // `merge: 'order'` with no `from` merges the whole payload into the fact.
-    // With `from: 'item'`, the payload's `item` object is merged into it, so
-    // sibling keys on the target survive an update.
-    const incoming =
-      from && from in payload
-        ? (payload[from] as Record<string, unknown>)
-        : (payload as Record<string, unknown>);
-
-    if (typeof incoming !== 'object' || incoming === null || Array.isArray(incoming)) {
-      return { ...facts, [mutation.merge]: incoming };
-    }
-
-    const existing = facts[mutation.merge];
-    const base =
-      existing && typeof existing === 'object' && !Array.isArray(existing)
-        ? (existing as Record<string, unknown>)
-        : {};
-    return { ...facts, [mutation.merge]: { ...base, ...incoming } };
-  }
-  if ('setPath' in mutation) {
-    const segments = mutation.setPath.split('.');
-    const leaf = segments.pop();
-    if (!leaf) return facts;
-
-    const from = mutation.from;
-    const value = from && from in payload ? payload[from] : mutation.default;
-
-    const root = segments[0];
-    const existing = facts[root];
-    const base =
-      existing && typeof existing === 'object' && !Array.isArray(existing)
-        ? (existing as Record<string, unknown>)
-        : {};
-
-    // Rebuild the nested path, cloning only the nodes along it.
-    let nested: Record<string, unknown> = { ...base, [leaf]: value };
-    for (let i = segments.length - 1; i >= 1; i -= 1) {
-      nested = { [segments[i - 1]]: nested };
-    }
-    return { ...facts, [root]: nested };
-  }
-  return facts;
+  facts: Record<string, SceneFactValue>
+): Record<string, SceneFactValue> {
+  return { ...facts, [mutation.set]: mutation.value };
 }
 
 // --------------------------------------------------------------------- schema
@@ -184,10 +152,15 @@ export function validatePayload(
 /** Actions whose preconditions currently hold. Returned with every rejection. */
 export function permissibleOptions(
   scene: SceneDefinition,
-  facts: Record<string, unknown>
+  facts: Record<string, SceneFactValue>,
+  actionCounts: Partial<Record<SceneActionName, number>> = {}
 ): SceneActionName[] {
   return scene.allowedActions
-    .filter(action => action.preconditions.every(predicate => evaluatePredicate(predicate, facts)))
+    .filter(action =>
+      action.preconditions.every(predicate =>
+        evaluatePredicate(predicate, facts, actionCounts)
+      )
+    )
     .map(action => action.name);
 }
 
@@ -253,7 +226,7 @@ export function reduceSceneAction(input: ReducerInput): SceneActionResult {
 
   // 6. Preconditions.
   const failed = action.preconditions.find(
-    predicate => !evaluatePredicate(predicate, state.facts)
+    predicate => !evaluatePredicate(predicate, state.facts, state.actionCounts)
   );
   if (failed) {
     return reject(
@@ -265,16 +238,16 @@ export function reduceSceneAction(input: ReducerInput): SceneActionResult {
     );
   }
 
-  const payload = (proposal.payload ?? {}) as Record<string, unknown>;
   let facts = state.facts;
   for (const mutation of action.effects) {
-    facts = applyMutation(mutation, facts, payload);
+    facts = applyMutation(mutation, facts);
   }
 
   return {
     actionId: proposal.actionId,
     accepted: true,
     newFacts: facts,
+    appliedAction: action.name,
     revision: state.revision + 1,
     deduplicated: false,
     appliedAt: new Date().toISOString(),
@@ -292,7 +265,7 @@ function reject(
     actionId,
     accepted: false,
     reason,
-    permissibleOptions: permissibleOptions(scene, state.facts),
+    permissibleOptions: permissibleOptions(scene, state.facts, state.actionCounts),
     newFacts: state.facts,
     revision: state.revision,
     deduplicated: false,
@@ -302,14 +275,15 @@ function reject(
 
 export function evaluateCompletion(
   scene: SceneDefinition,
-  facts: Record<string, unknown>
+  facts: Record<string, SceneFactValue>,
+  actionCounts: Partial<Record<SceneActionName, number>> = {}
 ): SceneStateSnapshot['outcome'] {
   const achieved = scene.completion.find(entry => entry.name === 'achieved');
-  if (achieved && evaluatePredicate(achieved.predicate, facts)) {
+  if (achieved && evaluatePredicate(achieved.predicate, facts, actionCounts)) {
     return 'achieved';
   }
   const partial = scene.completion.find(entry => entry.name === 'partial');
-  if (partial && evaluatePredicate(partial.predicate, facts)) {
+  if (partial && evaluatePredicate(partial.predicate, facts, actionCounts)) {
     return 'partial';
   }
   return 'unknown';
@@ -331,16 +305,21 @@ export function applyResult(
   if (!result.accepted) return state;
 
   const facts = result.newFacts;
-  const outcome = evaluateCompletion(scene, facts);
+  const actionCounts = { ...state.actionCounts };
+  if (result.appliedAction) {
+    actionCounts[result.appliedAction] = (actionCounts[result.appliedAction] ?? 0) + 1;
+  }
+  const outcome = evaluateCompletion(scene, facts, actionCounts);
 
   const checkpoints = [...state.checkpoints];
   for (const checkpoint of scene.checkpoints) {
     if (checkpoints.some(existing => existing.id === checkpoint.id)) continue;
-    if (evaluatePredicate(checkpoint.after, facts)) {
+    if (evaluatePredicate(checkpoint.after, facts, actionCounts)) {
       checkpoints.push({
         id: checkpoint.id,
         description: checkpoint.description,
         timestamp: result.appliedAt,
+        sceneRevision: result.revision,
       });
     }
   }
@@ -348,6 +327,7 @@ export function applyResult(
   return {
     ...state,
     facts,
+    actionCounts,
     revision: result.revision,
     outcome,
     isFinished: outcome === 'achieved' || outcome === 'partial',

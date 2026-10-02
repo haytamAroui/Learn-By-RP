@@ -6,6 +6,8 @@ import cors from 'cors';
 import { matchPhraseInText } from '../src/features/learning/matching';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../src/data/missions';
 import { allowedSkillsForMission } from '../src/features/learning/skillMembership';
+import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
+import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
@@ -75,6 +77,25 @@ app.post('/api/realtime/session', async (req: Request, res: Response) => {
  * 1. Actor Response (Conversational Character)
  * Compact instruction packet: character role, bounded knowledge, short spoken turns (1-2 sentences).
  */
+function sanitizeActorResponse(
+  response: any,
+  allowedActions: unknown
+): {
+  replyText: string;
+  meaning: string;
+  proposedAction: { name: string; payload: Record<string, unknown> } | null;
+} {
+  const allowlist = Array.isArray(allowedActions)
+    ? allowedActions.filter((name: unknown): name is string => typeof name === 'string')
+    : [];
+
+  return {
+    replyText: typeof response?.replyText === 'string' ? response.replyText : '',
+    meaning: typeof response?.meaning === 'string' ? response.meaning : '',
+    proposedAction: sanitizeActorAction(response?.proposedAction, allowlist),
+  };
+}
+
 app.post('/api/actor/respond', async (req: Request, res: Response) => {
   try {
     const {
@@ -82,6 +103,7 @@ app.post('/api/actor/respond', async (req: Request, res: Response) => {
       setting,
       learnerGoal,
       sceneFacts,
+      allowedActions = [],
       mode,
       recentPassages,
       userMessage,
@@ -96,8 +118,13 @@ app.post('/api/actor/respond', async (req: Request, res: Response) => {
 
     if (!providers.structured) {
       // Offline / fallback intelligent actor
-      const fallbackReply = generateFallbackActorReply(character?.name, userMessage, sceneFacts, targetLanguage);
-      res.json(fallbackReply);
+      const fallbackReply = generateFallbackActorReply(
+        character?.name,
+        userMessage,
+        sceneFacts,
+        targetLanguage
+      );
+      res.json(sanitizeActorResponse(fallbackReply, allowedActions));
       return;
     }
 
@@ -118,13 +145,14 @@ Character Persona & Boundaries:
 RULES:
 1. Speak 1 to 2 short sentences ONLY. Natural spoken conversation, not a monologue.
 2. Ask one simple follow-up question or confirm their request.
-3. Stay strictly in character! NEVER act like an AI tutor or grammar teacher unless explicitly in guided mode correcting a breakdown.
-4. If the learner asks for an unavailable item (e.g. oat milk is out), politely inform them and offer available alternatives (e.g. almond milk or whole milk).
-5. Output your response as a valid JSON object matching this structure:
+3. Stay strictly in character. NEVER act as a tutor, coach, evaluator, or grammar teacher. Pedagogical help belongs to a separate private coach.
+4. Respect the supplied scene facts and character knowledge boundaries. Never invent a world-state result.
+5. You may propose ONLY one of these authored scene actions: ${Array.isArray(allowedActions) && allowedActions.length ? allowedActions.join(', ') : '(none)'}. If none applies, proposedAction MUST be null.
+6. Output your response as a valid JSON object matching this structure:
 {
   "replyText": "your spoken line in ${targetLanguage}",
   "meaning": "${explanationLanguage} translation of what you just said",
-  "proposedAction": null or {"name": "confirm_order_item" | "offer_alternative" | "confirm_takeaway" | "complete_scene", "payload": {}}
+  "proposedAction": null or {"name": "one exact authored action name", "payload": {}}
 }`;
 
     const prompt = `Recent conversation:
@@ -140,12 +168,23 @@ Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`
       temperature: 0.7,
     });
 
-    res.json(response);
+    res.json(sanitizeActorResponse(response, allowedActions));
   } catch (err: any) {
     console.error('Error in /api/actor/respond:', err);
-    const { character, userMessage = '', sceneFacts, targetLanguage = 'Spanish' } = req.body || {};
-    const fallbackReply = generateFallbackActorReply(character?.name, userMessage, sceneFacts, targetLanguage);
-    res.json(fallbackReply);
+    const {
+      character,
+      userMessage = '',
+      sceneFacts,
+      targetLanguage = 'Spanish',
+      allowedActions = [],
+    } = req.body || {};
+    const fallbackReply = generateFallbackActorReply(
+      character?.name,
+      userMessage,
+      sceneFacts,
+      targetLanguage
+    );
+    res.json(sanitizeActorResponse(fallbackReply, allowedActions));
   }
 });
 
@@ -165,21 +204,43 @@ app.post('/api/coach/hint', async (req: Request, res: Response) => {
   try {
     const {
       step = 'intent_hint',
+      missionId,
       targetLanguage = 'Spanish',
       explanationLanguage = 'English',
       characterName = 'the character',
       lastAssistantLine = '',
-      learnerGoal = 'Order a drink'
+      learnerGoal = 'Order a drink',
+      targetSkillId,
+      targetOpportunityId,
+      targetPhraseId,
+      targetPhraseForm = '',
     } = req.body;
 
+    const missionSkills = allowedSkillsForMission(missionId);
+    const scopedSkill = missionSkills.find(skill => skill.id === targetSkillId);
+    if (!scopedSkill) {
+      res.status(400).json({ error: 'targetSkillId must be declared by the mission' });
+      return;
+    }
+
+    const scopedTargets = {
+      targetSkillId: scopedSkill.id,
+      targetOpportunityId:
+        typeof targetOpportunityId === 'string' ? targetOpportunityId : undefined,
+      targetPhraseId: typeof targetPhraseId === 'string' ? targetPhraseId : undefined,
+    };
+
     if (!providers.structured) {
-      const fallbackHints: Record<string, string> = {
-        intent_hint: `Try telling ${characterName} what you would like to drink, or ask if they have a plant milk.`,
-        partial_form: `Start with: "Un café con..." or "¿Tiene leche de...?"`,
-        full_form: `Say: "Un café con leche, por favor." or "¿Tiene leche de avena?"`,
-        explanation: `${characterName} asked what you want. In Spain, "para llevar" means takeaway.`
-      };
-      res.json({ hint: fallbackHints[step] || fallbackHints.intent_hint });
+      res.json({
+        hint: buildCoachFallback({
+          step,
+          targetLanguage,
+          characterName,
+          targetPhraseForm,
+          lastAssistantLine,
+        }),
+        ...scopedTargets,
+      });
       return;
     }
 
@@ -189,6 +250,8 @@ The character just said: "${lastAssistantLine}".
 Target Language: ${targetLanguage}.
 Explanation Language: ${explanationLanguage}.
 Requested Hint Step: "${step}".
+Target Communicative Skill: ${scopedSkill.name} (${scopedSkill.id}).
+Target Phrase, when explicitly scoped: ${targetPhraseForm || 'none'}.
 - 'intent_hint': Give a 1-sentence strategic guidance about WHAT to communicate (do NOT reveal the exact foreign words).
 - 'partial_form': Give a sentence starter or partial grammar scaffold (e.g. "Start with: 'Quisiera...'").
 - 'full_form': Give a natural, complete sentence example in ${targetLanguage} with ${explanationLanguage} translation.
@@ -203,7 +266,13 @@ Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "
       temperature: 0.4,
     });
 
-    res.json(parsed);
+    res.json({
+      hint:
+        typeof parsed?.hint === 'string'
+          ? parsed.hint
+          : 'Try expressing the target idea in a simple sentence.',
+      ...scopedTargets,
+    });
   } catch (err: any) {
     console.error('Error in /api/coach/hint:', err);
     res.json({ hint: 'Try expressing what you would like in a simple sentence.' });
@@ -216,7 +285,35 @@ Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "
  */
 app.post('/api/assessment', async (req: Request, res: Response) => {
   try {
-    const { sessionId, attemptId, passages = [], usefulPhrases = [], language = 'es', missionId } = req.body;
+    const {
+      sessionId,
+      attemptId,
+      passages = [],
+      usefulPhrases = [],
+      language = 'es',
+      missionId,
+      opportunityInstances = [],
+    } = req.body;
+
+    const allowedSkillIdSet = new Set(allowedSkillsForMission(missionId).map(skill => skill.id));
+    const declaredOpportunities = Array.isArray(opportunityInstances)
+      ? opportunityInstances
+          .filter((opportunity: any) =>
+            opportunity &&
+            typeof opportunity.id === 'string' &&
+            typeof opportunity.opportunityId === 'string' &&
+            typeof opportunity.skillId === 'string' &&
+            opportunity.detection === 'validated' &&
+            (opportunity.status === 'presented' || opportunity.status === 'taken') &&
+            allowedSkillIdSet.has(opportunity.skillId)
+          )
+          .map((opportunity: any) => ({
+            id: opportunity.id,
+            opportunityId: opportunity.opportunityId,
+            skillId: opportunity.skillId,
+            status: opportunity.status,
+          }))
+      : [];
 
     const userPassages = passages.filter((p: any) => p.speaker === 'user');
     if (userPassages.length === 0) {
@@ -249,6 +346,9 @@ ${JSON.stringify(usefulPhrases, null, 2)}
 Communicative skills this mission may evidence (the ONLY skillIds you may propose):
 ${JSON.stringify(allowedSkillsForMission(missionId), null, 2)}
 
+Runtime-declared opportunities you may reference (the ONLY opportunityInstanceIds you may propose):
+${JSON.stringify(declaredOpportunities, null, 2)}
+
 Full Transcript:
 ${transcriptDump}
 
@@ -262,11 +362,13 @@ Rules:
 6. Do NOT assess ability, level, grammar quality, or personality. You are extracting evidence, not grading.
 7. "retrievalProposal": propose "unknown". Retrieval is derived on the client from the support-exposure ledger, which you cannot see.
 8. taskOutcome: "achieved" | "partial" | "not_achieved" | "unknown". This describes the SCENE result only. Use "unknown" when the transcript does not settle it.
-9. "skillItems" credit communicative SKILLS, not phrases. Only propose a skillId listed below.
-10. The same quote rules apply: verbatim from a learner passage, with that passage's ID and revision.
-11. Do not propose a skill merely because its topic was mentioned. The learner must have performed it.
-12. Scene outcome and skill demonstration are independent. A learner may demonstrate a skill even when the overall task is not achieved.
-13. Do not report skill failures. A failed cold opportunity is derived deterministically from validated runtime OpportunityInstance records, never from taskOutcome alone.
+9. "skillItems" credit communicative SKILLS, not phrases. Only propose a skillId listed above.
+10. Every skillItem MUST include an "opportunityInstanceId" copied exactly from the runtime-declared opportunities above, and its skillId MUST match that opportunity. If no declared opportunity fits, omit the skillItem.
+11. The same quote rules apply: verbatim from a learner passage, with that passage's ID and revision.
+12. Do not propose a skill merely because its topic was mentioned. The learner must have performed it during that declared opportunity.
+13. Scene outcome and skill demonstration are independent. A learner may demonstrate a skill even when the overall task is not achieved.
+14. Your classification is only a proposal. The deterministic client validates the opportunity, passage, revision, support state and mission/scene authorship before persisting anything.
+15. Do not report skill failures. A failed cold opportunity is derived deterministically from validated runtime OpportunityInstance records, never from taskOutcome alone.
 
 Return JSON matching:
 {
@@ -290,6 +392,7 @@ Return JSON matching:
   "skillItems": [
     {
       "skillId": "one of the ids listed above",
+      "opportunityInstanceId": "one exact runtime opportunity id listed above",
       "quote": "Verbatim substring from the learner's own passage showing the skill performed",
       "sourcePassageId": "passage ID where quote occurred",
       "sourceRevision": "revision key of passage",

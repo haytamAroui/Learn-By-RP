@@ -31,6 +31,8 @@ export default function ProgressTab() {
           onSelectSession={s => router.push({ pathname: '/recap/[sessionId]', params: { sessionId: s.id } })}
           onDisputeObservation={id => void archive.disputeObservation(id)}
           onHideObservation={id => void archive.hideObservation(id)}
+          onDisputeSkillObservation={id => void archive.disputeSkillObservation(id)}
+          onHideSkillObservation={id => void archive.hideSkillObservation(id)}
         />
       </View>
 

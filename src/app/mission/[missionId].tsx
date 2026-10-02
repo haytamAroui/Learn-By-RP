@@ -7,6 +7,9 @@ import { MissionBriefingScreen } from '../../components/MissionBriefingScreen';
 import { Button } from '../../components/ui';
 import { MISSION_CATALOG } from '../../data/missions';
 import { MissionDefinition, Mode, SessionRecord, SupportExposure } from '../../types';
+import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
+import { getScene } from '../../content/scenes';
+import { createInitialScene } from '../../features/roleplay/sceneReducer';
 
 export default function MissionBriefingRoute() {
   const router = useRouter();
@@ -39,14 +42,23 @@ export default function MissionBriefingRoute() {
     const sessionId = `session-${Date.now()}`;
     const now = new Date().toISOString();
 
+    const authoredScene = selectedMission.sceneId
+      ? getScene(selectedMission.sceneId)
+      : undefined;
+    const initialScene = authoredScene
+      ? createInitialScene(authoredScene, sessionId, 'attempt-1')
+      : undefined;
+
     const supportExposures: SupportExposure[] = previewedPhraseIds.map((phraseId, index) => ({
       id: `exp-briefing-${sessionId}-${index}`,
       sessionId,
       attemptId: 'attempt-1',
       source: 'briefing',
-      kind: 'full_form',
+      kind: 'briefing_exposure',
+      targetPhraseId: phraseId,
       targetItemIds: [phraseId],
       exposure: 'visible',
+      policyVersion: LEARNING_POLICY_VERSION,
       recordedAt: now,
     }));
 
@@ -64,20 +76,24 @@ export default function MissionBriefingRoute() {
       observations: [],
       taskOutcome: 'unknown',
       sceneState: {
-        sceneId: selectedMission.id,
-        revision: 1,
-        facts: { ...selectedMission.character },
-        learnerKnows: [selectedMission.learnerGoal],
-        characterKnows: selectedMission.character.knowledgeBoundary,
+        sceneId: initialScene?.sceneId ?? selectedMission.sceneId ?? selectedMission.id,
+        revision: initialScene?.revision ?? 1,
+        facts: initialScene?.facts ?? {},
+        actionCounts: initialScene?.actionCounts ?? {},
+        learnerKnows: authoredScene?.learnerKnows ?? [selectedMission.learnerGoal],
+        characterKnows: authoredScene
+          ? Object.values(authoredScene.characterKnows).flat()
+          : selectedMission.character.knowledgeBoundary,
         checkpoints: [
           {
             id: 'cp-start',
             description: 'Session start',
             timestamp: now,
           },
+          ...(initialScene?.checkpoints ?? []),
         ],
-        isFinished: false,
-        outcome: 'unknown',
+        isFinished: initialScene?.isFinished ?? false,
+        outcome: initialScene?.outcome ?? 'unknown',
       },
     };
 

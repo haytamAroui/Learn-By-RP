@@ -62,11 +62,14 @@ function exposure(overrides: Partial<SupportExposure> = {}): SupportExposure {
     attemptId: 'attempt-1',
     kind: 'full_form',
     source: 'coach',
-    text: '¿Tiene leche de avena?',
+    targetSkillId: SKILL,
+    targetOpportunityId: 'opp-1',
     targetPhraseId: 'phrase.es.1',
-    shownAt: '2026-09-20T09:00:02.000Z',
+    targetItemIds: ['phrase.es.1'],
+    exposure: 'visible',
+    recordedAt: '2026-09-20T09:00:02.000Z',
     ...overrides,
-  } as SupportExposure;
+  };
 }
 
 function candidate(overrides: Partial<SkillEvidenceCandidate> = {}): SkillEvidenceCandidate {
@@ -77,6 +80,7 @@ function candidate(overrides: Partial<SkillEvidenceCandidate> = {}): SkillEviden
     quote: 'la leche de avena',
     modality: 'spoken',
     retrievalProposal: 'unassisted',
+    opportunityInstanceId: 'opp-1',
     supportExposureIds: [],
     ...overrides,
   };
@@ -96,7 +100,7 @@ function opportunity(overrides: Partial<OpportunityInstance> = {}): OpportunityI
   return {
     id: 'opp-1',
     attemptId: 'attempt-1',
-    opportunityId: 'opportunity-request-substitution',
+    opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
     skillId: SKILL,
     status: 'taken',
     detection: 'validated',
@@ -116,7 +120,7 @@ const context = (
   mission: mission(),
   passages: [passage()],
   supportExposures: [] as SupportExposure[],
-  opportunityInstances: [] as OpportunityInstance[],
+  opportunityInstances: [opportunity({ demonstration: 'demonstrated' })] as OpportunityInstance[],
   sessionEndReason: 'completed' as const,
   ...overrides,
 } as Parameters<typeof validateSkillEvidenceProposal>[1]);
@@ -154,14 +158,34 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.rejected[0].reason).toContain('does not declare');
   });
 
-  it('accepts a secondary skill the mission declares', () => {
+  it('does not credit a mission-declared skill without an authored scene opportunity', () => {
+    const repair = opportunity({
+      id: 'opp-repair',
+      opportunityId: 'opp.es.cafe.repair.unreleased',
+      skillId: 'skill-communicative-repair',
+    });
     const result = validateSkillEvidenceProposal(
-      proposal([candidate({ skillId: 'skill-communicative-repair' })]),
+      proposal([
+        candidate({
+          skillId: 'skill-communicative-repair',
+          opportunityInstanceId: repair.id,
+        }),
+      ]),
+      context({ opportunityInstances: [repair] })
+    );
+
+    expect(result.validated).toHaveLength(0);
+    expect(result.rejected[0].check).toBe('opportunity_not_declared');
+  });
+
+  it('rejects positive explicit evidence without an opportunity link', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate({ opportunityInstanceId: undefined })]),
       context()
     );
 
-    expect(result.rejected).toEqual([]);
-    expect(result.validated).toHaveLength(1);
+    expect(result.validated).toHaveLength(0);
+    expect(result.rejected[0].check).toBe('opportunity_required');
   });
 
   it('links a demonstrated skill to a validated taken opportunity when supplied', () => {
@@ -188,7 +212,6 @@ describe('validateSkillEvidenceProposal', () => {
   it('rejects an opportunity for a different skill', () => {
     const instance = opportunity({
       skillId: 'skill-propose-alternative',
-      demonstration: 'demonstrated',
     });
     const result = validateSkillEvidenceProposal(
       proposal([candidate({ opportunityInstanceId: instance.id })]),
@@ -249,6 +272,53 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.rejected.map(r => r.check)).toContain('support_contradicts_retrieval');
   });
 
+  it('does not downgrade production for meaning help on the character turn', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate()]),
+      context({
+        supportExposures: [
+          exposure({
+            kind: 'meaning_of_assistant_turn',
+            targetSkillId: undefined,
+            targetOpportunityId: undefined,
+            targetPhraseId: undefined,
+            targetItemIds: [],
+          }),
+        ],
+      })
+    );
+
+    expect(result.validated[0].retrieval).toBe('unassisted');
+    expect(result.rejected.map(r => r.check)).not.toContain('support_contradicts_retrieval');
+  });
+
+  it('does not downgrade a skill for full-form help scoped to another skill', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate()]),
+      context({
+        supportExposures: [
+          exposure({
+            targetSkillId: 'skill-wayfinding-transit',
+            targetOpportunityId: undefined,
+            targetPhraseId: undefined,
+            targetItemIds: [],
+          }),
+        ],
+      })
+    );
+
+    expect(result.validated[0].retrieval).toBe('unassisted');
+  });
+
+  it('does not treat an intent hint as production-form assistance', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([candidate()]),
+      context({ supportExposures: [exposure({ kind: 'intent_hint' })] })
+    );
+
+    expect(result.validated[0].retrieval).toBe('unassisted');
+  });
+
   it('rejects a citation to support that is not in the ledger', () => {
     const result = validateSkillEvidenceProposal(
       proposal([candidate({ supportExposureIds: ['exp-invented'] })]),
@@ -299,12 +369,12 @@ describe('validateSkillEvidenceProposal', () => {
   // there is no field for it to lie in.
   it('takes context identifiers from runtime state, not the proposal', () => {
     const result = validateSkillEvidenceProposal(proposal([candidate()]), context({
-      mission: mission({ id: 'mission-fr-bistro', category: 'cafes', sceneId: undefined }),
+      mission: mission({ id: 'mission-fr-bistro', category: 'cafes' }),
     }));
 
     expect(result.validated[0].sessionId).toBe('s-1');
     expect(result.validated[0].attemptId).toBe('attempt-1');
-    expect(result.validated[0].scenarioId).toBeUndefined();
+    expect(result.validated[0].scenarioId).toBe('scene.es.cafe.breakfast');
   });
 });
 
@@ -391,6 +461,25 @@ describe('deriveLapses', () => {
     );
 
     expect(result.lapses).toEqual([]);
+  });
+
+  it('keeps lapse eligibility when support targeted an unrelated skill', () => {
+    const result = validateSkillEvidenceProposal(
+      proposal([], 'not_achieved'),
+      context({
+        opportunityInstances: [opportunity()],
+        supportExposures: [
+          exposure({
+            targetSkillId: 'skill-wayfinding-transit',
+            targetOpportunityId: undefined,
+            targetPhraseId: undefined,
+            targetItemIds: [],
+          }),
+        ],
+      })
+    );
+
+    expect(result.lapses).toHaveLength(1);
   });
 
   it('records no lapse when the learner stayed silent', () => {
@@ -794,6 +883,49 @@ describe('projectSkill', () => {
     const projection = projectSkill(SKILL, steadyHistory(), [lapse()], now);
     expect(projection.status).toBe('steady');
     expect(projection.reviewDue).toBe(true);
+  });
+
+  it('keeps one recent lapse as review only, without activating revisit', () => {
+    const projection = projectSkill(SKILL, steadyHistory(), [lapse()], now);
+
+    expect(projection.status).toBe('steady');
+    expect(projection.reviewDue).toBe(true);
+    expect(projection.revisit).toBe(false);
+  });
+
+  it('activates revisit after two recent strict lapses without demoting status', () => {
+    const projection = projectSkill(
+      SKILL,
+      steadyHistory(),
+      [
+        lapse({ id: 'lapse-1', recordedAt: new Date(now - day).toISOString() }),
+        lapse({ id: 'lapse-2', recordedAt: new Date(now - 2 * day).toISOString() }),
+      ],
+      now
+    );
+
+    expect(projection.status).toBe('steady');
+    expect(projection.reviewDue).toBe(true);
+    expect(projection.revisit).toBe(true);
+  });
+
+  it('reports the latest qualifying independent use and ignores assisted use', () => {
+    const observations = [
+      skillObservation({ id: 'old', recordedAt: '2026-09-20T09:00:00.000Z' }),
+      skillObservation({
+        id: 'assisted-later',
+        retrieval: 'assisted',
+        recordedAt: '2026-09-30T09:00:00.000Z',
+      }),
+      skillObservation({
+        id: 'independent-latest',
+        contextKey: { domainId: 'test', scenarioFamilyId: 'family-2' },
+        recordedAt: '2026-09-25T09:00:00.000Z',
+      }),
+    ];
+
+    expect(projectSkill(SKILL, observations, [], now).lastIndependentUseAt)
+      .toBe('2026-09-25T09:00:00.000Z');
   });
 
   it('does not flag review for a lapse outside the window', () => {

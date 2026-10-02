@@ -10,6 +10,7 @@ import {
 import { LEARNING_POLICY } from './policy';
 import { matchPhraseInText, normalizeText } from './matching';
 import { classifyEvidence, countsAsIndependentEvidence } from './evidence';
+import { isPhraseProductionSupportRelevant } from './supportScope';
 
 export interface AssessmentCandidate {
   itemId?: string;
@@ -123,26 +124,24 @@ export function validateAssessmentProposal(
 
     // 3. Exposure ledger reclassification. The model may propose; the ledger
     //    decides. Support downgrades independent use, it never upgrades it.
-    const relevantExposures = supportExposures.filter(exp => {
-      if (exp.targetItemIds.length === 0) return true;
-      return exp.targetItemIds.includes(candidate.itemId!);
-    });
+    const relevantExposures = supportExposures.filter(exp =>
+      isPhraseProductionSupportRelevant({
+        exposure: exp,
+        phraseId: candidate.itemId!,
+        passage: matchingPassage,
+        attemptId: proposal.attemptId,
+      })
+    );
 
     // 4. Retrieval is derived, never taken from the proposal. The model is not
     //    allowed to claim the learner recalled something unaided.
     let finalRetrieval: RetrievalType;
 
-    const hadFormExposure = relevantExposures.some(
-      exp =>
-        exp.kind === 'full_form' ||
-        exp.kind === 'partial_form' ||
-        exp.source === 'briefing'
-    );
-
+    // Target and timing relevance was already decided against the learner
+    // passage by supportScope. Assessment time must not change the verdict.
+    const hadFormExposure = relevantExposures.length > 0;
     const modeledRecently = relevantExposures.some(
-      exp =>
-        exp.source === 'actor' &&
-        Date.now() - new Date(exp.recordedAt).getTime() < LEARNING_POLICY.modeledFormWindowMs
+      exp => exp.kind === 'model_phrase_audio'
     );
 
     if (hadFormExposure || modeledRecently || isRehearsalAttempt) {
@@ -240,23 +239,21 @@ export function buildLocalObservations(input: {
 
       seen.add(`${passage.id}:${phrase.id}`);
 
-      const relevantExposures = supportExposures.filter(
-        exp => exp.targetItemIds.length === 0 || exp.targetItemIds.includes(phrase.id)
+      const relevantExposures = supportExposures.filter(exp =>
+        isPhraseProductionSupportRelevant({
+          exposure: exp,
+          phraseId: phrase.id,
+          passage,
+          attemptId,
+        })
       );
 
       const isSpoken = passage.modality === 'spoken';
 
-      const hadFormExposure = relevantExposures.some(
-        exp =>
-          exp.kind === 'full_form' ||
-          exp.kind === 'partial_form' ||
-          exp.source === 'briefing'
-      );
-
+      // Target and timing relevance was already decided against this passage.
+      const hadFormExposure = relevantExposures.length > 0;
       const modeledRecently = relevantExposures.some(
-        exp =>
-          exp.source === 'actor' &&
-          Date.now() - new Date(exp.recordedAt).getTime() < LEARNING_POLICY.modeledFormWindowMs
+        exp => exp.kind === 'model_phrase_audio'
       );
 
       let retrieval: RetrievalType;
