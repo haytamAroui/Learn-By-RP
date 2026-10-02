@@ -223,6 +223,29 @@ export const CAFE_SCENE: SceneDefinition = {
     'skill-paraphrase-when-stuck',
   ],
 
+  pressureBranches: [
+    {
+      id: 'pressure.es.cafe.concise-followup',
+      variantKind: 'more_concise',
+      level: 'manageable',
+      trigger: { op: 'eq', fact: 'itemConfirmed', value: true },
+      actorInstruction:
+        'Opt-in pressure branch: keep the next service follow-up brief and direct, using ordinary vocabulary and no interruption. The learner may skip this variation without penalty.',
+      requiresLearnerOptIn: true,
+      skippable: true,
+    },
+    {
+      id: 'pressure.es.cafe.single-interruption',
+      variantKind: 'one_interruption',
+      level: 'stretch',
+      trigger: { op: 'eq', fact: 'alternativeOffered', value: true },
+      actorInstruction:
+        'Opt-in stretch pressure branch: interrupt once with a short relevant service question, then immediately give the floor back. Do not repeat the interruption and do not change scene facts.',
+      requiresLearnerOptIn: true,
+      skippable: true,
+    },
+  ],
+
   communicationChallenges: [
     {
       id: 'challenge.es.cafe.repeat-dense-detail',
@@ -543,6 +566,7 @@ export const PHARMACY_SCENE: SceneDefinition = {
     'skill-request-substitution',
   ],
   communicationChallenges: [],
+  pressureBranches: [],
   opportunityDefinitions: [
     {
       id: 'opp.es.pharmacy.inquire-specifications.open',
