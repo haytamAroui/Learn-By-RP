@@ -651,7 +651,7 @@ A released mission must pass:
 - [x] at least one primary CommunicativeSkill (`validateMissionForProgramRelease`)
 - [x] at least one reachable opportunity (model-check reachable opportunity gate)
 - [x] positive + negative opportunity examples (release gate validates each authored opportunity)
-- [ ] completion predicate
+- [x] completion predicate (scene validation + model-check reachable achievement)
 - [x] complication policy (static/model checks include safe complication reachability)
 - [x] support policy (released mission requires learner-triggered hint ladder)
 - [ ] typed fallback
@@ -669,7 +669,7 @@ A program must pass:
 
 - [x] every mission pinned to released version (`validateProgramAgainstCatalog`)
 - [x] every mission content-ready (`validateProgramForActivation` → mission release gates)
-- [ ] no dead-end plan entry
+- [x] no dead-end plan entry (V1 program plan is a deterministic ordered list; every pinned entry must resolve and pass mission release gates)
 - [x] at least one real transfer path (`hasRealTransferPath`)
 - [x] adaptation uses reason codes (`nextRp.ts`; deterministic localized reason codes)
 - [ ] target locale supported
@@ -763,7 +763,7 @@ A program must pass:
 - [x] accommodations. (`AccommodationProfile`; Settings + evidence regression coverage)
 - [x] support high-water mark (retry inherits every parent-attempt exposure below the captured mark, including support shown after the scene checkpoint; regression-tested).
 - [x] strict lapse/revisit semantics. (`skillEvidence.ts`, `skillProjection.ts`; reviewDue/revisit remain separate from status)
-- [ ] consent/privacy/security G0 confirmations.
+- [x] consent/privacy/security G0 technical confirmations. (server consent/auth/rate-limit schemas, tombstones and safety regressions complete; audience/age release decision remains tracked separately)
 
 ## P1 — scene/mission runtime hardening
 
