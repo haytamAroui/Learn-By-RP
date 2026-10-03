@@ -12,7 +12,11 @@ import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
-import { createProviderGuard } from './security/requestGuard';
+import { createProviderGuard, resolveProviderIdentity } from './security/requestGuard';
+import {
+  isProviderSessionDeleted,
+  markProviderSessionDeleted,
+} from './security/deletionStore';
 
 dotenv.config();
 
@@ -45,6 +49,23 @@ app.get('/api/health', (_req: Request, res: Response) => {
 
 app.get('/api/providers', (_req: Request, res: Response) => {
   res.json(providers.descriptor());
+});
+
+app.post('/api/privacy/deletion', async (req: Request, res: Response) => {
+  const access = resolveProviderIdentity(req);
+  if (!access.ok || !access.identity) {
+    res.status(access.status).json({ error: access.error });
+    return;
+  }
+
+  const sessionId = typeof req.body?.sessionId === 'string' ? req.body.sessionId.trim() : '';
+  if (!sessionId || sessionId.length > 160) {
+    res.status(400).json({ error: 'A valid sessionId is required' });
+    return;
+  }
+
+  await markProviderSessionDeleted(access.identity, sessionId);
+  res.json({ deleted: true });
 });
 
 app.post('/api/realtime/session', async (req: Request, res: Response) => {
@@ -291,6 +312,7 @@ Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "
  */
 app.post('/api/assessment', async (req: Request, res: Response) => {
   if (!guardProviderRequest(req, res, 'assessment')) return;
+  const access = resolveProviderIdentity(req);
   try {
     const {
       sessionId,
@@ -301,6 +323,15 @@ app.post('/api/assessment', async (req: Request, res: Response) => {
       missionId,
       opportunityInstances = [],
     } = req.body;
+
+    if (
+      !access.ok ||
+      !access.identity ||
+      await isProviderSessionDeleted(access.identity, sessionId)
+    ) {
+      res.status(410).json({ error: 'This session was deleted' });
+      return;
+    }
 
     const allowedSkillIdSet = new Set(evidentiarySkillsForMission(missionId).map(skill => skill.id));
     const declaredOpportunities = Array.isArray(opportunityInstances)
