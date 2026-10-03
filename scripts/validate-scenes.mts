@@ -9,7 +9,7 @@ import { validateSceneDefinition } from '../src/features/roleplay/sceneValidatio
 import { validateCharacterBehaviorPolicy } from '../src/features/roleplay/characterPolicy';
 import { ROLEPLAY_PROGRAM_CATALOG } from '../src/data/programs';
 import { validateProgramForActivation } from '../src/features/program/releaseGates';
-import { validateLaunchContentCoverage } from '../src/content/launchContent';
+import { LAUNCH_CONTENT_SPECS, validateLaunchContentCoverage } from '../src/content/launchContent';
 
 let failed = false;
 
@@ -47,18 +47,20 @@ for (const program of ROLEPLAY_PROGRAM_CATALOG) {
   }
 }
 
-const launchCoverage = validateLaunchContentCoverage();
-if (!launchCoverage.valid) {
-  failed = true;
-  for (const error of launchCoverage.errors) {
-    console.error(`  ERROR launch-content coverage: ${error}`);
-  }
-} else {
-  console.log('\n[launch-content] Spanish es-ES core skill coverage');
-  for (const item of launchCoverage.coverage) {
-    console.log(
-      `  ${item.skillId}: ${item.scenarioFamilyIds.length} families (${item.scenarioFamilyIds.join(', ')})`
-    );
+for (const spec of LAUNCH_CONTENT_SPECS) {
+  const launchCoverage = validateLaunchContentCoverage(spec);
+  if (!launchCoverage.valid) {
+    failed = true;
+    for (const error of launchCoverage.errors) {
+      console.error(`  ERROR launch-content coverage [${spec.targetLocale}]: ${error}`);
+    }
+  } else {
+    console.log(`\n[launch-content] ${spec.targetLocale} core skill coverage`);
+    for (const item of launchCoverage.coverage) {
+      console.log(
+        `  ${item.skillId}: ${item.scenarioFamilyIds.length} families (${item.scenarioFamilyIds.join(', ')})`
+      );
+    }
   }
 }
 
