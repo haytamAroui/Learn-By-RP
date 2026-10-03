@@ -1,4 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { MISSION_CATALOG } from '../data/missions';
+import { communicativeSkillFor } from './skills';
+import { getScene } from './scenes';
 import {
   SPANISH_LAUNCH_CONTENT_V1,
   validateLaunchContentCoverage,
@@ -36,4 +39,19 @@ describe('Spanish launch content coverage', () => {
     expect(bySkill.get('skill-ask-clarification')).toBe(4);
     expect(bySkill.get('skill-check-understanding')).toBe(5);
   });
+  it('keeps canonical skill provenance aligned with every launch opportunity', () => {
+    for (const missionId of SPANISH_LAUNCH_CONTENT_V1.missionIds) {
+      const mission = MISSION_CATALOG.find(item => item.id === missionId)!;
+      const scene = getScene(mission.sceneId!)!;
+
+      for (const opportunity of scene.opportunityDefinitions) {
+        const skill = communicativeSkillFor(opportunity.skillId)!;
+        expect(
+          skill.associatedMissions,
+          `${opportunity.skillId} missing ${mission.id}`
+        ).toContain(mission.id);
+      }
+    }
+  });
+
 });
