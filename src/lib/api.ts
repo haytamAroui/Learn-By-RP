@@ -167,6 +167,8 @@ export const api = {
     recentPassages: any[];
     userMessage: string;
     targetLanguage: string;
+    /** Informational on HTTP; server re-derives authority from the pinned scene. */
+    speechVariety?: import('../contracts/scene').SpeechVariety;
     explanationLanguage: string;
   }) => request<ActorResponse>('/api/actor/respond', body),
 
