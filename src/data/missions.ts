@@ -1,6 +1,8 @@
 import { MissionDefinition } from '../types';
+import { NL_BE_MISSIONS } from './missions.nlBE';
 
 export const MISSION_CATALOG: MissionDefinition[] = [
+  ...NL_BE_MISSIONS,
   {
     id: 'mission-es-cafe-sol',
     version: 2,
