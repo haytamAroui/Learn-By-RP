@@ -53,9 +53,16 @@ describe('provider request guard', () => {
   });
 
   it('bounds provider request shapes before they reach a model', () => {
-    expect(validateProviderBody('actor', { userMessage: '' })).toMatch(/required/);
+    const actorBase = {
+      missionId: 'mission-es-cafe-sol',
+      missionVersion: 2,
+    };
+    expect(
+      validateProviderBody('actor', { ...actorBase, userMessage: '' })
+    ).toMatch(/userMessage/);
     expect(
       validateProviderBody('actor', {
+        ...actorBase,
         userMessage: 'hola',
         allowedActions: Array.from({ length: 33 }, (_, i) => String(i)),
       })
