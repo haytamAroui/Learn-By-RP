@@ -12,6 +12,7 @@ import type { RoleplayProgram } from '../contracts/program';
 import type { MissionDefinition, SessionRecord } from '../types';
 import { MISSION_CATALOG } from '../data/missions';
 import { buildProgramProjection, isProgramCoreComplete } from '../features/program/projection';
+import { isProgramActivatable } from '../features/program/releaseGates';
 import { useI18n } from '../features/i18n';
 import { Button, EmptyState, Pill, SectionLabel } from './ui';
 import { iconColor } from '../design/iconColor';
@@ -35,7 +36,7 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
     [program, sessions]
   );
   const completed = new Set(projection.completedMissionIds);
-  const canExecute = program.reviewStatus === 'released';
+  const canExecute = isProgramActivatable(program);
   const coreComplete = isProgramCoreComplete(program, projection);
 
   const plan = program.missionPlan
