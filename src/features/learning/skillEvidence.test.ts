@@ -146,6 +146,11 @@ describe('validator-owned evidence capability', () => {
 
     const valid = validateSkillEvidenceProposal(proposal([candidate()]), context());
     expect(() => assertValidatedSkillEvidence(valid.evidence)).not.toThrow();
+
+    const copiedBrand = Object.assign({}, valid.evidence) as ValidatedSkillEvidence;
+    expect(() => assertValidatedSkillEvidence(copiedBrand)).toThrow(
+      /validator-issued evidence bundle required/i
+    );
   });
 });
 
