@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   ROLEPLAY_PROGRAM_CATALOG,
   SPANISH_DAILY_SERVICES_PILOT,
+  SPANISH_TRAVEL_PILOT,
   validateProgramAgainstCatalog,
 } from './programs';
 
@@ -14,12 +15,14 @@ describe('curated program catalog', () => {
     }
   });
 
-  it('keeps the Spanish launch path draft while pinning all six executable seed missions', () => {
-    expect(SPANISH_DAILY_SERVICES_PILOT.reviewStatus).toBe('draft');
-    expect(SPANISH_DAILY_SERVICES_PILOT.targetLocale).toBe('es-ES');
-    expect(SPANISH_DAILY_SERVICES_PILOT.missionPlan).toHaveLength(6);
-    expect(
-      new Set(SPANISH_DAILY_SERVICES_PILOT.missionPlan.map(item => item.missionId)).size
-    ).toBe(6);
+  it('keeps both Spanish launch programs draft while pinning executable reviewed scenes', () => {
+    expect(ROLEPLAY_PROGRAM_CATALOG).toHaveLength(2);
+
+    for (const program of [SPANISH_DAILY_SERVICES_PILOT, SPANISH_TRAVEL_PILOT]) {
+      expect(program.reviewStatus).toBe('draft');
+      expect(program.targetLocale).toBe('es-ES');
+      expect(program.missionPlan).toHaveLength(5);
+      expect(new Set(program.missionPlan.map(item => item.missionId)).size).toBe(5);
+    }
   });
 });
