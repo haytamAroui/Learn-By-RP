@@ -352,6 +352,15 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE skill_observations ADD COLUMN reason_codes TEXT;`,
     ],
   },
+  {
+    version: 11,
+    name: 'persist_program_session_context',
+    statements: [
+      `ALTER TABLE sessions ADD COLUMN program_id TEXT;`,
+      `ALTER TABLE sessions ADD COLUMN program_version INTEGER;`,
+      `ALTER TABLE sessions ADD COLUMN final_simulation INTEGER NOT NULL DEFAULT 0;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
