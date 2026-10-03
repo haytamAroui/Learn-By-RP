@@ -490,7 +490,15 @@ describe('native and web agree on the same archive', () => {
       await completeWithEvidence(repo, session());
       const parsed = JSON.parse(await repo.exportArchiveJson());
       expect(parsed.version).toBe(1);
+      expect(parsed.schemaVersion).toBe(1);
+      expect(parsed.storageSchemaVersion).toBeGreaterThan(0);
       expect(parsed.sessions).toHaveLength(1);
+      expect(parsed.skillObservations).toBeInstanceOf(Array);
+      expect(parsed.skillLapses).toBeInstanceOf(Array);
+      expect(parsed.consentRecords).toBeInstanceOf(Array);
+      expect(parsed.pendingJobs).toBeInstanceOf(Array);
+      expect(parsed.deletionMarkers).toBeInstanceOf(Array);
+      expect(parsed.contentProvenance).toHaveLength(1);
     }
 
   });
