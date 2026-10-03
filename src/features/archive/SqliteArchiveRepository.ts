@@ -179,8 +179,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
            policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt,
-           program_id, program_version, final_simulation)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           program_id, program_version, final_simulation, task_outcome, summary,
+           actionable_feedback)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.missionVersion,
@@ -197,7 +198,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.coldAttempt ? 1 : 0,
         session.programContext?.programId ?? null,
         session.programContext?.programVersion ?? null,
-        session.programContext?.finalSimulation ? 1 : 0
+        session.programContext?.finalSimulation ? 1 : 0,
+        session.taskOutcome,
+        session.summary ?? null,
+        JSON.stringify(session.actionableFeedback ?? [])
       );
 
       await txn.runAsync(
@@ -278,8 +282,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
            policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt,
-           program_id, program_version, final_simulation)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           program_id, program_version, final_simulation, task_outcome, summary,
+           actionable_feedback)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.missionVersion,
@@ -296,7 +301,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.coldAttempt ? 1 : 0,
         session.programContext?.programId ?? null,
         session.programContext?.programVersion ?? null,
-        session.programContext?.finalSimulation ? 1 : 0
+        session.programContext?.finalSimulation ? 1 : 0,
+        session.taskOutcome,
+        session.summary ?? null,
+        JSON.stringify(session.actionableFeedback ?? [])
       );
 
       await txn.runAsync(
@@ -616,7 +624,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
               finalSimulation: bool(row.final_simulation),
             }
           : undefined,
-        taskOutcome: 'unknown',
+        taskOutcome: (row.task_outcome as SessionRecord['taskOutcome']) ?? 'unknown',
+        summary: row.summary ? String(row.summary) : undefined,
+        actionableFeedback: parseJson<string[]>(
+          row.actionable_feedback ? String(row.actionable_feedback) : undefined,
+          []
+        ),
         sceneState: {
           sceneId: sceneRow?.scene_id
             ? String(sceneRow.scene_id)
@@ -1372,8 +1385,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           `INSERT OR REPLACE INTO sessions
             (id, mission_id, mission_version, language, mode, provider, consent_version,
              policy_version, state, end_reason, started_at, ended_at, usage_json,
-             program_id, program_version, final_simulation)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             program_id, program_version, final_simulation, task_outcome, summary,
+             actionable_feedback)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           session.id,
           session.missionId,
           session.missionVersion ?? 1,
@@ -1389,7 +1403,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           null,
           session.programContext?.programId ?? null,
           session.programContext?.programVersion ?? null,
-          session.programContext?.finalSimulation ? 1 : 0
+          session.programContext?.finalSimulation ? 1 : 0,
+          session.taskOutcome ?? 'unknown',
+          session.summary ?? null,
+          JSON.stringify(session.actionableFeedback ?? [])
         );
 
         // Imported JSON is an archive payload, not validator authority. Embedded
