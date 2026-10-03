@@ -338,10 +338,10 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         difficulty: 'intermediate'
       },
       {
-        id: 'phrase.es.como_se_toma',
-        form: '¿Cómo se toma y cuántas veces al día?',
-        meaning: 'How is it taken and how many times a day?',
-        usageNote: 'Standard question for dosage instructions.',
+        id: 'phrase.es.instrucciones_envase',
+        form: '¿Dónde puedo ver las instrucciones y advertencias en el envase?',
+        meaning: 'Where can I see the instructions and warnings on the package?',
+        usageNote: 'Asks where to find official package information without requesting individualized dosage advice.',
         difficulty: 'intermediate'
       }
     ],
