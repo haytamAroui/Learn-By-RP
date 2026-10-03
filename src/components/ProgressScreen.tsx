@@ -20,6 +20,7 @@ import {
   inferLegacySkillEvidence,
   projectSkillsV2,
 } from '../features/learning/skillProjection';
+import { FLEMISH_SKILL_PATTERNS } from '../content/skills';
 import { Button, EmptyState, SectionLabel } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
@@ -505,7 +506,9 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
             <View className="gap-2 rounded-2xl bg-surface-soft p-4">
               <SectionLabel>{t.progress.samplePatterns}</SectionLabel>
               <Text className="text-sm leading-5 text-ink">
-                • {selectedSkill.patterns[PATTERN_INDEX[learningLanguage]] ?? selectedSkill.patterns[0] ?? selectedSkill.samplePhrases[0] ?? '—'}
+                • {learningLanguage === 'nl'
+                  ? FLEMISH_SKILL_PATTERNS[selectedSkill.id] ?? selectedSkill.patterns[0] ?? '—'
+                  : selectedSkill.patterns[PATTERN_INDEX[learningLanguage]] ?? selectedSkill.patterns[0] ?? selectedSkill.samplePhrases[0] ?? '—'}
               </Text>
             </View>
 
