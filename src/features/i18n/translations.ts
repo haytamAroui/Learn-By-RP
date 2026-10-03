@@ -299,7 +299,18 @@ export interface Translations {
     consentLabel: string;
     grantedLabel: string;
     withdrawnLabel: string;
+    notDecidedLabel: string;
     withdrawLabel: string;
+    continuityTitle: string;
+    continuityDesc: string;
+    continuityAliasLabel: string;
+    continuityAliasPlaceholder: string;
+    continuitySaveAlias: string;
+    continuityFactsEmpty: string;
+    continuitySaveFact: string;
+    continuityClearFact: string;
+    continuityClearAll: string;
+    continuitySavedNotice: string;
     consentVersionLabel: string;
     voiceWithdrawnNotice: string;
     analysisWithdrawnNotice: string;
@@ -703,6 +714,17 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentLabel: "Consent",
       grantedLabel: "Granted",
       withdrawnLabel: "Withdrawn",
+      notDecidedLabel: "Not decided",
+      continuityTitle: "What this place remembers",
+      continuityDesc: "Only local, learner-editable continuity facts may carry into allowed scenes. Your real name is never required; an optional alias is used instead.",
+      continuityAliasLabel: "Roleplay alias",
+      continuityAliasPlaceholder: "Optional name characters can use",
+      continuitySaveAlias: "Save alias",
+      continuityFactsEmpty: "This place does not remember anything about you yet.",
+      continuitySaveFact: "Save",
+      continuityClearFact: "Clear",
+      continuityClearAll: "Clear remembered facts",
+      continuitySavedNotice: "Continuity preferences saved.",
       withdrawLabel: "Withdraw",
       consentVersionLabel: "Consent version",
       voiceWithdrawnNotice: "Voice processing withdrawn. Speaking is disabled.",
@@ -1114,6 +1136,17 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentLabel: "Consentement",
       grantedLabel: "Accordé",
       withdrawnLabel: "Retiré",
+      notDecidedLabel: "Non décidé",
+      continuityTitle: "Ce que cet endroit retient",
+      continuityDesc: "Seuls des éléments de continuité locaux et modifiables par vous peuvent passer aux scènes autorisées. Votre vrai nom n’est jamais requis ; un pseudonyme facultatif est utilisé à la place.",
+      continuityAliasLabel: "Pseudonyme de jeu de rôle",
+      continuityAliasPlaceholder: "Nom facultatif que les personnages peuvent utiliser",
+      continuitySaveAlias: "Enregistrer le pseudonyme",
+      continuityFactsEmpty: "Cet endroit ne retient encore aucune information sur vous.",
+      continuitySaveFact: "Enregistrer",
+      continuityClearFact: "Effacer",
+      continuityClearAll: "Effacer les éléments mémorisés",
+      continuitySavedNotice: "Préférences de continuité enregistrées.",
       withdrawLabel: "Retirer",
       consentVersionLabel: "Version du consentement",
       voiceWithdrawnNotice: "Le traitement vocal a été retiré. La parole est désactivée.",
@@ -1523,6 +1556,17 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentLabel: "Consentimiento",
       grantedLabel: "Concedido",
       withdrawnLabel: "Retirado",
+      notDecidedLabel: "Sin decidir",
+      continuityTitle: "Lo que este lugar recuerda",
+      continuityDesc: "Solo los datos de continuidad locales y editables por ti pueden pasar a escenas permitidas. Nunca se requiere tu nombre real; se usa un alias opcional.",
+      continuityAliasLabel: "Alias de juego de rol",
+      continuityAliasPlaceholder: "Nombre opcional que pueden usar los personajes",
+      continuitySaveAlias: "Guardar alias",
+      continuityFactsEmpty: "Este lugar todavía no recuerda nada sobre ti.",
+      continuitySaveFact: "Guardar",
+      continuityClearFact: "Borrar",
+      continuityClearAll: "Borrar datos recordados",
+      continuitySavedNotice: "Preferencias de continuidad guardadas.",
       withdrawLabel: "Retirar",
       consentVersionLabel: "Versión del consentimiento",
       voiceWithdrawnNotice: "Se retiró el procesamiento de voz. Hablar está desactivado.",
@@ -1934,6 +1978,17 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentLabel: "Toestemming",
       grantedLabel: "Toegestaan",
       withdrawnLabel: "Ingetrokken",
+      notDecidedLabel: "Niet beslist",
+      continuityTitle: "Wat deze plek onthoudt",
+      continuityDesc: "Alleen lokale continuïteitsgegevens die jij kunt bewerken mogen naar toegestane scènes meegaan. Je echte naam is nooit nodig; er wordt desgewenst een alias gebruikt.",
+      continuityAliasLabel: "Rollenspelalias",
+      continuityAliasPlaceholder: "Optionele naam die personages mogen gebruiken",
+      continuitySaveAlias: "Alias opslaan",
+      continuityFactsEmpty: "Deze plek onthoudt nog niets over jou.",
+      continuitySaveFact: "Opslaan",
+      continuityClearFact: "Wissen",
+      continuityClearAll: "Onthouden gegevens wissen",
+      continuitySavedNotice: "Continuïteitsvoorkeuren opgeslagen.",
       withdrawLabel: "Intrekken",
       consentVersionLabel: "Toestemmingsversie",
       voiceWithdrawnNotice: "Spraakverwerking is ingetrokken. Spreken is uitgeschakeld.",
