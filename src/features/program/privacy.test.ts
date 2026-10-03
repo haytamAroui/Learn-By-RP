@@ -64,7 +64,6 @@ describe('program privacy retention', () => {
               recordedAt: '2026-09-01T00:00:00.000Z',
             },
             allowedMissionIds: ['m2'],
-            createdAt: '2026-09-01T00:00:00.000Z',
             expiresAt: '2026-10-02T00:00:00.000Z',
             localOnly: true,
             learnerEditable: true,
