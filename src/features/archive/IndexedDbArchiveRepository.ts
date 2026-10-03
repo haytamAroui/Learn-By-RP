@@ -4,7 +4,7 @@ import {
   projectPhraseState,
   type ValidatedPhraseEvidence,
 } from '../learning/learningCore';
-import { LEARNING_POLICY_VERSION } from '../learning/policy';
+import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
 import {
   assertValidatedSkillEvidence,
   type ValidatedSkillEvidence,
@@ -363,8 +363,17 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
           session.supportExposures.length > 0
             ? session.supportExposures
             : existing?.supportExposures ?? [],
-        observations:
-          session.observations.length > 0 ? session.observations : existing?.observations ?? [],
+        // Raw SessionRecord observations are never a write path. Recap reads this
+        // embedded cache, so it must mirror only validator-issued phrase evidence.
+        observations: phraseEvidence
+          ? [
+              ...new Map(
+                [...(existing?.observations ?? []), ...phraseEvidence.observations].map(
+                  observation => [this.observationKey(observation), observation] as const
+                )
+              ).values(),
+            ]
+          : existing?.observations ?? [],
         // The embedded cache mirrors only validator-issued evidence.
         skillObservations: skillEvidence
           ? [...skillEvidence.observations]
@@ -973,18 +982,42 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
           },
         ]);
       }
-      this.putDocs(tx, STORE.phrases, parsed.phrases as PhraseItem[], p => p.id);
+      const safePhrases = (parsed.phrases as PhraseItem[]).map(imported => {
+        const canonical = INITIAL_PHRASE_ITEMS.find(item => item.id === imported.id);
+        const base = canonical ?? imported;
+        return {
+          ...base,
+          recallStatus: 'new' as const,
+          scheduling: {
+            ...base.scheduling,
+            nextReviewAt: new Date(0).toISOString(),
+            due: true,
+            intervalDays: LEARNING_POLICY.intervals.new,
+            modalityHistory: [],
+            contexts: [],
+          },
+          stats: {
+            assistedCount: 0,
+            unassistedCount: 0,
+            spokenCount: 0,
+            typedCount: 0,
+          },
+        };
+      });
+      this.putDocs(tx, STORE.phrases, safePhrases, p => p.id);
     });
 
     await this.reprojectPhrases();
 
     return {
       success: true,
-      message: `Successfully restored ${parsed.sessions.length} sessions, ${parsed.phrases.length} phrases, and ${parsed.observations?.length ?? 0} observations.`,
+      message:
+        `Successfully restored ${parsed.sessions.length} sessions and ${parsed.phrases.length} phrases. ` +
+        'Imported learning evidence was not activated because it must be revalidated.',
       counts: {
         sessions: parsed.sessions.length,
         phrases: parsed.phrases.length,
-        observations: parsed.observations?.length ?? 0,
+        observations: 0,
       },
     };
   }
