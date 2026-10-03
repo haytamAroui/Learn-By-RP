@@ -45,6 +45,7 @@ const PATTERN_INDEX: Record<LanguageCode, number> = {
   de: 2,
   it: 3,
   ja: 4,
+  nl: 5,
 };
 
 const STATUS_SURFACE = {
@@ -504,7 +505,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
             <View className="gap-2 rounded-2xl bg-surface-soft p-4">
               <SectionLabel>{t.progress.samplePatterns}</SectionLabel>
               <Text className="text-sm leading-5 text-ink">
-                • {selectedSkill.patterns[PATTERN_INDEX[learningLanguage]]}
+                • {selectedSkill.patterns[PATTERN_INDEX[learningLanguage]] ?? selectedSkill.patterns[0] ?? selectedSkill.samplePhrases[0] ?? '—'}
               </Text>
             </View>
 
