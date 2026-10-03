@@ -911,7 +911,8 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     return JSON.stringify(
       {
         version: 1,
-        schemaVersion: LATEST_SCHEMA_VERSION,
+        schemaVersion: 1,
+        storageSchemaVersion: LATEST_SCHEMA_VERSION,
         policyVersion: LEARNING_POLICY_VERSION,
         consentVersion: CONSENT_VERSION,
         exportedAt: new Date().toISOString(),
