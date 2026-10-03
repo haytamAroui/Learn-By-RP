@@ -312,16 +312,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       voiceStyle: 'Calm, empathetic, precise',
       personality: 'Listens attentively, helps the learner locate product-label information, and avoids diagnosis or treatment advice',
       knowledgeBoundary: [
-        'Has antihistamine tablets (pastillas para la alergia) that do not cause drowsiness',
-        'Has saline nasal spray and eye drops',
-        'Knows where package labels and official usage information are displayed; does not provide individualized dosage advice'
+        'Knows where official package warnings are displayed',
+        'Knows where official package instructions are displayed',
+        'Refers the learner to package information and qualified professionals for individualized guidance'
       ]
     },
     learnerGoal: 'Describe your symptoms and ask where the official package information shows relevant warnings',
     stretchGoal: 'Ask where the official usage and contraindication information appears on the package label',
     targetIntents: ['describe_symptoms', 'request_product_information', 'ask_label_instructions'],
-    primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
-    secondarySkillIds: ['skill-request-substitution'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-request-substitution'],
+    secondarySkillIds: [],
     usefulPhrases: [
       {
         id: 'phrase.es.tengo_alergia',
