@@ -361,6 +361,15 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE sessions ADD COLUMN final_simulation INTEGER NOT NULL DEFAULT 0;`,
     ],
   },
+  {
+    version: 12,
+    name: 'persist_session_outcome_and_recap',
+    statements: [
+      `ALTER TABLE sessions ADD COLUMN task_outcome TEXT NOT NULL DEFAULT 'unknown';`,
+      `ALTER TABLE sessions ADD COLUMN summary TEXT;`,
+      `ALTER TABLE sessions ADD COLUMN actionable_feedback TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;
