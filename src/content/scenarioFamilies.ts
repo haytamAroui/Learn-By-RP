@@ -128,6 +128,58 @@ export const SCENARIO_FAMILY_CATALOG: readonly ScenarioFamilyDefinition[] = [
       'Different cities, operators and stations remain one family when the communicative situation is transit navigation.',
   },
   {
+    id: 'lodging-checkin',
+    version: 1,
+    reviewStatus: 'reviewed',
+    domainIds: ['lodging'],
+    learnerLabel: {
+      en: 'Checking in at lodging',
+      fr: 'Arrivée dans un hébergement',
+      es: 'Llegada al alojamiento',
+      nl: 'Inchecken bij een verblijf',
+    },
+    internalDescription:
+      'Reception interactions about a booking, check-in conditions and practical alternatives.',
+    includedContexts: [
+      'checking in with a booking reference',
+      'asking when a room is ready',
+      'agreeing another timing or luggage arrangement',
+    ],
+    excludedContexts: [
+      'restaurant table service',
+      'parcel collection',
+      'informal neighbour coordination',
+    ],
+    reviewedAt: '2026-10-03',
+    reviewedBy: 'learnbyrp-content-review',
+  },
+  {
+    id: 'equipment-rental',
+    version: 1,
+    reviewStatus: 'reviewed',
+    domainIds: ['services'],
+    learnerLabel: {
+      en: 'Renting equipment',
+      fr: 'Louer du matériel',
+      es: 'Alquilar material',
+      nl: 'Materiaal huren',
+    },
+    internalDescription:
+      'Service interactions about rental options, availability, return conditions and substitutes.',
+    includedContexts: [
+      'bike rental',
+      'asking about return time or included equipment',
+      'choosing an available substitute',
+    ],
+    excludedContexts: [
+      'retail purchase',
+      'public-transit navigation',
+      'lodging reception',
+    ],
+    reviewedAt: '2026-10-03',
+    reviewedBy: 'learnbyrp-content-review',
+  },
+  {
     id: 'pharmacy-consultation',
     version: 1,
     reviewStatus: 'reviewed',
