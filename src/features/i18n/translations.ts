@@ -204,6 +204,14 @@ export interface Translations {
     tag: string;
     title: string;
     communicativeOutcome: string;
+    sceneResult: string;
+    skillEvidenceTitle: string;
+    finalSimulationLabel: string;
+    noOfficialScore: string;
+    sceneAchieved: string;
+    scenePartial: string;
+    sceneNotAchieved: string;
+    sceneUnknown: string;
     turnsCount: string;
     validatedEvidence: string;
     noPhrasesValidated: string;
@@ -600,6 +608,14 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tag: "Learning Receipt",
       title: "Session Summary",
       communicativeOutcome: "Communicative Outcome",
+      sceneResult: "Scene result",
+      skillEvidenceTitle: "Skill evidence",
+      finalSimulationLabel: "Final simulation",
+      noOfficialScore: "No score or readiness rating is assigned.",
+      sceneAchieved: "The authored scene goal was achieved.",
+      scenePartial: "Part of the authored scene goal was achieved.",
+      sceneNotAchieved: "The authored scene goal was not achieved this time.",
+      sceneUnknown: "The scene result could not be established.",
       turnsCount: "turns exchanged",
       validatedEvidence: "Validated Phrase Evidence",
       noPhrasesValidated:
@@ -1003,6 +1019,14 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tag: "Reçu d’apprentissage",
       title: "Résumé de la session",
       communicativeOutcome: "Résultat communicatif",
+      sceneResult: "Résultat de la scène",
+      skillEvidenceTitle: "Preuves de compétences",
+      finalSimulationLabel: "Simulation finale",
+      noOfficialScore: "Aucune note ni évaluation de préparation n’est attribuée.",
+      sceneAchieved: "L’objectif scénarisé de la scène a été atteint.",
+      scenePartial: "Une partie de l’objectif scénarisé a été atteinte.",
+      sceneNotAchieved: "L’objectif scénarisé n’a pas été atteint cette fois.",
+      sceneUnknown: "Le résultat de la scène n’a pas pu être établi.",
       turnsCount: "échanges",
       validatedEvidence: "Preuves textuelles validées",
       noPhrasesValidated:
@@ -1405,6 +1429,14 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tag: "Recibo de Aprendizaje",
       title: "Resumen de la Sesión",
       communicativeOutcome: "Resultado comunicativo",
+      sceneResult: "Resultado de la escena",
+      skillEvidenceTitle: "Evidencia de habilidades",
+      finalSimulationLabel: "Simulación final",
+      noOfficialScore: "No se asigna ninguna puntuación ni valoración de preparación.",
+      sceneAchieved: "Se alcanzó el objetivo definido de la escena.",
+      scenePartial: "Se alcanzó parte del objetivo definido de la escena.",
+      sceneNotAchieved: "Esta vez no se alcanzó el objetivo definido de la escena.",
+      sceneUnknown: "No se pudo establecer el resultado de la escena.",
       turnsCount: "turnos intercambiados",
       validatedEvidence: "Evidencia textual verificada",
       noPhrasesValidated: "No se validaron frases específicas en esta sesión.",
@@ -1807,6 +1839,14 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tag: "Leerbewijs",
       title: "Sessieoverzicht",
       communicativeOutcome: "Communicatieve uitkomst",
+      sceneResult: "Scèneresultaat",
+      skillEvidenceTitle: "Vaardigheidsbewijs",
+      finalSimulationLabel: "Eindsimulatie",
+      noOfficialScore: "Er wordt geen score of gereedheidsbeoordeling toegekend.",
+      sceneAchieved: "Het vastgelegde doel van de scène is bereikt.",
+      scenePartial: "Een deel van het vastgelegde scènedoel is bereikt.",
+      sceneNotAchieved: "Het vastgelegde scènedoel is deze keer niet bereikt.",
+      sceneUnknown: "Het scèneresultaat kon niet worden vastgesteld.",
       turnsCount: "beurten gewisseld",
       validatedEvidence: "Geverifieerd tekstbewijs",
       noPhrasesValidated:
