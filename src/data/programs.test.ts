@@ -14,9 +14,12 @@ describe('curated program catalog', () => {
     }
   });
 
-  it('keeps the first pilot explicitly draft until launch curation is complete', () => {
+  it('keeps the Spanish launch path draft while pinning all six executable seed missions', () => {
     expect(SPANISH_DAILY_SERVICES_PILOT.reviewStatus).toBe('draft');
     expect(SPANISH_DAILY_SERVICES_PILOT.targetLocale).toBe('es-ES');
-    expect(SPANISH_DAILY_SERVICES_PILOT.missionPlan).toHaveLength(2);
+    expect(SPANISH_DAILY_SERVICES_PILOT.missionPlan).toHaveLength(6);
+    expect(
+      new Set(SPANISH_DAILY_SERVICES_PILOT.missionPlan.map(item => item.missionId)).size
+    ).toBe(6);
   });
 });
