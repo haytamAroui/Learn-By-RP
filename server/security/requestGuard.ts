@@ -151,6 +151,10 @@ export function validateProviderBody(
   }
 
   if (endpoint === 'actor') {
+    if (!stringWithin(body.missionId, 160, true)) return 'missionId is required';
+    if (!Number.isInteger(body.missionVersion) || Number(body.missionVersion) < 1) return 'missionVersion is required';
+    if (body.sceneId !== undefined && !stringWithin(body.sceneId, 160, true)) return 'Invalid sceneId';
+    if (body.sceneVersion !== undefined && (!Number.isInteger(body.sceneVersion) || Number(body.sceneVersion) < 1)) return 'Invalid sceneVersion';
     if (!stringWithin(body.userMessage, 4_000, true)) return 'userMessage is required and must be at most 4000 characters';
     if (!stringWithin(body.setting, 2_000)) return 'setting is too long';
     if (!stringWithin(body.learnerGoal, 1_000)) return 'learnerGoal is too long';
