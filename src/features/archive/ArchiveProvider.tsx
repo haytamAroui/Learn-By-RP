@@ -9,6 +9,7 @@ import { archiveRepository } from './archiveRepository';
 import { ConsentRecord } from './ArchiveRepository.types';
 import type { ValidatedSkillEvidence } from '../learning/skillEvidence';
 import type { ValidatedPhraseEvidence } from '../learning/learningCore';
+import { setApiConsentContext } from '../../lib/api';
 
 interface ArchiveContextValue {
   ready: boolean;
@@ -92,6 +93,21 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setVoiceConsent(voice);
     setSavedAnalysisConsent(analysis);
   }, []);
+
+  useEffect(() => {
+    setApiConsentContext({
+      voice: voiceConsent
+        ? voiceConsent.granted
+          ? 'granted'
+          : 'denied'
+        : 'unknown',
+      savedAnalysis: savedAnalysisConsent
+        ? savedAnalysisConsent.granted
+          ? 'granted'
+          : 'denied'
+        : 'unknown',
+    });
+  }, [voiceConsent, savedAnalysisConsent]);
 
   useEffect(() => {
     let cancelled = false;
@@ -217,8 +233,9 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
         },
         withdrawConsent: async scope => {
           await archiveRepository.withdrawConsent(scope);
-          if (scope === 'voice') setVoiceConsent(null);
-          else setSavedAnalysisConsent(null);
+          const withdrawn = await archiveRepository.getConsent(scope);
+          if (scope === 'voice') setVoiceConsent(withdrawn);
+          else setSavedAnalysisConsent(withdrawn);
 
           const prefs =
             scope === 'voice'
