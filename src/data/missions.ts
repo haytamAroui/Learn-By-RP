@@ -317,7 +317,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         'Knows where package labels and official usage information are displayed; does not provide individualized dosage advice'
       ]
     },
-    learnerGoal: 'Describe your symptoms (sneezing, itchy eyes) and ask for an allergy medicine that does not make you drowsy',
+    learnerGoal: 'Describe your symptoms and ask where the official package information shows relevant warnings',
     stretchGoal: 'Ask where the official usage and contraindication information appears on the package label',
     targetIntents: ['describe_symptoms', 'request_product_information', 'ask_label_instructions'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
@@ -331,10 +331,10 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         difficulty: 'elementary'
       },
       {
-        id: 'phrase.es.que_no_de_sueno',
-        form: '¿Tiene algo que no dé sueño?',
-        meaning: 'Do you have something that does not cause drowsiness?',
-        usageNote: 'Important medical condition phrase when buying over-the-counter medicine.',
+        id: 'phrase.es.package_warning',
+        form: '¿Dónde puedo ver las advertencias en el envase?',
+        meaning: 'Where can I see the warnings on the package?',
+        usageNote: 'Asks for official package information.',
         difficulty: 'intermediate'
       },
       {
