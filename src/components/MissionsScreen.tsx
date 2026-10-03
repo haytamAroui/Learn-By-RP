@@ -7,19 +7,25 @@ import {
   View,
 } from 'react-native';
 import {
+  BookOpen,
   ChevronRight,
   Compass,
   MapPin,
   Route,
   Search,
 } from 'lucide-react-native';
-import { MissionDefinition } from '../types';
+import { MissionDefinition, SessionRecord } from '../types';
+import type { RoleplayProgram } from '../contracts/program';
+import { buildProgramProjection } from '../features/program/projection';
 import { useI18n } from '../features/i18n';
 import { iconColor } from '../design/iconColor';
 
 interface MissionsScreenProps {
   missions: MissionDefinition[];
+  programs: RoleplayProgram[];
+  sessions: SessionRecord[];
   onSelectMission: (mission: MissionDefinition) => void;
+  onSelectProgram: (program: RoleplayProgram) => void;
 }
 
 const NEIGHBORHOOD_LOOP_TITLES: Record<string, Record<string, string>> = {
@@ -57,12 +63,15 @@ const NEIGHBORHOOD_LOOP_TITLES: Record<string, Record<string, string>> = {
 
 export const MissionsScreen: React.FC<MissionsScreenProps> = ({
   missions,
+  programs,
+  sessions,
   onSelectMission,
+  onSelectProgram,
 }) => {
   const { t, language: uiLang } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
-  const [activeView, setActiveView] = useState<'catalog' | 'route'>('catalog');
+  const [activeView, setActiveView] = useState<'catalog' | 'programs' | 'route'>('catalog');
 
   const categories = [
     { id: 'all', label: t.missions.filterAll },
@@ -114,6 +123,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
       <View className="flex-row gap-2">
         {[
           { id: 'catalog' as const, label: t.missions.tabCatalog, Icon: Compass },
+          { id: 'programs' as const, label: t.missions.tabPrograms, Icon: BookOpen },
           { id: 'route' as const, label: t.missions.tabRoute, Icon: Route },
         ].map(item => {
           const selected = activeView === item.id;
@@ -234,6 +244,53 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
               </View>
             ) : null}
           </View>
+        </View>
+      ) : activeView === 'programs' ? (
+        <View className="gap-4">
+          {programs.length === 0 ? (
+            <View className="items-center px-6 py-14">
+              <Text className="text-center text-sm leading-5 text-muted">
+                {t.missions.noProgramsFound}
+              </Text>
+            </View>
+          ) : (
+            programs.map(program => {
+              const projection = buildProgramProjection(program, sessions);
+              const released = program.reviewStatus === 'released';
+              return (
+                <Pressable
+                  key={program.id}
+                  onPress={() => onSelectProgram(program)}
+                  accessibilityRole="button"
+                  accessibilityLabel={program.title}
+                  className="min-h-[132px] rounded-[24px] border border-transparent bg-surface-soft p-5 hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
+                >
+                  <View className="flex-row items-start gap-3">
+                    <View className="h-11 w-11 items-center justify-center rounded-2xl bg-card-warm">
+                      <BookOpen size={20} color={iconColor('brand')} />
+                    </View>
+                    <View className="flex-1 gap-1">
+                      <View className="flex-row flex-wrap items-center gap-2">
+                        <Text className="text-xs font-semibold text-primary">
+                          {released ? t.missions.programReleased : t.missions.programPreview}
+                        </Text>
+                        <Text className="text-xs text-muted">{program.targetLocale}</Text>
+                      </View>
+                      <Text className="text-[17px] font-semibold leading-[22px] text-ink">
+                        {program.title}
+                      </Text>
+                      <Text className="text-[13px] leading-[19px] text-body">
+                        {t.missions.programProgress
+                          .replace('{done}', String(projection.completedMissionIds.length))
+                          .replace('{total}', String(program.missionPlan.length))}
+                      </Text>
+                    </View>
+                    <ChevronRight size={20} color={iconColor('muted')} />
+                  </View>
+                </Pressable>
+              );
+            })
+          )}
         </View>
       ) : (
         <View className="gap-5">
