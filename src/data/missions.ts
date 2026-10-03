@@ -420,6 +420,147 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     transferReason: 'Synthesizes ordering, requesting conditions, and social coordination into a complete evening scenario.'
   },
   {
+    id: 'mission-es-hotel-checkin',
+    version: 1,
+    language: 'es',
+    sceneId: 'scene.es.hotel.checkin',
+    scenarioFamilyId: 'lodging-checkin',
+    levelRange: 'A2',
+    title: 'Hotel Centro: Early Check-in',
+    category: 'lodging',
+    neighborhood: 'Centro · Hotel near Plaza de España',
+    setting: 'A compact hotel reception desk during the afternoon arrival period. Suitcases are lined beside a luggage-storage room.',
+    aiRole: 'Lucía, the hotel receptionist. Welcoming, organized, and concise.',
+    character: {
+      name: 'Lucía',
+      role: 'Hotel Receptionist',
+      voiceStyle: 'Professional, clear, warm',
+      personality: 'Helpful with booking details and practical arrival arrangements',
+      knowledgeBoundary: [
+        'Knows the booking reference and room status',
+        'Knows the room is not ready yet',
+        'Knows luggage storage is available until check-in time',
+      ]
+    },
+    learnerGoal: 'Identify your booking, ask when the room will be ready, and arrange what to do with your luggage',
+    stretchGoal: 'Confirm that you can leave the luggage and return later for the room key',
+    targetIntents: ['provide_booking_reference', 'ask_checkin_condition', 'propose_arrival_plan'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-propose-alternative'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-request-repetition',
+      'skill-check-understanding',
+    ],
+    usefulPhrases: [
+      {
+        id: 'phrase.es.hotel_reserva',
+        form: 'Tengo una reserva a nombre de García.',
+        meaning: 'I have a reservation under the name García.',
+        usageNote: 'Natural reception phrase for identifying a booking.',
+        difficulty: 'elementary'
+      },
+      {
+        id: 'phrase.es.hotel_habitacion_lista',
+        form: '¿A qué hora estará lista la habitación?',
+        meaning: 'What time will the room be ready?',
+        usageNote: 'Direct question about the check-in condition.',
+        difficulty: 'elementary'
+      },
+      {
+        id: 'phrase.es.hotel_dejar_maletas',
+        form: '¿Podemos dejar las maletas aquí y volver más tarde?',
+        meaning: 'Can we leave the luggage here and come back later?',
+        usageNote: 'Useful alternative-arrangement pattern when a room is not ready.',
+        difficulty: 'intermediate'
+      }
+    ],
+    supportPolicy: {
+      hintLadderAvailable: true,
+      correctionStyle: 'gentle',
+      allowSlowing: true
+    },
+    completionSignals: [
+      'Booking identified',
+      'Room-ready condition clarified',
+      'Luggage or later-return plan confirmed'
+    ],
+    estimatedMinutes: 4,
+    tags: ['lodging', 'hotel', 'check-in', 'coordination'],
+    nextMissionId: 'mission-es-bike-rental',
+    transferPattern: 'Clarify conditions and agree a practical alternative',
+    transferReason: 'Transfers service-condition and alternative-arrangement skills into a lodging reception context.'
+  },
+  {
+    id: 'mission-es-bike-rental',
+    version: 1,
+    language: 'es',
+    sceneId: 'scene.es.rental.bike',
+    scenarioFamilyId: 'equipment-rental',
+    levelRange: 'A2',
+    title: 'Bici Centro: Afternoon Rental',
+    category: 'services',
+    neighborhood: 'Centro · Bike rental near the park',
+    setting: 'A small rental counter with city bikes lined outside. The preferred standard bike type is temporarily unavailable.',
+    aiRole: 'Diego, the bike-rental clerk. Friendly, practical, and clear about rental conditions.',
+    character: {
+      name: 'Diego',
+      role: 'Bike Rental Clerk',
+      voiceStyle: 'Friendly, practical, clear',
+      personality: 'Explains available options and return conditions without unnecessary detail',
+      knowledgeBoundary: [
+        'Knows the standard city bike is unavailable',
+        'Knows an electric city bike is available',
+        'Knows the return deadline and that a lock is included',
+      ]
+    },
+    learnerGoal: 'Rent a bike, choose an available alternative, and ask when it must be returned',
+    stretchGoal: 'Ask whether a lock is included and confirm the return deadline',
+    targetIntents: ['request_rental', 'request_substitution', 'ask_rental_condition'],
+    primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-ask-clarification',
+      'skill-check-understanding',
+    ],
+    usefulPhrases: [
+      {
+        id: 'phrase.es.rental_bici',
+        form: 'Quisiera alquilar una bicicleta esta tarde.',
+        meaning: 'I would like to rent a bicycle this afternoon.',
+        usageNote: 'Direct and polite rental request.',
+        difficulty: 'elementary'
+      },
+      {
+        id: 'phrase.es.rental_otra_bici',
+        form: '¿Tiene otra bicicleta disponible?',
+        meaning: 'Do you have another bicycle available?',
+        usageNote: 'Substitution request when the preferred option is unavailable.',
+        difficulty: 'elementary'
+      },
+      {
+        id: 'phrase.es.rental_devolver',
+        form: '¿A qué hora tengo que devolverla?',
+        meaning: 'What time do I have to return it?',
+        usageNote: 'Concrete question about a rental condition.',
+        difficulty: 'elementary'
+      }
+    ],
+    supportPolicy: {
+      hintLadderAvailable: true,
+      correctionStyle: 'gentle',
+      allowSlowing: true
+    },
+    completionSignals: [
+      'Rental need stated',
+      'Available bike selected',
+      'Return condition clarified'
+    ],
+    estimatedMinutes: 4,
+    tags: ['services', 'rental', 'bike', 'substitution'],
+    transferPattern: 'Request a substitute and clarify service conditions',
+    transferReason: 'Adds a new service family for substitution and condition-question transfer.'
+  },
+  {
     id: 'mission-fr-boulangerie',
     version: 1,
     language: 'fr',
