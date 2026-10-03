@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { actorInstructions } from './openAIRealtimeConversationProvider';
+import { actorInstructions } from './actorInstructions';
 import type { ConversationTurnInput } from './types';
 
 function input(): ConversationTurnInput {
