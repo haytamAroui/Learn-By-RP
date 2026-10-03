@@ -24,6 +24,7 @@ Use this precedence when implementation documents disagree:
 - [x] Scene reducer remains authoritative for scene truth.
 - [x] Archive repository remains persistence authority.
 - [x] V4 is the active UI/UX implementation authority.
+- [x] Roleplay/program execution status lives in `LEARNBYRP_ROLEPLAY_PROGRAM_TODO_V1.md`; V4 owns those surfaces' presentation, interaction and responsive behavior.
 - [x] Archive V2/V3 as historical references.
 - [x] Add a short notice at the top of V2/V3 pointing readers to V4.
 
