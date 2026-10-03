@@ -54,6 +54,7 @@ function MotionAwareStack() {
       <Stack.Screen name="onboarding" options={{ presentation: "modal" }} />
       <Stack.Screen name="recovery" options={{ presentation: "modal" }} />
       <Stack.Screen name="mission/[missionId]" />
+      <Stack.Screen name="program/[programId]" />
       <Stack.Screen
         name="session/[sessionId]"
         options={{
