@@ -22,6 +22,8 @@ export const SPANISH_LAUNCH_CONTENT_V1: LaunchContentSpec = {
     'mission-es-metro-station',
     'mission-es-farmacia-sol',
     'mission-es-la-terraza',
+    'mission-es-hotel-checkin',
+    'mission-es-bike-rental',
   ],
   coreSkillIds: [
     'skill-inquire-specifications',
