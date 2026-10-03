@@ -6,6 +6,7 @@ import { getTranslations, I18nProvider } from '../../features/i18n';
 import { RootHeader } from '../../components/RootHeader';
 import { MissionsScreen } from '../../components/MissionsScreen';
 import { MISSION_CATALOG } from '../../data/missions';
+import { ROLEPLAY_PROGRAM_CATALOG } from '../../data/programs';
 
 export default function MissionsTab() {
   const router = useRouter();
@@ -15,6 +16,9 @@ export default function MissionsTab() {
 
   const availableMissions = MISSION_CATALOG.filter(
     m => m.language === archive.preferences.learningLanguage
+  );
+  const availablePrograms = ROLEPLAY_PROGRAM_CATALOG.filter(
+    program => program.targetLanguage === archive.preferences.learningLanguage
   );
 
   return (
@@ -28,6 +32,14 @@ export default function MissionsTab() {
         <RootHeader title={t.nav.missions} />
         <MissionsScreen
           missions={availableMissions}
+          programs={availablePrograms}
+          sessions={archive.sessions}
+          onSelectProgram={program =>
+            router.push({
+              pathname: '/program/[programId]',
+              params: { programId: program.id },
+            })
+          }
           onSelectMission={mission =>
             router.push({
               pathname: '/mission/[missionId]',
