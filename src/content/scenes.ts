@@ -455,7 +455,7 @@ export const PHARMACY_SCENE: SceneDefinition = {
       name: 'Elena',
       role: 'pharmacist',
       voiceStyle: 'Calm, precise, brief',
-      knowledgeBoundary: ['knows which medicines are non-drowsy', 'knows opening hours'],
+      knowledgeBoundary: ['knows where product labels and warning information are displayed', 'knows opening hours', 'does not diagnose, recommend treatment, or give individualized dosage advice'],
       mayKnowAboutPriorScenes: [],
     },
   ],
@@ -478,8 +478,8 @@ export const PHARMACY_SCENE: SceneDefinition = {
     closedByLearner: false,
   },
 
-  learnerKnows: ['They have a headache and want something that will not make them sleepy.'],
-  characterKnows: { pharmacist: ['A drowsy medicine and a non-drowsy one are both on the shelf.'] },
+  learnerKnows: ['They want to describe a symptom and ask how to find official non-drowsiness and usage information on a product label.'],
+  characterKnows: { pharmacist: ['The shelf contains products with official labels describing warnings and drowsiness information.'] },
 
   allowedActions: [
     {
@@ -492,14 +492,14 @@ export const PHARMACY_SCENE: SceneDefinition = {
     {
       name: 'confirm_order_item',
       actor: 'character',
-      description: 'Accepts the medicine the learner names.',
+      description: 'Confirms that the learner has located the official label information for the product they named; does not recommend or approve treatment.',
       preconditions: [],
       effects: [{ set: 'itemConfirmed', value: true }],
     },
     {
       name: 'offer_alternative',
       actor: 'director',
-      description: 'Offers the non-drowsy alternative.',
+      description: 'Points to another package label the learner can compare; does not recommend a treatment.',
       preconditions: [{ op: 'eq', fact: 'alternativeOffered', value: false }],
       effects: [{ set: 'alternativeOffered', value: true }],
     },
@@ -541,7 +541,7 @@ export const PHARMACY_SCENE: SceneDefinition = {
 
   completion: [
     {
-      // The task is complete when the learner secures a non-drowsy option.
+      // The task is complete when the learner obtains the official product-label information they asked for.
       name: 'achieved',
       predicate: { op: 'eq', fact: 'itemConfirmed', value: true },
     },
@@ -554,7 +554,7 @@ export const PHARMACY_SCENE: SceneDefinition = {
   checkpoints: [
     {
       id: 'cp-item-confirmed',
-      description: 'Medicine chosen',
+      description: 'Official label information located',
       after: { op: 'eq', fact: 'itemConfirmed', value: true },
     },
   ],
@@ -577,13 +577,13 @@ export const PHARMACY_SCENE: SceneDefinition = {
         value: true,
       },
       positiveExamples: [
-        'Asks whether an option causes drowsiness or asks another concrete product-condition question.',
+        'Asks where the official label states drowsiness, use, warnings, or another concrete product condition.',
       ],
       negativeExamples: [
         'Names a product without asking about the relevant condition.',
       ],
       relevantActionIds: ['ask_about_ingredient'],
-      relevantIntentIds: ['ask_dosage', 'request_medicine'],
+      relevantIntentIds: ['ask_label_instructions', 'request_product_information'],
     },
   ],
   reviewStatus: 'released',
