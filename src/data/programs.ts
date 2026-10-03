@@ -95,9 +95,95 @@ export const SPANISH_TRAVEL_PILOT: RoleplayProgram = {
   ],
 };
 
+export const FLEMISH_EVERYDAY_PILOT: RoleplayProgram = {
+  id: 'program.nl-be.everyday.pilot',
+  version: 1,
+  targetLanguage: 'nl',
+  targetLocale: 'nl-BE',
+  policyVersion: LEARNING_POLICY_VERSION,
+  title: 'Nederlands in België — Dagelijks leven',
+  reviewStatus: 'draft',
+  missionPlan: [
+    {
+      missionId: 'mission-nl-be-koffiebar',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.cafe.breakfast',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-pakjespunt',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.parcel.pickup',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-buur-sleutel',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.neighbor.key',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-apotheek',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.pharmacy.label',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-terras',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.dining.terrace',
+      sceneVersion: 1,
+    },
+  ],
+};
+
+export const FLEMISH_TRAVEL_PILOT: RoleplayProgram = {
+  id: 'program.nl-be.travel.pilot',
+  version: 1,
+  targetLanguage: 'nl',
+  targetLocale: 'nl-BE',
+  policyVersion: LEARNING_POLICY_VERSION,
+  title: 'Nederlands in België — Onderweg & op reis',
+  reviewStatus: 'draft',
+  missionPlan: [
+    {
+      missionId: 'mission-nl-be-koffiebar',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.cafe.breakfast',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-metro',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.metro.route',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-hotel',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.hotel.checkin',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-fietsverhuur',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.rental.bike',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-terras',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.dining.terrace',
+      sceneVersion: 1,
+    },
+  ],
+};
+
 export const ROLEPLAY_PROGRAM_CATALOG: RoleplayProgram[] = [
   SPANISH_DAILY_SERVICES_PILOT,
   SPANISH_TRAVEL_PILOT,
+  FLEMISH_EVERYDAY_PILOT,
+  FLEMISH_TRAVEL_PILOT,
 ];
 
 export interface ProgramCatalogValidation {
