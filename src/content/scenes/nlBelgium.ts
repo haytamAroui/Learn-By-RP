@@ -20,6 +20,7 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
   factSchema: {
     orderStarted: { type: 'boolean' },
     oatMilkAvailable: { type: 'boolean' },
+    substituteRequested: { type: 'boolean' },
     substituteOffered: { type: 'boolean' },
     itemConfirmed: { type: 'boolean' },
     takeawayConfirmed: { type: 'boolean' },
@@ -28,6 +29,7 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
   initialFacts: {
     orderStarted: false,
     oatMilkAvailable: false,
+    substituteRequested: false,
     substituteOffered: false,
     itemConfirmed: false,
     takeawayConfirmed: false,
@@ -52,12 +54,22 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
       effects: [{ set: 'orderStarted', value: true }],
     },
     {
-      name: 'offer_substitute',
-      actor: 'director',
-      description: 'Lotte explains that oat milk is unavailable and offers another milk option.',
+      name: 'request_substitute',
+      actor: 'character',
+      description: 'After hearing that oat milk is unavailable, the learner asks what other milk is available or requests another milk option.',
       preconditions: [
         { op: 'eq', fact: 'orderStarted', value: true },
         { op: 'eq', fact: 'oatMilkAvailable', value: false },
+        { op: 'eq', fact: 'substituteRequested', value: false },
+      ],
+      effects: [{ set: 'substituteRequested', value: true }],
+    },
+    {
+      name: 'offer_substitute',
+      actor: 'director',
+      description: 'Only after the learner requests an alternative, Lotte offers the available milk options.',
+      preconditions: [
+        { op: 'eq', fact: 'substituteRequested', value: true },
         { op: 'eq', fact: 'substituteOffered', value: false },
       ],
       effects: [{ set: 'substituteOffered', value: true }],
@@ -89,6 +101,12 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
       type: 'object',
       required: ['request'],
       properties: { request: { type: 'string' } },
+      additionalProperties: false,
+    },
+    request_substitute: {
+      type: 'object',
+      required: [],
+      properties: { constraint: { type: 'string' } },
       additionalProperties: false,
     },
     offer_substitute: {
@@ -216,14 +234,23 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.cafe.request-substitution',
       skillId: 'skill-request-substitution',
-      sceneCondition: { op: 'eq', fact: 'substituteOffered', value: true },
+      sceneCondition: {
+        op: 'and',
+        predicates: [
+          { op: 'eq', fact: 'orderStarted', value: true },
+          { op: 'eq', fact: 'oatMilkAvailable', value: false },
+          { op: 'eq', fact: 'substituteRequested', value: false },
+        ],
+      },
       positiveExamples: [
-        'Asks for or accepts another available milk after hearing that oat milk is unavailable.',
+        'Asks what other milk is available after hearing that oat milk is unavailable.',
+        'Explicitly requests a different available milk option.',
       ],
       negativeExamples: [
-        'Repeats the unavailable option without adapting.',
+        'Merely accepts or chooses a substitute that the character has already offered.',
+        'Repeats the unavailable option without asking for an alternative.',
       ],
-      relevantActionIds: ['confirm_selection'],
+      relevantActionIds: ['request_substitute'],
       relevantIntentIds: ['request_substitution'],
     },
     {
@@ -997,11 +1024,13 @@ export const NL_BE_PHARMACY_SCENE: SceneDefinition = {
   }],
   factSchema: {
     warningQuestionAsked: { type: 'boolean' },
+    alternativePackageRequested: { type: 'boolean' },
     alternativePackageOffered: { type: 'boolean' },
     packageSelected: { type: 'boolean' },
   },
   initialFacts: {
     warningQuestionAsked: false,
+    alternativePackageRequested: false,
     alternativePackageOffered: false,
     packageSelected: false,
   },
@@ -1018,11 +1047,21 @@ export const NL_BE_PHARMACY_SCENE: SceneDefinition = {
       effects: [{ set: 'warningQuestionAsked', value: true }],
     },
     {
-      name: 'offer_substitute',
-      actor: 'director',
-      description: 'Sarah points to another package the learner can compare by its official information.',
+      name: 'request_substitute',
+      actor: 'character',
+      description: 'The learner asks to compare another available package after reviewing the official information.',
       preconditions: [
         { op: 'eq', fact: 'warningQuestionAsked', value: true },
+        { op: 'eq', fact: 'alternativePackageRequested', value: false },
+      ],
+      effects: [{ set: 'alternativePackageRequested', value: true }],
+    },
+    {
+      name: 'offer_substitute',
+      actor: 'director',
+      description: 'Only after the learner asks, Sarah points to another package whose official information can be compared.',
+      preconditions: [
+        { op: 'eq', fact: 'alternativePackageRequested', value: true },
         { op: 'eq', fact: 'alternativePackageOffered', value: false },
       ],
       effects: [{ set: 'alternativePackageOffered', value: true }],
@@ -1040,6 +1079,12 @@ export const NL_BE_PHARMACY_SCENE: SceneDefinition = {
       type: 'object',
       required: ['topic'],
       properties: { topic: { type: 'string' } },
+      additionalProperties: false,
+    },
+    request_substitute: {
+      type: 'object',
+      required: [],
+      properties: { constraint: { type: 'string' } },
       additionalProperties: false,
     },
     offer_substitute: {
@@ -1085,10 +1130,19 @@ export const NL_BE_PHARMACY_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.pharmacy.request-substitution',
       skillId: 'skill-request-substitution',
-      sceneCondition: { op: 'eq', fact: 'alternativePackageOffered', value: true },
-      positiveExamples: ['Asks to compare another available package after reviewing official information.'],
-      negativeExamples: ['Asks the character to prescribe or choose a treatment.'],
-      relevantActionIds: ['confirm_selection'],
+      sceneCondition: {
+        op: 'and',
+        predicates: [
+          { op: 'eq', fact: 'warningQuestionAsked', value: true },
+          { op: 'eq', fact: 'alternativePackageRequested', value: false },
+        ],
+      },
+      positiveExamples: ['Explicitly asks to compare another available package after reviewing official information.'],
+      negativeExamples: [
+        'Merely accepts a package the character has already offered.',
+        'Asks the character to prescribe or choose a treatment.',
+      ],
+      relevantActionIds: ['request_substitute'],
       relevantIntentIds: ['request_product_information'],
     },
   ],
@@ -1119,6 +1173,7 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
     seatingConfirmed: { type: 'boolean' },
     recommendationAsked: { type: 'boolean' },
     ingredientAsked: { type: 'boolean' },
+    dishSubstituteRequested: { type: 'boolean' },
     dishAlternativeOffered: { type: 'boolean' },
     dishSelected: { type: 'boolean' },
   },
@@ -1129,6 +1184,7 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
     seatingConfirmed: false,
     recommendationAsked: false,
     ingredientAsked: false,
+    dishSubstituteRequested: false,
     dishAlternativeOffered: false,
     dishSelected: false,
   },
@@ -1177,11 +1233,21 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
       effects: [{ set: 'ingredientAsked', value: true }],
     },
     {
-      name: 'offer_substitute',
-      actor: 'director',
-      description: 'Jeroen offers another dish after the learner states a relevant condition.',
+      name: 'request_substitute',
+      actor: 'character',
+      description: 'After identifying a relevant ingredient condition, the learner asks for another suitable dish.',
       preconditions: [
         { op: 'eq', fact: 'ingredientAsked', value: true },
+        { op: 'eq', fact: 'dishSubstituteRequested', value: false },
+      ],
+      effects: [{ set: 'dishSubstituteRequested', value: true }],
+    },
+    {
+      name: 'offer_substitute',
+      actor: 'director',
+      description: 'Only after the learner requests another option, Jeroen offers a suitable dish.',
+      preconditions: [
+        { op: 'eq', fact: 'dishSubstituteRequested', value: true },
         { op: 'eq', fact: 'dishAlternativeOffered', value: false },
       ],
       effects: [{ set: 'dishAlternativeOffered', value: true }],
@@ -1229,6 +1295,12 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
       type: 'object',
       required: ['topic'],
       properties: { topic: { type: 'string' } },
+      additionalProperties: false,
+    },
+    request_substitute: {
+      type: 'object',
+      required: [],
+      properties: { constraint: { type: 'string' } },
       additionalProperties: false,
     },
     offer_substitute: {
@@ -1333,10 +1405,19 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.dining.request-substitution',
       skillId: 'skill-request-substitution',
-      sceneCondition: { op: 'eq', fact: 'dishAlternativeOffered', value: true },
-      positiveExamples: ['Requests or chooses another suitable dish after a relevant condition is identified.'],
-      negativeExamples: ['Repeats the unsuitable choice without adapting.'],
-      relevantActionIds: ['confirm_selection'],
+      sceneCondition: {
+        op: 'and',
+        predicates: [
+          { op: 'eq', fact: 'ingredientAsked', value: true },
+          { op: 'eq', fact: 'dishSubstituteRequested', value: false },
+        ],
+      },
+      positiveExamples: ['Explicitly asks for another suitable dish after a relevant ingredient condition is identified.'],
+      negativeExamples: [
+        'Merely accepts or chooses a dish the waiter has already offered.',
+        'Repeats the unsuitable choice without asking for an alternative.',
+      ],
+      relevantActionIds: ['request_substitute'],
       relevantIntentIds: ['request_substitution'],
     },
   ],
@@ -1597,6 +1678,7 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
   factSchema: {
     rentalRequested: { type: 'boolean' },
     preferredBikeAvailable: { type: 'boolean' },
+    substituteRequested: { type: 'boolean' },
     substituteOffered: { type: 'boolean' },
     rentalSelected: { type: 'boolean' },
     returnInfoAsked: { type: 'boolean' },
@@ -1605,6 +1687,7 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
   initialFacts: {
     rentalRequested: false,
     preferredBikeAvailable: false,
+    substituteRequested: false,
     substituteOffered: false,
     rentalSelected: false,
     returnInfoAsked: false,
@@ -1623,12 +1706,22 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
       effects: [{ set: 'rentalRequested', value: true }],
     },
     {
-      name: 'offer_substitute',
-      actor: 'director',
-      description: 'Wout explains the preferred bike is unavailable and offers another one.',
+      name: 'request_substitute',
+      actor: 'character',
+      description: 'After hearing that the preferred bike is unavailable, the learner asks for another available bike.',
       preconditions: [
         { op: 'eq', fact: 'rentalRequested', value: true },
         { op: 'eq', fact: 'preferredBikeAvailable', value: false },
+        { op: 'eq', fact: 'substituteRequested', value: false },
+      ],
+      effects: [{ set: 'substituteRequested', value: true }],
+    },
+    {
+      name: 'offer_substitute',
+      actor: 'director',
+      description: 'Only after the learner asks for another option, Wout offers an available bike.',
+      preconditions: [
+        { op: 'eq', fact: 'substituteRequested', value: true },
         { op: 'eq', fact: 'substituteOffered', value: false },
       ],
       effects: [{ set: 'substituteOffered', value: true }],
@@ -1666,6 +1759,12 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
       type: 'object',
       required: ['request'],
       properties: { request: { type: 'string' } },
+      additionalProperties: false,
+    },
+    request_substitute: {
+      type: 'object',
+      required: [],
+      properties: { constraint: { type: 'string' } },
       additionalProperties: false,
     },
     offer_substitute: {
@@ -1780,10 +1879,20 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.rental.request-substitution',
       skillId: 'skill-request-substitution',
-      sceneCondition: { op: 'eq', fact: 'substituteOffered', value: true },
-      positiveExamples: ['Asks for or accepts another available bike after the preferred one is unavailable.'],
-      negativeExamples: ['Repeats the unavailable bike request without adapting.'],
-      relevantActionIds: ['confirm_selection'],
+      sceneCondition: {
+        op: 'and',
+        predicates: [
+          { op: 'eq', fact: 'rentalRequested', value: true },
+          { op: 'eq', fact: 'preferredBikeAvailable', value: false },
+          { op: 'eq', fact: 'substituteRequested', value: false },
+        ],
+      },
+      positiveExamples: ['Explicitly asks for another available bike after the preferred one is unavailable.'],
+      negativeExamples: [
+        'Merely accepts or chooses a bike the clerk has already offered.',
+        'Repeats the unavailable bike request without asking for another option.',
+      ],
+      relevantActionIds: ['request_substitute'],
       relevantIntentIds: ['request_substitution'],
     },
     {
