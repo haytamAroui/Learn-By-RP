@@ -57,8 +57,34 @@ export function validateMissionForProgramRelease(
   if (scene.missionId !== mission.id) {
     errors.push(`${mission.id}: scene ${scene.id} belongs to ${scene.missionId}`);
   }
+  if (scene.language !== mission.language) {
+    errors.push(
+      `${mission.id}: scene language ${scene.language} does not match mission language ${mission.language}`
+    );
+  }
   if (scene.reviewStatus !== 'released') {
     errors.push(`${mission.id}: scene ${scene.id} is not released`);
+  }
+
+  const missionPhraseIds = new Set(mission.usefulPhrases.map(phrase => phrase.id));
+  for (const phraseId of scene.phraseIds) {
+    if (!missionPhraseIds.has(phraseId)) {
+      errors.push(
+        `${mission.id}: scene phrase ${phraseId} is not present in mission usefulPhrases`
+      );
+    }
+  }
+
+  const missionSkillIds = new Set([
+    ...mission.primarySkillIds,
+    ...mission.secondarySkillIds,
+  ]);
+  for (const skillId of scene.skillIds) {
+    if (!missionSkillIds.has(skillId)) {
+      errors.push(
+        `${mission.id}: scene skill ${skillId} is not declared by the mission`
+      );
+    }
   }
 
   const staticValidation = validateSceneDefinition(scene);
