@@ -23,6 +23,7 @@ export type SceneActionName =
   | 'ask_wayfinding'
   | 'report_issue'
   | 'request_service'
+  | 'request_substitute'
   | 'request_seating'
   | 'ask_recommendation'
   | 'confirm_selection'
