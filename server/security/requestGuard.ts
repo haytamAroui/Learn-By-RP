@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto';
 import type { Request, Response } from 'express';
 
 export type ProviderEndpoint =
@@ -41,10 +42,11 @@ export function resolveProviderIdentity(
 ): ProviderAccessDecision {
   const authorization = headerValue(req, 'authorization');
   if (/^Bearer\s+\S+/i.test(authorization)) {
+    const token = authorization.replace(/^Bearer\s+/i, '');
     return {
       ok: true,
       status: 200,
-      identity: `auth:${authorization.slice(7, 71)}`,
+      identity: `auth:${createHash('sha256').update(token).digest('hex').slice(0, 32)}`,
     };
   }
 
