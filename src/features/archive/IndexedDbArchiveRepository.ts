@@ -9,7 +9,7 @@ import {
   assertValidatedSkillEvidence,
   type ValidatedSkillEvidence,
 } from '../learning/skillEvidence';
-import { CONSENT_VERSION } from './schema';
+import { CONSENT_VERSION, LATEST_SCHEMA_VERSION } from './schema';
 import {
   IDBDatabase,
   IDBFactory,
