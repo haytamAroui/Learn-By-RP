@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { SPANISH_DAILY_SERVICES_PILOT } from '../../data/programs';
+import { ROLEPLAY_PROGRAM_CATALOG, SPANISH_DAILY_SERVICES_PILOT } from '../../data/programs';
 import { MISSION_CATALOG } from '../../data/missions';
 import {
   validateMissionForProgramRelease,
@@ -13,10 +13,19 @@ describe('program release gates', () => {
     expect(result.errors.some(error => /not released/.test(error))).toBe(true);
   });
 
-  it('accepts the currently pinned mission mechanics as content-ready', () => {
-    for (const ref of SPANISH_DAILY_SERVICES_PILOT.missionPlan) {
-      const mission = MISSION_CATALOG.find(item => item.id === ref.missionId)!;
-      expect(validateMissionForProgramRelease(mission)).toEqual({
+  it('accepts every pinned launch mission mechanic as content-ready', () => {
+    const refs = ROLEPLAY_PROGRAM_CATALOG.flatMap(program => program.missionPlan);
+    const seen = new Set<string>();
+
+    for (const ref of refs) {
+      const key = `${ref.missionId}@${ref.missionVersion}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+
+      const mission = MISSION_CATALOG.find(
+        item => item.id === ref.missionId && item.version === ref.missionVersion
+      )!;
+      expect(validateMissionForProgramRelease(mission), key).toEqual({
         ready: true,
         errors: [],
       });
