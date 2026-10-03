@@ -128,7 +128,19 @@ Automated validation can verify scene mechanics, not linguistic authenticity. Be
 - TTS pronunciation sounds Belgian enough for the intended learning target;
 - repair prompts sound like authentic Belgian Dutch conversation rather than test instructions.
 
-## 9. Content authoring rule
+## 9. Evidence wording invariant
+
+A learner act is credited only for the communicative job it actually performs.
+
+- **Requesting an alternative** requires the learner to ask for another option.
+- Merely accepting or selecting an option that the character already offered is not `skill-request-substitution` evidence.
+- Opportunity positive examples must describe acts that count.
+- Opportunity negative examples must explicitly cover nearby acts that do not count.
+- The scene graph must expose the opportunity before the character supplies the answer that would make the skill unnecessary.
+
+This keeps scene success separate from skill evidence: a learner may complete a scene by accepting an offered option without demonstrating that they can request an alternative.
+
+## 10. Content authoring rule
 
 For future Flemish missions:
 
