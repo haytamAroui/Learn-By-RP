@@ -233,7 +233,8 @@ export function validateAssessmentProposal(
       taskOutcome: proposal.taskOutcome || 'unknown',
       rehearsal: isRehearsalAttempt,
       supportExposureIds: relevantExposures.map(e => e.id),
-      recordedAt: new Date().toISOString(),
+      recordedAt:
+        matchingPassage?.endedAt ?? matchingPassage?.startedAt ?? new Date().toISOString(),
       category: classifyEvidence({
         retrieval: finalRetrieval,
         modality: finalModality,
@@ -347,7 +348,7 @@ export function buildLocalObservations(input: {
         taskOutcome: 'achieved',
         rehearsal: isRehearsalAttempt,
         supportExposureIds: relevantExposures.map(e => e.id),
-        recordedAt: new Date().toISOString(),
+        recordedAt: passage.endedAt ?? passage.startedAt ?? new Date().toISOString(),
         category: classifyEvidence({
           retrieval,
           modality: passage.modality,
