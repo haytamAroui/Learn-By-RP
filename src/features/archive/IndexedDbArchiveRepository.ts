@@ -5,6 +5,7 @@ import {
   type ValidatedPhraseEvidence,
 } from '../learning/learningCore';
 import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
+import { applyProgramDataRetention } from '../program/privacy';
 import {
   assertValidatedSkillEvidence,
   type ValidatedSkillEvidence,
@@ -240,12 +241,21 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
   async getPreferences(): Promise<UserPreferences> {
     const stored = await this.readOne<{ payload: UserPreferences }>(STORE.meta, PREFERENCES_ID);
-    return { ...DEFAULT_PREFERENCES, ...(stored?.payload ?? {}) };
+    return applyProgramDataRetention({
+      ...DEFAULT_PREFERENCES,
+      ...(stored?.payload ?? {}),
+    });
   }
 
   async savePreferences(preferences: UserPreferences): Promise<void> {
     await this.transaction(async tx => {
-      this.putAll(tx, STORE.meta, [{ key: PREFERENCES_ID, value: { id: PREFERENCES_ID, payload: preferences } }]);
+      this.putAll(tx, STORE.meta, [{
+        key: PREFERENCES_ID,
+        value: {
+          id: PREFERENCES_ID,
+          payload: applyProgramDataRetention(preferences),
+        },
+      }]);
     });
   }
 
