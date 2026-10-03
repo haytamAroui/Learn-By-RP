@@ -1,7 +1,7 @@
 # LearnByRP — Roleplay Program Execution TODO V1
 
 **Status:** active execution checklist for roleplay/program/pedagogy work  
-**Last reconciled with `main`:** `520102dc12dd162b081d93c92503e5a3030c47c1` (2026-10-02)  
+**Branch reconciliation:** `feature/finish-remaining-roleplay-tasks` against `main` `44f57edd1ff211410e066712016b44f33b172119` (2026-10-03); implementation reconciled through feature head `331998d351218348ca9450cc2dcf0486728d631a`.  
 **Scope:** Goal → Program → Mission → Attempt → Evidence → Next RP  
 **Product rule:** LearnByRP teaches through roleplay. Skills, coach, evidence, transfer and recovery exist to shape and interpret roleplay; they do not replace it with a conventional lesson flow.  
 **Companion authorities:** `Mission Coach — Master Product Architecture Specification.md`, `LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`, `LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md`.
@@ -20,8 +20,8 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 - [x] Assessment model does not own learning truth.
 - [x] Retry is not Transfer.
 - [x] Silence/noise/disconnect/provider failure are never learning lapses.
-- [ ] Add this TODO to implementation-doc precedence notes where roleplay/program work is referenced.
-- [ ] Keep UI-specific work in V4; keep roleplay/pedagogy correctness here.
+- [x] Add this TODO to implementation-doc precedence notes where roleplay/program work is referenced. (`LEARNBYRP_POST_RUNTIME_ROADMAP_V2.md`; V4 authority boundary notice)
+- [x] Keep UI-specific work in V4; keep roleplay/pedagogy correctness here. (`LEARNBYRP_DESIGN_SYSTEM_V4_TODO.md` remains UI/UX authority)
 
 ---
 
@@ -29,12 +29,12 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 
 ## Voice/session baseline
 
-- [ ] Confirm recursion regression remains closed.
-- [ ] Confirm stale-state regression remains closed.
-- [ ] Confirm mute/freeze/retry state is read from current runtime state.
-- [ ] Confirm reconnect/error/mic-denied states are explicit.
-- [ ] Confirm typed draft survives provider errors/reconnects where intended.
-- [ ] Confirm audio resources close on every end path.
+- [x] Confirm recursion regression remains closed. (`tests/voice-session-regressions.test.ts`: cloud → native fallback is non-recursive)
+- [x] Confirm stale-state regression remains closed. (`tests/voice-session-regressions.test.ts`: generation invalidation rejects stale async work)
+- [x] Confirm mute/freeze/retry state is read from current runtime state. (`LiveSessionView` refs + voice/session G0 regression)
+- [x] Confirm reconnect/error/mic-denied states are explicit. (`LiveSessionView`, `voice/lifecycle`, G0 regression)
+- [x] Confirm typed draft survives provider errors/reconnects where intended. (`tests/voice-session-regressions.test.ts`)
+- [x] Confirm audio resources close on every end path. (`tests/voice-session-regressions.test.ts`: transport/provider/scene cleanup)
 - [ ] Physical Android native voice/STT pass.
 - [ ] Physical iPhone native voice/STT pass.
 - [ ] Physical cloud → native TTS fallback pass.
@@ -63,13 +63,13 @@ This checklist incorporates the reviewed corrections to the proposed roleplay-pr
 
 ## Privacy/security/safety baseline
 
-- [ ] Confirm voice consent is tri-state and enforced server-side.
-- [ ] Confirm saved-analysis consent is independently enforced server-side.
-- [ ] Confirm AI endpoints require bounded authenticated/guest access.
-- [ ] Confirm rate limits and request schemas on AI endpoints.
-- [ ] Confirm delete tombstones block late assessment/provider writes.
-- [ ] Confirm regulated-domain content has no diagnosis/dosage/treatment advice.
-- [ ] Add character-behavior policy for hostility, discrimination, harassment, sexual content and simulated abuse.
+- [x] Confirm voice consent is tri-state and enforced server-side. (`server/security/requestGuard.ts`; `tests/request-guard.test.ts`)
+- [x] Confirm saved-analysis consent is independently enforced server-side. (`requestGuard.ts`; independent saved-analysis regression)
+- [x] Confirm AI endpoints require bounded authenticated/guest access. (bounded guest ID or hashed Bearer identity at provider ingress)
+- [x] Confirm rate limits and request schemas on AI endpoints. (`ProviderRateLimiter`, `validateProviderBody`, request-guard tests)
+- [x] Confirm delete tombstones block late assessment/provider writes. (archive generation-aware tombstones + persistent provider deletion tombstones)
+- [x] Confirm regulated-domain content has no diagnosis/dosage/treatment advice. (pharmacy content hardened + release-time regulated-domain checks)
+- [x] Add character-behavior policy for hostility, discrimination, harassment, sexual content and simulated abuse. (`characterPolicy.ts`; release-blocking validation + actor prompt rules)
 - [ ] Decide audience/age gate before public release.
 
 ---
@@ -265,7 +265,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Accommodation does not reduce unrelated production evidence. (accommodations are preferences, not support rows; comprehension-only exposure kinds are ignored by production scope)
 - [x] Typed evidence remains typed; it does not establish spoken evidence. (existing validator rule retained)
 - [x] Add regression coverage that caption/replay/slow/explanation are not production-form support. (`supportScope.test.ts`)
-- [ ] Preserve accommodations in final/minimal-support simulation.
+- [x] Preserve accommodations in final/minimal-support simulation. (minimal-support suppresses proactive briefing support only; `LiveSessionView` still receives learner accommodations)
 
 ---
 
@@ -302,7 +302,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 - [x] Second lapse within policy window may flag revisit [Tunable]. (`SKILL_POLICY.revisitMinRecentLapses = 2`)
 - [x] Do not implement automatic demotion in V1.
 - [x] Cap consecutive recovery missions per skill [Tunable]. (`RP_MODE_POLICY.maxConsecutiveRecoveries = 2`)
-- [ ] Offer off-ramps: guided practice / different skill / break / mute skill.
+- [x] Offer off-ramps: guided practice / different skill / break / mute skill. (`RecoveryOffRamp`; deterministic `RECOVERY_CAP_OFF_RAMP`)
 
 ---
 
@@ -513,7 +513,7 @@ Target scope should remain small enough for review capacity.
   - [ ] released/reviewed
   - [ ] model-checked scene
   - [ ] declared opportunity examples
-  - [ ] completion predicate
+  - [x] completion predicate (scene validation + reachable achieved path)
   - [ ] locale review
 - [ ] One final simulation for one program first.
 - [ ] Record reviewer hours per mission and content throughput.
@@ -589,18 +589,18 @@ These are properties of RP opportunities/attempts, not conventional lesson scree
 - [x] Lower/manageable pressure. (`RP_MODE_POLICY.recoveryPressureCeiling = manageable`; recovery next-RP policy v3 carries `pressureCeiling: manageable`; `pressurePolicyForLearningMode` cannot admit standard/stretch branches in Recovery)
 - [x] Consecutive recovery cap = 2 (`RP_MODE_POLICY`).
 - [x] Recovery cap produces deterministic `RECOVERY_CAP_OFF_RAMP` recommendation.
-- [ ] Return to cold as soon as reasonable.
+- [x] Return to cold as soon as reasonable. (`nextRp.ts`: later independent evidence closes recovery loop and prevents repeated recovery treatment)
 
 ---
 
 # 23. Final simulation
 
 - [ ] Build one integrated reviewed final simulation.
-- [ ] Support hidden by default but accommodations preserved.
-- [ ] Help remains explicitly available.
-- [ ] No official score/readiness/pass probability.
-- [ ] Evidence rules remain identical.
-- [ ] Program completion recap separates scene result from skill evidence.
+- [x] Support hidden by default but accommodations preserved. (`MissionBriefingScreen`: final simulation uses minimal support while normal accommodation profile remains active)
+- [x] Help remains explicitly available. (minimal-support briefing does not remove learner-triggered live Help ladder)
+- [x] No official score/readiness/pass probability. (final simulation reuses ordinary evidence/recap path; no score field or readiness prediction)
+- [x] Evidence rules remain identical. (final simulation carries program context only; validator-owned evidence path is unchanged)
+- [x] Program completion recap separates scene result from skill evidence. (`RecapScreen`; final-simulation label + separate scene/skill evidence presentation)
 
 ---
 
@@ -611,9 +611,9 @@ These are properties of RP opportunities/attempts, not conventional lesson scree
 - [x] Add source. (`CarryForwardFact.source`)
 - [x] Add mission allowlist. (`allowedMissionIds`)
 - [x] Add expiry/TTL. (`expiresAt`; expired facts fail closed)
-- [ ] Use learner alias rather than real name by default.
-- [ ] Learner sees "What this place remembers".
-- [ ] Learner can edit/clear.
+- [x] Use learner alias rather than real name by default. (`LearnerContinuityProfile.alias`; no real-name carry-forward contract)
+- [x] Learner sees "What this place remembers". (Privacy settings continuity panel)
+- [x] Learner can edit/clear. (`settings/privacy.tsx`: learner-owned alias/fact controls)
 - [x] Local-only by default. (`localOnly: true`)
 - [x] Higher-sensitivity facts never carry across scenes. (`canCarryFactToMission` rejects `high`)
 
@@ -621,17 +621,17 @@ These are properties of RP opportunities/attempts, not conventional lesson scree
 
 # 25. Privacy/data architecture for programs
 
-- [ ] ConsentRecord included in data boundaries.
-- [ ] Accommodation included.
-- [ ] ProgramPreferences included.
-- [ ] Deletion tombstones included.
-- [ ] Pending jobs included.
-- [ ] Policy versions included.
-- [ ] Content provenance included.
-- [ ] Retention rule defined for goal/profile inputs.
-- [ ] Export includes learner-owned program/preferences/evidence data.
-- [ ] Delete-all removes program/profile data and blocks late writes.
-- [ ] Consent withdrawal immediately changes eligible features.
+- [x] ConsentRecord included in data boundaries. (`ArchiveRepository.types.ts`; SQLite + IndexedDB consent stores/export)
+- [x] Accommodation included. (`UserPreferences.accommodations`; archive defaults/export boundary)
+- [x] ProgramPreferences included. (`UserPreferences.programPreferences`; persistence/export/delete-all scope)
+- [x] Deletion tombstones included. (archive deletion markers + provider deletion tombstones)
+- [x] Pending jobs included. (`ArchiveRepository.getPendingJobs`; export/delete-all scope)
+- [x] Policy versions included. (learning/support/evidence policy versions + consent version in archive export)
+- [x] Content provenance included. (`exportArchiveJson`: mission/version provenance per session)
+- [x] Retention rule defined for goal/profile inputs. (`PROGRAM_GOAL_RETENTION_DAYS`; continuity fact TTL pruning)
+- [x] Export includes learner-owned program/preferences/evidence data. (SQLite/IndexedDB export parity coverage)
+- [x] Delete-all removes program/profile data and blocks late writes. (marker-first archive deletion + generation-aware late-write guards)
+- [x] Consent withdrawal immediately changes eligible features. (consent state synchronized to provider eligibility; Settings withdrawal path)
 - [ ] Raw custom goal text discarded by default after extraction/preview.
 
 ---
@@ -640,25 +640,25 @@ These are properties of RP opportunities/attempts, not conventional lesson scree
 
 A released mission must pass:
 
-- [ ] valid stable ID + version
+- [x] valid stable ID + version (`validateMissionForProgramRelease`)
 - [ ] target language + target locale review
-- [ ] scenarioFamilyId
-- [ ] typed finite scene facts
-- [ ] predicate DSL validation
-- [ ] model checker
+- [x] scenarioFamilyId (`validateMissionForProgramRelease` + canonical family validation)
+- [x] typed finite scene facts (scene static validation)
+- [x] predicate DSL validation (`validateSceneDefinition`)
+- [x] model checker (`modelCheckScene`; build-blocking released content validation)
 - [ ] learner role
-- [ ] character knowledge boundary
-- [ ] at least one primary CommunicativeSkill
-- [ ] at least one reachable opportunity
-- [ ] positive + negative opportunity examples
+- [x] character knowledge boundary (`validateMissionForProgramRelease`)
+- [x] at least one primary CommunicativeSkill (`validateMissionForProgramRelease`)
+- [x] at least one reachable opportunity (model-check reachable opportunity gate)
+- [x] positive + negative opportunity examples (release gate validates each authored opportunity)
 - [ ] completion predicate
-- [ ] complication policy
-- [ ] support policy
+- [x] complication policy (static/model checks include safe complication reachability)
+- [x] support policy (released mission requires learner-triggered hint ladder)
 - [ ] typed fallback
 - [ ] captions/accessibility support
-- [ ] regulated-domain checks
-- [ ] character-behavior checks
-- [ ] scripted dry-run
+- [x] regulated-domain checks (`validateCharacterBehaviorPolicy`)
+- [x] character-behavior checks (`validateCharacterBehaviorPolicy`)
+- [x] scripted dry-run (`modelCheckScene.achievedPath`; `validate:scenes` report)
 - [ ] localization completeness
 
 ---
@@ -667,15 +667,15 @@ A released mission must pass:
 
 A program must pass:
 
-- [ ] every mission pinned to released version
-- [ ] every mission content-ready
+- [x] every mission pinned to released version (`validateProgramAgainstCatalog`)
+- [x] every mission content-ready (`validateProgramForActivation` → mission release gates)
 - [ ] no dead-end plan entry
-- [ ] at least one real transfer path
-- [ ] adaptation uses reason codes
+- [x] at least one real transfer path (`hasRealTransferPath`)
+- [x] adaptation uses reason codes (`nextRp.ts`; deterministic localized reason codes)
 - [ ] target locale supported
 - [ ] profile/goal data under consent scope
-- [ ] final simulation where program promises one
-- [ ] no generated unreviewed mission content
+- [x] final simulation where program promises one (activation gate validates pinned final-simulation mission)
+- [x] no generated unreviewed mission content (V1 authoring policy + released-content activation boundary)
 - [ ] exam provenance fresh where exam path is used
 
 ---
@@ -686,7 +686,7 @@ A program must pass:
 
 - [x] same-family Café A → Café B adds no context. (`skillContext.test.ts`)
 - [x] pressure variant adds no context. (`skillContext.test.ts`: pressured scenario provenance with the same domain + scenarioFamilyId collapses to the same transfer context)
-- [ ] retry adds no context.
+- [x] retry adds no context. (`skillContext`/retry transfer regression; retry is rehearsal and context identity excludes attempt/session)
 
 ## Evidence
 
@@ -706,7 +706,7 @@ A program must pass:
 
 ## Runtime
 
-- [ ] forged facts ignored.
+- [x] forged facts ignored. (`tests/actor-context.test.ts`: actor authority derived from reviewed server content)
 - [x] duplicate client + sideband action → one transition. (`sceneStore.test.ts`; actionId first-verdict replay/idempotency)
 - [x] stale revision rejected. (`sceneReducer.test.ts`, `sceneStore.test.ts`)
 - [x] consequential action result returns before character confirms. (`actorContract.test.ts`)
@@ -729,15 +729,15 @@ A program must pass:
 
 ## Privacy/security
 
-- [ ] consent enforced server-side.
-- [ ] deletion tombstone blocks late assessment.
-- [ ] goal prompt injection cannot change skill/predicate/system contracts.
+- [x] consent enforced server-side. (`tests/request-guard.test.ts`)
+- [x] deletion tombstone blocks late assessment. (provider tombstone check + archive late-write regression)
+- [x] goal prompt injection cannot change skill/predicate/system contracts. (reviewed actor authority/version pins + realtime prompt-isolation regression)
 
 ## Program
 
 - [x] same evidence + same policy version → same next-RP decision. (`nextRp.test.ts`)
-- [ ] policy bump rebuilds reproducibly.
-- [ ] unreviewed mission cannot enter active program.
+- [x] policy bump rebuilds reproducibly. (fail-closed reproducibility regression at feature head)
+- [x] unreviewed mission cannot enter active program. (`validateProgramForActivation`; released-program build gate)
 
 ---
 
@@ -793,7 +793,7 @@ A program must pass:
 - [ ] author/review mission set.
 - [x] ProgramProjection + ProgramPreferences. (`contracts/program.ts`, persisted learner preferences)
 - [x] deterministic next-RP engine. (`nextRp.ts`, policy v3; recovery recommendations carry a bounded manageable pressure ceiling)
-- [ ] Program UI.
+- [x] Program UI. (`ProgramScreen.tsx`, `/program/[programId]`, Missions → Programs route; mobile-first V4 styling)
 
 ## P4 — pedagogy loop
 
@@ -815,8 +815,8 @@ A program must pass:
 ## P6 — final simulation
 
 - [ ] one integrated reviewed final simulation.
-- [ ] minimal-support mode.
-- [ ] program completion recap.
+- [x] minimal-support mode. (`MissionBriefingScreen`; final simulation starts cold with proactive support hidden)
+- [x] program completion recap. (`RecapScreen`: durable program/final-simulation context + scene-vs-skill separation)
 
 ## V2+
 
@@ -842,15 +842,15 @@ V1 roleplay-program architecture is complete only when the learner can:
 
 And the system can prove:
 
-- [ ] character never defined world truth.
-- [ ] model never directly persisted learning evidence.
-- [ ] support was target-scoped and window-limited.
-- [ ] accommodations were not penalized.
+- [x] character never defined world truth. (server-authoritative scene reducer + reviewed actor context boundary)
+- [x] model never directly persisted learning evidence. (opaque validator-issued evidence bundles + archive API boundary)
+- [x] support was target-scoped and window-limited. (`supportScope.ts`, policy-versioned exposure ledger)
+- [x] accommodations were not penalized. (accommodations remain outside production-support downgrade semantics)
 - [x] provider/session failures created no lapse.
 - [x] same-family variants did not fake transfer. (`skillContext.test.ts`; same domain + same reviewed family collapses to one context, while domain + family identity remains explicit)
-- [ ] retry never masqueraded as transfer.
-- [ ] scene completion is reachable and deadlock-free.
-- [ ] program decisions are reproducible under the same policy version.
+- [x] retry never masqueraded as transfer. (rehearsal/attempt identity excluded from transfer context; dedicated regression)
+- [x] scene completion is reachable and deadlock-free. (build-time finite-state model checker)
+- [x] program decisions are reproducible under the same policy version. (`nextRp.test.ts` + policy-bump rebuild regression)
 
 ---
 
@@ -877,7 +877,7 @@ Confirmed from `main` after squash merge `520102dc12dd162b081d93c92503e5a3030c47
 - [x] Support-surface exposure instrumentation is complete for the §6 exposure-kind list, including exact-target same-day cross-session briefing/recap relevance under learning policy v5.
 - [x] Director pressure branches are bounded authored content with static validation, reachability checks, explicit opt-in policy gating and same-family/no-transfer-credit regression coverage.
 - [ ] Curated launch content, locale review and final simulation remain open.
-- [ ] Consent/privacy/security hardening and delete-tombstone guarantees remain G0 blockers.
+- [x] Consent/privacy/security hardening and delete-tombstone guarantees are implemented and regression-covered; only the audience/age release decision remains open in G0.
 - [ ] Physical Android/iPhone native voice and cloud → native fallback verification remain open.
 
 ---
