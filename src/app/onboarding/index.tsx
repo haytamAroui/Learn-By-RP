@@ -214,7 +214,11 @@ export default function OnboardingScreen() {
     preferences.explanationLanguage
   );
   const [primaryGoal, setPrimaryGoal] = useState<UserPreferences['primaryGoal']>(
-    preferences.primaryGoal
+    preferences.primaryGoal === 'relocation'
+      ? 'daily_life'
+      : preferences.primaryGoal === 'explore'
+        ? 'social'
+        : preferences.primaryGoal
   );
   const [startingAnswers, setStartingAnswers] = useState<StartingPointSelfReport>(
     startingAnswersFromPreferences(preferences)
