@@ -13,6 +13,7 @@ import {
   SkillObservation,
   SupportExposure,
 } from '../../types';
+import { buildLocalObservations } from '../learning/learningCore';
 
 /**
  * Native/web parity.
@@ -116,6 +117,45 @@ function session(overrides: Partial<SessionRecord> = {}): SessionRecord {
   };
 }
 
+
+function phraseEvidenceFor(sessionValue: SessionRecord) {
+  const candidates = (sessionValue.observations ?? []).map(observationValue => {
+    const source = sessionValue.passages.find(
+      passageValue =>
+        passageValue.id === observationValue.sourceTurnId &&
+        passageValue.revisionKey === observationValue.sourceRevision
+    );
+    const groundedForm = source?.text ?? observationValue.quote;
+    return {
+      id: observationValue.itemId,
+      form: groundedForm,
+      meaning: observationValue.meaning ?? groundedForm,
+    };
+  });
+
+  return buildLocalObservations({
+    sessionId: sessionValue.id,
+    attemptId: sessionValue.observations?.[0]?.attemptId ?? 'attempt-1',
+    passages: sessionValue.passages,
+    supportExposures: sessionValue.supportExposures,
+    candidates,
+    isColdAttempt: sessionValue.coldAttempt,
+    isRehearsalAttempt: false,
+  }).evidence;
+}
+
+async function completeWithEvidence(
+  repoValue: ArchiveRepository,
+  sessionValue: SessionRecord
+): Promise<void> {
+  await repoValue.completeSession(
+    { ...sessionValue, observations: [] },
+    [],
+    undefined,
+    phraseEvidenceFor(sessionValue)
+  );
+}
+
 function rawSkillObservation(): SkillObservation {
   return {
     id: 'raw-skill-obs',
@@ -199,7 +239,7 @@ describe('native and web agree on the same archive', () => {
       await repo.recordConsent('voice', true);
       await repo.beginSession(session({ state: 'preflight' }));
       await repo.saveSessionState('session-1', 'live');
-      await repo.completeSession(session());
+      await completeWithEvidence(repo, session());
     }
 
     expect(await snapshot(web)).toEqual(await snapshot(sqliteRepository));
@@ -214,7 +254,7 @@ describe('native and web agree on the same archive', () => {
 
     for (const repo of [sqliteRepository, web]) {
       await repo.beginSession(poisoned);
-      await repo.completeSession(poisoned);
+      await completeWithEvidence(repo, poisoned);
       expect(await repo.getSkillObservations()).toEqual([]);
       expect(await repo.getSkillLapses()).toEqual([]);
 
@@ -238,7 +278,7 @@ describe('native and web agree on the same archive', () => {
     };
 
     for (const repo of [sqliteRepository, web]) {
-      await repo.completeSession(session());
+      await completeWithEvidence(repo, session());
       await repo.appendSupportExposures('session-1', [recapExposure]);
       await repo.appendSupportExposures('session-1', [
         { ...recapExposure, recordedAt: '2026-09-20T09:20:00.000Z' },
@@ -275,7 +315,7 @@ describe('native and web agree on the same archive', () => {
 
   it('both reproduce the same recall projection from the ledger', async () => {
     for (const repo of [sqliteRepository, web]) {
-      await repo.completeSession(session());
+      await completeWithEvidence(repo, session());
     }
 
     const nativePhrase = (await sqliteRepository.getPhrases()).find(
@@ -289,8 +329,8 @@ describe('native and web agree on the same archive', () => {
 
   it('both replay a session without duplicating evidence', async () => {
     for (const repo of [sqliteRepository, web]) {
-      await repo.completeSession(session());
-      await repo.completeSession({
+      await completeWithEvidence(repo, session());
+      await completeWithEvidence(repo, {
         ...session(),
         observations: [observation('obs-different-id', 'p-1')],
       });
@@ -304,7 +344,7 @@ describe('native and web agree on the same archive', () => {
 
   it('both hide and dispute evidence identically', async () => {
     for (const repo of [sqliteRepository, web]) {
-      await repo.completeSession(session());
+      await completeWithEvidence(repo, session());
       const [obs] = await repo.getObservations();
       await repo.hideObservation(obs.observationId);
     }
@@ -332,7 +372,7 @@ describe('native and web agree on the same archive', () => {
 
   it('both refuse to leave a half-written archive on a malformed import', async () => {
     for (const repo of [sqliteRepository, web]) {
-      await repo.completeSession(session());
+      await completeWithEvidence(repo, session());
 
       const result = await repo.importArchiveJson(
         JSON.stringify({ schemaVersion: 1, sessions: [{ id: 'x' }], phrases: 'not-an-array' })
@@ -344,6 +384,26 @@ describe('native and web agree on the same archive', () => {
     // The pre-existing archive survived both rejections.
     expect((await web.getSessions()).length).toBe(1);
     expect((await sqliteRepository.getSessions()).length).toBe(1);
+  });
+
+  it('does not promote imported phrase observations into evidence stores or recap caches', async () => {
+    const poisoned = session();
+    const payload = JSON.stringify({
+      version: 1,
+      schemaVersion: 1,
+      sessions: [poisoned],
+      phrases: [],
+      observations: poisoned.observations,
+    });
+
+    for (const repo of [sqliteRepository, web]) {
+      const result = await repo.importArchiveJson(payload);
+      expect(result.success).toBe(true);
+      expect(result.counts?.observations).toBe(0);
+      expect(await repo.getObservations()).toEqual([]);
+      const stored = await repo.getSessionById('session-1');
+      expect(stored?.observations ?? []).toEqual([]);
+    }
   });
 
   it('does not promote imported embedded skill arrays into evidence stores', async () => {
@@ -361,7 +421,7 @@ describe('native and web agree on the same archive', () => {
 
     for (const repo of [sqliteRepository, web]) {
       expect((await repo.importArchiveJson(payload)).success).toBe(true);
-      await repo.completeSession(poisoned);
+      await completeWithEvidence(repo, poisoned);
       expect(await repo.getSkillObservations()).toEqual([]);
       expect(await repo.getSkillLapses()).toEqual([]);
     }
@@ -382,7 +442,7 @@ describe('native and web agree on the same archive', () => {
 
   it('both remove evidence on delete, not just the row', async () => {
     for (const repo of [sqliteRepository, web]) {
-      await repo.completeSession(session());
+      await completeWithEvidence(repo, session());
       await repo.deleteSession('session-1');
     }
 
@@ -402,7 +462,7 @@ describe('native and web agree on the same archive', () => {
 
   it('both export a versioned archive', async () => {
     for (const repo of [sqliteRepository, web]) {
-      await repo.completeSession(session());
+      await completeWithEvidence(repo, session());
       const parsed = JSON.parse(await repo.exportArchiveJson());
       expect(parsed.version).toBe(1);
       expect(parsed.sessions).toHaveLength(1);
