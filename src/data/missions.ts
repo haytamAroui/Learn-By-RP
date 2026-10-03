@@ -292,7 +292,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     tags: ['transit', 'metro', 'directions', 'tickets'],
     nextMissionId: 'mission-es-farmacia-sol',
     transferPattern: 'Ask for specific options & instructions',
-    transferReason: 'Applies your question-asking pattern to ask Elena at the pharmacy for medication details.'
+    transferReason: 'Applies your question-asking pattern to ask Elena where official package information is shown.'
   },
   {
     id: 'mission-es-farmacia-sol',
