@@ -28,6 +28,35 @@ function resolveBaseUrl(): string {
 
 export const API_BASE_URL = resolveBaseUrl();
 
+type ApiConsentState = 'unknown' | 'granted' | 'denied';
+
+let apiConsentContext: {
+  voice: ApiConsentState;
+  savedAnalysis: ApiConsentState;
+} = {
+  voice: 'unknown',
+  savedAnalysis: 'unknown',
+};
+
+const API_CLIENT_ID = `guest-${Date.now().toString(36)}-${Math.random()
+  .toString(36)
+  .slice(2, 12)}`;
+
+export function setApiConsentContext(input: {
+  voice: ApiConsentState;
+  savedAnalysis: ApiConsentState;
+}) {
+  apiConsentContext = input;
+}
+
+function providerHeaders(): Record<string, string> {
+  return {
+    'x-learnbyrp-client-id': API_CLIENT_ID,
+    'x-learnbyrp-consent-voice': apiConsentContext.voice,
+    'x-learnbyrp-consent-saved-analysis': apiConsentContext.savedAnalysis,
+  };
+}
+
 class ApiError extends Error {
   status: number;
   payload: any;
@@ -76,7 +105,10 @@ async function request<T>(path: string, body: unknown, timeoutMs = 30000): Promi
   try {
     const init = {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers: {
+        'Content-Type': 'application/json',
+        ...providerHeaders(),
+      },
       body: JSON.stringify(body),
       signal: controller.signal,
     } as RequestInit;
