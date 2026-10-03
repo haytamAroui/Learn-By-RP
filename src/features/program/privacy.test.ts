@@ -58,7 +58,11 @@ describe('program privacy retention', () => {
             key: 'favorite_drink',
             value: 'tea',
             sensitivity: 'low',
-            source: { missionId: 'm1', missionVersion: 1, sessionId: 's1' },
+            source: {
+              missionId: 'm1',
+              sessionId: 's1',
+              recordedAt: '2026-09-01T00:00:00.000Z',
+            },
             allowedMissionIds: ['m2'],
             createdAt: '2026-09-01T00:00:00.000Z',
             expiresAt: '2026-10-02T00:00:00.000Z',
