@@ -6,6 +6,7 @@ import { validateProgramAgainstCatalog } from '../../data/programs';
 import { validateMissionScenarioFamily } from '../../content/scenarioFamilies';
 import { modelCheckScene } from '../roleplay/sceneModelChecker';
 import { validateSceneDefinition } from '../roleplay/sceneValidation';
+import { validateCharacterBehaviorPolicy } from '../roleplay/characterPolicy';
 
 export interface ReleaseGateResult {
   ready: boolean;
@@ -25,6 +26,7 @@ export function validateMissionForProgramRelease(
     errors.push(`${mission.id}: scenarioFamilyId is required`);
   }
   errors.push(...validateMissionScenarioFamily(mission));
+  errors.push(...validateCharacterBehaviorPolicy(mission));
 
   if (mission.primarySkillIds.length === 0) {
     errors.push(`${mission.id}: at least one primary CommunicativeSkill is required`);
