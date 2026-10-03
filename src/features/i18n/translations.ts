@@ -105,8 +105,18 @@ export interface Translations {
     subheading: string;
     searchPlaceholder: string;
     tabCatalog: string;
+    tabPrograms: string;
     tabRoute: string;
     routeSubtitle: string;
+    programPreview: string;
+    programReleased: string;
+    programProgress: string;
+    programUnavailable: string;
+    noProgramsFound: string;
+    programNotFound: string;
+    finalSimulation: string;
+    finalSimulationDesc: string;
+    startFinalSimulation: string;
     filterAll: string;
     filterCafes: string;
     filterServices: string;
@@ -458,6 +468,16 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Choose a concrete conversation goal. Each mission reuses core communicative patterns.",
       searchPlaceholder: "Search situations, characters, or places...",
       tabCatalog: "Catalog",
+      tabPrograms: "Programs",
+      programPreview: "Preview",
+      programReleased: "Ready",
+      programProgress: "{done} of {total} missions complete",
+      programUnavailable: "This curated path is still under review. Its missions remain available individually in the catalog.",
+      noProgramsFound: "No curated programs are available for this language yet.",
+      programNotFound: "That program is no longer available.",
+      finalSimulation: "Final simulation",
+      finalSimulationDesc: "Bring the program skills together in one reviewed roleplay. Help stays available and accommodations remain on.",
+      startFinalSimulation: "Start final simulation",
       tabRoute: "Connected Route",
       routeSubtitle:
         "Decisions in one scene carry realistic consequences into the next. Each episode exercises and transfers specific communicative patterns to prepare you for spontaneous conversation.",
@@ -849,6 +869,16 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Choisissez un objectif de conversation concret. Chaque mission réutilise des schémas communicatifs clés.",
       searchPlaceholder: "Rechercher des situations, personnages ou lieux...",
       tabCatalog: "Catalogue",
+      tabPrograms: "Programmes",
+      programPreview: "Aperçu",
+      programReleased: "Prêt",
+      programProgress: "{done} missions terminées sur {total}",
+      programUnavailable: "Ce parcours est encore en révision. Ses missions restent disponibles individuellement dans le catalogue.",
+      noProgramsFound: "Aucun programme sélectionné n’est encore disponible pour cette langue.",
+      programNotFound: "Ce programme n’est plus disponible.",
+      finalSimulation: "Simulation finale",
+      finalSimulationDesc: "Réunissez les compétences du programme dans un jeu de rôle révisé. L’aide reste disponible et les aménagements sont conservés.",
+      startFinalSimulation: "Démarrer la simulation finale",
       tabRoute: "Itinéraire connecté",
       routeSubtitle:
         "Les décisions d’une scène influencent la suivante. Chaque épisode entraîne et transfère des compétences communicatives précises.",
@@ -1239,6 +1269,16 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Elige un objetivo de conversación concreto. Cada misión ejercita patrones comunicativos transferibles.",
       searchPlaceholder: "Buscar situaciones, personajes o lugares...",
       tabCatalog: "Catálogo",
+      tabPrograms: "Programas",
+      programPreview: "Vista previa",
+      programReleased: "Listo",
+      programProgress: "{done} de {total} misiones completadas",
+      programUnavailable: "Esta ruta seleccionada sigue en revisión. Sus misiones continúan disponibles individualmente en el catálogo.",
+      noProgramsFound: "Todavía no hay programas seleccionados para este idioma.",
+      programNotFound: "Ese programa ya no está disponible.",
+      finalSimulation: "Simulación final",
+      finalSimulationDesc: "Reúne las habilidades del programa en un juego de rol revisado. La ayuda sigue disponible y se mantienen las adaptaciones.",
+      startFinalSimulation: "Iniciar simulación final",
       tabRoute: "Ruta conectada",
       routeSubtitle:
         "Las decisiones en una escena llevan consecuencias a la siguiente. Cada episodio entrena y transfiere patrones concretos.",
@@ -1629,6 +1669,16 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Kies een concreet gespreksdoel. Elke missie hergebruikt essentiële communicatieve patronen.",
       searchPlaceholder: "Zoek situaties, personages of locaties...",
       tabCatalog: "Catalogus",
+      tabPrograms: "Programma’s",
+      programPreview: "Voorbeeld",
+      programReleased: "Klaar",
+      programProgress: "{done} van {total} missies voltooid",
+      programUnavailable: "Dit samengestelde traject wordt nog beoordeeld. De missies blijven afzonderlijk beschikbaar in de catalogus.",
+      noProgramsFound: "Er zijn nog geen samengestelde programma’s voor deze taal.",
+      programNotFound: "Dit programma is niet meer beschikbaar.",
+      finalSimulation: "Eindsimulatie",
+      finalSimulationDesc: "Breng de vaardigheden uit het programma samen in één beoordeeld rollenspel. Hulp blijft beschikbaar en aanpassingen blijven actief.",
+      startFinalSimulation: "Start eindsimulatie",
       tabRoute: "Verbonden route",
       routeSubtitle:
         "Beslissingen in de ene scène beïnvloeden de volgende. Elke aflevering oefent en versterkt gerichte communicatieve patronen.",
