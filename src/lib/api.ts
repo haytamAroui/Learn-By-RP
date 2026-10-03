@@ -219,6 +219,9 @@ export const api = {
 
   createRealtimeSession: (body: RealtimeSessionRequest) =>
     request<RealtimeSessionDescriptor>('/api/realtime/session', body, 15000),
+
+  markSessionDeleted: (sessionId: string) =>
+    request<{ deleted: true }>('/api/privacy/deletion', { sessionId }, 5000),
 };
 
 export { ApiError };
