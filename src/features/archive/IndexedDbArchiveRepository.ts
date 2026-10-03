@@ -298,6 +298,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   // ------------------------------------------------------------------- sessions
 
   async beginSession(session: SessionRecord): Promise<void> {
+    if (await this.isDeleted(session.id, session.startedAt)) return;
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
       const safeSession = stripRawEvidence(session);
@@ -347,6 +348,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   ): Promise<void> {
     if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
     if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
+    if (await this.isDeleted(session.id, session.startedAt)) return;
     const now = new Date().toISOString();
 
     await this.transaction(async tx => {
@@ -500,6 +502,8 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     exposures: SupportExposure[]
   ): Promise<void> {
     if (exposures.length === 0) return;
+    const session = await this.getSessionById(sessionId);
+    if (!session || await this.isDeleted(sessionId, session.startedAt)) return;
 
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, sessionId);
@@ -713,18 +717,23 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     return id;
   }
 
-  async isDeleted(sessionId: string): Promise<boolean> {
+  async isDeleted(sessionId: string, sessionStartedAt?: string): Promise<boolean> {
     const markers = await this.readAll<{
       id: string;
       scope: string;
       targetId: string | null;
+      createdAt: string;
     }>(STORE.deletions);
-    return markers.some(
-      marker => marker.scope === 'all' || marker.targetId === sessionId
-    );
+    return markers.some(marker => {
+      if (marker.scope === 'session' && marker.targetId === sessionId) return true;
+      if (marker.scope !== 'all') return false;
+      return !sessionStartedAt || marker.createdAt >= sessionStartedAt;
+    });
   }
 
   async deleteSession(sessionId: string): Promise<void> {
+    // Marker first: late async work must fail closed even while row deletion runs.
+    await this.markDeleted('session', sessionId);
     const observations = await this.readAll<LearningObservation>(STORE.observations);
     const skillObservations = await this.readAll<SkillObservation>(STORE.skillObservations);
     const lapses = await this.readAll<SkillLapse>(STORE.skillLapses);
@@ -754,10 +763,11 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     });
 
     await this.reprojectPhrases();
-    await this.markDeleted('session', sessionId);
   }
 
   async clearAllLearningData(): Promise<void> {
+    // Marker first for the same reason as a single-session delete.
+    await this.markDeleted('all');
     const current = await this.getPreferences();
     const clearedPreferences: UserPreferences = {
       ...current,
@@ -780,8 +790,6 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
         },
       ]);
     });
-
-    await this.markDeleted('all');
   }
 
   // --------------------------------------------------------------------- review
