@@ -522,9 +522,23 @@ describe('export and import', () => {
     const parsed = JSON.parse(json);
 
     expect(parsed.version).toBe(1);
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.storageSchemaVersion).toBeGreaterThan(0);
     expect(parsed.policyVersion).toBeGreaterThan(0);
     expect(parsed.consentVersion).toBeTruthy();
     expect(parsed.sessions).toHaveLength(1);
+    expect(parsed.skillObservations).toBeInstanceOf(Array);
+    expect(parsed.skillLapses).toBeInstanceOf(Array);
+    expect(parsed.consentRecords).toBeInstanceOf(Array);
+    expect(parsed.pendingJobs).toBeInstanceOf(Array);
+    expect(parsed.deletionMarkers).toBeInstanceOf(Array);
+    expect(parsed.contentProvenance).toEqual([
+      expect.objectContaining({
+        sessionId: expect.any(String),
+        missionId: expect.any(String),
+        missionVersion: expect.any(Number),
+      }),
+    ]);
   });
 
   it('rejects malformed JSON without throwing', async () => {
