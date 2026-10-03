@@ -49,7 +49,10 @@ export function resolveProgramCandidate(input: {
     if (input.primaryGoal === 'travel') {
       return candidate(targetLocale, 'exact', FLEMISH_TRAVEL_PILOT);
     }
-    if (input.primaryGoal === 'relocation') {
+    if (
+      input.primaryGoal === 'daily_life' ||
+      input.primaryGoal === 'relocation'
+    ) {
       return candidate(targetLocale, 'exact', FLEMISH_EVERYDAY_PILOT);
     }
     if (input.primaryGoal === 'social' || input.primaryGoal === 'explore') {
@@ -61,7 +64,10 @@ export function resolveProgramCandidate(input: {
     if (input.primaryGoal === 'travel') {
       return candidate(targetLocale, 'exact', SPANISH_TRAVEL_PILOT);
     }
-    if (input.primaryGoal === 'relocation') {
+    if (
+      input.primaryGoal === 'daily_life' ||
+      input.primaryGoal === 'relocation'
+    ) {
       return candidate(targetLocale, 'exact', SPANISH_DAILY_SERVICES_PILOT);
     }
     if (input.primaryGoal === 'social' || input.primaryGoal === 'explore') {
