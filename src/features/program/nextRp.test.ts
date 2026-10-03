@@ -248,6 +248,34 @@ describe('deterministic next-RP policy', () => {
     expect(recommendNextRp(input)).toEqual(recommendNextRp(input));
   });
 
+  it('fails closed on a policy bump until the program is rebuilt on the current policy', () => {
+    const staleProgram = {
+      ...SPANISH_DAILY_SERVICES_PILOT,
+      policyVersion: SPANISH_DAILY_SERVICES_PILOT.policyVersion + 1,
+    };
+
+    expect(() =>
+      recommendNextRp({
+        ...BASE,
+        program: staleProgram,
+        observations: [observation()],
+        lapses: [],
+      })
+    ).toThrow(/does not match learning policy/);
+
+    const rebuiltInput = {
+      ...BASE,
+      program: {
+        ...staleProgram,
+        policyVersion: SPANISH_DAILY_SERVICES_PILOT.policyVersion,
+      },
+      observations: [observation()],
+      lapses: [],
+    };
+
+    expect(recommendNextRp(rebuiltInput)).toEqual(recommendNextRp(rebuiltInput));
+  });
+
   it('offers final simulation only after all reviewed program missions are complete', () => {
     const result = recommendNextRp({
       ...BASE,
