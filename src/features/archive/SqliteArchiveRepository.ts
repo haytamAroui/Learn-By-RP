@@ -171,6 +171,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   // ------------------------------------------------------------------- sessions
 
   async beginSession(session: SessionRecord): Promise<void> {
+    if (await this.isDeleted(session.id, session.startedAt)) return;
     const db = await getDatabase();
 
     await withTransaction(async txn => {
@@ -261,6 +262,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   ): Promise<void> {
     if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
     if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
+    if (await this.isDeleted(session.id, session.startedAt)) return;
     const db = await getDatabase();
 
     await withTransaction(async txn => {
@@ -1018,6 +1020,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     exposures: SupportExposure[]
   ): Promise<void> {
     if (exposures.length === 0) return;
+    const db = await getDatabase();
+    const session = await db.getFirstAsync<{ started_at: string }>(
+      'SELECT started_at FROM sessions WHERE id = ?',
+      sessionId
+    );
+    if (!session || await this.isDeleted(sessionId, session.started_at)) return;
 
     await withTransaction(async txn => {
       for (const exposure of exposures) {
@@ -1059,13 +1067,21 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     return id;
   }
 
-  /** Checked before any assessment or helper write. */
-  async isDeleted(sessionId: string): Promise<boolean> {
+  /**
+   * Session tombstones always win. A delete-all marker blocks sessions that
+   * existed before the erase, while allowing a genuinely new session created
+   * afterwards to start a fresh local archive.
+   */
+  async isDeleted(sessionId: string, sessionStartedAt?: string): Promise<boolean> {
     const db = await getDatabase();
     const row = await db.getFirstAsync<{ count: number }>(
-      'SELECT COUNT(*) as count FROM deletion_markers WHERE scope = ? OR target_id = ?',
-      'all',
-      sessionId
+      `SELECT COUNT(*) as count
+         FROM deletion_markers
+        WHERE (scope = 'session' AND target_id = ?)
+           OR (scope = 'all' AND (? IS NULL OR created_at >= ?))`,
+      sessionId,
+      sessionStartedAt ?? null,
+      sessionStartedAt ?? null
     );
     return (row?.count ?? 0) > 0;
   }
