@@ -22,7 +22,7 @@ import {
   projectPhraseState,
   type ValidatedPhraseEvidence,
 } from '../learning/learningCore';
-import { LEARNING_POLICY_VERSION } from '../learning/policy';
+import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
 import {
   assertValidatedSkillEvidence,
   type ValidatedSkillEvidence,
@@ -1312,7 +1312,28 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       }
 
       for (const phrase of parsed.phrases) {
-        await this.writePhraseRow(txn, phrase as PhraseItem);
+        const imported = phrase as PhraseItem;
+        const canonical = INITIAL_PHRASE_ITEMS.find(item => item.id === imported.id);
+        const base = canonical ?? imported;
+        const safePhrase: PhraseItem = {
+          ...base,
+          recallStatus: 'new',
+          scheduling: {
+            ...base.scheduling,
+            nextReviewAt: new Date(0).toISOString(),
+            due: true,
+            intervalDays: LEARNING_POLICY.intervals.new,
+            modalityHistory: [],
+            contexts: [],
+          },
+          stats: {
+            assistedCount: 0,
+            unassistedCount: 0,
+            spokenCount: 0,
+            typedCount: 0,
+          },
+        };
+        await this.writePhraseRow(txn, safePhrase);
       }
 
       for (const session of parsed.sessions) {
@@ -1336,43 +1357,21 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           null
         );
 
-        for (const observation of session.observations ?? []) {
-          await txn.runAsync(
-            `INSERT OR REPLACE INTO observations
-              (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
-               candidate_form, meaning, quote, modality, retrieval, task_outcome, rehearsal,
-               support_exposure_ids, policy_version, hidden, user_disputed, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            observation.observationId,
-            observation.sessionId ?? session.id,
-            observation.attemptId ?? 'attempt-1',
-            observation.sourceTurnId,
-            observation.sourceRevision,
-            observation.itemId,
-            observation.candidateForm,
-            observation.meaning ?? null,
-            observation.quote,
-            observation.modality,
-            observation.retrieval,
-            observation.taskOutcome,
-            observation.rehearsal ? 1 : 0,
-            JSON.stringify(observation.supportExposureIds ?? []),
-            LEARNING_POLICY_VERSION,
-            observation.hidden ? 1 : 0,
-            observation.userDisputed ? 1 : 0,
-            observation.recordedAt
-          );
-        }
+        // Imported JSON is an archive payload, not validator authority. Embedded
+        // observations are intentionally not promoted into the active evidence
+        // ledger. A dedicated import validator may re-issue them later.
       }
     });
 
     return {
       success: true,
-      message: `Successfully restored ${parsed.sessions.length} sessions, ${parsed.phrases.length} phrases, and ${parsed.observations?.length ?? 0} observations.`,
+      message:
+        `Successfully restored ${parsed.sessions.length} sessions and ${parsed.phrases.length} phrases. ` +
+        'Imported learning evidence was not activated because it must be revalidated.',
       counts: {
         sessions: parsed.sessions.length,
         phrases: parsed.phrases.length,
-        observations: parsed.observations?.length ?? 0,
+        observations: 0,
       },
     };
   }
