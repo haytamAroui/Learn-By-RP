@@ -505,7 +505,7 @@ Coach support is now scoped to the active runtime opportunity/skill and, when an
 Target scope should remain small enough for review capacity.
 
 - [x] Choose one launch language/locale. (`es-ES`; `SPANISH_LAUNCH_CONTENT_V1`)
-- [ ] Choose first two curated programs.
+- [x] Choose first two curated programs. (`Spanish Everyday Life` + `Spanish Travel & Getting Around`; both remain draft pending native review/final simulation)
 - [ ] Target about 8–10 missions per program only if review capacity supports it.
 - [x] Start with roughly 6–8 CommunicativeSkills. (six launch-core skills in `launchContent.ts`)
 - [x] Ensure each core skill has at least 3 scenario families before claiming transfer. (build-blocking opportunity-derived coverage gate; minimum 3 families)
@@ -790,7 +790,7 @@ A program must pass:
 
 - [x] choose launch language/locale. (`es-ES`)
 - [ ] choose first two programs.
-- [ ] author/review mission set to final launch size. (six executable Spanish missions now complete across six families; expansion/native review still open)
+- [ ] author/review mission set to final launch size. (eight executable Spanish missions now complete across eight families; two five-mission programs are wired, expansion/native review still open)
 - [x] ProgramProjection + ProgramPreferences. (`contracts/program.ts`, persisted learner preferences)
 - [x] deterministic next-RP engine. (`nextRp.ts`, policy v3; recovery recommendations carry a bounded manageable pressure ceiling)
 - [x] Program UI. (`ProgramScreen.tsx`, `/program/[programId]`, Missions → Programs route; mobile-first V4 styling)
@@ -876,7 +876,7 @@ Confirmed from `main` after squash merge `520102dc12dd162b081d93c92503e5a3030c47
 - [x] Retry checkpoints are deterministic-authority only: semantic opportunity judgments are excluded from the v5 checkpoint contract and rejected if injected at ingress/store boundaries (`scene.ts`, `sceneStore.ts`, `routes.ts`, `sceneStore.test.ts`).
 - [x] Support-surface exposure instrumentation is complete for the §6 exposure-kind list, including exact-target same-day cross-session briefing/recap relevance under learning policy v5.
 - [x] Director pressure branches are bounded authored content with static validation, reachability checks, explicit opt-in policy gating and same-family/no-transfer-credit regression coverage.
-- [ ] Curated launch content is now a six-mission executable Spanish seed with six core skills and ≥3 opportunity-backed families each; expansion to final program size, native locale review and final simulation remain open.
+- [ ] Curated launch content is now an eight-mission executable Spanish seed across eight scenario families with two draft programs; six core skills each have ≥3 opportunity-backed families. Final per-program size, native locale review and final simulation remain open.
 - [x] Consent/privacy/security hardening and delete-tombstone guarantees are implemented and regression-covered; only the audience/age release decision remains open in G0.
 - [ ] Physical Android/iPhone native voice and cloud → native fallback verification remain open.
 
