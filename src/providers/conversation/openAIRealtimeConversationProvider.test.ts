@@ -32,6 +32,22 @@ function input(): ConversationTurnInput {
 }
 
 describe('realtime actor instruction boundary', () => {
+  it('renders only the reviewed Belgian Dutch variety instruction', () => {
+    const prompt = actorInstructions({
+      ...input(),
+      missionId: 'mission-nl-be-koffiebar',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.cafe.breakfast',
+      sceneVersion: 1,
+      targetLanguage: 'nl',
+      speechVariety: 'standard',
+    });
+
+    expect(prompt).toContain('Reviewed speech variety: standard');
+    expect(prompt).toContain('Standard Dutch as naturally spoken in Belgium');
+    expect(prompt).not.toContain('light-colloquial');
+  });
+
   it('keeps learner content out of system instructions', () => {
     const prompt = actorInstructions(input());
 
