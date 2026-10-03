@@ -567,7 +567,7 @@ export const PHARMACY_SCENE: SceneDefinition = {
 
   phraseIds: [
     'phrase.es.tengo_alergia',
-    'phrase.es.que_no_de_sueno',
+    'phrase.es.package_warning',
     'phrase.es.instrucciones_envase',
   ],
   skillIds: [
