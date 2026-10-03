@@ -6,6 +6,7 @@ import {
   ChevronRight,
   Eye,
   EyeOff,
+  Flag,
   MessageCircle,
   Play,
   UserRound,
@@ -21,6 +22,8 @@ interface MissionBriefingScreenProps {
   mission: MissionDefinition;
   initialMode: Mode;
   onBack: () => void;
+  minimalSupport?: boolean;
+  finalSimulation?: boolean;
   onStartSession: (mission: MissionDefinition, mode: Mode, coldAttempt: boolean, previewedPhraseIds: string[]) => void;
 }
 
@@ -30,10 +33,14 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
   mission,
   initialMode,
   onBack,
+  minimalSupport = false,
+  finalSimulation = false,
   onStartSession,
 }) => {
   const { t } = useI18n();
-  const [selectedMode, setSelectedMode] = useState<Mode>(initialMode);
+  const [selectedMode, setSelectedMode] = useState<Mode>(
+    minimalSupport ? 'immersion' : initialMode
+  );
   const [showModeSheet, setShowModeSheet] = useState(false);
   const [showPhrases, setShowPhrases] = useState(false);
   const [previewedSupport, setPreviewedSupport] = useState(false);
@@ -91,6 +98,14 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
         }}
       >
         <View className="items-center gap-4">
+          {finalSimulation ? (
+            <View className="flex-row items-center gap-2 rounded-full bg-card-sage px-3 py-2">
+              <Flag size={15} color={iconColor('success')} />
+              <Text className="text-xs font-semibold text-accent-sage">
+                {t.missions.finalSimulation}
+              </Text>
+            </View>
+          ) : null}
           <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-card-warm">
             <MessageCircle size={34} color={iconColor('brand')} strokeWidth={1.8} />
           </View>
@@ -154,6 +169,21 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
           </View>
         </View>
 
+        {minimalSupport ? (
+          <View className="gap-3 rounded-[24px] bg-card-sage p-4">
+            <View className="flex-row items-start gap-3">
+              <EyeOff size={20} color={iconColor('success')} />
+              <View className="flex-1 gap-1">
+                <Text className="text-sm font-semibold text-ink">
+                  {t.briefing.minimalSupportTitle}
+                </Text>
+                <Text className="text-sm leading-5 text-body">
+                  {t.briefing.minimalSupportDesc}
+                </Text>
+              </View>
+            </View>
+          </View>
+        ) : (
         <View className="gap-3 rounded-[24px] bg-surface-soft p-4">
           <View className="flex-row items-start gap-3">
             {previewedSupport ? (
@@ -194,7 +224,9 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
             </View>
           )}
         </View>
+        )}
 
+        {!minimalSupport ? (
         <Pressable
           onPress={() => setShowModeSheet(true)}
           accessibilityRole="button"
@@ -208,18 +240,19 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
           </View>
           <ChevronRight size={20} color={iconColor('muted')} />
         </Pressable>
+        ) : null}
       </ScrollView>
 
       <View className="border-t border-border-subtle bg-canvas px-4 pt-3 pb-2">
         <View className="w-full self-center" style={{ maxWidth: 720 }}>
           <Button
-            label={t.briefing.startMissionButton}
+            label={finalSimulation ? t.missions.startFinalSimulation : t.briefing.startMissionButton}
             onPress={() =>
               onStartSession(
                 mission,
                 selectedMode,
-                !previewedSupport,
-                previewedPhraseIds
+                minimalSupport ? true : !previewedSupport,
+                minimalSupport ? [] : previewedPhraseIds
               )
             }
             size="lg"
@@ -230,7 +263,7 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
       </View>
 
       <Sheet
-        visible={showModeSheet}
+        visible={!minimalSupport && showModeSheet}
         onClose={() => setShowModeSheet(false)}
         title={t.briefing.selectMode}
         size="compact"
