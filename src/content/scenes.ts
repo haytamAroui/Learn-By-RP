@@ -211,10 +211,10 @@ export const CAFE_SCENE: SceneDefinition = {
 
   // Curated mappings only. Never model-generated.
   phraseIds: [
-    'phrase.es.cafe_leche',
-    'phrase.es.leche_almendra',
+    'phrase.es.cafe_con_leche',
+    'phrase.es.oat_milk_request',
     'phrase.es.para_llevar',
-    'phrase.es.cuanto_cuesta',
+    'phrase.es.cuanto_es',
   ],
   skillIds: [
     'skill-request-substitution',
@@ -565,7 +565,11 @@ export const PHARMACY_SCENE: SceneDefinition = {
     },
   ],
 
-  phraseIds: ['phrase.es.sin_somnio', 'phrase.es.dolor_cabeza'],
+  phraseIds: [
+    'phrase.es.tengo_alergia',
+    'phrase.es.que_no_de_sueno',
+    'phrase.es.instrucciones_envase',
+  ],
   skillIds: [
     'skill-inquire-specifications',
     'skill-communicative-repair',
