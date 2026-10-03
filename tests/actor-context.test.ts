@@ -15,6 +15,21 @@ describe('actor runtime context', () => {
     expect(resolveActorContext({ ...VALID, sceneVersion: 999 }).ok).toBe(false);
   });
 
+  it('derives Belgian Dutch speech variety from reviewed scene content', () => {
+    const result = resolveActorContext({
+      missionId: 'mission-nl-be-koffiebar',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.cafe.breakfast',
+      sceneVersion: 1,
+      sceneFacts: {},
+      speechVariety: 'colloquial',
+    });
+
+    expect(result.ok).toBe(true);
+    if (!result.ok) return;
+    expect(result.value.speechVariety).toBe('standard');
+  });
+
   it('ignores forged or out-of-schema facts', () => {
     const result = resolveActorContext({
       ...VALID,
