@@ -32,6 +32,26 @@ describe('program release gates', () => {
     }
   });
 
+  it('rejects released mission content when scene phrases or skills drift from the mission catalog', () => {
+    const cafe = MISSION_CATALOG.find(item => item.id === 'mission-es-cafe-sol')!;
+
+    const phraseDrift = validateMissionForProgramRelease({
+      ...cafe,
+      usefulPhrases: cafe.usefulPhrases.filter(
+        phrase => phrase.id !== 'phrase.es.cafe_con_leche'
+      ),
+    });
+    expect(phraseDrift.ready).toBe(false);
+    expect(phraseDrift.errors.some(error => /scene phrase/.test(error))).toBe(true);
+
+    const skillDrift = validateMissionForProgramRelease({
+      ...cafe,
+      secondarySkillIds: [],
+    });
+    expect(skillDrift.ready).toBe(false);
+    expect(skillDrift.errors.some(error => /scene skill/.test(error))).toBe(true);
+  });
+
   it('rejects a released program if a pinned mission is unknown', () => {
     const result = validateProgramForActivation({
       ...SPANISH_DAILY_SERVICES_PILOT,
