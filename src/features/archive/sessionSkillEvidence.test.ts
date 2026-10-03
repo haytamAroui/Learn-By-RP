@@ -179,14 +179,22 @@ function sessionWith(skillEvidence: {
   };
 }
 
+async function completeWithValidatedEvidence(
+  session: SessionRecord,
+  result: ReturnType<typeof validateSkillEvidenceProposal>
+): Promise<void> {
+  await archiveRepository.completeSession(session, [], result.evidence);
+}
+
 describe('a live session persists validated skill evidence', () => {
   // 1. A valid independent proposal is persisted once.
   it('persists a valid independent skill proposal exactly once', async () => {
     const result = validateSkillEvidenceProposal(modelProposal() as any, runtimeFacts());
     expect(result.rejected).toEqual([]);
 
-    await archiveRepository.completeSession(
-      sessionWith({ observations: result.validated, lapses: result.lapses })
+    await completeWithValidatedEvidence(
+      sessionWith({ observations: result.validated, lapses: result.lapses }),
+      result
     );
 
     const stored = await archiveRepository.getSkillObservations();
@@ -205,14 +213,49 @@ describe('a live session persists validated skill evidence', () => {
     });
   });
 
+  it('ignores raw SessionRecord skill rows without a validator bundle', async () => {
+    const result = validateSkillEvidenceProposal(
+      modelProposal() as any,
+      runtimeFacts()
+    );
+
+    await archiveRepository.completeSession(
+      sessionWith({
+        observations: result.validated,
+        lapses: result.lapses,
+      })
+    );
+
+    expect(await archiveRepository.getSkillObservations()).toEqual([]);
+    expect(await archiveRepository.getSkillLapses()).toEqual([]);
+  });
+
+  it('rejects a forged evidence bundle at runtime', async () => {
+    const result = validateSkillEvidenceProposal(
+      modelProposal() as any,
+      runtimeFacts()
+    );
+
+    await expect(
+      archiveRepository.completeSession(
+        sessionWith({ observations: [], lapses: [] }),
+        [],
+        {
+          observations: result.validated,
+          lapses: result.lapses,
+        } as any
+      )
+    ).rejects.toThrow(/validator-issued evidence bundle required/i);
+  });
+
   // 2. Replaying completion must not duplicate it.
   it('does not duplicate the observation when completion is replayed', async () => {
     const result = validateSkillEvidenceProposal(modelProposal() as any, runtimeFacts());
     const session = sessionWith({ observations: result.validated, lapses: result.lapses });
 
-    await archiveRepository.completeSession(session);
-    await archiveRepository.completeSession(session);
-    await archiveRepository.completeSession(session);
+    await archiveRepository.completeSession(session, [], result.evidence);
+    await archiveRepository.completeSession(session, [], result.evidence);
+    await archiveRepository.completeSession(session, [], result.evidence);
 
     expect(await archiveRepository.getSkillObservations()).toHaveLength(1);
     expect(await archiveRepository.getSkillLapses()).toHaveLength(0);
@@ -228,8 +271,9 @@ describe('a live session persists validated skill evidence', () => {
     expect(result.validated[0].retrieval).toBe('assisted');
     expect(result.rejected.map(r => r.check)).toContain('support_contradicts_retrieval');
 
-    await archiveRepository.completeSession(
-      sessionWith({ observations: result.validated, lapses: result.lapses })
+    await completeWithValidatedEvidence(
+      sessionWith({ observations: result.validated, lapses: result.lapses }),
+      result
     );
 
     const stored = await archiveRepository.getSkillObservations();
@@ -278,8 +322,9 @@ describe('a live session persists validated skill evidence', () => {
       })
     );
 
-    await archiveRepository.completeSession(
-      sessionWith({ observations: result.validated, lapses: result.lapses })
+    await completeWithValidatedEvidence(
+      sessionWith({ observations: result.validated, lapses: result.lapses }),
+      result
     );
 
     const stored = await archiveRepository.getSkillObservations();
@@ -319,8 +364,9 @@ describe('a live session persists validated skill evidence', () => {
 
     expect(result.rejected[0].check).toBe('revision_mismatch');
 
-    await archiveRepository.completeSession(
-      sessionWith({ observations: result.validated, lapses: result.lapses })
+    await completeWithValidatedEvidence(
+      sessionWith({ observations: result.validated, lapses: result.lapses }),
+      result
     );
 
     expect(await archiveRepository.getSkillObservations()).toHaveLength(0);
@@ -338,8 +384,9 @@ describe('a live session persists validated skill evidence', () => {
     ];
 
     for (const result of results) {
-      await archiveRepository.completeSession(
-        sessionWith({ observations: result.validated, lapses: result.lapses })
+      await completeWithValidatedEvidence(
+        sessionWith({ observations: result.validated, lapses: result.lapses }),
+        result
       );
     }
 
@@ -366,11 +413,12 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
     expect(result.validated).toHaveLength(0);
     expect(result.lapses.length).toBeGreaterThan(0);
 
-    await archiveRepository.completeSession(
+    await completeWithValidatedEvidence(
       sessionWith(
         { observations: result.validated, lapses: result.lapses },
         [failedOpportunity()]
-      )
+      ),
+      result
     );
 
     const storedSession = await archiveRepository.getSessionById('sess-1');
@@ -397,8 +445,8 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       [failedOpportunity()]
     );
 
-    await archiveRepository.completeSession(session);
-    await archiveRepository.completeSession(session);
+    await archiveRepository.completeSession(session, [], result.evidence);
+    await archiveRepository.completeSession(session, [], result.evidence);
 
     expect((await archiveRepository.getSkillLapses()).length).toBe(result.lapses.length);
   });
@@ -445,9 +493,57 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       recordedAt: new Date(now - day).toISOString(),
     };
 
-    await archiveRepository.saveSkillObservations(built);
-    await archiveRepository.completeSession(
-      sessionWith({ observations: [], lapses: [lapse] })
+    for (const item of built) {
+      await driver.db.runAsync(
+        `INSERT OR REPLACE INTO skill_observations
+          (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
+           domain_id, scenario_family_id, modality, retrieval, task_outcome,
+           demonstration, support_exposure_ids, evidence_source, quote, day_key,
+           reason_code, reason_codes, policy_version, hidden, user_disputed, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+        item.id,
+        item.skillId,
+        item.sessionId,
+        item.attemptId,
+        item.sourcePassageId,
+        item.sourceRevision,
+        item.contextKey.domainId,
+        item.contextKey.scenarioFamilyId,
+        item.modality,
+        item.retrieval,
+        item.taskOutcome,
+        item.demonstration,
+        JSON.stringify(item.supportExposureIds),
+        item.evidenceSource,
+        item.quote,
+        item.recordedAt.slice(0, 10),
+        'validated_demonstration',
+        '[]',
+        LEARNING_POLICY_VERSION,
+        item.recordedAt
+      );
+    }
+    await driver.db.runAsync(
+      `INSERT OR REPLACE INTO skill_lapses
+        (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
+         domain_id, scenario_family_id, opportunity_instance_id, demonstration,
+         basis, day_key, reason_code, policy_version, hidden, created_at)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+      lapse.id,
+      lapse.skillId,
+      lapse.sessionId,
+      lapse.attemptId,
+      lapse.sourcePassageId,
+      lapse.sourceRevision,
+      lapse.contextKey.domainId,
+      lapse.contextKey.scenarioFamilyId,
+      lapse.opportunityInstanceId,
+      lapse.demonstration,
+      lapse.basis,
+      lapse.recordedAt.slice(0, 10),
+      'cold_taken_opportunity_not_demonstrated',
+      LEARNING_POLICY_VERSION,
+      lapse.recordedAt
     );
 
     const projections = projectSkillsV2(
@@ -466,8 +562,9 @@ describe('session completion is atomic across evidence kinds', () => {
   it('writes skill evidence in the same transaction as the transcript', async () => {
     const result = validateSkillEvidenceProposal(modelProposal() as any, runtimeFacts());
 
-    await archiveRepository.completeSession(
-      sessionWith({ observations: result.validated, lapses: result.lapses })
+    await completeWithValidatedEvidence(
+      sessionWith({ observations: result.validated, lapses: result.lapses }),
+      result
     );
 
     const session = await archiveRepository.getSessionById('sess-1');

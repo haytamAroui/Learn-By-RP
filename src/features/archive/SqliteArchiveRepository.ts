@@ -17,8 +17,16 @@ import {
   Fragment,
 } from '../../types';
 import { INITIAL_PHRASE_ITEMS } from '../../data/missions';
-import { projectPhraseState } from '../learning/learningCore';
-import { LEARNING_POLICY_VERSION } from '../learning/policy';
+import {
+  assertValidatedPhraseEvidence,
+  projectPhraseState,
+  type ValidatedPhraseEvidence,
+} from '../learning/learningCore';
+import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
+import {
+  assertValidatedSkillEvidence,
+  type ValidatedSkillEvidence,
+} from '../learning/skillEvidence';
 import { CONSENT_VERSION } from './schema';
 import {
   ArchiveRepository as ArchiveRepositoryContract,
@@ -247,8 +255,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async completeSession(
     session: SessionRecord,
-    rejectedProposals: { reason: string }[] = []
+    rejectedProposals: { reason: string }[] = [],
+    skillEvidence?: ValidatedSkillEvidence,
+    phraseEvidence?: ValidatedPhraseEvidence
   ): Promise<void> {
+    if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
+    if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
     const db = await getDatabase();
 
     await withTransaction(async txn => {
@@ -385,7 +397,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       // The uniqueness index on (source_turn_id, source_revision, item_id) makes a
       // replayed turn a replace rather than a second row, so a reconnect cannot
       // manufacture a second independent use of the same phrase.
-      for (const obs of session.observations) {
+      for (const obs of phraseEvidence?.observations ?? []) {
         await txn.runAsync(
           `INSERT OR REPLACE INTO observations
             (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
@@ -411,7 +423,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         );
       }
 
-      await this.writeSkillEvidence(txn, session);
+      if (skillEvidence) {
+        await this.writeSkillEvidence(txn, skillEvidence);
+      }
 
       await this.reprojectPhrases(txn);
     });
@@ -425,8 +439,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
    * does not hold, and an interrupted write must not leave evidence without the
    * passage it cites.
    */
-  private async writeSkillEvidence(txn: Db, session: SessionRecord): Promise<void> {
-    for (const observation of session.skillObservations ?? []) {
+  private async writeSkillEvidence(
+    txn: Db,
+    skillEvidence: ValidatedSkillEvidence
+  ): Promise<void> {
+    assertValidatedSkillEvidence(skillEvidence);
+    for (const observation of skillEvidence.observations) {
       await txn.runAsync(
         `INSERT OR REPLACE INTO skill_observations
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
@@ -464,7 +482,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       );
     }
 
-    for (const lapse of session.skillLapses ?? []) {
+    for (const lapse of skillEvidence.lapses) {
       await txn.runAsync(
         `INSERT OR REPLACE INTO skill_lapses
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
@@ -697,51 +715,6 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       'SELECT * FROM observations ORDER BY created_at DESC'
     );
     return rows.map(mapObservationRow);
-  }
-
-  async saveSkillObservations(observations: SkillObservation[]): Promise<void> {
-    if (observations.length === 0) return;
-    const db = await getDatabase();
-
-    await withTransaction(async txn => {
-      for (const observation of observations) {
-        await txn.runAsync(
-          `INSERT OR REPLACE INTO skill_observations
-            (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-             domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
-             task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
-             evidence_source, quote, day_key, reason_code, reason_codes, policy_version, hidden, user_disputed, created_at)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
-          observation.id,
-          observation.skillId,
-          observation.sessionId,
-          observation.attemptId,
-          observation.sourcePassageId,
-          observation.sourceRevision,
-          observation.contextKey.domainId,
-          observation.contextKey.scenarioFamilyId,
-          observation.contextKey.scenarioId ?? observation.scenarioId ?? null,
-          observation.examProgramId ?? null,
-          observation.examTaskId ?? null,
-          observation.modality,
-          observation.retrieval,
-          observation.taskOutcome,
-          observation.demonstration,
-          observation.opportunityInstanceId ?? null,
-          JSON.stringify(observation.supportExposureIds),
-          observation.evidenceSource,
-          observation.quote,
-          observation.dayKey ?? observation.recordedAt.slice(0, 10),
-          observation.reasonCode ??
-            (observation.evidenceSource === 'legacy_inferred'
-              ? 'legacy_inferred_demonstration'
-              : 'validated_demonstration'),
-          JSON.stringify(observation.reasonCodes ?? []),
-          observation.policyVersion ?? LEARNING_POLICY_VERSION,
-          observation.recordedAt
-        );
-      }
-    });
   }
 
   async getSkillObservations(): Promise<SkillObservation[]> {
@@ -1171,61 +1144,48 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async recordDrillReview(input: {
     phrase: PhraseItem;
-    quote: string;
-    modality: 'spoken' | 'typed';
-    unassisted: boolean;
+    evidence: ValidatedPhraseEvidence;
   }): Promise<void> {
     const db = await getDatabase();
-    const { phrase, quote, modality, unassisted } = input;
-    const now = new Date().toISOString();
+    const { phrase, evidence } = input;
+    assertValidatedPhraseEvidence(evidence);
+    const observations = [...evidence.observations];
 
-    const observation: LearningObservation = {
-      observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sessionId: 'drill',
-      attemptId: 'drill',
-      sourceTurnId: `drill-${Date.now()}`,
-      sourceRevision: 'rev-drill',
-      itemId: phrase.id,
-      candidateForm: phrase.form,
-      meaning: phrase.meaning,
-      quote,
-      modality,
-      retrieval: unassisted ? 'unassisted' : 'assisted',
-      taskOutcome: 'achieved',
-      rehearsal: false,
-      supportExposureIds: [],
-      recordedAt: now,
-    };
+    for (const observation of observations) {
+      if (observation.itemId !== phrase.id) {
+        throw new Error('Phrase evidence item does not match drill phrase');
+      }
+    }
+    if (observations.length === 0) return;
 
     await withTransaction(async txn => {
-      await txn.runAsync(
-        `INSERT OR REPLACE INTO observations
-          (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
-           candidate_form, meaning, quote, modality, retrieval, task_outcome, rehearsal,
-           support_exposure_ids, policy_version, hidden, user_disputed, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
-        observation.observationId,
-        observation.sessionId,
-        observation.attemptId,
-        observation.sourceTurnId,
-        observation.sourceRevision,
-        observation.itemId,
-        observation.candidateForm,
-        observation.meaning ?? null,
-        observation.quote,
-        observation.modality,
-        observation.retrieval,
-        observation.taskOutcome,
-        0,
-        JSON.stringify([]),
-        LEARNING_POLICY_VERSION,
-        observation.recordedAt
-      );
+      for (const observation of observations) {
+        await txn.runAsync(
+          `INSERT OR REPLACE INTO observations
+            (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
+             candidate_form, meaning, quote, modality, retrieval, task_outcome, rehearsal,
+             support_exposure_ids, policy_version, hidden, user_disputed, created_at)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+          observation.observationId,
+          observation.sessionId,
+          observation.attemptId,
+          observation.sourceTurnId,
+          observation.sourceRevision,
+          observation.itemId,
+          observation.candidateForm,
+          observation.meaning ?? null,
+          observation.quote,
+          observation.modality,
+          observation.retrieval,
+          observation.taskOutcome,
+          observation.rehearsal ? 1 : 0,
+          JSON.stringify(observation.supportExposureIds ?? []),
+          LEARNING_POLICY_VERSION,
+          observation.recordedAt
+        );
+      }
 
-      await this.writePhraseRow(
-        txn,
-        projectPhraseState(phrase, [observation, ...[]])
-      );
+      await this.writePhraseRow(txn, projectPhraseState(phrase, observations));
     });
   }
 
@@ -1352,7 +1312,28 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       }
 
       for (const phrase of parsed.phrases) {
-        await this.writePhraseRow(txn, phrase as PhraseItem);
+        const imported = phrase as PhraseItem;
+        const canonical = INITIAL_PHRASE_ITEMS.find(item => item.id === imported.id);
+        const base = canonical ?? imported;
+        const safePhrase: PhraseItem = {
+          ...base,
+          recallStatus: 'new',
+          scheduling: {
+            ...base.scheduling,
+            nextReviewAt: new Date(0).toISOString(),
+            due: true,
+            intervalDays: LEARNING_POLICY.intervals.new,
+            modalityHistory: [],
+            contexts: [],
+          },
+          stats: {
+            assistedCount: 0,
+            unassistedCount: 0,
+            spokenCount: 0,
+            typedCount: 0,
+          },
+        };
+        await this.writePhraseRow(txn, safePhrase);
       }
 
       for (const session of parsed.sessions) {
@@ -1376,43 +1357,21 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           null
         );
 
-        for (const observation of session.observations ?? []) {
-          await txn.runAsync(
-            `INSERT OR REPLACE INTO observations
-              (id, session_id, attempt_id, source_turn_id, source_revision, item_id,
-               candidate_form, meaning, quote, modality, retrieval, task_outcome, rehearsal,
-               support_exposure_ids, policy_version, hidden, user_disputed, created_at)
-             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-            observation.observationId,
-            observation.sessionId ?? session.id,
-            observation.attemptId ?? 'attempt-1',
-            observation.sourceTurnId,
-            observation.sourceRevision,
-            observation.itemId,
-            observation.candidateForm,
-            observation.meaning ?? null,
-            observation.quote,
-            observation.modality,
-            observation.retrieval,
-            observation.taskOutcome,
-            observation.rehearsal ? 1 : 0,
-            JSON.stringify(observation.supportExposureIds ?? []),
-            LEARNING_POLICY_VERSION,
-            observation.hidden ? 1 : 0,
-            observation.userDisputed ? 1 : 0,
-            observation.recordedAt
-          );
-        }
+        // Imported JSON is an archive payload, not validator authority. Embedded
+        // observations are intentionally not promoted into the active evidence
+        // ledger. A dedicated import validator may re-issue them later.
       }
     });
 
     return {
       success: true,
-      message: `Successfully restored ${parsed.sessions.length} sessions, ${parsed.phrases.length} phrases, and ${parsed.observations?.length ?? 0} observations.`,
+      message:
+        `Successfully restored ${parsed.sessions.length} sessions and ${parsed.phrases.length} phrases. ` +
+        'Imported learning evidence was not activated because it must be revalidated.',
       counts: {
         sessions: parsed.sessions.length,
         phrases: parsed.phrases.length,
-        observations: parsed.observations?.length ?? 0,
+        observations: 0,
       },
     };
   }

@@ -6,6 +6,8 @@ import {
   isIndependentSuccess,
   isLapse,
   SkillEvidenceCandidate,
+  assertValidatedSkillEvidence,
+  type ValidatedSkillEvidence,
 } from './skillEvidence';
 import { inferLegacySkillEvidence, projectSkill, projectSkillsV2 } from './skillProjection';
 import { allowedSkillIds, evidentiarySkillsForMission } from './skillMembership';
@@ -129,6 +131,28 @@ const context = (
   sessionEndReason: 'completed' as const,
   ...overrides,
 } as Parameters<typeof validateSkillEvidenceProposal>[1]);
+
+describe('validator-owned evidence capability', () => {
+  it('cannot be structurally constructed and rejects a forged runtime object', () => {
+    // @ts-expect-error The validator brand is private to skillEvidence.ts.
+    const forged: ValidatedSkillEvidence = {
+      observations: [],
+      lapses: [],
+    };
+
+    expect(() => assertValidatedSkillEvidence(forged)).toThrow(
+      /validator-issued evidence bundle required/i
+    );
+
+    const valid = validateSkillEvidenceProposal(proposal([candidate()]), context());
+    expect(() => assertValidatedSkillEvidence(valid.evidence)).not.toThrow();
+
+    const copiedBrand = Object.assign({}, valid.evidence) as ValidatedSkillEvidence;
+    expect(() => assertValidatedSkillEvidence(copiedBrand)).toThrow(
+      /validator-issued evidence bundle required/i
+    );
+  });
+});
 
 describe('validateSkillEvidenceProposal', () => {
   it('accepts a skill the mission declares, quoted from the learner', () => {

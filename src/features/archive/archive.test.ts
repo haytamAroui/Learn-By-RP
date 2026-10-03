@@ -4,6 +4,7 @@ import { __setDatabaseForTesting, getSchemaVersion, migrate, withTransaction } f
 import { archiveRepository } from './SqliteArchiveRepository';
 import { MIGRATIONS } from './schema';
 import { LearningObservation, Passage, SessionRecord, SupportExposure } from '../../types';
+import { buildLocalObservations } from '../learning/learningCore';
 
 /**
  * The archive exercised against a real SQLite engine.
@@ -91,6 +92,42 @@ function makeObservation(overrides: Partial<LearningObservation> = {}): Learning
     recordedAt: new Date().toISOString(),
     ...overrides,
   };
+}
+
+
+function phraseEvidenceFor(session: SessionRecord) {
+  const candidates = (session.observations ?? []).map(observation => {
+    const source = session.passages.find(
+      passage =>
+        passage.id === observation.sourceTurnId &&
+        passage.revisionKey === observation.sourceRevision
+    );
+    const groundedForm = source?.text ?? observation.quote;
+    return {
+      id: observation.itemId,
+      form: groundedForm,
+      meaning: observation.meaning ?? groundedForm,
+    };
+  });
+
+  return buildLocalObservations({
+    sessionId: session.id,
+    attemptId: session.observations?.[0]?.attemptId ?? 'attempt-1',
+    passages: session.passages,
+    supportExposures: session.supportExposures,
+    candidates,
+    isColdAttempt: session.coldAttempt,
+    isRehearsalAttempt: false,
+  }).evidence;
+}
+
+async function completeSessionWithEvidence(session: SessionRecord): Promise<void> {
+  await archiveRepository.completeSession(
+    { ...session, observations: [] },
+    [],
+    undefined,
+    phraseEvidenceFor(session)
+  );
 }
 
 describe('migrations', () => {
@@ -252,10 +289,10 @@ describe('observation uniqueness (test #8)', () => {
       observations: [makeObservation()],
     });
 
-    await archiveRepository.completeSession(session);
+    await completeSessionWithEvidence(session);
 
     // The same turn, same revision, same phrase, replayed after a reconnect.
-    await archiveRepository.completeSession({
+    await completeSessionWithEvidence({
       ...session,
       observations: [makeObservation({ observationId: 'obs-different-id' })],
     });
@@ -269,9 +306,9 @@ describe('observation uniqueness (test #8)', () => {
       passages: [makePassage('p-1', 'quisiera un café con leche')],
       observations: [makeObservation()],
     });
-    await archiveRepository.completeSession(session);
+    await completeSessionWithEvidence(session);
 
-    await archiveRepository.completeSession({
+    await completeSessionWithEvidence({
       ...session,
       passages: [
         makePassage('p-1', 'quisiera un café con leche'),
@@ -289,9 +326,9 @@ describe('observation uniqueness (test #8)', () => {
       passages: [makePassage('p-1', 'quisiera un café con leche')],
       observations: [makeObservation({ sourceRevision: 'rev-1' })],
     });
-    await archiveRepository.completeSession(session);
+    await completeSessionWithEvidence(session);
 
-    await archiveRepository.completeSession({
+    await completeSessionWithEvidence({
       ...session,
       passages: [makePassage('p-1', 'quisiera un te verde', 'rev-2')],
       observations: [
@@ -307,7 +344,7 @@ describe('observation uniqueness (test #8)', () => {
 
 describe('deletion markers (test #10)', () => {
   it('marks a session deleted before the rows are removed', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession({
         passages: [makePassage('p-1', 'hola')],
         observations: [makeObservation()],
@@ -320,12 +357,12 @@ describe('deletion markers (test #10)', () => {
   });
 
   it('reports a live session as not deleted', async () => {
-    await archiveRepository.completeSession(makeSession());
+    await completeSessionWithEvidence(makeSession());
     expect(await archiveRepository.isDeleted('session-1')).toBe(false);
   });
 
   it('queues a pending job so a late assessment is discarded, not applied', async () => {
-    await archiveRepository.completeSession(makeSession());
+    await completeSessionWithEvidence(makeSession());
     await archiveRepository.deleteSession('session-1');
 
     const jobs = await archiveRepository.getPendingJobs();
@@ -333,7 +370,7 @@ describe('deletion markers (test #10)', () => {
   });
 
   it('removes the evidence, not just the row', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession({
         passages: [makePassage('p-1', 'hola')],
         supportExposures: [
@@ -369,7 +406,7 @@ describe('deletion markers (test #10)', () => {
 
 describe('projection is rebuilt inside the same transaction', () => {
   it('recomputes recall status from the ledger on write', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession({
         passages: [makePassage('p-1', 'un café con leche')],
         observations: [makeObservation()],
@@ -383,7 +420,7 @@ describe('projection is rebuilt inside the same transaction', () => {
   });
 
   it('excludes a hidden observation from the projection', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession({
         passages: [makePassage('p-1', 'un café con leche')],
         observations: [makeObservation()],
@@ -400,7 +437,7 @@ describe('projection is rebuilt inside the same transaction', () => {
   });
 
   it('marks a disputed observation as both hidden and disputed', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession({
         passages: [makePassage('p-1', 'un café con leche')],
         observations: [makeObservation()],
@@ -446,7 +483,7 @@ describe('interrupted session recovery (§7.11)', () => {
 
 describe('export and import', () => {
   it('produces a bounded JSON archive with the versions stamped', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession({
         passages: [makePassage('p-1', 'un café con leche')],
         observations: [makeObservation()],
@@ -470,6 +507,48 @@ describe('export and import', () => {
   it('rejects a non-object payload', async () => {
     const result = await archiveRepository.importArchiveJson('"a string"');
     expect(result.success).toBe(false);
+  });
+
+  it('does not activate imported observations or imported recall projections', async () => {
+    const poisonedSession = makeSession({
+      passages: [makePassage('p-1', 'un café con leche')],
+      observations: [makeObservation()],
+    });
+    const [phrase] = await archiveRepository.getPhrases();
+    const payload = JSON.stringify({
+      version: 1,
+      schemaVersion: 1,
+      sessions: [poisonedSession],
+      phrases: [
+        {
+          ...phrase,
+          recallStatus: 'steady',
+          scheduling: {
+            ...phrase.scheduling,
+            nextReviewAt: '2099-01-01T00:00:00.000Z',
+            due: false,
+          },
+          stats: {
+            ...phrase.stats,
+            unassistedCount: 999,
+            spokenCount: 999,
+          },
+        },
+      ],
+      observations: poisonedSession.observations,
+    });
+
+    const result = await archiveRepository.importArchiveJson(payload);
+
+    expect(result.success).toBe(true);
+    expect(result.counts?.observations).toBe(0);
+    expect(await archiveRepository.getObservations()).toEqual([]);
+    const stored = await archiveRepository.getSessionById(poisonedSession.id);
+    expect(stored?.observations ?? []).toEqual([]);
+    const importedPhrase = (await archiveRepository.getPhrases()).find(p => p.id === phrase.id);
+    expect(importedPhrase?.recallStatus).toBe('new');
+    expect(importedPhrase?.stats.unassistedCount).toBe(0);
+    expect(importedPhrase?.scheduling.due).toBe(true);
   });
 });
 

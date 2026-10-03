@@ -9,6 +9,8 @@ import { MISSION_CATALOG } from '../../data/missions';
 import { MissionDefinition, SessionRecord } from '../../types';
 import { useSessionCoordinator } from '../../features/session/SessionProvider';
 import { selectHistoricalCrossSessionSupport } from '../../features/learning/supportScope';
+import type { ValidatedSkillEvidence } from '../../features/learning/skillEvidence';
+import type { ValidatedPhraseEvidence } from '../../features/learning/learningCore';
 
 export default function SessionScreen() {
   const router = useRouter();
@@ -83,10 +85,19 @@ export default function SessionScreen() {
     currentSessionStartedAt: persistedSession.startedAt,
   });
 
-  const handleEndSession = async (session: SessionRecord) => {
-    // Persist transcript, exposure ledger, validated observations and the
-    // recomputed projection in one transaction.
-    await archive.completeSession(session);
+  const handleEndSession = async (
+    session: SessionRecord,
+    skillEvidence: ValidatedSkillEvidence,
+    phraseEvidence: ValidatedPhraseEvidence
+  ) => {
+    // Persist transcript/exposures plus validator-issued phrase + skill evidence
+    // in one transaction. Raw SessionRecord evidence arrays are not write paths.
+    await archive.completeSession(
+      session,
+      [],
+      skillEvidence,
+      phraseEvidence
+    );
     coordinator.dispatch('END');
     coordinator.dispatch('ENDED');
     coordinator.dispatch('ASSESS_START');

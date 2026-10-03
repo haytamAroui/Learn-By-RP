@@ -1,6 +1,14 @@
 import { INITIAL_PHRASE_ITEMS, MISSION_CATALOG } from '../../data/missions';
-import { projectPhraseState } from '../learning/learningCore';
-import { LEARNING_POLICY_VERSION } from '../learning/policy';
+import {
+  assertValidatedPhraseEvidence,
+  projectPhraseState,
+  type ValidatedPhraseEvidence,
+} from '../learning/learningCore';
+import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
+import {
+  assertValidatedSkillEvidence,
+  type ValidatedSkillEvidence,
+} from '../learning/skillEvidence';
 import { CONSENT_VERSION } from './schema';
 import {
   IDBDatabase,
@@ -67,6 +75,23 @@ type StoreName = (typeof STORE)[keyof typeof STORE];
 
 interface StoredSession extends Omit<SessionRecord, 'coldAttempt'> {
   coldAttempt: boolean;
+}
+
+/**
+ * Embedded skill arrays are a read-model cache only. They may be populated from a
+ * validator-issued bundle during completion, but a caller-supplied SessionRecord
+ * must never smuggle skill truth into IndexedDB.
+ */
+function stripRawEvidence(
+  session: SessionRecord
+): Omit<SessionRecord, 'observations' | 'skillObservations' | 'skillLapses'> {
+  const {
+    observations: _observations,
+    skillObservations: _skillObservations,
+    skillLapses: _skillLapses,
+    ...safe
+  } = session;
+  return safe;
 }
 
 const PREFERENCES_ID = 'current';
@@ -275,9 +300,10 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   async beginSession(session: SessionRecord): Promise<void> {
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
+      const safeSession = stripRawEvidence(session);
       const merged: StoredSession = {
-        ...(existing ?? session),
-        ...session,
+        ...(existing ?? safeSession),
+        ...safeSession,
         // An interrupted session keeps the turns already recorded. Overwriting with
         // the caller's empty copy is how a recovered session loses its transcript.
         passages: session.passages.length > 0 ? session.passages : existing?.passages ?? [],
@@ -287,8 +313,12 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
             : existing?.supportExposures ?? [],
         opportunityInstances:
           session.opportunityInstances ?? existing?.opportunityInstances ?? [],
-        observations:
-          session.observations.length > 0 ? session.observations : existing?.observations ?? [],
+        // beginSession never accepts evidence from the caller.
+        observations: existing?.observations ?? [],
+        // Never accept these fields from the caller. Existing values can only have
+        // originated from an earlier validator-issued completion on this device.
+        skillObservations: existing?.skillObservations ?? [],
+        skillLapses: existing?.skillLapses ?? [],
       };
       this.putAll(tx, STORE.sessions, [{ key: merged.id, value: merged }]);
     });
@@ -309,14 +339,22 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     });
   }
 
-  async completeSession(session: SessionRecord): Promise<void> {
+  async completeSession(
+    session: SessionRecord,
+    _rejectedProposals: { reason: string }[] = [],
+    skillEvidence?: ValidatedSkillEvidence,
+    phraseEvidence?: ValidatedPhraseEvidence
+  ): Promise<void> {
+    if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
+    if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
     const now = new Date().toISOString();
 
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
 
+      const safeSession = stripRawEvidence(session);
       const stored: StoredSession = {
-        ...session,
+        ...safeSession,
         endedAt: session.endedAt ?? now,
         // Upsert, not replace: a session that began before an interrupted write
         // still needs its transcript, and so does its evidence.
@@ -325,26 +363,55 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
           session.supportExposures.length > 0
             ? session.supportExposures
             : existing?.supportExposures ?? [],
-        observations:
-          session.observations.length > 0 ? session.observations : existing?.observations ?? [],
-        skillObservations: session.skillObservations ?? existing?.skillObservations ?? [],
-        skillLapses: session.skillLapses ?? existing?.skillLapses ?? [],
+        // Raw SessionRecord observations are never a write path. Recap reads this
+        // embedded cache, so it must mirror only validator-issued phrase evidence.
+        observations: phraseEvidence
+          ? [
+              ...new Map(
+                [...(existing?.observations ?? []), ...phraseEvidence.observations].map(
+                  observation => [this.observationKey(observation), observation] as const
+                )
+              ).values(),
+            ]
+          : existing?.observations ?? [],
+        // The embedded cache mirrors only validator-issued evidence.
+        skillObservations: skillEvidence
+          ? [...skillEvidence.observations]
+          : existing?.skillObservations ?? [],
+        skillLapses: skillEvidence
+          ? [...skillEvidence.lapses]
+          : existing?.skillLapses ?? [],
       };
 
       this.putAll(tx, STORE.sessions, [{ key: stored.id, value: stored }]);
 
       // Evidence is written in the same transaction as the transcript it cites, so
       // a recap can never render a claim the archive does not hold.
-      const observations: LearningObservation[] = [...stored.observations, ...(existing?.observations ?? [])];
-      this.putDocs(tx, STORE.observations, observations, o => this.observationKey(o));
+      if (phraseEvidence) {
+        this.putDocs(
+          tx,
+          STORE.observations,
+          [...phraseEvidence.observations],
+          o => this.observationKey(o)
+        );
+      }
 
-      this.putDocs(
-        tx,
-        STORE.skillObservations,
-        dedupeById(stored.skillObservations ?? []),
-        o => o.id
-      );
-      this.putDocs(tx, STORE.skillLapses, dedupeById(stored.skillLapses ?? []), l => l.id);
+      // Dedicated skill-evidence stores have exactly one write authority:
+      // the opaque bundle returned by validateSkillEvidenceProposal().
+      if (skillEvidence) {
+        this.putDocs(
+          tx,
+          STORE.skillObservations,
+          dedupeById([...skillEvidence.observations]),
+          o => o.id
+        );
+        this.putDocs(
+          tx,
+          STORE.skillLapses,
+          dedupeById([...skillEvidence.lapses]),
+          l => l.id
+        );
+      }
     });
 
     await this.reprojectPhrases();
@@ -528,13 +595,6 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       .filter(o => !o.hidden)
       .map(o => ({ ...o, reasonCodes: o.reasonCodes ?? [] }))
       .sort((a, b) => (b.recordedAt ?? '').localeCompare(a.recordedAt ?? ''));
-  }
-
-  async saveSkillObservations(observations: SkillObservation[]): Promise<void> {
-    if (observations.length === 0) return;
-    await this.transaction(async tx => {
-      this.putDocs(tx, STORE.skillObservations, observations, o => o.id);
-    });
   }
 
   async hideSkillObservation(observationId: string): Promise<void> {
@@ -728,38 +788,26 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
   async recordDrillReview(input: {
     phrase: PhraseItem;
-    quote: string;
-    modality: 'spoken' | 'typed';
-    unassisted: boolean;
+    evidence: ValidatedPhraseEvidence;
   }): Promise<void> {
-    const { phrase, quote, modality, unassisted } = input;
-    const now = new Date().toISOString();
+    const { phrase, evidence } = input;
+    assertValidatedPhraseEvidence(evidence);
+    const observations = [...evidence.observations];
 
-    const observation: LearningObservation = {
-      observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-      sessionId: 'drill',
-      attemptId: 'drill',
-      sourceTurnId: `drill-${Date.now()}`,
-      sourceRevision: 'rev-drill',
-      itemId: phrase.id,
-      candidateForm: phrase.form,
-      meaning: phrase.meaning,
-      quote,
-      modality,
-      retrieval: unassisted ? 'unassisted' : 'assisted',
-      taskOutcome: 'achieved',
-      rehearsal: false,
-      supportExposureIds: [],
-      recordedAt: now,
-    };
+    for (const observation of observations) {
+      if (observation.itemId !== phrase.id) {
+        throw new Error('Phrase evidence item does not match drill phrase');
+      }
+    }
+    if (observations.length === 0) return;
 
     const phrases = await this.getPhrases();
     const updated = phrases.map(p =>
-      p.id === phrase.id ? projectPhraseState(p, [observation]) : p
+      p.id === phrase.id ? projectPhraseState(p, observations) : p
     );
 
     await this.transaction(async tx => {
-      this.putDocs(tx, STORE.observations, [observation], o => this.observationKey(o));
+      this.putDocs(tx, STORE.observations, observations, o => this.observationKey(o));
       this.putDocs(tx, STORE.phrases, updated, p => p.id);
     });
   }
@@ -913,20 +961,63 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
         this.putAll(tx, STORE.meta, [{ key: PREFERENCES_ID, value: { id: PREFERENCES_ID, payload: preferences } }]);
       }
       for (const session of parsed.sessions) {
-        this.putAll(tx, STORE.sessions, [{ key: session.id, value: { ...session, coldAttempt: true } as StoredSession }]);
+        const {
+          observations: _observations,
+          skillObservations: _skillObservations,
+          skillLapses: _skillLapses,
+          ...safeImportedSession
+        } = session;
+        this.putAll(tx, STORE.sessions, [
+          {
+            key: session.id,
+            value: {
+              ...safeImportedSession,
+              coldAttempt: true,
+              // Imported embedded evidence is not promoted into live learning
+              // truth. Dedicated evidence must pass a validator-owned path.
+              observations: [],
+              skillObservations: [],
+              skillLapses: [],
+            } as StoredSession,
+          },
+        ]);
       }
-      this.putDocs(tx, STORE.phrases, parsed.phrases as PhraseItem[], p => p.id);
+      const safePhrases = (parsed.phrases as PhraseItem[]).map(imported => {
+        const canonical = INITIAL_PHRASE_ITEMS.find(item => item.id === imported.id);
+        const base = canonical ?? imported;
+        return {
+          ...base,
+          recallStatus: 'new' as const,
+          scheduling: {
+            ...base.scheduling,
+            nextReviewAt: new Date(0).toISOString(),
+            due: true,
+            intervalDays: LEARNING_POLICY.intervals.new,
+            modalityHistory: [],
+            contexts: [],
+          },
+          stats: {
+            assistedCount: 0,
+            unassistedCount: 0,
+            spokenCount: 0,
+            typedCount: 0,
+          },
+        };
+      });
+      this.putDocs(tx, STORE.phrases, safePhrases, p => p.id);
     });
 
     await this.reprojectPhrases();
 
     return {
       success: true,
-      message: `Successfully restored ${parsed.sessions.length} sessions, ${parsed.phrases.length} phrases, and ${parsed.observations?.length ?? 0} observations.`,
+      message:
+        `Successfully restored ${parsed.sessions.length} sessions and ${parsed.phrases.length} phrases. ` +
+        'Imported learning evidence was not activated because it must be revalidated.',
       counts: {
         sessions: parsed.sessions.length,
         phrases: parsed.phrases.length,
-        observations: parsed.observations?.length ?? 0,
+        observations: 0,
       },
     };
   }

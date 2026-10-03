@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vitest';
 import { Passage, SupportExposure } from '../../types';
 import { inheritSupportForRetry, mergeAttemptPassages, mergeFinalizedAttemptEvidence, passagesForAttempt } from './retrySupport';
+import {
+  EMPTY_VALIDATED_SKILL_EVIDENCE,
+  mergeValidatedSkillEvidence,
+} from './skillEvidence';
+import { EMPTY_VALIDATED_PHRASE_EVIDENCE } from './learningCore';
 
 const EXPOSURE: SupportExposure = {
   id: 'exp-1',
@@ -202,12 +207,20 @@ describe('mergeFinalizedAttemptEvidence', () => {
           observations: [parentObservation],
           skillObservations: [parentSkill],
           skillLapses: [],
+          validatedSkillEvidence: mergeValidatedSkillEvidence([
+            EMPTY_VALIDATED_SKILL_EVIDENCE,
+          ]),
+          validatedPhraseEvidence: EMPTY_VALIDATED_PHRASE_EVIDENCE,
         },
       ],
       current: {
         observations: [currentObservation, parentObservation],
         skillObservations: [currentSkill, parentSkill],
         skillLapses: [],
+        validatedSkillEvidence: mergeValidatedSkillEvidence([
+          EMPTY_VALIDATED_SKILL_EVIDENCE,
+        ]),
+        validatedPhraseEvidence: EMPTY_VALIDATED_PHRASE_EVIDENCE,
       },
     });
 
@@ -219,5 +232,8 @@ describe('mergeFinalizedAttemptEvidence', () => {
       'skill-current',
       'skill-parent',
     ]);
+    expect(merged.validatedSkillEvidence.observations).toEqual([]);
+    expect(merged.validatedSkillEvidence.lapses).toEqual([]);
+    expect(merged.validatedPhraseEvidence.observations).toEqual([]);
   });
 });

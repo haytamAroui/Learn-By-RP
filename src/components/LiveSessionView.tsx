@@ -53,12 +53,17 @@ import { speakWithBestAvailable } from '../providers/voice/speechOutput';
 import { useI18n } from '../features/i18n';
 import {
   buildLocalObservations,
+  EMPTY_VALIDATED_PHRASE_EVIDENCE,
+  mergeValidatedPhraseEvidence,
   StructuredAssessmentProposal,
+  type ValidatedPhraseEvidence,
   validateAssessmentProposal,
 } from '../features/learning/learningCore';
 import {
+  EMPTY_VALIDATED_SKILL_EVIDENCE,
   SkillEvidenceCandidate,
   SkillEvidenceProposal,
+  type ValidatedSkillEvidence,
   validateSkillEvidenceProposal,
 } from '../features/learning/skillEvidence';
 import { api } from '../lib/api';
@@ -124,7 +129,11 @@ interface LiveSessionViewProps {
   preferredSpeechRate?: number;
   /** Read-only prior-session briefing/recap rows used for cross-session evidence only. */
   historicalSupportExposures?: SupportExposure[];
-  onEndSession: (session: SessionRecord) => void;
+  onEndSession: (
+    session: SessionRecord,
+    skillEvidence: ValidatedSkillEvidence,
+    phraseEvidence: ValidatedPhraseEvidence
+  ) => void;
 }
 
 /**
@@ -1342,6 +1351,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           observations: [],
           skillObservations: [],
           skillLapses: [],
+          validatedSkillEvidence: EMPTY_VALIDATED_SKILL_EVIDENCE,
+          validatedPhraseEvidence: EMPTY_VALIDATED_PHRASE_EVIDENCE,
         });
         finalizedAttemptIdsRef.current.add(parentAttemptId);
         return;
@@ -1393,6 +1404,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       }
 
       let phraseObservations: LearningObservation[] = [];
+      let validatedPhraseEvidence = EMPTY_VALIDATED_PHRASE_EVIDENCE;
       let proposedOutcome: TaskOutcome = 'unknown';
 
       if (proposal) {
@@ -1403,6 +1415,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           isRehearsalAttempt
         );
         phraseObservations = validated.validatedObservations;
+        validatedPhraseEvidence = validated.evidence;
         proposedOutcome = validated.taskOutcome;
       }
 
@@ -1415,20 +1428,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         isColdAttempt: coldAttempt,
         isRehearsalAttempt,
       });
-      const phraseKeys = new Set(
-        phraseObservations.map(
-          observation => `${observation.sourceTurnId}::${observation.itemId}`
-        )
-      );
-      phraseObservations = [
-        ...phraseObservations,
-        ...local.observations.filter(
-          observation =>
-            !phraseKeys.has(
-              `${observation.sourceTurnId}::${observation.itemId}`
-            )
-        ),
-      ];
+      validatedPhraseEvidence = mergeValidatedPhraseEvidence([
+        validatedPhraseEvidence,
+        local.evidence,
+      ]);
+      phraseObservations = [...validatedPhraseEvidence.observations];
 
       const missionSkillIds = [
         ...mission.primarySkillIds,
@@ -1476,6 +1480,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         observations: phraseObservations,
         skillObservations: skillValidation.validated,
         skillLapses: skillValidation.lapses,
+        validatedSkillEvidence: skillValidation.evidence,
+        validatedPhraseEvidence,
       });
       finalizedAttemptIdsRef.current.add(parentAttemptId);
     },
@@ -1721,6 +1727,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     }
 
     let finalObservations: LearningObservation[] = [];
+    let currentPhraseEvidence = EMPTY_VALIDATED_PHRASE_EVIDENCE;
     let rejectedCount = 0;
     let ambiguousCount = 0;
     let proposedOutcome: TaskOutcome = 'unknown';
@@ -1733,6 +1740,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         wasRehearsal
       );
       finalObservations = validated.validatedObservations;
+      currentPhraseEvidence = validated.evidence;
       rejectedCount = validated.rejectedProposals.length;
       proposedOutcome = validated.taskOutcome;
     }
@@ -1810,11 +1818,13 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     });
     ambiguousCount = local.ambiguous;
 
-    const validatedIds = new Set(finalObservations.map(o => `${o.sourceTurnId}:${o.itemId}`));
-    const extraVerified = local.observations.filter(
-      o => !validatedIds.has(`${o.sourceTurnId}:${o.itemId}`)
-    );
-    finalObservations = [...finalObservations, ...extraVerified];
+    const beforeLocalCount = currentPhraseEvidence.observations.length;
+    currentPhraseEvidence = mergeValidatedPhraseEvidence([
+      currentPhraseEvidence,
+      local.evidence,
+    ]);
+    finalObservations = [...currentPhraseEvidence.observations];
+    const extraVerified = finalObservations.slice(beforeLocalCount);
 
     if (rejectedCount > 0) {
       console.warn(
@@ -1831,6 +1841,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         observations: finalObservations,
         skillObservations: validatedSkillObservations,
         skillLapses,
+        validatedSkillEvidence: skillValidation.evidence,
+        validatedPhraseEvidence: currentPhraseEvidence,
       },
     });
 
@@ -1870,11 +1882,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       passages: archivedPassages,
       supportExposures,
       opportunityInstances: finalOpportunityInstances,
-      observations: mergedEvidence.observations,
-      // Only validated evidence reaches the archive, written in the same
-      // transaction as the transcript it cites.
-      skillObservations: mergedEvidence.skillObservations,
-      skillLapses: mergedEvidence.skillLapses,
+      // Phrase observations are persisted only through the opaque validator
+      // bundle passed beside this read-model record.
+      observations: [],
       taskOutcome: resolvedOutcome,
       sceneState: finalSceneState,
       summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, mergedEvidence.observations.length, hasLearnerSpeech),
@@ -1885,7 +1895,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         t.live.feedbackReviewDue,
       ],
       operationalTelemetry: operationalTelemetryRef.current,
-    });
+    },
+    mergedEvidence.validatedSkillEvidence,
+    mergedEvidence.validatedPhraseEvidence);
   }, [
     attemptId,
     coldAttempt,
