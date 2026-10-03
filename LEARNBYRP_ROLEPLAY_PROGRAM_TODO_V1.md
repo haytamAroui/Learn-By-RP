@@ -510,7 +510,7 @@ Target scope should remain small enough for review capacity.
 - [x] Start with roughly 6–8 CommunicativeSkills. (six launch-core skills in `launchContent.ts`)
 - [x] Ensure each core skill has at least 3 scenario families before claiming transfer. (build-blocking opportunity-derived coverage gate; minimum 3 families)
 - [ ] Every launch mission:
-  - [x] released/reviewed mechanically (six Spanish scenes are released and catalog-pinned)
+  - [x] released/reviewed mechanically (eight Spanish scenes are released and catalog-pinned)
   - [x] model-checked scene (`validate:scenes`)
   - [x] declared opportunity examples (positive + negative examples required by release gate)
   - [x] completion predicate (scene validation + reachable achieved path)
