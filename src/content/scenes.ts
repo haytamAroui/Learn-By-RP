@@ -572,7 +572,6 @@ export const PHARMACY_SCENE: SceneDefinition = {
   ],
   skillIds: [
     'skill-inquire-specifications',
-    'skill-communicative-repair',
     'skill-request-substitution',
   ],
   communicationChallenges: [],
