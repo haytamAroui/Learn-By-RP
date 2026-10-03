@@ -13,11 +13,11 @@ import { validateMissionScenarioFamily } from '../content/scenarioFamilies';
  */
 export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
   id: 'program.es-es.daily-services.pilot',
-  version: 2,
+  version: 3,
   targetLanguage: 'es',
   targetLocale: 'es-ES',
   policyVersion: LEARNING_POLICY_VERSION,
-  title: 'Spanish Daily Life Roleplay Path',
+  title: 'Spanish Everyday Life',
   reviewStatus: 'draft',
   missionPlan: [
     {
@@ -39,12 +39,6 @@ export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
       sceneVersion: 1,
     },
     {
-      missionId: 'mission-es-metro-station',
-      missionVersion: 2,
-      sceneId: 'scene.es.metro.ticket-platform',
-      sceneVersion: 1,
-    },
-    {
       missionId: 'mission-es-farmacia-sol',
       missionVersion: 1,
       sceneId: 'scene.es.pharmacy.symptom',
@@ -59,8 +53,51 @@ export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
   ],
 };
 
+export const SPANISH_TRAVEL_PILOT: RoleplayProgram = {
+  id: 'program.es-es.travel.pilot',
+  version: 1,
+  targetLanguage: 'es',
+  targetLocale: 'es-ES',
+  policyVersion: LEARNING_POLICY_VERSION,
+  title: 'Spanish Travel & Getting Around',
+  reviewStatus: 'draft',
+  missionPlan: [
+    {
+      missionId: 'mission-es-cafe-sol',
+      missionVersion: 2,
+      sceneId: 'scene.es.cafe.breakfast',
+      sceneVersion: 2,
+    },
+    {
+      missionId: 'mission-es-metro-station',
+      missionVersion: 2,
+      sceneId: 'scene.es.metro.ticket-platform',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-es-hotel-checkin',
+      missionVersion: 1,
+      sceneId: 'scene.es.hotel.checkin',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-es-bike-rental',
+      missionVersion: 1,
+      sceneId: 'scene.es.rental.bike',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-es-la-terraza',
+      missionVersion: 2,
+      sceneId: 'scene.es.dining.terrace',
+      sceneVersion: 1,
+    },
+  ],
+};
+
 export const ROLEPLAY_PROGRAM_CATALOG: RoleplayProgram[] = [
   SPANISH_DAILY_SERVICES_PILOT,
+  SPANISH_TRAVEL_PILOT,
 ];
 
 export interface ProgramCatalogValidation {
