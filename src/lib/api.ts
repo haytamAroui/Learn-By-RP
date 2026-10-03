@@ -154,6 +154,10 @@ export interface ActorResponse {
 
 export const api = {
   actorRespond: (body: {
+    missionId: string;
+    missionVersion: number;
+    sceneId?: string;
+    sceneVersion?: number;
     character: any;
     setting: string;
     learnerGoal: string;
