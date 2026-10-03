@@ -88,6 +88,33 @@ describe('skill context identity', () => {
     expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
   });
 
+  it('does not let a retry create a new transfer context', () => {
+    const firstAttempt = observation({
+      id: 'retry-parent',
+      sessionId: 'session-retry-parent',
+      recordedAt: '2026-09-01T09:00:00.000Z',
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.es.cafe.breakfast',
+    });
+    const retryAttempt = {
+      ...observation({
+        id: 'retry-child',
+        sessionId: 'session-retry-child',
+        recordedAt: '2026-09-01T09:05:00.000Z',
+        domainId: 'cafes',
+        scenarioFamilyId: 'counter-ordering',
+        scenarioId: 'scene.es.cafe.breakfast',
+      }),
+      attemptId: 'attempt-retry-2',
+    };
+
+    const projection = projectSkill(SKILL_ID, [firstAttempt, retryAttempt]);
+
+    expect(skillContextIdentity(firstAttempt)).toBe(skillContextIdentity(retryAttempt));
+    expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
+  });
+
   it('counts the same reviewed family in a different domain as a distinct context', () => {
     const cafe = observation({
       id: 'cafe-domain',
