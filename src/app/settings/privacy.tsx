@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -22,6 +22,15 @@ export default function SettingsPrivacyScreen() {
 
   const continuity = archive.preferences.continuityProfile ?? { facts: [] };
 
+  const flash = useCallback((message: string) => {
+    setNotice(message);
+    setTimeout(() => setNotice(null), 3500);
+  }, []);
+
+  useEffect(() => {
+    setAliasDraft(archive.preferences.continuityProfile?.alias ?? '');
+  }, [archive.preferences.continuityProfile?.alias]);
+
   const saveContinuity = useCallback(
     async (next: typeof continuity) => {
       await archive.savePreferences({
@@ -30,7 +39,7 @@ export default function SettingsPrivacyScreen() {
       });
       flash(t.settings.continuitySavedNotice);
     },
-    [archive, t.settings.continuitySavedNotice]
+    [archive, flash, t.settings.continuitySavedNotice]
   );
 
   const saveAlias = useCallback(async () => {
@@ -40,11 +49,6 @@ export default function SettingsPrivacyScreen() {
       alias: alias || undefined,
     });
   }, [aliasDraft, continuity, saveContinuity]);
-
-  const flash = useCallback((message: string) => {
-    setNotice(message);
-    setTimeout(() => setNotice(null), 3500);
-  }, []);
 
   return (
     <I18nProvider
