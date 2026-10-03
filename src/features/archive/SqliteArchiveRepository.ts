@@ -178,8 +178,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
-           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt,
+           program_id, program_version, final_simulation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.missionVersion,
@@ -193,7 +194,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.startedAt,
         session.endedAt ?? null,
         JSON.stringify(session.operationalTelemetry ?? []),
-        session.coldAttempt ? 1 : 0
+        session.coldAttempt ? 1 : 0,
+        session.programContext?.programId ?? null,
+        session.programContext?.programVersion ?? null,
+        session.programContext?.finalSimulation ? 1 : 0
       );
 
       await txn.runAsync(
@@ -273,8 +277,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
-           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt,
+           program_id, program_version, final_simulation)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.missionVersion,
@@ -288,7 +293,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.startedAt,
         session.endedAt ?? new Date().toISOString(),
         JSON.stringify(session.operationalTelemetry ?? []),
-        session.coldAttempt ? 1 : 0
+        session.coldAttempt ? 1 : 0,
+        session.programContext?.programId ?? null,
+        session.programContext?.programVersion ?? null,
+        session.programContext?.finalSimulation ? 1 : 0
       );
 
       await txn.runAsync(
@@ -601,6 +609,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         ),
         skillLapses: allSkillLapses.filter(lapse => lapse.sessionId === sessionId),
         operationalTelemetry: parseJson(row.usage_json as string, []),
+        programContext: row.program_id
+          ? {
+              programId: String(row.program_id),
+              programVersion: Number(row.program_version ?? 1),
+              finalSimulation: bool(row.final_simulation),
+            }
+          : undefined,
         taskOutcome: 'unknown',
         sceneState: {
           sceneId: sceneRow?.scene_id
@@ -1356,8 +1371,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO sessions
             (id, mission_id, mission_version, language, mode, provider, consent_version,
-             policy_version, state, end_reason, started_at, ended_at, usage_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             policy_version, state, end_reason, started_at, ended_at, usage_json,
+             program_id, program_version, final_simulation)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           session.id,
           session.missionId,
           session.missionVersion ?? 1,
@@ -1370,7 +1386,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           session.endReason ?? null,
           session.startedAt,
           session.endedAt ?? null,
-          null
+          null,
+          session.programContext?.programId ?? null,
+          session.programContext?.programVersion ?? null,
+          session.programContext?.finalSimulation ? 1 : 0
         );
 
         // Imported JSON is an archive payload, not validator authority. Embedded
