@@ -67,6 +67,35 @@ describe.each(LAUNCH_CONTENT_SPECS)(
   }
 );
 
+describe('Flemish substitution opportunity semantics', () => {
+  it('credits only an explicit learner request, never accepting a ready-made option', () => {
+    for (const missionId of FLEMISH_LAUNCH_CONTENT_V1.missionIds) {
+      const mission = MISSION_CATALOG.find(item => item.id === missionId)!;
+      const scene = getScene(mission.sceneId!)!;
+
+      for (const opportunity of scene.opportunityDefinitions.filter(
+        item => item.skillId === 'skill-request-substitution'
+      )) {
+        expect(opportunity.relevantActionIds, opportunity.id).toContain(
+          'request_substitute'
+        );
+        expect(
+          opportunity.negativeExamples.some(example =>
+            /accept|choose|select/i.test(example)
+          ),
+          opportunity.id
+        ).toBe(true);
+        expect(
+          opportunity.positiveExamples.some(example =>
+            /accepts|chooses|selects/i.test(example)
+          ),
+          opportunity.id
+        ).toBe(false);
+      }
+    }
+  });
+});
+
 describe('launch content locale identities', () => {
   it('keeps Spanish and Flemish content as independent locale packs', () => {
     expect(SPANISH_LAUNCH_CONTENT_V1.targetLocale).toBe('es-ES');
