@@ -589,6 +589,19 @@ export const PHARMACY_SCENE: SceneDefinition = {
       relevantActionIds: ['ask_about_ingredient'],
       relevantIntentIds: ['ask_label_instructions', 'request_product_information'],
     },
+    {
+      id: 'opp.es.pharmacy.request-substitution.after-label-comparison',
+      skillId: 'skill-request-substitution',
+      sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
+      positiveExamples: [
+        'After comparing official label information, asks to look at another available package that matches the stated non-drowsiness constraint.',
+      ],
+      negativeExamples: [
+        'Asks the pharmacist to choose or prescribe treatment instead of requesting another package to compare.',
+      ],
+      relevantActionIds: ['confirm_order_item'],
+      relevantIntentIds: ['request_product_information'],
+    },
   ],
   reviewStatus: 'released',
 };
