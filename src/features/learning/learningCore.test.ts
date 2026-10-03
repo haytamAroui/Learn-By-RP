@@ -113,6 +113,11 @@ describe('validator-owned phrase evidence', () => {
 
     const valid = validateAssessmentProposal(makeProposal(), [makePassage()], []);
     expect(() => assertValidatedPhraseEvidence(valid.evidence)).not.toThrow();
+
+    const copiedBrand = Object.assign({}, valid.evidence) as ValidatedPhraseEvidence;
+    expect(() => assertValidatedPhraseEvidence(copiedBrand)).toThrow(
+      /validator-issued evidence bundle required/i
+    );
   });
 });
 
