@@ -5,11 +5,11 @@ import {
 } from './launchContent';
 
 describe('Spanish launch content coverage', () => {
-  it('uses six executable Spanish missions across reviewed scenario families', () => {
+  it('uses eight executable Spanish missions across reviewed scenario families', () => {
     const result = validateLaunchContentCoverage();
 
     expect(result.valid, result.errors.join('\n')).toBe(true);
-    expect(SPANISH_LAUNCH_CONTENT_V1.missionIds).toHaveLength(6);
+    expect(SPANISH_LAUNCH_CONTENT_V1.missionIds).toHaveLength(8);
   });
 
   it('gives every launch-core skill at least three executable scenario families', () => {
@@ -29,11 +29,11 @@ describe('Spanish launch content coverage', () => {
       result.coverage.map(item => [item.skillId, item.scenarioFamilyIds.length])
     );
 
-    expect(bySkill.get('skill-inquire-specifications')).toBe(6);
-    expect(bySkill.get('skill-propose-alternative')).toBe(3);
-    expect(bySkill.get('skill-request-substitution')).toBe(3);
-    expect(bySkill.get('skill-request-repetition')).toBe(3);
-    expect(bySkill.get('skill-ask-clarification')).toBe(3);
-    expect(bySkill.get('skill-check-understanding')).toBe(3);
+    expect(bySkill.get('skill-inquire-specifications')).toBe(8);
+    expect(bySkill.get('skill-propose-alternative')).toBe(4);
+    expect(bySkill.get('skill-request-substitution')).toBe(4);
+    expect(bySkill.get('skill-request-repetition')).toBe(4);
+    expect(bySkill.get('skill-ask-clarification')).toBe(4);
+    expect(bySkill.get('skill-check-understanding')).toBe(5);
   });
 });
