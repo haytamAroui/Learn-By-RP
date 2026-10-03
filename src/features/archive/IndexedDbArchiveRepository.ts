@@ -5,11 +5,12 @@ import {
   type ValidatedPhraseEvidence,
 } from '../learning/learningCore';
 import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
+import { applyProgramDataRetention } from '../program/privacy';
 import {
   assertValidatedSkillEvidence,
   type ValidatedSkillEvidence,
 } from '../learning/skillEvidence';
-import { CONSENT_VERSION } from './schema';
+import { CONSENT_VERSION, LATEST_SCHEMA_VERSION } from './schema';
 import {
   IDBDatabase,
   IDBFactory,
@@ -240,12 +241,21 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
   async getPreferences(): Promise<UserPreferences> {
     const stored = await this.readOne<{ payload: UserPreferences }>(STORE.meta, PREFERENCES_ID);
-    return { ...DEFAULT_PREFERENCES, ...(stored?.payload ?? {}) };
+    return applyProgramDataRetention({
+      ...DEFAULT_PREFERENCES,
+      ...(stored?.payload ?? {}),
+    });
   }
 
   async savePreferences(preferences: UserPreferences): Promise<void> {
     await this.transaction(async tx => {
-      this.putAll(tx, STORE.meta, [{ key: PREFERENCES_ID, value: { id: PREFERENCES_ID, payload: preferences } }]);
+      this.putAll(tx, STORE.meta, [{
+        key: PREFERENCES_ID,
+        value: {
+          id: PREFERENCES_ID,
+          payload: applyProgramDataRetention(preferences),
+        },
+      }]);
     });
   }
 
@@ -298,6 +308,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   // ------------------------------------------------------------------- sessions
 
   async beginSession(session: SessionRecord): Promise<void> {
+    if (await this.isDeleted(session.id, session.startedAt)) return;
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
       const safeSession = stripRawEvidence(session);
@@ -347,6 +358,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   ): Promise<void> {
     if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
     if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
+    if (await this.isDeleted(session.id, session.startedAt)) return;
     const now = new Date().toISOString();
 
     await this.transaction(async tx => {
@@ -500,6 +512,8 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     exposures: SupportExposure[]
   ): Promise<void> {
     if (exposures.length === 0) return;
+    const session = await this.getSessionById(sessionId);
+    if (!session || await this.isDeleted(sessionId, session.startedAt)) return;
 
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, sessionId);
@@ -713,18 +727,23 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     return id;
   }
 
-  async isDeleted(sessionId: string): Promise<boolean> {
+  async isDeleted(sessionId: string, sessionStartedAt?: string): Promise<boolean> {
     const markers = await this.readAll<{
       id: string;
       scope: string;
       targetId: string | null;
+      createdAt: string;
     }>(STORE.deletions);
-    return markers.some(
-      marker => marker.scope === 'all' || marker.targetId === sessionId
-    );
+    return markers.some(marker => {
+      if (marker.scope === 'session' && marker.targetId === sessionId) return true;
+      if (marker.scope !== 'all') return false;
+      return !sessionStartedAt || marker.createdAt >= sessionStartedAt;
+    });
   }
 
   async deleteSession(sessionId: string): Promise<void> {
+    // Marker first: late async work must fail closed even while row deletion runs.
+    await this.markDeleted('session', sessionId);
     const observations = await this.readAll<LearningObservation>(STORE.observations);
     const skillObservations = await this.readAll<SkillObservation>(STORE.skillObservations);
     const lapses = await this.readAll<SkillLapse>(STORE.skillLapses);
@@ -754,10 +773,11 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     });
 
     await this.reprojectPhrases();
-    await this.markDeleted('session', sessionId);
   }
 
   async clearAllLearningData(): Promise<void> {
+    // Marker first for the same reason as a single-session delete.
+    await this.markDeleted('all');
     const current = await this.getPreferences();
     const clearedPreferences: UserPreferences = {
       ...current,
@@ -780,8 +800,6 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
         },
       ]);
     });
-
-    await this.markDeleted('all');
   }
 
   // --------------------------------------------------------------------- review
@@ -871,35 +889,64 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   // --------------------------------------------------------------------- export
 
   async exportArchiveJson(): Promise<string> {
-    const [preferences, sessions, observations, phrases, skillObservations, skillLapses] =
-      await Promise.all([
-        this.getPreferences(),
-        this.getSessions(),
-        this.getObservations(),
-        this.getPhrases(),
-        this.getSkillObservations(),
-        this.getSkillLapses(),
-      ]);
+    const [
+      preferences,
+      sessions,
+      observations,
+      phrases,
+      skillObservations,
+      skillLapses,
+      voiceConsent,
+      savedAnalysisConsent,
+      pendingJobs,
+      deletionMarkers,
+    ] = await Promise.all([
+      this.getPreferences(),
+      this.getSessions(),
+      this.getObservations(),
+      this.getPhrases(),
+      this.getSkillObservations(),
+      this.getSkillLapses(),
+      this.getConsent('voice'),
+      this.getConsent('saved_analysis'),
+      this.getPendingJobs(),
+      this.readAll<{
+        id: string;
+        scope: string;
+        targetId: string | null;
+        createdAt: string;
+      }>(STORE.deletions),
+    ]);
 
     return JSON.stringify(
       {
         version: 1,
         schemaVersion: 1,
+        storageSchemaVersion: LATEST_SCHEMA_VERSION,
         policyVersion: LEARNING_POLICY_VERSION,
         consentVersion: CONSENT_VERSION,
         exportedAt: new Date().toISOString(),
         preferences,
+        consentRecords: [voiceConsent, savedAnalysisConsent].filter(Boolean),
         sessions,
         observations,
-        phrases,
         skillObservations,
         skillLapses,
+        phrases,
+        pendingJobs,
+        deletionMarkers,
+        contentProvenance: sessions.map(session => ({
+          sessionId: session.id,
+          missionId: session.missionId,
+          missionVersion: session.missionVersion,
+          sceneId: session.sceneState.sceneId,
+          programContext: session.programContext,
+        })),
       },
       null,
       2
     );
   }
-
   async importArchiveJson(json: string): Promise<{
     success: boolean;
     message: string;

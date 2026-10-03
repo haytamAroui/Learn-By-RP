@@ -103,7 +103,7 @@ export interface ArchiveRepository {
 
   // ------------------------------------------------------------------ deletion
   markDeleted(scope: 'session' | 'all', targetId?: string): Promise<string>;
-  isDeleted(sessionId: string): Promise<boolean>;
+  isDeleted(sessionId: string, sessionStartedAt?: string): Promise<boolean>;
   deleteSession(sessionId: string): Promise<void>;
   clearAllLearningData(): Promise<void>;
 

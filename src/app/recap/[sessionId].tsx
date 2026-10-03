@@ -59,18 +59,38 @@ export default function RecapScreen() {
     >
       <RecapContent
         session={session}
-        onClose={() => router.back()}
+        onClose={() => {
+          if (session.programContext) {
+            router.replace({
+              pathname: '/program/[programId]',
+              params: { programId: session.programContext.programId },
+            });
+          } else {
+            router.back();
+          }
+        }}
         onRetryMission={mission =>
           router.replace({
             pathname: '/mission/[missionId]',
-            params: { missionId: mission.id },
+            params: {
+              missionId: mission.id,
+              ...(session.programContext
+                ? { programId: session.programContext.programId }
+                : {}),
+              ...(session.programContext?.finalSimulation
+                ? { finalSimulation: '1' }
+                : {}),
+            },
           })
         }
-        onNextMission={mission =>
-          router.replace({
-            pathname: '/mission/[missionId]',
-            params: { missionId: mission.id },
-          })
+        onNextMission={
+          session.programContext
+            ? undefined
+            : mission =>
+                router.replace({
+                  pathname: '/mission/[missionId]',
+                  params: { missionId: mission.id },
+                })
         }
       />
     </I18nProvider>

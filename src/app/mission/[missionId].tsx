@@ -10,15 +10,52 @@ import { MissionDefinition, Mode, SessionRecord, SupportExposure } from '../../t
 import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
 import { getScene } from '../../content/scenes';
 import { createInitialScene } from '../../features/roleplay/sceneReducer';
+import { ROLEPLAY_PROGRAM_CATALOG } from '../../data/programs';
+import { buildProgramProjection, isProgramCoreComplete } from '../../features/program/projection';
+import { isProgramActivatable } from '../../features/program/releaseGates';
 
 export default function MissionBriefingRoute() {
   const router = useRouter();
   const archive = useArchive();
   const t = getTranslations(archive.preferences.explanationLanguage);
-  const { missionId } = useLocalSearchParams<{ missionId: string }>();
-  const mission = MISSION_CATALOG.find(item => item.id === missionId);
+  const params = useLocalSearchParams<{
+    missionId: string;
+    programId?: string;
+    finalSimulation?: string;
+  }>();
+  const mission = MISSION_CATALOG.find(item => item.id === params.missionId);
+  const program = params.programId
+    ? ROLEPLAY_PROGRAM_CATALOG.find(item => item.id === params.programId)
+    : undefined;
+  const requestedFinalSimulation = params.finalSimulation === '1';
 
-  if (!mission) {
+  const programMissionRef =
+    program && mission
+      ? program.missionPlan.find(
+          ref => ref.missionId === mission.id && ref.missionVersion === mission.version
+        )
+      : undefined;
+  const finalMissionRef = program?.finalSimulation?.mission;
+  const finalSimulationAllowed = Boolean(
+    requestedFinalSimulation &&
+      program &&
+      mission &&
+      isProgramActivatable(program) &&
+      finalMissionRef?.missionId === mission.id &&
+      finalMissionRef.missionVersion === mission.version &&
+      isProgramCoreComplete(program, buildProgramProjection(program, archive.sessions))
+  );
+  const programContextAllowed = Boolean(
+    program &&
+      isProgramActivatable(program) &&
+      (programMissionRef || finalSimulationAllowed)
+  );
+
+  if (
+    !mission ||
+    (params.programId && !programContextAllowed) ||
+    (requestedFinalSimulation && !finalSimulationAllowed)
+  ) {
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-canvas p-6">
         <Text className="text-center text-sm text-muted">
@@ -69,6 +106,15 @@ export default function MissionBriefingRoute() {
       language: selectedMission.language,
       mode,
       coldAttempt,
+      ...(program && programContextAllowed
+        ? {
+            programContext: {
+              programId: program.id,
+              programVersion: program.version,
+              finalSimulation: finalSimulationAllowed,
+            },
+          }
+        : {}),
       state: 'preflight',
       startedAt: now,
       passages: [],
@@ -106,6 +152,8 @@ export default function MissionBriefingRoute() {
         missionId: selectedMission.id,
         mode,
         coldAttempt: String(coldAttempt),
+        ...(program && programContextAllowed ? { programId: program.id } : {}),
+        ...(finalSimulationAllowed ? { finalSimulation: '1' } : {}),
       },
     });
   };
@@ -123,6 +171,8 @@ export default function MissionBriefingRoute() {
       <MissionBriefingScreen
         mission={mission}
         initialMode={archive.preferences.modeDefault}
+        minimalSupport={finalSimulationAllowed}
+        finalSimulation={finalSimulationAllowed}
         onBack={() => router.back()}
         onStartSession={handleStartSession}
       />

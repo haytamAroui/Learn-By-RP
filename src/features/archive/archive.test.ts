@@ -402,6 +402,34 @@ describe('deletion markers (test #10)', () => {
     await archiveRepository.clearAllLearningData();
     expect(await archiveRepository.isDeleted('any-session-at-all')).toBe(true);
   });
+
+  it('blocks a late validated completion from resurrecting a deleted session', async () => {
+    const deleted = makeSession({
+      startedAt: '2026-10-01T10:00:00.000Z',
+      passages: [makePassage('p-1', 'quisiera un café con leche')],
+      observations: [makeObservation()],
+    });
+    await completeSessionWithEvidence(deleted);
+    await archiveRepository.deleteSession(deleted.id);
+
+    await completeSessionWithEvidence(deleted);
+
+    expect(await archiveRepository.getSessionById(deleted.id)).toBeNull();
+    expect(await archiveRepository.getObservations()).toEqual([]);
+  });
+
+  it('allows a new generation of sessions after delete-all', async () => {
+    await archiveRepository.clearAllLearningData();
+    const fresh = makeSession({
+      id: 'session-after-erase',
+      startedAt: '2099-01-01T00:00:00.000Z',
+    });
+
+    await archiveRepository.beginSession(fresh);
+
+    expect(await archiveRepository.getSessionById(fresh.id)).not.toBeNull();
+    expect(await archiveRepository.isDeleted(fresh.id, fresh.startedAt)).toBe(false);
+  });
 });
 
 describe('projection is rebuilt inside the same transaction', () => {
@@ -494,9 +522,23 @@ describe('export and import', () => {
     const parsed = JSON.parse(json);
 
     expect(parsed.version).toBe(1);
+    expect(parsed.schemaVersion).toBe(1);
+    expect(parsed.storageSchemaVersion).toBeGreaterThan(0);
     expect(parsed.policyVersion).toBeGreaterThan(0);
     expect(parsed.consentVersion).toBeTruthy();
     expect(parsed.sessions).toHaveLength(1);
+    expect(parsed.skillObservations).toBeInstanceOf(Array);
+    expect(parsed.skillLapses).toBeInstanceOf(Array);
+    expect(parsed.consentRecords).toBeInstanceOf(Array);
+    expect(parsed.pendingJobs).toBeInstanceOf(Array);
+    expect(parsed.deletionMarkers).toBeInstanceOf(Array);
+    expect(parsed.contentProvenance).toEqual([
+      expect.objectContaining({
+        sessionId: expect.any(String),
+        missionId: expect.any(String),
+        missionVersion: expect.any(Number),
+      }),
+    ]);
   });
 
   it('rejects malformed JSON without throwing', async () => {

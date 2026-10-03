@@ -6,6 +6,9 @@ import {
 import { MISSION_CATALOG } from '../src/data/missions';
 import { modelCheckScene } from '../src/features/roleplay/sceneModelChecker';
 import { validateSceneDefinition } from '../src/features/roleplay/sceneValidation';
+import { validateCharacterBehaviorPolicy } from '../src/features/roleplay/characterPolicy';
+import { ROLEPLAY_PROGRAM_CATALOG } from '../src/data/programs';
+import { validateProgramForActivation } from '../src/features/program/releaseGates';
 
 let failed = false;
 
@@ -18,11 +21,28 @@ if (!familyCatalog.valid) {
 }
 
 for (const mission of MISSION_CATALOG) {
-  const errors = validateMissionScenarioFamily(mission);
+  const errors = [
+    ...validateMissionScenarioFamily(mission),
+    ...validateCharacterBehaviorPolicy(mission),
+  ];
   if (errors.length === 0) continue;
   failed = true;
   for (const error of errors) {
     console.error(`  ERROR mission scenario-family: ${error}`);
+  }
+}
+
+for (const program of ROLEPLAY_PROGRAM_CATALOG) {
+  // Draft/reviewed programs are allowed to exist for authoring and preview. A
+  // program labeled released, however, must pass every deterministic activation
+  // gate or the build fails.
+  if (program.reviewStatus !== 'released') continue;
+  const result = validateProgramForActivation(program);
+  if (!result.ready) {
+    failed = true;
+    for (const error of result.errors) {
+      console.error(`  ERROR released program ${program.id}: ${error}`);
+    }
   }
 }
 
@@ -75,4 +95,4 @@ if (failed) {
   process.exit(1);
 }
 
-console.log('\nAll released scenes and mission scenario-family references passed content validation.');
+console.log('\nAll released scenes/programs and mission safety/scenario-family references passed content validation.');

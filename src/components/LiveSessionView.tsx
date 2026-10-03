@@ -800,7 +800,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           throw new Error('Conversation provider is not initialized');
         }
 
+        const targetScene = target.sceneId ? getScene(target.sceneId) : undefined;
         const response = await provider.respond({
+          missionId: target.id,
+          missionVersion: target.version,
+          sceneId: targetScene?.id,
+          sceneVersion: targetScene?.version,
           character: target.character,
           setting: target.setting,
           learnerGoal: target.learnerGoal,

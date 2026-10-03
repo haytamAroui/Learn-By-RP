@@ -460,12 +460,45 @@ describe('native and web agree on the same archive', () => {
     }
   });
 
+  it('both reject late completion after a learner deletes the session', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      const original = session({ startedAt: '2026-10-01T10:00:00.000Z' });
+      await completeWithEvidence(repo, original);
+      await repo.deleteSession(original.id);
+      await completeWithEvidence(repo, original);
+
+      expect(await repo.getSessionById(original.id)).toBeNull();
+      expect(await repo.getObservations()).toEqual([]);
+    }
+  });
+
+  it('both allow fresh sessions created after a delete-all generation', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      await repo.clearAllLearningData();
+      const fresh = session({
+        id: 'session-after-erase',
+        startedAt: '2099-01-01T00:00:00.000Z',
+      });
+      await repo.beginSession(fresh);
+      expect(await repo.getSessionById(fresh.id)).not.toBeNull();
+      expect(await repo.isDeleted(fresh.id, fresh.startedAt)).toBe(false);
+    }
+  });
+
   it('both export a versioned archive', async () => {
     for (const repo of [sqliteRepository, web]) {
       await completeWithEvidence(repo, session());
       const parsed = JSON.parse(await repo.exportArchiveJson());
       expect(parsed.version).toBe(1);
+      expect(parsed.schemaVersion).toBe(1);
+      expect(parsed.storageSchemaVersion).toBeGreaterThan(0);
       expect(parsed.sessions).toHaveLength(1);
+      expect(parsed.skillObservations).toBeInstanceOf(Array);
+      expect(parsed.skillLapses).toBeInstanceOf(Array);
+      expect(parsed.consentRecords).toBeInstanceOf(Array);
+      expect(parsed.pendingJobs).toBeInstanceOf(Array);
+      expect(parsed.deletionMarkers).toBeInstanceOf(Array);
+      expect(parsed.contentProvenance).toHaveLength(1);
     }
 
   });

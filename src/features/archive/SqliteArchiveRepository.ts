@@ -23,11 +23,12 @@ import {
   type ValidatedPhraseEvidence,
 } from '../learning/learningCore';
 import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
+import { applyProgramDataRetention } from '../program/privacy';
 import {
   assertValidatedSkillEvidence,
   type ValidatedSkillEvidence,
 } from '../learning/skillEvidence';
-import { CONSENT_VERSION } from './schema';
+import { CONSENT_VERSION, LATEST_SCHEMA_VERSION } from './schema';
 import {
   ArchiveRepository as ArchiveRepositoryContract,
   ConsentRecord,
@@ -102,11 +103,11 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     else if (lang.startsWith('nl')) lang = 'nl';
     else lang = 'en';
 
-    return {
+    return applyProgramDataRetention({
       ...DEFAULT_PREFERENCES,
       ...parsed,
       explanationLanguage: lang as UserPreferences['explanationLanguage'],
-    };
+    });
   }
 
   async savePreferences(preferences: UserPreferences): Promise<void> {
@@ -114,7 +115,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     await db.runAsync(
       `INSERT OR REPLACE INTO preferences (id, payload, updated_at) VALUES (?, ?, ?)`,
       PREFERENCES_ID,
-      JSON.stringify(preferences),
+      JSON.stringify(applyProgramDataRetention(preferences)),
       new Date().toISOString()
     );
   }
@@ -171,14 +172,17 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   // ------------------------------------------------------------------- sessions
 
   async beginSession(session: SessionRecord): Promise<void> {
+    if (await this.isDeleted(session.id, session.startedAt)) return;
     const db = await getDatabase();
 
     await withTransaction(async txn => {
       await txn.runAsync(
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
-           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt,
+           program_id, program_version, final_simulation, task_outcome, summary,
+           actionable_feedback)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.missionVersion,
@@ -192,7 +196,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.startedAt,
         session.endedAt ?? null,
         JSON.stringify(session.operationalTelemetry ?? []),
-        session.coldAttempt ? 1 : 0
+        session.coldAttempt ? 1 : 0,
+        session.programContext?.programId ?? null,
+        session.programContext?.programVersion ?? null,
+        session.programContext?.finalSimulation ? 1 : 0,
+        session.taskOutcome,
+        session.summary ?? null,
+        JSON.stringify(session.actionableFeedback ?? [])
       );
 
       await txn.runAsync(
@@ -261,6 +271,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   ): Promise<void> {
     if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
     if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
+    if (await this.isDeleted(session.id, session.startedAt)) return;
     const db = await getDatabase();
 
     await withTransaction(async txn => {
@@ -271,8 +282,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
-           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           policy_version, state, end_reason, started_at, ended_at, usage_json, cold_attempt,
+           program_id, program_version, final_simulation, task_outcome, summary,
+           actionable_feedback)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         session.id,
         session.missionId,
         session.missionVersion,
@@ -286,7 +299,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.startedAt,
         session.endedAt ?? new Date().toISOString(),
         JSON.stringify(session.operationalTelemetry ?? []),
-        session.coldAttempt ? 1 : 0
+        session.coldAttempt ? 1 : 0,
+        session.programContext?.programId ?? null,
+        session.programContext?.programVersion ?? null,
+        session.programContext?.finalSimulation ? 1 : 0,
+        session.taskOutcome,
+        session.summary ?? null,
+        JSON.stringify(session.actionableFeedback ?? [])
       );
 
       await txn.runAsync(
@@ -599,7 +618,19 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         ),
         skillLapses: allSkillLapses.filter(lapse => lapse.sessionId === sessionId),
         operationalTelemetry: parseJson(row.usage_json as string, []),
-        taskOutcome: 'unknown',
+        programContext: row.program_id
+          ? {
+              programId: String(row.program_id),
+              programVersion: Number(row.program_version ?? 1),
+              finalSimulation: bool(row.final_simulation),
+            }
+          : undefined,
+        taskOutcome: (row.task_outcome as SessionRecord['taskOutcome']) ?? 'unknown',
+        summary: row.summary ? String(row.summary) : undefined,
+        actionableFeedback: parseJson<string[]>(
+          row.actionable_feedback ? String(row.actionable_feedback) : undefined,
+          []
+        ),
         sceneState: {
           sceneId: sceneRow?.scene_id
             ? String(sceneRow.scene_id)
@@ -1018,6 +1049,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     exposures: SupportExposure[]
   ): Promise<void> {
     if (exposures.length === 0) return;
+    const db = await getDatabase();
+    const session = await db.getFirstAsync<{ started_at: string }>(
+      'SELECT started_at FROM sessions WHERE id = ?',
+      sessionId
+    );
+    if (!session || await this.isDeleted(sessionId, session.started_at)) return;
 
     await withTransaction(async txn => {
       for (const exposure of exposures) {
@@ -1059,13 +1096,21 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     return id;
   }
 
-  /** Checked before any assessment or helper write. */
-  async isDeleted(sessionId: string): Promise<boolean> {
+  /**
+   * Session tombstones always win. A delete-all marker blocks sessions that
+   * existed before the erase, while allowing a genuinely new session created
+   * afterwards to start a fresh local archive.
+   */
+  async isDeleted(sessionId: string, sessionStartedAt?: string): Promise<boolean> {
     const db = await getDatabase();
     const row = await db.getFirstAsync<{ count: number }>(
-      'SELECT COUNT(*) as count FROM deletion_markers WHERE scope = ? OR target_id = ?',
-      'all',
-      sessionId
+      `SELECT COUNT(*) as count
+         FROM deletion_markers
+        WHERE (scope = 'session' AND target_id = ?)
+           OR (scope = 'all' AND (? IS NULL OR created_at >= ?))`,
+      sessionId,
+      sessionStartedAt ?? null,
+      sessionStartedAt ?? null
     );
     return (row?.count ?? 0) > 0;
   }
@@ -1225,30 +1270,67 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   // --------------------------------------------------------------------- export
 
   async exportArchiveJson(): Promise<string> {
-    const [preferences, sessions, observations, phrases] = await Promise.all([
+    const [
+      preferences,
+      sessions,
+      observations,
+      phrases,
+      skillObservations,
+      skillLapses,
+      voiceConsent,
+      savedAnalysisConsent,
+      pendingJobs,
+    ] = await Promise.all([
       this.getPreferences(),
       this.getSessions(),
       this.getObservations(),
       this.getPhrases(),
+      this.getSkillObservations(),
+      this.getSkillLapses(),
+      this.getConsent('voice'),
+      this.getConsent('saved_analysis'),
+      this.getPendingJobs(),
     ]);
+
+    const db = await getDatabase();
+    const deletionMarkers = await db.getAllAsync<Record<string, unknown>>(
+      'SELECT id, scope, target_id, created_at FROM deletion_markers ORDER BY created_at ASC'
+    );
 
     return JSON.stringify(
       {
         version: 1,
         schemaVersion: 1,
+        storageSchemaVersion: LATEST_SCHEMA_VERSION,
         policyVersion: LEARNING_POLICY_VERSION,
         consentVersion: CONSENT_VERSION,
         exportedAt: new Date().toISOString(),
         preferences,
+        consentRecords: [voiceConsent, savedAnalysisConsent].filter(Boolean),
         sessions,
         observations,
+        skillObservations,
+        skillLapses,
         phrases,
+        pendingJobs,
+        deletionMarkers: deletionMarkers.map(marker => ({
+          id: String(marker.id),
+          scope: String(marker.scope),
+          targetId: marker.target_id ? String(marker.target_id) : undefined,
+          createdAt: String(marker.created_at),
+        })),
+        contentProvenance: sessions.map(session => ({
+          sessionId: session.id,
+          missionId: session.missionId,
+          missionVersion: session.missionVersion,
+          sceneId: session.sceneState.sceneId,
+          programContext: session.programContext,
+        })),
       },
       null,
       2
     );
   }
-
   async importArchiveJson(json: string): Promise<{
     success: boolean;
     message: string;
@@ -1340,8 +1422,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         await txn.runAsync(
           `INSERT OR REPLACE INTO sessions
             (id, mission_id, mission_version, language, mode, provider, consent_version,
-             policy_version, state, end_reason, started_at, ended_at, usage_json)
-           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+             policy_version, state, end_reason, started_at, ended_at, usage_json,
+             program_id, program_version, final_simulation, task_outcome, summary,
+             actionable_feedback)
+           VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
           session.id,
           session.missionId,
           session.missionVersion ?? 1,
@@ -1354,7 +1438,13 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           session.endReason ?? null,
           session.startedAt,
           session.endedAt ?? null,
-          null
+          null,
+          session.programContext?.programId ?? null,
+          session.programContext?.programVersion ?? null,
+          session.programContext?.finalSimulation ? 1 : 0,
+          session.taskOutcome ?? 'unknown',
+          session.summary ?? null,
+          JSON.stringify(session.actionableFeedback ?? [])
         );
 
         // Imported JSON is an archive payload, not validator authority. Embedded

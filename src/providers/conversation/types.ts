@@ -1,6 +1,11 @@
 import type { ActorResponse } from '../../lib/api';
 
 export interface ConversationTurnInput {
+  /** Reviewed runtime pins; HTTP server re-derives all actor authority from these. */
+  missionId: string;
+  missionVersion: number;
+  sceneId?: string;
+  sceneVersion?: number;
   character: any;
   setting: string;
   learnerGoal: string;

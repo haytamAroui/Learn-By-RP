@@ -686,6 +686,12 @@ export interface SessionRecord {
   language: LanguageCode;
   mode: Mode;
   coldAttempt: boolean;
+  /** Optional durable membership in a reviewed program journey. */
+  programContext?: {
+    programId: string;
+    programVersion: number;
+    finalSimulation: boolean;
+  };
   state: SessionState;
   startedAt: string;
   endedAt?: string;

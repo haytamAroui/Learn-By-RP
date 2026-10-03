@@ -1,10 +1,11 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { ScrollView, Text, View } from 'react-native';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
-import { Button, SectionLabel } from '../../components/ui';
+import { Button, Field, SectionLabel } from '../../components/ui';
+import type { CarryForwardFact } from '../../types';
 import { CONSENT_VERSION } from '../../features/archive/schema';
 import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
 
@@ -15,11 +16,39 @@ export default function SettingsPrivacyScreen() {
 
   const [notice, setNotice] = useState<string | null>(null);
   const [confirmErase, setConfirmErase] = useState(false);
+  const [aliasDraft, setAliasDraft] = useState(
+    archive.preferences.continuityProfile?.alias ?? ''
+  );
+
+  const continuity = archive.preferences.continuityProfile ?? { facts: [] };
 
   const flash = useCallback((message: string) => {
     setNotice(message);
     setTimeout(() => setNotice(null), 3500);
   }, []);
+
+  useEffect(() => {
+    setAliasDraft(archive.preferences.continuityProfile?.alias ?? '');
+  }, [archive.preferences.continuityProfile?.alias]);
+
+  const saveContinuity = useCallback(
+    async (next: typeof continuity) => {
+      await archive.savePreferences({
+        ...archive.preferences,
+        continuityProfile: next,
+      });
+      flash(t.settings.continuitySavedNotice);
+    },
+    [archive, flash, t.settings.continuitySavedNotice]
+  );
+
+  const saveAlias = useCallback(async () => {
+    const alias = aliasDraft.trim();
+    await saveContinuity({
+      ...continuity,
+      alias: alias || undefined,
+    });
+  }, [aliasDraft, continuity, saveContinuity]);
 
   return (
     <I18nProvider
@@ -70,7 +99,9 @@ export default function SettingsPrivacyScreen() {
               <ConsentLine
                 label={t.settings.liveVoiceLabel}
                 granted={archive.consent.voice?.granted ?? false}
+                decided={Boolean(archive.consent.voice)}
                 grantedLabel={t.settings.grantedLabel}
+                notDecidedLabel={t.settings.notDecidedLabel}
                 withdrawnLabel={t.settings.withdrawnLabel}
                 withdrawLabel={t.settings.withdrawLabel}
                 onWithdraw={() => {
@@ -81,7 +112,9 @@ export default function SettingsPrivacyScreen() {
               <ConsentLine
                 label={t.settings.savedAnalysisLabel}
                 granted={archive.consent.savedAnalysis?.granted ?? false}
+                decided={Boolean(archive.consent.savedAnalysis)}
                 grantedLabel={t.settings.grantedLabel}
+                notDecidedLabel={t.settings.notDecidedLabel}
                 withdrawnLabel={t.settings.withdrawnLabel}
                 withdrawLabel={t.settings.withdrawLabel}
                 onWithdraw={() => {
@@ -92,6 +125,78 @@ export default function SettingsPrivacyScreen() {
               <Text className="text-xs text-muted">
                 {t.settings.consentVersionLabel} {CONSENT_VERSION}
               </Text>
+            </View>
+          </View>
+
+          <View className="gap-3">
+            <SectionLabel>{t.settings.continuityTitle}</SectionLabel>
+            <View className="gap-4 rounded-2xl bg-surface-soft p-4">
+              <Text className="text-sm leading-5 text-body">
+                {t.settings.continuityDesc}
+              </Text>
+
+              <View className="gap-2">
+                <Field
+                  label={t.settings.continuityAliasLabel}
+                  placeholder={t.settings.continuityAliasPlaceholder}
+                  value={aliasDraft}
+                  onChangeText={setAliasDraft}
+                  maxLength={80}
+                  autoCapitalize="words"
+                />
+                <Button
+                  label={t.settings.continuitySaveAlias}
+                  onPress={() => void saveAlias()}
+                  variant="secondary"
+                  size="sm"
+                  className="self-start"
+                />
+              </View>
+
+              <View className="h-px bg-border-subtle" />
+
+              {continuity.facts.length === 0 ? (
+                <Text className="text-sm leading-5 text-muted">
+                  {t.settings.continuityFactsEmpty}
+                </Text>
+              ) : (
+                <View className="gap-3">
+                  {continuity.facts.map(fact => (
+                    <ContinuityFactEditor
+                      key={fact.id}
+                      fact={fact}
+                      saveLabel={t.settings.continuitySaveFact}
+                      clearLabel={t.settings.continuityClearFact}
+                      onSave={async value => {
+                        await saveContinuity({
+                          ...continuity,
+                          facts: continuity.facts.map(item =>
+                            item.id === fact.id ? { ...item, value } : item
+                          ),
+                        });
+                      }}
+                      onClear={async () => {
+                        await saveContinuity({
+                          ...continuity,
+                          facts: continuity.facts.filter(item => item.id !== fact.id),
+                        });
+                      }}
+                    />
+                  ))}
+                  <Button
+                    label={t.settings.continuityClearAll}
+                    onPress={() =>
+                      void saveContinuity({
+                        ...continuity,
+                        facts: [],
+                      })
+                    }
+                    variant="ghost"
+                    size="sm"
+                    className="self-start"
+                  />
+                </View>
+              )}
             </View>
           </View>
 
@@ -154,7 +259,9 @@ export default function SettingsPrivacyScreen() {
 interface ConsentLineProps {
   label: string;
   granted: boolean;
+  decided: boolean;
   grantedLabel: string;
+  notDecidedLabel: string;
   withdrawnLabel: string;
   withdrawLabel: string;
   onWithdraw: () => void;
@@ -163,7 +270,9 @@ interface ConsentLineProps {
 const ConsentLine: React.FC<ConsentLineProps> = ({
   label,
   granted,
+  decided,
   grantedLabel,
+  notDecidedLabel,
   withdrawnLabel,
   withdrawLabel,
   onWithdraw,
@@ -172,7 +281,7 @@ const ConsentLine: React.FC<ConsentLineProps> = ({
     <View className="flex-1">
       <Text className="text-sm font-medium text-ink">{label}</Text>
       <Text className={`text-xs ${granted ? 'text-accent-sage' : 'text-muted'}`}>
-        {granted ? grantedLabel : withdrawnLabel}
+        {!decided ? notDecidedLabel : granted ? grantedLabel : withdrawnLabel}
       </Text>
     </View>
     {granted ? (
@@ -180,3 +289,71 @@ const ConsentLine: React.FC<ConsentLineProps> = ({
     ) : null}
   </View>
 );
+
+
+interface ContinuityFactEditorProps {
+  fact: CarryForwardFact;
+  saveLabel: string;
+  clearLabel: string;
+  onSave: (value: CarryForwardFact['value']) => Promise<void>;
+  onClear: () => Promise<void>;
+}
+
+const ContinuityFactEditor: React.FC<ContinuityFactEditorProps> = ({
+  fact,
+  saveLabel,
+  clearLabel,
+  onSave,
+  onClear,
+}) => {
+  const [draft, setDraft] = useState(String(fact.value));
+
+  const parsedValue = (): CarryForwardFact['value'] | null => {
+    if (typeof fact.value === 'boolean') {
+      if (draft.trim().toLowerCase() === 'true') return true;
+      if (draft.trim().toLowerCase() === 'false') return false;
+      return null;
+    }
+    if (typeof fact.value === 'number') {
+      const value = Number(draft);
+      return Number.isFinite(value) ? value : null;
+    }
+    return draft.trim();
+  };
+
+  return (
+    <View className="gap-2 rounded-2xl bg-surface p-3">
+      <View className="gap-1">
+        <Text className="text-xs font-semibold uppercase tracking-wider text-muted">
+          {fact.key}
+        </Text>
+        <Text className="text-xs text-muted">
+          {fact.sensitivity} · {fact.source.missionId}
+        </Text>
+      </View>
+      <Field
+        value={draft}
+        onChangeText={setDraft}
+        maxLength={240}
+        accessibilityLabel={fact.key}
+      />
+      <View className="flex-row flex-wrap gap-2">
+        <Button
+          label={saveLabel}
+          onPress={() => {
+            const value = parsedValue();
+            if (value !== null) void onSave(value);
+          }}
+          variant="secondary"
+          size="sm"
+        />
+        <Button
+          label={clearLabel}
+          onPress={() => void onClear()}
+          variant="ghost"
+          size="sm"
+        />
+      </View>
+    </View>
+  );
+};

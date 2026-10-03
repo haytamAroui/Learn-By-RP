@@ -105,8 +105,18 @@ export interface Translations {
     subheading: string;
     searchPlaceholder: string;
     tabCatalog: string;
+    tabPrograms: string;
     tabRoute: string;
     routeSubtitle: string;
+    programPreview: string;
+    programReleased: string;
+    programProgress: string;
+    programUnavailable: string;
+    noProgramsFound: string;
+    programNotFound: string;
+    finalSimulation: string;
+    finalSimulationDesc: string;
+    startFinalSimulation: string;
     filterAll: string;
     filterCafes: string;
     filterServices: string;
@@ -128,6 +138,8 @@ export interface Translations {
     previewPhrasesTitle: string;
     previewPhrasesDesc: string;
     usefulPhrasesTitle: string;
+    minimalSupportTitle: string;
+    minimalSupportDesc: string;
     startMissionButton: string;
     skillRequestSubstitution: string;
     skillInquireSpecifications: string;
@@ -192,6 +204,14 @@ export interface Translations {
     tag: string;
     title: string;
     communicativeOutcome: string;
+    sceneResult: string;
+    skillEvidenceTitle: string;
+    finalSimulationLabel: string;
+    noOfficialScore: string;
+    sceneAchieved: string;
+    scenePartial: string;
+    sceneNotAchieved: string;
+    sceneUnknown: string;
     turnsCount: string;
     validatedEvidence: string;
     noPhrasesValidated: string;
@@ -279,7 +299,18 @@ export interface Translations {
     consentLabel: string;
     grantedLabel: string;
     withdrawnLabel: string;
+    notDecidedLabel: string;
     withdrawLabel: string;
+    continuityTitle: string;
+    continuityDesc: string;
+    continuityAliasLabel: string;
+    continuityAliasPlaceholder: string;
+    continuitySaveAlias: string;
+    continuityFactsEmpty: string;
+    continuitySaveFact: string;
+    continuityClearFact: string;
+    continuityClearAll: string;
+    continuitySavedNotice: string;
     consentVersionLabel: string;
     voiceWithdrawnNotice: string;
     analysisWithdrawnNotice: string;
@@ -458,6 +489,16 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Choose a concrete conversation goal. Each mission reuses core communicative patterns.",
       searchPlaceholder: "Search situations, characters, or places...",
       tabCatalog: "Catalog",
+      tabPrograms: "Programs",
+      programPreview: "Preview",
+      programReleased: "Ready",
+      programProgress: "{done} of {total} missions complete",
+      programUnavailable: "This curated path is still under review. Its missions remain available individually in the catalog.",
+      noProgramsFound: "No curated programs are available for this language yet.",
+      programNotFound: "That program is no longer available.",
+      finalSimulation: "Final simulation",
+      finalSimulationDesc: "Bring the program skills together in one reviewed roleplay. Help stays available and accommodations remain on.",
+      startFinalSimulation: "Start final simulation",
       tabRoute: "Connected Route",
       routeSubtitle:
         "Decisions in one scene carry realistic consequences into the next. Each episode exercises and transfers specific communicative patterns to prepare you for spontaneous conversation.",
@@ -484,6 +525,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Review useful phrases before speaking. Will mark items as assisted in your ledger.",
       usefulPhrasesTitle: "Useful Phrases in this Scene",
+      minimalSupportTitle: "Minimal-support simulation",
+      minimalSupportDesc: "Phrase previews stay hidden. Accessibility accommodations remain active, and you can still ask for Help whenever you choose.",
       startMissionButton: "Start Mission Now",
       skillRequestSubstitution: "Ask for a change",
       skillInquireSpecifications: "Clarify details",
@@ -576,6 +619,14 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tag: "Learning Receipt",
       title: "Session Summary",
       communicativeOutcome: "Communicative Outcome",
+      sceneResult: "Scene result",
+      skillEvidenceTitle: "Skill evidence",
+      finalSimulationLabel: "Final simulation",
+      noOfficialScore: "No score or readiness rating is assigned.",
+      sceneAchieved: "The authored scene goal was achieved.",
+      scenePartial: "Part of the authored scene goal was achieved.",
+      sceneNotAchieved: "The authored scene goal was not achieved this time.",
+      sceneUnknown: "The scene result could not be established.",
       turnsCount: "turns exchanged",
       validatedEvidence: "Validated Phrase Evidence",
       noPhrasesValidated:
@@ -663,6 +714,17 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentLabel: "Consent",
       grantedLabel: "Granted",
       withdrawnLabel: "Withdrawn",
+      notDecidedLabel: "Not decided",
+      continuityTitle: "What this place remembers",
+      continuityDesc: "Only local, learner-editable continuity facts may carry into allowed scenes. Your real name is never required; an optional alias is used instead.",
+      continuityAliasLabel: "Roleplay alias",
+      continuityAliasPlaceholder: "Optional name characters can use",
+      continuitySaveAlias: "Save alias",
+      continuityFactsEmpty: "This place does not remember anything about you yet.",
+      continuitySaveFact: "Save",
+      continuityClearFact: "Clear",
+      continuityClearAll: "Clear remembered facts",
+      continuitySavedNotice: "Continuity preferences saved.",
       withdrawLabel: "Withdraw",
       consentVersionLabel: "Consent version",
       voiceWithdrawnNotice: "Voice processing withdrawn. Speaking is disabled.",
@@ -849,6 +911,16 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Choisissez un objectif de conversation concret. Chaque mission réutilise des schémas communicatifs clés.",
       searchPlaceholder: "Rechercher des situations, personnages ou lieux...",
       tabCatalog: "Catalogue",
+      tabPrograms: "Programmes",
+      programPreview: "Aperçu",
+      programReleased: "Prêt",
+      programProgress: "{done} missions terminées sur {total}",
+      programUnavailable: "Ce parcours est encore en révision. Ses missions restent disponibles individuellement dans le catalogue.",
+      noProgramsFound: "Aucun programme sélectionné n’est encore disponible pour cette langue.",
+      programNotFound: "Ce programme n’est plus disponible.",
+      finalSimulation: "Simulation finale",
+      finalSimulationDesc: "Réunissez les compétences du programme dans un jeu de rôle révisé. L’aide reste disponible et les aménagements sont conservés.",
+      startFinalSimulation: "Démarrer la simulation finale",
       tabRoute: "Itinéraire connecté",
       routeSubtitle:
         "Les décisions d’une scène influencent la suivante. Chaque épisode entraîne et transfère des compétences communicatives précises.",
@@ -875,6 +947,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Lisez les expressions avant de parler. Elles seront enregistrées comme assistées dans votre registre.",
       usefulPhrasesTitle: "Expressions utiles dans cette scène",
+      minimalSupportTitle: "Simulation avec soutien minimal",
+      minimalSupportDesc: "Les expressions ne sont pas prévisualisées. Vos aménagements d’accessibilité restent actifs et vous pouvez toujours demander de l’aide.",
       startMissionButton: "Démarrer la mission maintenant",
       skillRequestSubstitution: "Demander un changement",
       skillInquireSpecifications: "Clarifier les détails",
@@ -967,6 +1041,14 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tag: "Reçu d’apprentissage",
       title: "Résumé de la session",
       communicativeOutcome: "Résultat communicatif",
+      sceneResult: "Résultat de la scène",
+      skillEvidenceTitle: "Preuves de compétences",
+      finalSimulationLabel: "Simulation finale",
+      noOfficialScore: "Aucune note ni évaluation de préparation n’est attribuée.",
+      sceneAchieved: "L’objectif scénarisé de la scène a été atteint.",
+      scenePartial: "Une partie de l’objectif scénarisé a été atteinte.",
+      sceneNotAchieved: "L’objectif scénarisé n’a pas été atteint cette fois.",
+      sceneUnknown: "Le résultat de la scène n’a pas pu être établi.",
       turnsCount: "échanges",
       validatedEvidence: "Preuves textuelles validées",
       noPhrasesValidated:
@@ -1054,6 +1136,17 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentLabel: "Consentement",
       grantedLabel: "Accordé",
       withdrawnLabel: "Retiré",
+      notDecidedLabel: "Non décidé",
+      continuityTitle: "Ce que cet endroit retient",
+      continuityDesc: "Seuls des éléments de continuité locaux et modifiables par vous peuvent passer aux scènes autorisées. Votre vrai nom n’est jamais requis ; un pseudonyme facultatif est utilisé à la place.",
+      continuityAliasLabel: "Pseudonyme de jeu de rôle",
+      continuityAliasPlaceholder: "Nom facultatif que les personnages peuvent utiliser",
+      continuitySaveAlias: "Enregistrer le pseudonyme",
+      continuityFactsEmpty: "Cet endroit ne retient encore aucune information sur vous.",
+      continuitySaveFact: "Enregistrer",
+      continuityClearFact: "Effacer",
+      continuityClearAll: "Effacer les éléments mémorisés",
+      continuitySavedNotice: "Préférences de continuité enregistrées.",
       withdrawLabel: "Retirer",
       consentVersionLabel: "Version du consentement",
       voiceWithdrawnNotice: "Le traitement vocal a été retiré. La parole est désactivée.",
@@ -1239,6 +1332,16 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Elige un objetivo de conversación concreto. Cada misión ejercita patrones comunicativos transferibles.",
       searchPlaceholder: "Buscar situaciones, personajes o lugares...",
       tabCatalog: "Catálogo",
+      tabPrograms: "Programas",
+      programPreview: "Vista previa",
+      programReleased: "Listo",
+      programProgress: "{done} de {total} misiones completadas",
+      programUnavailable: "Esta ruta seleccionada sigue en revisión. Sus misiones continúan disponibles individualmente en el catálogo.",
+      noProgramsFound: "Todavía no hay programas seleccionados para este idioma.",
+      programNotFound: "Ese programa ya no está disponible.",
+      finalSimulation: "Simulación final",
+      finalSimulationDesc: "Reúne las habilidades del programa en un juego de rol revisado. La ayuda sigue disponible y se mantienen las adaptaciones.",
+      startFinalSimulation: "Iniciar simulación final",
       tabRoute: "Ruta conectada",
       routeSubtitle:
         "Las decisiones en una escena llevan consecuencias a la siguiente. Cada episodio entrena y transfiere patrones concretos.",
@@ -1265,6 +1368,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Revisa las frases útiles antes de hablar. Quedarán registradas como asistidas en tu libro.",
       usefulPhrasesTitle: "Frases útiles para esta escena",
+      minimalSupportTitle: "Simulación con apoyo mínimo",
+      minimalSupportDesc: "Las frases de apoyo permanecen ocultas. Tus adaptaciones de accesibilidad siguen activas y puedes pedir Ayuda cuando quieras.",
       startMissionButton: "Comenzar misión ahora",
       skillRequestSubstitution: "Pedir un cambio",
       skillInquireSpecifications: "Aclarar detalles",
@@ -1357,6 +1462,14 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tag: "Recibo de Aprendizaje",
       title: "Resumen de la Sesión",
       communicativeOutcome: "Resultado comunicativo",
+      sceneResult: "Resultado de la escena",
+      skillEvidenceTitle: "Evidencia de habilidades",
+      finalSimulationLabel: "Simulación final",
+      noOfficialScore: "No se asigna ninguna puntuación ni valoración de preparación.",
+      sceneAchieved: "Se alcanzó el objetivo definido de la escena.",
+      scenePartial: "Se alcanzó parte del objetivo definido de la escena.",
+      sceneNotAchieved: "Esta vez no se alcanzó el objetivo definido de la escena.",
+      sceneUnknown: "No se pudo establecer el resultado de la escena.",
       turnsCount: "turnos intercambiados",
       validatedEvidence: "Evidencia textual verificada",
       noPhrasesValidated: "No se validaron frases específicas en esta sesión.",
@@ -1443,6 +1556,17 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentLabel: "Consentimiento",
       grantedLabel: "Concedido",
       withdrawnLabel: "Retirado",
+      notDecidedLabel: "Sin decidir",
+      continuityTitle: "Lo que este lugar recuerda",
+      continuityDesc: "Solo los datos de continuidad locales y editables por ti pueden pasar a escenas permitidas. Nunca se requiere tu nombre real; se usa un alias opcional.",
+      continuityAliasLabel: "Alias de juego de rol",
+      continuityAliasPlaceholder: "Nombre opcional que pueden usar los personajes",
+      continuitySaveAlias: "Guardar alias",
+      continuityFactsEmpty: "Este lugar todavía no recuerda nada sobre ti.",
+      continuitySaveFact: "Guardar",
+      continuityClearFact: "Borrar",
+      continuityClearAll: "Borrar datos recordados",
+      continuitySavedNotice: "Preferencias de continuidad guardadas.",
       withdrawLabel: "Retirar",
       consentVersionLabel: "Versión del consentimiento",
       voiceWithdrawnNotice: "Se retiró el procesamiento de voz. Hablar está desactivado.",
@@ -1629,6 +1753,16 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         "Kies een concreet gespreksdoel. Elke missie hergebruikt essentiële communicatieve patronen.",
       searchPlaceholder: "Zoek situaties, personages of locaties...",
       tabCatalog: "Catalogus",
+      tabPrograms: "Programma’s",
+      programPreview: "Voorbeeld",
+      programReleased: "Klaar",
+      programProgress: "{done} van {total} missies voltooid",
+      programUnavailable: "Dit samengestelde traject wordt nog beoordeeld. De missies blijven afzonderlijk beschikbaar in de catalogus.",
+      noProgramsFound: "Er zijn nog geen samengestelde programma’s voor deze taal.",
+      programNotFound: "Dit programma is niet meer beschikbaar.",
+      finalSimulation: "Eindsimulatie",
+      finalSimulationDesc: "Breng de vaardigheden uit het programma samen in één beoordeeld rollenspel. Hulp blijft beschikbaar en aanpassingen blijven actief.",
+      startFinalSimulation: "Start eindsimulatie",
       tabRoute: "Verbonden route",
       routeSubtitle:
         "Beslissingen in de ene scène beïnvloeden de volgende. Elke aflevering oefent en versterkt gerichte communicatieve patronen.",
@@ -1655,6 +1789,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Lees de handige zinnen voor je spreekt. Ze worden als ondersteund gemarkeerd in je register.",
       usefulPhrasesTitle: "Handige zinnen in deze scène",
+      minimalSupportTitle: "Simulatie met minimale ondersteuning",
+      minimalSupportDesc: "Zinsvoorbeelden blijven verborgen. Toegankelijkheidsaanpassingen blijven actief en je kunt altijd zelf om Hulp vragen.",
       startMissionButton: "Start missie nu",
       skillRequestSubstitution: "Om een wijziging vragen",
       skillInquireSpecifications: "Details verduidelijken",
@@ -1747,6 +1883,14 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       tag: "Leerbewijs",
       title: "Sessieoverzicht",
       communicativeOutcome: "Communicatieve uitkomst",
+      sceneResult: "Scèneresultaat",
+      skillEvidenceTitle: "Vaardigheidsbewijs",
+      finalSimulationLabel: "Eindsimulatie",
+      noOfficialScore: "Er wordt geen score of gereedheidsbeoordeling toegekend.",
+      sceneAchieved: "Het vastgelegde doel van de scène is bereikt.",
+      scenePartial: "Een deel van het vastgelegde scènedoel is bereikt.",
+      sceneNotAchieved: "Het vastgelegde scènedoel is deze keer niet bereikt.",
+      sceneUnknown: "Het scèneresultaat kon niet worden vastgesteld.",
       turnsCount: "beurten gewisseld",
       validatedEvidence: "Geverifieerd tekstbewijs",
       noPhrasesValidated:
@@ -1834,6 +1978,17 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentLabel: "Toestemming",
       grantedLabel: "Toegestaan",
       withdrawnLabel: "Ingetrokken",
+      notDecidedLabel: "Niet beslist",
+      continuityTitle: "Wat deze plek onthoudt",
+      continuityDesc: "Alleen lokale continuïteitsgegevens die jij kunt bewerken mogen naar toegestane scènes meegaan. Je echte naam is nooit nodig; er wordt desgewenst een alias gebruikt.",
+      continuityAliasLabel: "Rollenspelalias",
+      continuityAliasPlaceholder: "Optionele naam die personages mogen gebruiken",
+      continuitySaveAlias: "Alias opslaan",
+      continuityFactsEmpty: "Deze plek onthoudt nog niets over jou.",
+      continuitySaveFact: "Opslaan",
+      continuityClearFact: "Wissen",
+      continuityClearAll: "Onthouden gegevens wissen",
+      continuitySavedNotice: "Continuïteitsvoorkeuren opgeslagen.",
       withdrawLabel: "Intrekken",
       consentVersionLabel: "Toestemmingsversie",
       voiceWithdrawnNotice: "Spraakverwerking is ingetrokken. Spreken is uitgeschakeld.",

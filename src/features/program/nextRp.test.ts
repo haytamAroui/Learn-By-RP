@@ -174,7 +174,45 @@ describe('deterministic next-RP policy', () => {
       kind: 'continue',
       missionId: 'mission-es-farmacia-sol',
       reasonCode: 'RECOVERY_CAP_OFF_RAMP',
+      offRampOptions: [
+        'guided_practice',
+        'different_skill',
+        'take_break',
+        'mute_skill',
+      ],
     });
+  });
+
+  it('returns to cold/transfer after a later independent demonstration resolves the lapse', () => {
+    const result = recommendNextRp({
+      ...BASE,
+      observations: [
+        observation({
+          id: 'obs-after-lapse',
+          recordedAt: '2026-10-02T09:00:00.000Z',
+        }),
+      ],
+      lapses: [lapse('1', '2026-10-01T10:00:00.000Z')],
+    });
+
+    expect(result.kind).toBe('transfer');
+    expect(result.reasonCode).toBe('INDEPENDENT_SUCCESS_TRANSFER');
+    expect(result.kind).not.toBe('recovery');
+  });
+
+  it('does not force recovery for a learner-muted skill', () => {
+    const result = recommendNextRp({
+      ...BASE,
+      programPreferences: {
+        ...BASE.programPreferences,
+        mutedSkillIds: ['skill-request-substitution'],
+      },
+      observations: [],
+      lapses: [lapse('1', '2026-10-01T10:00:00.000Z')],
+    });
+
+    expect(result.kind).toBe('continue');
+    expect(result.reasonCode).toBe('PROGRAM_NEXT_READY');
   });
 
   it('does not infer weakness when no strict lapse exists', () => {
@@ -208,6 +246,34 @@ describe('deterministic next-RP policy', () => {
     };
 
     expect(recommendNextRp(input)).toEqual(recommendNextRp(input));
+  });
+
+  it('fails closed on a policy bump until the program is rebuilt on the current policy', () => {
+    const staleProgram = {
+      ...SPANISH_DAILY_SERVICES_PILOT,
+      policyVersion: SPANISH_DAILY_SERVICES_PILOT.policyVersion + 1,
+    };
+
+    expect(() =>
+      recommendNextRp({
+        ...BASE,
+        program: staleProgram,
+        observations: [observation()],
+        lapses: [],
+      })
+    ).toThrow(/does not match learning policy/);
+
+    const rebuiltInput = {
+      ...BASE,
+      program: {
+        ...staleProgram,
+        policyVersion: SPANISH_DAILY_SERVICES_PILOT.policyVersion,
+      },
+      observations: [observation()],
+      lapses: [],
+    };
+
+    expect(recommendNextRp(rebuiltInput)).toEqual(recommendNextRp(rebuiltInput));
   });
 
   it('offers final simulation only after all reviewed program missions are complete', () => {
