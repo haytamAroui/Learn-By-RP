@@ -37,7 +37,7 @@ const UI_LANGUAGE_FLAGS: Record<UiLanguage, string> = {
   en: '🇬🇧',
   fr: '🇫🇷',
   es: '🇪🇸',
-  nl: '🇳🇱',
+  nl: '🇧🇪',
 };
 
 const APPEARANCE_OPTIONS: Array<{
