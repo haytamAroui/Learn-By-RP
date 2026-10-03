@@ -64,6 +64,15 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
     [session.skillObservations]
   );
 
+  const sceneResultText =
+    session.sceneState.outcome === 'achieved'
+      ? t.recap.sceneAchieved
+      : session.sceneState.outcome === 'partial'
+        ? t.recap.scenePartial
+        : session.sceneState.outcome === 'not_achieved'
+          ? t.recap.sceneNotAchieved
+          : t.recap.sceneUnknown;
+
   const demonstratedSkillName = skillName(independentSkill?.skillId);
   const practiceSkillName =
     skillName(supportedSkill?.skillId) ??
@@ -141,12 +150,30 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
           <Text className="text-center text-[28px] font-semibold leading-[34px] tracking-tight text-ink">
             {t.recap.tag}
           </Text>
-          <Text className="max-w-[560px] text-center text-[15px] leading-[22px] text-body">
-            {session.summary || currentMission?.learnerGoal || t.recap.communicativeOutcome}
+          {session.programContext?.finalSimulation ? (
+            <View className="items-center gap-1 rounded-2xl bg-card-warm px-4 py-3">
+              <Text className="text-xs font-semibold text-primary">
+                {t.recap.finalSimulationLabel}
+              </Text>
+              <Text className="text-center text-xs leading-5 text-muted">
+                {t.recap.noOfficialScore}
+              </Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View className="gap-2 rounded-[24px] bg-surface-soft p-5">
+          <SectionLabel>{t.recap.sceneResult}</SectionLabel>
+          <Text className="text-[17px] font-semibold leading-6 text-ink">
+            {sceneResultText}
           </Text>
+          {session.summary ? (
+            <Text className="text-sm leading-5 text-body">{session.summary}</Text>
+          ) : null}
         </View>
 
         <View className="gap-4">
+          <SectionLabel>{t.recap.skillEvidenceTitle}</SectionLabel>
           {demonstratedSkillName ? (
             <View className="gap-2 rounded-[24px] bg-card-sage p-5">
               <Text className="text-xs font-semibold uppercase tracking-wider text-accent-sage">
