@@ -13,6 +13,7 @@ import { classifyEvidence, countsAsIndependentEvidence } from './evidence';
 import { isPhraseProductionSupportRelevant } from './supportScope';
 
 const VALIDATED_PHRASE_EVIDENCE_BRAND = Symbol('learnbyrp.validated-phrase-evidence');
+const VALIDATED_PHRASE_EVIDENCE_INSTANCES = new WeakSet<object>();
 
 export type ValidatedPhraseEvidence = Readonly<{
   observations: readonly LearningObservation[];
@@ -22,10 +23,12 @@ export type ValidatedPhraseEvidence = Readonly<{
 function validatedPhraseEvidence(
   observations: readonly LearningObservation[]
 ): ValidatedPhraseEvidence {
-  return Object.freeze({
+  const evidence = Object.freeze({
     observations: Object.freeze([...observations]),
     [VALIDATED_PHRASE_EVIDENCE_BRAND]: true as const,
   });
+  VALIDATED_PHRASE_EVIDENCE_INSTANCES.add(evidence);
+  return evidence;
 }
 
 export const EMPTY_VALIDATED_PHRASE_EVIDENCE: ValidatedPhraseEvidence =
@@ -37,7 +40,8 @@ export function assertValidatedPhraseEvidence(
   if (
     !value ||
     typeof value !== 'object' ||
-    (value as Record<PropertyKey, unknown>)[VALIDATED_PHRASE_EVIDENCE_BRAND] !== true
+    (value as Record<PropertyKey, unknown>)[VALIDATED_PHRASE_EVIDENCE_BRAND] !== true ||
+    !VALIDATED_PHRASE_EVIDENCE_INSTANCES.has(value as object)
   ) {
     throw new Error('Phrase evidence write rejected: validator-issued evidence bundle required');
   }
