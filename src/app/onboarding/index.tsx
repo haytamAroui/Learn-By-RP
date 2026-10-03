@@ -58,6 +58,11 @@ const JOURNEY_COPY: Record<
     entryObserve: string;
     entryGuided: string;
     entryWarmup: string;
+    dailyLife: string;
+    study: string;
+    talkWithPeople: string;
+    noProgramTitle: string;
+    noProgramBody: string;
     start: string;
   }
 > = {
@@ -79,6 +84,11 @@ const JOURNEY_COPY: Record<
     entryObserve: 'We’ll start by showing a short model scene before you speak.',
     entryGuided: 'We’ll start with visible support, then reduce it as you practise.',
     entryWarmup: 'We’ll start with a short, tolerant warm-up to find the right place in the program.',
+    dailyLife: 'Daily life',
+    study: 'Study',
+    talkWithPeople: 'Talk with people',
+    noProgramTitle: 'No reviewed path for that goal yet',
+    noProgramBody: 'We will not generate an unreviewed course. Choose Daily life or Travel to preview the reviewed paths currently available.',
     start: 'Show my learning path',
   },
   fr: {
@@ -99,6 +109,11 @@ const JOURNEY_COPY: Record<
     entryObserve: 'Nous commencerons par une courte scène modèle avant de vous faire parler.',
     entryGuided: 'Nous commencerons avec une aide visible, puis nous la réduirons progressivement.',
     entryWarmup: 'Nous commencerons par un court échauffement tolérant pour trouver le bon point d’entrée.',
+    dailyLife: 'Vie quotidienne',
+    study: 'Études',
+    talkWithPeople: 'Parler avec des gens',
+    noProgramTitle: 'Pas encore de parcours examiné pour cet objectif',
+    noProgramBody: 'Nous ne générons pas de cours non examiné. Choisissez Vie quotidienne ou Voyage pour voir les parcours actuellement disponibles.',
     start: 'Afficher mon parcours',
   },
   es: {
@@ -119,6 +134,11 @@ const JOURNEY_COPY: Record<
     entryObserve: 'Empezaremos mostrando una escena modelo breve antes de que hables.',
     entryGuided: 'Empezaremos con ayuda visible y la reduciremos a medida que practiques.',
     entryWarmup: 'Empezaremos con un calentamiento breve y tolerante para encontrar tu punto de entrada.',
+    dailyLife: 'Vida cotidiana',
+    study: 'Estudios',
+    talkWithPeople: 'Hablar con gente',
+    noProgramTitle: 'Todavía no hay una ruta revisada para ese objetivo',
+    noProgramBody: 'No generaremos un curso sin revisar. Elige Vida cotidiana o Viajes para ver las rutas revisadas disponibles.',
     start: 'Ver mi recorrido',
   },
   nl: {
@@ -139,6 +159,11 @@ const JOURNEY_COPY: Record<
     entryObserve: 'We beginnen met een korte voorbeeldscène voordat je zelf spreekt.',
     entryGuided: 'We beginnen met zichtbare hulp en bouwen die daarna geleidelijk af.',
     entryWarmup: 'We beginnen met een korte, tolerante opwarming om het juiste startpunt te vinden.',
+    dailyLife: 'Dagelijks leven',
+    study: 'Studie',
+    talkWithPeople: 'Met mensen praten',
+    noProgramTitle: 'Voor dit doel is er nog geen beoordeeld leerpad',
+    noProgramBody: 'We maken geen niet-beoordeelde cursus. Kies Dagelijks leven of Reizen om de beschikbare beoordeelde leerpaden te bekijken.',
     start: 'Toon mijn leerpad',
   },
 };
@@ -198,6 +223,7 @@ export default function OnboardingScreen() {
   const [analysisConsent, setAnalysisConsent] = useState(
     consent.savedAnalysis?.granted ?? false
   );
+  const [goalUnavailable, setGoalUnavailable] = useState(false);
 
   const t = getTranslations(explanationLanguage);
   const copy = JOURNEY_COPY[explanationLanguage];
@@ -216,6 +242,7 @@ export default function OnboardingScreen() {
   const chooseLearningLanguage = (id: LanguageCode) => {
     setLearningLanguage(id);
     setLearningLocale(defaultLearningLocale(id));
+    setGoalUnavailable(false);
   };
 
   const handleContinue = async () => {
@@ -243,6 +270,7 @@ export default function OnboardingScreen() {
     });
 
     if (resolution.program) {
+      setGoalUnavailable(false);
       router.replace({
         pathname: '/program/[programId]',
         params: {
@@ -255,7 +283,7 @@ export default function OnboardingScreen() {
       return;
     }
 
-    router.replace('/(tabs)');
+    setGoalUnavailable(true);
   };
 
   return (
@@ -295,13 +323,16 @@ export default function OnboardingScreen() {
           <SectionLabel>{t.settings.goalLabel}</SectionLabel>
           <ChipRow
             value={primaryGoal}
-            onChange={id => setPrimaryGoal(id as UserPreferences['primaryGoal'])}
+            onChange={id => {
+              setPrimaryGoal(id as UserPreferences['primaryGoal']);
+              setGoalUnavailable(false);
+            }}
             options={[
-              { id: 'relocation', label: t.settings.goalRelocation },
+              { id: 'daily_life', label: copy.dailyLife },
               { id: 'travel', label: t.settings.goalTravel },
               { id: 'work', label: t.settings.goalWork },
-              { id: 'social', label: t.settings.goalSocial },
-              { id: 'explore', label: t.settings.goalExplore },
+              { id: 'study', label: copy.study },
+              { id: 'social', label: copy.talkWithPeople },
             ]}
           />
         </View>
@@ -406,6 +437,17 @@ export default function OnboardingScreen() {
 
           <Text className="text-xs text-muted">Consent version {CONSENT_VERSION}</Text>
         </Card>
+
+        {goalUnavailable ? (
+          <Card className="gap-2 bg-card-warm">
+            <Text className="text-sm font-semibold text-ink">
+              {copy.noProgramTitle}
+            </Text>
+            <Text className="text-sm leading-5 text-body">
+              {copy.noProgramBody}
+            </Text>
+          </Card>
+        ) : null}
 
         <Button
           label={copy.start}
