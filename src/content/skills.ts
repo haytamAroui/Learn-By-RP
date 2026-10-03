@@ -136,6 +136,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-it-farmacia',
       'mission-ja-yakkyoku',
       'mission-es-bike-rental',
+      'mission-es-la-terraza',
     ],
   },
   {
@@ -245,6 +246,11 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-ja-izakaya',
       'mission-es-hotel-checkin',
       'mission-es-bike-rental',
+      'mission-es-cafe-sol',
+      'mission-es-parcel-counter',
+      'mission-es-neighbors-door',
+      'mission-es-metro-station',
+      'mission-es-farmacia-sol',
     ],
   },
   {
@@ -333,6 +339,10 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-de-ubahn',
       'mission-it-stazione',
       'mission-ja-izakaya',
+      'mission-es-cafe-sol',
+      'mission-es-parcel-counter',
+      'mission-es-hotel-checkin',
+      'mission-es-bike-rental',
     ],
   },
   {
