@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   COMMUNICATIVE_SKILLS_CATALOG,
   RETIRED_COMMUNICATIVE_SKILL_IDS,
+  FLEMISH_SKILL_PATTERNS,
   communicativeSkillFor,
 } from './skills';
 
@@ -18,6 +19,13 @@ describe('communicative skill catalog contract', () => {
         expect(skill.canDo[locale].trim().length, skill.id + ':' + locale)
           .toBeGreaterThan(0);
       }
+    }
+  });
+
+  it('gives every active skill a Belgian Dutch practice pattern', () => {
+    for (const skill of COMMUNICATIVE_SKILLS_CATALOG) {
+      if (skill.deprecated !== null) continue;
+      expect(FLEMISH_SKILL_PATTERNS[skill.id]?.trim().length, skill.id).toBeGreaterThan(0);
     }
   });
 
