@@ -22,6 +22,7 @@ export type SceneActionName =
   | 'confirm_arrangement'
   | 'ask_wayfinding'
   | 'report_issue'
+  | 'request_service'
   | 'request_seating'
   | 'ask_recommendation'
   | 'confirm_selection'
