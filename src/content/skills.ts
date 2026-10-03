@@ -410,7 +410,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       en: 'I can ask someone to speak more slowly.',
       fr: 'Je peux demander à quelqu’un de parler plus lentement.',
       es: 'Puedo pedirle a alguien que hable más despacio.',
-      nl: 'Ik kan iemand vragen langzamer te spreken.',
+      nl: 'Ik kan iemand vragen wat trager te spreken.',
     },
     positiveExamples: ['Explicitly asks the speaker to slow down.'],
     negativeExamples: ['Requests simple repetition without asking for a slower pace.'],
@@ -420,7 +420,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     evidencePolicy: 'direct',
     deprecated: null,
     patterns: ['Could you speak more slowly?'],
-    samplePhrases: ['Could you speak more slowly?', '¿Puede hablar más despacio?', 'Kunt u wat langzamer spreken?'],
+    samplePhrases: ['Could you speak more slowly?', '¿Puede hablar más despacio?', 'Kunt u wat trager spreken?'],
     associatedMissions: ['mission-es-cafe-sol'],
   },
   {
