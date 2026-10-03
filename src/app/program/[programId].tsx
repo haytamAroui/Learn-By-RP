@@ -11,7 +11,12 @@ export default function ProgramRoute() {
   const router = useRouter();
   const archive = useArchive();
   const t = getTranslations(archive.preferences.explanationLanguage);
-  const { programId } = useLocalSearchParams<{ programId: string }>();
+  const { programId, recommended, entryMode, match } = useLocalSearchParams<{
+    programId: string;
+    recommended?: string;
+    entryMode?: 'observe_first' | 'guided_first' | 'warmup_first';
+    match?: 'exact' | 'closest';
+  }>();
   const program = ROLEPLAY_PROGRAM_CATALOG.find(candidate => candidate.id === programId);
 
   if (!program) {
@@ -36,7 +41,17 @@ export default function ProgramRoute() {
       <ProgramScreen
         program={program}
         sessions={archive.sessions}
-        onBack={() => router.back()}
+        recommendation={
+          recommended === '1' && entryMode
+            ? {
+                entryMode,
+                match: match === 'closest' ? 'closest' : 'exact',
+              }
+            : undefined
+        }
+        onBack={() =>
+          recommended === '1' ? router.replace('/(tabs)') : router.back()
+        }
         onStartMission={(mission, options) =>
           router.push({
             pathname: '/mission/[missionId]',
