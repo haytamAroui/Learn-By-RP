@@ -135,6 +135,7 @@ app.post('/api/actor/respond', async (req: Request, res: Response) => {
     mission,
     sceneFacts,
     allowedActions,
+    speechVariety,
   } = resolved.value;
   const character = mission.character;
   const setting = mission.setting;
@@ -146,6 +147,15 @@ app.post('/api/actor/respond', async (req: Request, res: Response) => {
     userMessage,
     explanationLanguage = 'English',
   } = req.body ?? {};
+
+  const speechVarietyInstruction =
+    speechVariety === 'standard'
+      ? 'Use clear Standard Dutch as naturally spoken in Belgium. Do not add unnecessary colloquial contractions or dialect spellings.'
+      : speechVariety === 'light_colloquial'
+        ? 'Use reviewed light-colloquial Belgian Dutch while staying easy to understand; do not intensify the variety beyond this label.'
+        : speechVariety === 'colloquial'
+          ? 'Use natural colloquial Belgian Dutch within the reviewed scene constraints; do not invent dialect caricatures.'
+          : '';
 
   try {
     if (!providers.structured) {
@@ -171,7 +181,7 @@ Setting: ${setting}.
 Reviewed learner goal: ${learnerGoal}.
 Mode: ${mode || 'guided'}.
 Language: speak exclusively in authentic, natural ${targetLanguage}.
-Character style: ${character.voiceStyle}.
+${speechVarietyInstruction ? `Reviewed speech variety: ${speechVariety}. ${speechVarietyInstruction}\n` : ''}Character style: ${character.voiceStyle}.
 Knowledge boundaries: ${character.knowledgeBoundary.join('; ')}.
 Authoritative scene facts: ${JSON.stringify(sceneFacts)}.
 
