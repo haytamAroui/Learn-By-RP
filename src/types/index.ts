@@ -784,11 +784,39 @@ export interface LearnerContinuityProfile {
   facts: CarryForwardFact[];
 }
 
+export type StartingPointStudyExperience = 'none' | 'a_little' | 'yes' | 'not_sure';
+export type StartingPointComprehension = 'no' | 'sometimes' | 'yes' | 'not_sure';
+export type StartingPointSpeaking = 'no' | 'with_help' | 'yes' | 'not_sure';
+export type ProgramEntryMode = 'observe_first' | 'guided_first' | 'warmup_first';
+
+export interface StartingPointSelfReport {
+  studiedBefore: StartingPointStudyExperience;
+  understandsEveryday: StartingPointComprehension;
+  canAnswerBasic: StartingPointSpeaking;
+}
+
+export interface StartingPointProfile {
+  answers: StartingPointSelfReport;
+  entryMode: ProgramEntryMode;
+  /** Warm-up is optional/tolerant and never creates a lapse by itself. */
+  warmupCompleted?: boolean;
+  recordedAt: string;
+}
+
 export interface UserPreferences {
   learningLanguage: LanguageCode;
+  /** BCP-47 learning locale. Optional for archives created before Learner Journey V1. */
+  learningLocale?: string;
   explanationLanguage: UiLanguage;
   comfortLevel: 'beginner' | 'elementary' | 'intermediate' | 'not_sure';
-  primaryGoal: 'travel' | 'relocation' | 'work' | 'social' | 'explore';
+  primaryGoal:
+    | 'daily_life'
+    | 'travel'
+    | 'relocation'
+    | 'work'
+    | 'study'
+    | 'social'
+    | 'explore';
   modeDefault: Mode;
   voiceProcessingConsent: boolean;
   savedAnalysisConsent: boolean;
@@ -803,5 +831,7 @@ export interface UserPreferences {
   /** Learner-owned, local program data. Included in export and delete-all scope. */
   programPreferences?: ProgramPreferences[];
   programGoals?: ProgramGoalInput[];
+  /** Goal-onboarding starting point; local learner-owned data only. */
+  startingPoint?: StartingPointProfile;
   continuityProfile?: LearnerContinuityProfile;
 }

@@ -888,17 +888,17 @@ This is the learner-facing product path that sits above the existing roleplay/ev
 
 ## Entry and goal routing
 
-- [ ] First-run target language includes reviewed locale identity, starting with `Nederlands (België)` / `nl-BE`.
-- [ ] Goal-first onboarding: daily life, work, travel, study, social/talking with people, or own goal.
-- [ ] Reviewed goal → reviewed program resolver; no free-form executable course generation.
-- [ ] For `nl-BE`, route Daily life to the reviewed Everyday program and Travel to the reviewed Travel program once their release gates pass.
+- [x] First-run target language includes reviewed locale identity, starting with `Nederlands (België)` / `nl-BE`. (`onboarding/index.tsx`, `defaultLearningLocale`)
+- [x] Goal-first reviewed-goal onboarding covers daily life, work, travel, study and social/talking with people; own-goal free text remains separately gated below. (`onboarding/index.tsx`)
+- [x] Reviewed goal → reviewed program candidate resolver; no free-form executable course generation. (`goalResolver.ts`, activation gate remains authoritative)
+- [x] For `nl-BE`, route Daily life to the Flemish Everyday candidate and Travel to the Flemish Travel candidate; draft programs remain preview-only until their release gates pass. (`goalResolver.ts`, `ProgramScreen`)
 - [ ] Own-goal free text is matched to reviewed templates only; if no fit exists, say so and offer the closest reviewed options.
 - [ ] Raw free-text goal is discarded by default after extraction/preview unless the learner explicitly chooses to retain it.
 
 ## Starting point
 
-- [ ] Three self-report starting-point questions.
-- [ ] Always offer `complete beginner` and `not sure`.
+- [x] Three self-report starting-point questions. (`startingPoint.ts`, first-run onboarding)
+- [x] Always offer `complete beginner` and `not sure` shortcuts. (`onboarding/index.tsx`)
 - [ ] Optional/tolerant ~2-minute warm-up roleplay.
 - [ ] Warm-up output is a program entry position, not a learner-facing CEFR verdict.
 - [ ] Warm-up silence, uncertainty or non-production creates no lapse.
@@ -920,17 +920,17 @@ This is the learner-facing product path that sits above the existing roleplay/ev
 - [x] First independent recap copy is observation-scoped: “You did this on your own today.” (localized recap copy)
 - [ ] Learner-facing skill names are localized for every launch-visible skill.
 - [ ] Target-language pattern/example may appear as secondary text; the primary label follows the learner’s UI language.
-- [ ] Three-family launch coverage remains a content-availability gate, not the learner `Steady` threshold.
+- [x] Three-family launch coverage remains a content-availability gate, not the learner `Steady` threshold. (`launchContent.ts` vs versioned `SKILL_POLICY`)
 
 ## Belgian Dutch variety
 
-- [ ] Production target: reviewed Standard Dutch as naturally used in Belgium.
-- [ ] Add reviewed `speechVariety`: `standard` | `light_colloquial` | `colloquial`.
-- [ ] Beginner scenes default to clear `standard`; later reviewed variants may widen comprehension exposure.
+- [x] Production target contract: reviewed Standard Dutch as naturally used in Belgium for current Flemish launch scenes. (`speechVariety: standard`, actor instructions)
+- [x] Add reviewed `speechVariety`: `standard` | `light_colloquial` | `colloquial`. (`contracts/scene.ts`; released Dutch scenes require a label)
+- [x] Current eight Flemish beginner launch scenes are locked to reviewed `standard`; later reviewed variants may widen comprehension exposure. (`launchContent.test.ts`)
 - [ ] Speech-variety difficulty is listening/comprehension context only and never manufactures a speaking lapse.
 - [ ] Meaning and slower/replay support remain available for colloquial lines.
-- [ ] Variety/pace variants within one scenario family never count as transfer.
-- [ ] Native Belgian-Dutch reviewer signs off on variety/register; the runtime model has no authority to label natural Flemish.
+- [x] Variety/pace variants within one scenario family never count as transfer. (`skillContext.test.ts`)
+- [ ] Native Belgian-Dutch reviewer signs off on variety/register; runtime variety is already reviewer-authored/server-derived and the model has no authority to select it. (`actorContext.test.ts`, Realtime actor instruction regression)
 
 ## Retention and real-world bridge
 

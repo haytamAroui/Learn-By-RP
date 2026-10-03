@@ -15,6 +15,21 @@ describe('finite scene definition validation', () => {
     }
   });
 
+  it('requires a reviewed speech variety for released Dutch scenes', () => {
+    const scene = Object.values(SCENES).find(
+      candidate => candidate.id === 'scene.nl-be.cafe.breakfast'
+    )!;
+
+    const invalid: SceneDefinition = {
+      ...scene,
+      speechVariety: undefined,
+    };
+
+    expect(validateSceneDefinition(invalid).errors.join('\n')).toMatch(
+      /released Dutch scenes require a reviewed variety label/i
+    );
+  });
+
   it('rejects an effect that writes an undeclared fact', () => {
     const scene: SceneDefinition = {
       ...CAFE_SCENE,

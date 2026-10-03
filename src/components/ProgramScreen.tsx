@@ -17,9 +17,44 @@ import { useI18n } from '../features/i18n';
 import { Button, EmptyState, Pill, SectionLabel } from './ui';
 import { iconColor } from '../design/iconColor';
 
+const PROGRAM_RECOMMENDATION_COPY = {
+  en: {
+    exact: 'Recommended for your goal',
+    closest: 'Closest reviewed path',
+    observe: 'Your first step is Observe: watch a short model scene before you speak.',
+    guided: 'Your first step is Guided: start with visible support, then reduce it.',
+    warmup: 'Your first step is a short warm-up to find the right point in this path.',
+  },
+  fr: {
+    exact: 'Recommandé pour votre objectif',
+    closest: 'Parcours examiné le plus proche',
+    observe: 'Première étape : Observer une courte scène modèle avant de parler.',
+    guided: 'Première étape : Guidé, avec une aide visible qui diminue ensuite.',
+    warmup: 'Première étape : un court échauffement pour trouver le bon point d’entrée.',
+  },
+  es: {
+    exact: 'Recomendado para tu objetivo',
+    closest: 'Ruta revisada más cercana',
+    observe: 'Primer paso: Observar una escena modelo breve antes de hablar.',
+    guided: 'Primer paso: Guiado, con ayuda visible que se reducirá después.',
+    warmup: 'Primer paso: un calentamiento breve para encontrar el punto adecuado.',
+  },
+  nl: {
+    exact: 'Aanbevolen voor je doel',
+    closest: 'Dichtstbijzijnde beoordeelde leerpad',
+    observe: 'Je eerste stap is Observeren: bekijk een korte voorbeeldscène voordat je spreekt.',
+    guided: 'Je eerste stap is Begeleid: start met zichtbare hulp en bouw die daarna af.',
+    warmup: 'Je eerste stap is een korte opwarming om het juiste startpunt in dit leerpad te vinden.',
+  },
+} as const;
+
 interface ProgramScreenProps {
   program: RoleplayProgram;
   sessions: SessionRecord[];
+  recommendation?: {
+    entryMode: 'observe_first' | 'guided_first' | 'warmup_first';
+    match: 'exact' | 'closest';
+  };
   onBack: () => void;
   onStartMission: (mission: MissionDefinition, options?: { finalSimulation?: boolean }) => void;
 }
@@ -27,10 +62,12 @@ interface ProgramScreenProps {
 export const ProgramScreen: React.FC<ProgramScreenProps> = ({
   program,
   sessions,
+  recommendation,
   onBack,
   onStartMission,
 }) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
+  const recommendationCopy = PROGRAM_RECOMMENDATION_COPY[language];
   const projection = useMemo(
     () => buildProgramProjection(program, sessions),
     [program, sessions]
@@ -87,6 +124,23 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
         }}
       >
         <View className="gap-3">
+          {recommendation ? (
+            <View className="gap-2 rounded-[22px] bg-card-sky p-4">
+              <Text className="text-xs font-semibold uppercase tracking-wider text-accent-sky">
+                {recommendation.match === 'exact'
+                  ? recommendationCopy.exact
+                  : recommendationCopy.closest}
+              </Text>
+              <Text className="text-sm leading-5 text-body">
+                {recommendation.entryMode === 'observe_first'
+                  ? recommendationCopy.observe
+                  : recommendation.entryMode === 'guided_first'
+                    ? recommendationCopy.guided
+                    : recommendationCopy.warmup}
+              </Text>
+            </View>
+          ) : null}
+
           <View className="flex-row flex-wrap items-center gap-2">
             <Pill
               label={canExecute ? t.missions.programReleased : t.missions.programPreview}

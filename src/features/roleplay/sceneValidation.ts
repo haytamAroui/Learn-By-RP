@@ -109,6 +109,15 @@ export function validateSceneDefinition(scene: SceneDefinition): SceneValidation
   const factNames = Object.keys(scene.factSchema);
   const initialNames = Object.keys(scene.initialFacts);
 
+  if (
+    scene.language === 'nl' &&
+    scene.reviewStatus === 'released' &&
+    !scene.speechVariety
+  ) {
+    errors.push('speechVariety: released Dutch scenes require a reviewed variety label');
+  }
+
+
   for (const [fact, definition] of Object.entries(scene.factSchema)) {
     if (definition.type === 'enum') {
       if (definition.values.length === 0) errors.push(`factSchema.${fact}: enum is empty`);

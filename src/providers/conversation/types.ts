@@ -1,4 +1,5 @@
 import type { ActorResponse } from '../../lib/api';
+import type { SpeechVariety } from '../../contracts/scene';
 
 export interface ConversationTurnInput {
   /** Reviewed runtime pins; HTTP server re-derives all actor authority from these. */
@@ -16,6 +17,8 @@ export interface ConversationTurnInput {
   recentPassages: any[];
   userMessage: string;
   targetLanguage: string;
+  /** Reviewed scene label; the model may realize it but never choose it. */
+  speechVariety?: SpeechVariety;
   explanationLanguage: string;
 }
 

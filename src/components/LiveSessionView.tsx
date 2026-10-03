@@ -818,6 +818,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           recentPassages: updatedPassages.slice(-5),
           userMessage: trimmed,
           targetLanguage: target.language,
+          speechVariety: targetScene?.speechVariety,
           explanationLanguage,
         });
 

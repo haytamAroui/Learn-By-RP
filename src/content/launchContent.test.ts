@@ -67,6 +67,17 @@ describe.each(LAUNCH_CONTENT_SPECS)(
   }
 );
 
+describe('Flemish speech variety policy', () => {
+  it('starts every Flemish launch scene in reviewed Standard Dutch', () => {
+    for (const missionId of FLEMISH_LAUNCH_CONTENT_V1.missionIds) {
+      const mission = MISSION_CATALOG.find(item => item.id === missionId)!;
+      const scene = getScene(mission.sceneId!)!;
+
+      expect(scene.speechVariety, scene.id).toBe('standard');
+    }
+  });
+});
+
 describe('Flemish substitution opportunity semantics', () => {
   it('credits only an explicit learner request, never accepting a ready-made option', () => {
     for (const missionId of FLEMISH_LAUNCH_CONTENT_V1.missionIds) {
