@@ -9,7 +9,7 @@ import { archiveRepository } from './archiveRepository';
 import { ConsentRecord } from './ArchiveRepository.types';
 import type { ValidatedSkillEvidence } from '../learning/skillEvidence';
 import type { ValidatedPhraseEvidence } from '../learning/learningCore';
-import { setApiConsentContext } from '../../lib/api';
+import { api, setApiConsentContext } from '../../lib/api';
 
 interface ArchiveContextValue {
   ready: boolean;
@@ -199,11 +199,18 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
         await refresh();
       },
       deleteSession: async id => {
+        // Local tombstone is authoritative and happens first. Remote cleanup is a
+        // second privacy barrier for delayed assessment/provider jobs.
         await archiveRepository.deleteSession(id);
+        await api.markSessionDeleted(id).catch(() => undefined);
         await refresh();
       },
       clearAllLearningData: async () => {
+        const deletedSessionIds = sessions.map(session => session.id);
         await archiveRepository.clearAllLearningData();
+        await Promise.all(
+          deletedSessionIds.map(id => api.markSessionDeleted(id).catch(() => undefined))
+        );
         await refresh();
       },
       exportArchive: () => archiveRepository.exportArchiveJson(),
