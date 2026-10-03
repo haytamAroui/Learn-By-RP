@@ -13,6 +13,7 @@ import { archiveRepository } from './SqliteArchiveRepository';
 import { createNodeSqliteAdapter, Db } from './db';
 import { __setDatabaseForTesting, migrate } from './database';
 import { LearningObservation, Passage, SessionRecord } from '../../types';
+import { buildLocalObservations } from '../learning/learningCore';
 
 /**
  * Transcript assembly and revision handling (§10.7).
@@ -100,6 +101,42 @@ function makeSession(passages: Passage[], observations: LearningObservation[]): 
   };
 }
 
+
+function phraseEvidenceFor(session: SessionRecord) {
+  const candidates = session.observations.map(observationValue => {
+    const source = session.passages.find(
+      passageValue =>
+        passageValue.id === observationValue.sourceTurnId &&
+        passageValue.revisionKey === observationValue.sourceRevision
+    );
+    const groundedForm = source?.text ?? observationValue.quote;
+    return {
+      id: observationValue.itemId,
+      form: groundedForm,
+      meaning: observationValue.meaning ?? groundedForm,
+    };
+  });
+
+  return buildLocalObservations({
+    sessionId: session.id,
+    attemptId: session.observations[0]?.attemptId ?? 'attempt-1',
+    passages: session.passages,
+    supportExposures: session.supportExposures,
+    candidates,
+    isColdAttempt: session.coldAttempt,
+    isRehearsalAttempt: false,
+  }).evidence;
+}
+
+async function completeSessionWithEvidence(session: SessionRecord): Promise<void> {
+  await archiveRepository.completeSession(
+    { ...session, observations: [] },
+    [],
+    undefined,
+    phraseEvidenceFor(session)
+  );
+}
+
 describe('revisionKeyFor', () => {
   it('is stable for identical text', () => {
     expect(revisionKeyFor('hola')).toBe(revisionKeyFor('hola'));
@@ -149,9 +186,9 @@ describe('findStaleObservations', () => {
 
 describe('invalidateStaleObservations', () => {
   it('drops evidence the current transcript no longer supports', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession(
-        [makePassage('p-1', '¿Tiene leche de avena?', 'rev-2')],
+        [makePassage('p-1', '¿Tiene leche de avena?', 'rev-1')],
         [observation({ sourceRevision: 'rev-1' })]
       )
     );
@@ -168,7 +205,7 @@ describe('invalidateStaleObservations', () => {
   });
 
   it('leaves evidence whose revision still matches', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession(
         [makePassage('p-1', '¿Tiene leche de avena?', 'rev-1')],
         [observation({ sourceRevision: 'rev-1' })]
@@ -184,9 +221,9 @@ describe('invalidateStaleObservations', () => {
   });
 
   it('keeps the deletion auditable instead of silent', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession(
-        [makePassage('p-1', '¿Tiene leche de avena?', 'rev-2')],
+        [makePassage('p-1', '¿Tiene leche de avena?', 'rev-1')],
         [observation({ sourceRevision: 'rev-1' })]
       )
     );
@@ -205,9 +242,9 @@ describe('invalidateStaleObservations', () => {
   });
 
   it('does not touch other sessions', async () => {
-    await archiveRepository.completeSession(
+    await completeSessionWithEvidence(
       makeSession(
-        [makePassage('p-1', '¿Tiene leche de avena?', 'rev-2')],
+        [makePassage('p-1', '¿Tiene leche de avena?', 'rev-1')],
         [observation({ sourceRevision: 'rev-1' })]
       )
     );
