@@ -12,9 +12,20 @@ export const SCENE_CONTRACT_VERSION = 7;
 export type SceneActionName =
   | 'confirm_order_item'
   | 'offer_alternative'
+  | 'offer_substitute'
   | 'confirm_takeaway'
   | 'confirm_for_here'
   | 'ask_about_ingredient'
+  | 'provide_reference'
+  | 'ask_specification'
+  | 'propose_arrangement'
+  | 'confirm_arrangement'
+  | 'ask_wayfinding'
+  | 'report_issue'
+  | 'request_service'
+  | 'request_seating'
+  | 'ask_recommendation'
+  | 'confirm_selection'
   | 'complete_scene';
 
 /** Who may propose or trigger an action. */

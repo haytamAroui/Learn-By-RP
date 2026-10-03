@@ -87,8 +87,9 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-es-parcel-counter',
-    version: 1,
+    version: 2,
     language: 'es',
+    sceneId: 'scene.es.parcel.reschedule',
     scenarioFamilyId: 'parcel-service',
     levelRange: 'A2',
     title: 'Parcel Drop: The Rescheduled Delivery',
@@ -111,7 +112,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     stretchGoal: 'Explain you cannot come this evening and propose collecting it tomorrow morning',
     targetIntents: ['provide_reference', 'reschedule_time', 'confirm_hours'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-propose-alternative'],
-    secondarySkillIds: ['skill-communicative-repair'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-request-repetition',
+      'skill-ask-clarification',
+    ],
     usefulPhrases: [
       {
         id: 'phrase.es.vengo_a_recoger',
@@ -153,8 +158,9 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-es-neighbors-door',
-    version: 1,
+    version: 2,
     language: 'es',
+    sceneId: 'scene.es.neighbor.key-handover',
     scenarioFamilyId: 'neighbour-coordination',
     levelRange: 'A2',
     title: "Neighbor's Door: The Spare Key & The Terrace",
@@ -176,8 +182,12 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask Sofia if she has the terrace key and arrange a quick handover',
     stretchGoal: 'Propose meeting downstairs at Café Sol if she is in a rush right now',
     targetIntents: ['ask_neighbor_help', 'propose_alternative_meeting', 'express_thanks'],
-    primarySkillIds: ['skill-propose-alternative', 'skill-communicative-repair'],
-    secondarySkillIds: ['skill-inquire-specifications'],
+    primarySkillIds: ['skill-propose-alternative', 'skill-inquire-specifications'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-check-understanding',
+      'skill-clarify-misunderstanding',
+    ],
     usefulPhrases: [
       {
         id: 'phrase.es.tienes_un_momento',
@@ -218,8 +228,9 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-es-metro-station',
-    version: 1,
+    version: 2,
     language: 'es',
+    sceneId: 'scene.es.metro.ticket-platform',
     scenarioFamilyId: 'public-transit',
     levelRange: 'A2',
     title: 'Metro Sol: Ticket Machine & Platform Guidance',
@@ -242,7 +253,12 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     stretchGoal: 'Explain the card machine did not return your change or receipt',
     targetIntents: ['purchase_transit_ticket', 'ask_platform', 'clarify_directions'],
     primarySkillIds: ['skill-wayfinding-transit', 'skill-inquire-specifications'],
-    secondarySkillIds: ['skill-communicative-repair'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-request-repetition',
+      'skill-ask-clarification',
+      'skill-check-understanding',
+    ],
     usefulPhrases: [
       {
         id: 'phrase.es.tarjeta_diez_viajes',
@@ -276,7 +292,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     tags: ['transit', 'metro', 'directions', 'tickets'],
     nextMissionId: 'mission-es-farmacia-sol',
     transferPattern: 'Ask for specific options & instructions',
-    transferReason: 'Applies your question-asking pattern to ask Elena at the pharmacy for medication details.'
+    transferReason: 'Applies your question-asking pattern to ask Elena where official package information is shown.'
   },
   {
     id: 'mission-es-farmacia-sol',
@@ -296,16 +312,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       voiceStyle: 'Calm, empathetic, precise',
       personality: 'Listens attentively, helps the learner locate product-label information, and avoids diagnosis or treatment advice',
       knowledgeBoundary: [
-        'Has antihistamine tablets (pastillas para la alergia) that do not cause drowsiness',
-        'Has saline nasal spray and eye drops',
-        'Knows where package labels and official usage information are displayed; does not provide individualized dosage advice'
+        'Knows where official package warnings are displayed',
+        'Knows where official package instructions are displayed',
+        'Refers the learner to package information and qualified professionals for individualized guidance'
       ]
     },
-    learnerGoal: 'Describe your symptoms (sneezing, itchy eyes) and ask for an allergy medicine that does not make you drowsy',
+    learnerGoal: 'Describe your symptoms and ask where the official package information shows relevant warnings',
     stretchGoal: 'Ask where the official usage and contraindication information appears on the package label',
     targetIntents: ['describe_symptoms', 'request_product_information', 'ask_label_instructions'],
-    primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
-    secondarySkillIds: ['skill-request-substitution'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-request-substitution'],
+    secondarySkillIds: [],
     usefulPhrases: [
       {
         id: 'phrase.es.tengo_alergia',
@@ -315,17 +331,17 @@ export const MISSION_CATALOG: MissionDefinition[] = [
         difficulty: 'elementary'
       },
       {
-        id: 'phrase.es.que_no_de_sueno',
-        form: '¿Tiene algo que no dé sueño?',
-        meaning: 'Do you have something that does not cause drowsiness?',
-        usageNote: 'Important medical condition phrase when buying over-the-counter medicine.',
+        id: 'phrase.es.package_warning',
+        form: '¿Dónde puedo ver las advertencias en el envase?',
+        meaning: 'Where can I see the warnings on the package?',
+        usageNote: 'Asks for official package information.',
         difficulty: 'intermediate'
       },
       {
-        id: 'phrase.es.como_se_toma',
-        form: '¿Cómo se toma y cuántas veces al día?',
-        meaning: 'How is it taken and how many times a day?',
-        usageNote: 'Standard question for dosage instructions.',
+        id: 'phrase.es.instrucciones_envase',
+        form: '¿Dónde puedo ver las instrucciones y advertencias en el envase?',
+        meaning: 'Where can I see the instructions and warnings on the package?',
+        usageNote: 'Asks where to find official package information without requesting individualized dosage advice.',
         difficulty: 'intermediate'
       }
     ],
@@ -343,8 +359,9 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-es-la-terraza',
-    version: 1,
+    version: 2,
     language: 'es',
+    sceneId: 'scene.es.dining.terrace',
     scenarioFamilyId: 'social-dining',
     levelRange: 'A2',
     title: 'Restaurante La Terraza: Dinner in the Plaza',
@@ -401,6 +418,147 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     tags: ['dining', 'restaurant', 'tapas', 'social'],
     transferPattern: 'Propose and refine social arrangements',
     transferReason: 'Synthesizes ordering, requesting conditions, and social coordination into a complete evening scenario.'
+  },
+  {
+    id: 'mission-es-hotel-checkin',
+    version: 1,
+    language: 'es',
+    sceneId: 'scene.es.hotel.checkin',
+    scenarioFamilyId: 'lodging-checkin',
+    levelRange: 'A2',
+    title: 'Hotel Centro: Early Check-in',
+    category: 'lodging',
+    neighborhood: 'Centro · Hotel near Plaza de España',
+    setting: 'A compact hotel reception desk during the afternoon arrival period. Suitcases are lined beside a luggage-storage room.',
+    aiRole: 'Lucía, the hotel receptionist. Welcoming, organized, and concise.',
+    character: {
+      name: 'Lucía',
+      role: 'Hotel Receptionist',
+      voiceStyle: 'Professional, clear, warm',
+      personality: 'Helpful with booking details and practical arrival arrangements',
+      knowledgeBoundary: [
+        'Knows the booking reference and room status',
+        'Knows the room is not ready yet',
+        'Knows luggage storage is available until check-in time',
+      ]
+    },
+    learnerGoal: 'Identify your booking, ask when the room will be ready, and arrange what to do with your luggage',
+    stretchGoal: 'Confirm that you can leave the luggage and return later for the room key',
+    targetIntents: ['provide_booking_reference', 'ask_checkin_condition', 'propose_arrival_plan'],
+    primarySkillIds: ['skill-inquire-specifications', 'skill-propose-alternative'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-request-repetition',
+      'skill-check-understanding',
+    ],
+    usefulPhrases: [
+      {
+        id: 'phrase.es.hotel_reserva',
+        form: 'Tengo una reserva a nombre de García.',
+        meaning: 'I have a reservation under the name García.',
+        usageNote: 'Natural reception phrase for identifying a booking.',
+        difficulty: 'elementary'
+      },
+      {
+        id: 'phrase.es.hotel_habitacion_lista',
+        form: '¿A qué hora estará lista la habitación?',
+        meaning: 'What time will the room be ready?',
+        usageNote: 'Direct question about the check-in condition.',
+        difficulty: 'elementary'
+      },
+      {
+        id: 'phrase.es.hotel_dejar_maletas',
+        form: '¿Podemos dejar las maletas aquí y volver más tarde?',
+        meaning: 'Can we leave the luggage here and come back later?',
+        usageNote: 'Useful alternative-arrangement pattern when a room is not ready.',
+        difficulty: 'intermediate'
+      }
+    ],
+    supportPolicy: {
+      hintLadderAvailable: true,
+      correctionStyle: 'gentle',
+      allowSlowing: true
+    },
+    completionSignals: [
+      'Booking identified',
+      'Room-ready condition clarified',
+      'Luggage or later-return plan confirmed'
+    ],
+    estimatedMinutes: 4,
+    tags: ['lodging', 'hotel', 'check-in', 'coordination'],
+    nextMissionId: 'mission-es-bike-rental',
+    transferPattern: 'Clarify conditions and agree a practical alternative',
+    transferReason: 'Transfers service-condition and alternative-arrangement skills into a lodging reception context.'
+  },
+  {
+    id: 'mission-es-bike-rental',
+    version: 1,
+    language: 'es',
+    sceneId: 'scene.es.rental.bike',
+    scenarioFamilyId: 'equipment-rental',
+    levelRange: 'A2',
+    title: 'Bici Centro: Afternoon Rental',
+    category: 'services',
+    neighborhood: 'Centro · Bike rental near the park',
+    setting: 'A small rental counter with city bikes lined outside. The preferred standard bike type is temporarily unavailable.',
+    aiRole: 'Diego, the bike-rental clerk. Friendly, practical, and clear about rental conditions.',
+    character: {
+      name: 'Diego',
+      role: 'Bike Rental Clerk',
+      voiceStyle: 'Friendly, practical, clear',
+      personality: 'Explains available options and return conditions without unnecessary detail',
+      knowledgeBoundary: [
+        'Knows the standard city bike is unavailable',
+        'Knows an electric city bike is available',
+        'Knows the return deadline and that a lock is included',
+      ]
+    },
+    learnerGoal: 'Rent a bike, choose an available alternative, and ask when it must be returned',
+    stretchGoal: 'Ask whether a lock is included and confirm the return deadline',
+    targetIntents: ['request_rental', 'request_substitution', 'ask_rental_condition'],
+    primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-ask-clarification',
+      'skill-check-understanding',
+    ],
+    usefulPhrases: [
+      {
+        id: 'phrase.es.rental_bici',
+        form: 'Quisiera alquilar una bicicleta esta tarde.',
+        meaning: 'I would like to rent a bicycle this afternoon.',
+        usageNote: 'Direct and polite rental request.',
+        difficulty: 'elementary'
+      },
+      {
+        id: 'phrase.es.rental_otra_bici',
+        form: '¿Tiene otra bicicleta disponible?',
+        meaning: 'Do you have another bicycle available?',
+        usageNote: 'Substitution request when the preferred option is unavailable.',
+        difficulty: 'elementary'
+      },
+      {
+        id: 'phrase.es.rental_devolver',
+        form: '¿A qué hora tengo que devolverla?',
+        meaning: 'What time do I have to return it?',
+        usageNote: 'Concrete question about a rental condition.',
+        difficulty: 'elementary'
+      }
+    ],
+    supportPolicy: {
+      hintLadderAvailable: true,
+      correctionStyle: 'gentle',
+      allowSlowing: true
+    },
+    completionSignals: [
+      'Rental need stated',
+      'Available bike selected',
+      'Return condition clarified'
+    ],
+    estimatedMinutes: 4,
+    tags: ['services', 'rental', 'bike', 'substitution'],
+    transferPattern: 'Request a substitute and clarify service conditions',
+    transferReason: 'Adds a new service family for substitution and condition-question transfer.'
   },
   {
     id: 'mission-fr-boulangerie',

@@ -7,16 +7,17 @@ import { validateMissionScenarioFamily } from '../content/scenarioFamilies';
 /**
  * First executable consumer of the curated-program contract.
  *
- * Deliberately a pilot/draft: only missions with released, model-checked scenes
- * are pinned here. Expanding to a launch program remains a content-review task.
+ * Curated Spanish launch-content path. All pinned missions must have released,
+ * model-checked scenes. The program remains draft until locale/native review and
+ * final-simulation content are approved.
  */
 export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
   id: 'program.es-es.daily-services.pilot',
-  version: 1,
+  version: 3,
   targetLanguage: 'es',
   targetLocale: 'es-ES',
   policyVersion: LEARNING_POLICY_VERSION,
-  title: 'Spanish Daily Services Pilot',
+  title: 'Spanish Everyday Life',
   reviewStatus: 'draft',
   missionPlan: [
     {
@@ -26,9 +27,69 @@ export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
       sceneVersion: 2,
     },
     {
+      missionId: 'mission-es-parcel-counter',
+      missionVersion: 2,
+      sceneId: 'scene.es.parcel.reschedule',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-es-neighbors-door',
+      missionVersion: 2,
+      sceneId: 'scene.es.neighbor.key-handover',
+      sceneVersion: 1,
+    },
+    {
       missionId: 'mission-es-farmacia-sol',
       missionVersion: 1,
       sceneId: 'scene.es.pharmacy.symptom',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-es-la-terraza',
+      missionVersion: 2,
+      sceneId: 'scene.es.dining.terrace',
+      sceneVersion: 1,
+    },
+  ],
+};
+
+export const SPANISH_TRAVEL_PILOT: RoleplayProgram = {
+  id: 'program.es-es.travel.pilot',
+  version: 1,
+  targetLanguage: 'es',
+  targetLocale: 'es-ES',
+  policyVersion: LEARNING_POLICY_VERSION,
+  title: 'Spanish Travel & Getting Around',
+  reviewStatus: 'draft',
+  missionPlan: [
+    {
+      missionId: 'mission-es-cafe-sol',
+      missionVersion: 2,
+      sceneId: 'scene.es.cafe.breakfast',
+      sceneVersion: 2,
+    },
+    {
+      missionId: 'mission-es-metro-station',
+      missionVersion: 2,
+      sceneId: 'scene.es.metro.ticket-platform',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-es-hotel-checkin',
+      missionVersion: 1,
+      sceneId: 'scene.es.hotel.checkin',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-es-bike-rental',
+      missionVersion: 1,
+      sceneId: 'scene.es.rental.bike',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-es-la-terraza',
+      missionVersion: 2,
+      sceneId: 'scene.es.dining.terrace',
       sceneVersion: 1,
     },
   ],
@@ -36,6 +97,7 @@ export const SPANISH_DAILY_SERVICES_PILOT: RoleplayProgram = {
 
 export const ROLEPLAY_PROGRAM_CATALOG: RoleplayProgram[] = [
   SPANISH_DAILY_SERVICES_PILOT,
+  SPANISH_TRAVEL_PILOT,
 ];
 
 export interface ProgramCatalogValidation {

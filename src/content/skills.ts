@@ -135,6 +135,8 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-de-apotheke',
       'mission-it-farmacia',
       'mission-ja-yakkyoku',
+      'mission-es-bike-rental',
+      'mission-es-la-terraza',
     ],
   },
   {
@@ -189,6 +191,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-de-gasthaus',
       'mission-it-trattoria',
       'mission-ja-izakaya',
+      'mission-es-hotel-checkin',
     ],
   },
   {
@@ -241,6 +244,13 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-de-gasthaus',
       'mission-it-trattoria',
       'mission-ja-izakaya',
+      'mission-es-hotel-checkin',
+      'mission-es-bike-rental',
+      'mission-es-cafe-sol',
+      'mission-es-parcel-counter',
+      'mission-es-neighbors-door',
+      'mission-es-metro-station',
+      'mission-es-farmacia-sol',
     ],
   },
   {
@@ -329,6 +339,10 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-de-ubahn',
       'mission-it-stazione',
       'mission-ja-izakaya',
+      'mission-es-cafe-sol',
+      'mission-es-parcel-counter',
+      'mission-es-hotel-checkin',
+      'mission-es-bike-rental',
     ],
   },
   {
@@ -352,7 +366,12 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['Could you say that again?'],
     samplePhrases: ['Could you say that again?', '¿Puede repetirlo?', 'Kunt u dat herhalen?'],
-    associatedMissions: ['mission-es-cafe-sol'],
+    associatedMissions: [
+      'mission-es-cafe-sol',
+      'mission-es-parcel-counter',
+      'mission-es-metro-station',
+      'mission-es-hotel-checkin',
+    ],
   },
   {
     id: 'skill-request-slower-speech',
@@ -401,7 +420,12 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['What do you mean by [X]?'],
     samplePhrases: ['What do you mean by that?', '¿Qué quiere decir con eso?', 'Wat bedoelt u daarmee?'],
-    associatedMissions: ['mission-es-cafe-sol'],
+    associatedMissions: [
+      'mission-es-cafe-sol',
+      'mission-es-parcel-counter',
+      'mission-es-metro-station',
+      'mission-es-bike-rental',
+    ],
   },
   {
     id: 'skill-check-understanding',
@@ -424,7 +448,13 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['So you mean [X], right?'],
     samplePhrases: ['So you mean tomorrow morning, right?', 'Dus u bedoelt morgen ochtend, toch?'],
-    associatedMissions: ['mission-es-cafe-sol'],
+    associatedMissions: [
+      'mission-es-cafe-sol',
+      'mission-es-neighbors-door',
+      'mission-es-metro-station',
+      'mission-es-hotel-checkin',
+      'mission-es-bike-rental',
+    ],
   },
   {
     id: 'skill-clarify-misunderstanding',
@@ -447,7 +477,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['No, I meant [X].'],
     samplePhrases: ['No, I meant tomorrow, not today.', 'Nee, ik bedoelde morgen, niet vandaag.'],
-    associatedMissions: ['mission-es-cafe-sol'],
+    associatedMissions: ['mission-es-cafe-sol', 'mission-es-neighbors-door'],
   },
   {
     id: 'skill-paraphrase-when-stuck',

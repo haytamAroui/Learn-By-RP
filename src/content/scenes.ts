@@ -1,4 +1,10 @@
 import { SceneDefinition } from '../contracts/scene';
+import { PARCEL_SCENE } from './scenes/parcel';
+import { NEIGHBOR_SCENE } from './scenes/neighbor';
+import { METRO_SCENE } from './scenes/metro';
+import { DINING_SCENE } from './scenes/dining';
+import { HOTEL_SCENE } from './scenes/hotel';
+import { BIKE_RENTAL_SCENE } from './scenes/rental';
 
 /**
  * The breakfast café, worked example from §9.3.
@@ -205,10 +211,10 @@ export const CAFE_SCENE: SceneDefinition = {
 
   // Curated mappings only. Never model-generated.
   phraseIds: [
-    'phrase.es.cafe_leche',
-    'phrase.es.leche_almendra',
+    'phrase.es.cafe_con_leche',
+    'phrase.es.oat_milk_request',
     'phrase.es.para_llevar',
-    'phrase.es.cuanto_cuesta',
+    'phrase.es.cuanto_es',
   ],
   skillIds: [
     'skill-request-substitution',
@@ -559,10 +565,13 @@ export const PHARMACY_SCENE: SceneDefinition = {
     },
   ],
 
-  phraseIds: ['phrase.es.sin_somnio', 'phrase.es.dolor_cabeza'],
+  phraseIds: [
+    'phrase.es.tengo_alergia',
+    'phrase.es.package_warning',
+    'phrase.es.instrucciones_envase',
+  ],
   skillIds: [
     'skill-inquire-specifications',
-    'skill-communicative-repair',
     'skill-request-substitution',
   ],
   communicationChallenges: [],
@@ -585,13 +594,32 @@ export const PHARMACY_SCENE: SceneDefinition = {
       relevantActionIds: ['ask_about_ingredient'],
       relevantIntentIds: ['ask_label_instructions', 'request_product_information'],
     },
+    {
+      id: 'opp.es.pharmacy.request-substitution.after-label-comparison',
+      skillId: 'skill-request-substitution',
+      sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
+      positiveExamples: [
+        'After comparing official label information, asks to look at another available package that matches the stated non-drowsiness constraint.',
+      ],
+      negativeExamples: [
+        'Asks the pharmacist to choose or prescribe treatment instead of requesting another package to compare.',
+      ],
+      relevantActionIds: ['confirm_order_item'],
+      relevantIntentIds: ['request_product_information'],
+    },
   ],
   reviewStatus: 'released',
 };
 
 export const SCENES: Record<string, SceneDefinition> = {
   [CAFE_SCENE.id]: CAFE_SCENE,
+  [PARCEL_SCENE.id]: PARCEL_SCENE,
+  [NEIGHBOR_SCENE.id]: NEIGHBOR_SCENE,
+  [METRO_SCENE.id]: METRO_SCENE,
   [PHARMACY_SCENE.id]: PHARMACY_SCENE,
+  [DINING_SCENE.id]: DINING_SCENE,
+  [HOTEL_SCENE.id]: HOTEL_SCENE,
+  [BIKE_RENTAL_SCENE.id]: BIKE_RENTAL_SCENE,
 };
 
 export function getScene(sceneId: string): SceneDefinition | undefined {

@@ -24,6 +24,8 @@ describe('canonical scenario family catalog', () => {
   it('defines the current reviewed family set', () => {
     expect(SCENARIO_FAMILY_CATALOG.map(family => family.id).sort()).toEqual([
       'counter-ordering',
+      'equipment-rental',
+      'lodging-checkin',
       'neighbour-coordination',
       'parcel-service',
       'pharmacy-consultation',
