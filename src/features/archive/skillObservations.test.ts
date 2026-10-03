@@ -4,7 +4,8 @@ import { __setDatabaseForTesting, migrate } from './database';
 import { archiveRepository } from './SqliteArchiveRepository';
 import { MIGRATIONS } from './schema';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
-import { EvidenceSource, SkillObservation } from '../../types';
+import { EvidenceSource, Passage, SkillObservation } from '../../types';
+import { buildLocalObservations } from '../learning/learningCore';
 
 /**
  * Skill evidence persistence.
@@ -275,50 +276,67 @@ describe('hiding and disputing skill evidence', () => {
 });
 
 describe('skill and phrase evidence stay separate', () => {
-  it('a phrase observation is not returned as skill evidence', async () => {
-    await archiveRepository.completeSession({
-      id: 'session-1',
-      missionId: 'mission-es-cafe-sol',
-      missionVersion: 1,
-      language: 'es',
-      mode: 'guided',
-      coldAttempt: true,
-      state: 'recap_ready',
+  it('a validator-issued phrase observation is not returned as skill evidence', async () => {
+    const passage: Passage = {
+      id: 'p-1',
+      sessionId: 'session-1',
+      attemptId: 'attempt-1',
+      speaker: 'user',
+      revisionKey: 'rev-1',
+      assemblyVersion: 1,
+      status: 'final',
+      text: '¿Tiene leche de avena?',
+      modality: 'spoken',
       startedAt: '2026-09-20T09:00:00.000Z',
-      endedAt: '2026-09-20T09:05:00.000Z',
-      passages: [],
+      endedAt: '2026-09-20T09:00:04.000Z',
+      fragments: [],
+    };
+    const phraseEvidence = buildLocalObservations({
+      sessionId: 'session-1',
+      attemptId: 'attempt-1',
+      passages: [passage],
       supportExposures: [],
-      observations: [
+      candidates: [
         {
-          observationId: 'obs-1',
-          sessionId: 'session-1',
-          attemptId: 'attempt-1',
-          sourceTurnId: 'p-1',
-          sourceRevision: 'rev-1',
-          itemId: 'phrase.es.1',
-          candidateForm: '¿Tiene leche de avena?',
+          id: 'phrase.es.1',
+          form: '¿Tiene leche de avena?',
           meaning: 'oat milk',
-          quote: '¿Tiene leche de avena?',
-          modality: 'spoken',
-          retrieval: 'unassisted',
-          taskOutcome: 'achieved',
-          rehearsal: false,
-          supportExposureIds: [],
-          recordedAt: '2026-09-20T09:00:00.000Z',
         },
       ],
-      taskOutcome: 'completed',
-      sceneState: {
-        sceneId: 'scene.es.cafe.breakfast',
-        revision: 1,
-        facts: {},
-        learnerKnows: [],
-        characterKnows: [],
-        checkpoints: [],
-        isFinished: false,
-        outcome: 'unknown',
+      isColdAttempt: true,
+      isRehearsalAttempt: false,
+    }).evidence;
+
+    await archiveRepository.completeSession(
+      {
+        id: 'session-1',
+        missionId: 'mission-es-cafe-sol',
+        missionVersion: 1,
+        language: 'es',
+        mode: 'guided',
+        coldAttempt: true,
+        state: 'recap_ready',
+        startedAt: '2026-09-20T09:00:00.000Z',
+        endedAt: '2026-09-20T09:05:00.000Z',
+        passages: [passage],
+        supportExposures: [],
+        observations: [],
+        taskOutcome: 'completed',
+        sceneState: {
+          sceneId: 'scene.es.cafe.breakfast',
+          revision: 1,
+          facts: {},
+          learnerKnows: [],
+          characterKnows: [],
+          checkpoints: [],
+          isFinished: false,
+          outcome: 'unknown',
+        },
       },
-    });
+      [],
+      undefined,
+      phraseEvidence
+    );
 
     expect((await archiveRepository.getObservations()).length).toBeGreaterThan(0);
     expect(await archiveRepository.getSkillObservations()).toHaveLength(0);
