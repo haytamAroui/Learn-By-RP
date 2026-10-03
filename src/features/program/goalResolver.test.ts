@@ -12,7 +12,7 @@ describe('reviewed program candidate resolution', () => {
   it('maps Dutch daily-life intent to the Flemish everyday program', () => {
     const result = resolveProgramCandidate({
       learningLanguage: 'nl',
-      primaryGoal: 'relocation',
+      primaryGoal: 'daily_life',
     });
 
     expect(result.targetLocale).toBe('nl-BE');
@@ -40,6 +40,17 @@ describe('reviewed program candidate resolution', () => {
 
     expect(result.match).toBe('closest');
     expect(result.program?.id).toBe('program.nl-be.everyday.pilot');
+  });
+
+  it('does not invent a Dutch study program', () => {
+    const result = resolveProgramCandidate({
+      learningLanguage: 'nl',
+      primaryGoal: 'study',
+    });
+
+    expect(result.match).toBe('none');
+    expect(result.program).toBeUndefined();
+    expect(result.executable).toBe(false);
   });
 
   it('does not invent a Dutch work program', () => {
