@@ -23,6 +23,7 @@ import {
   type ValidatedPhraseEvidence,
 } from '../learning/learningCore';
 import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
+import { applyProgramDataRetention } from '../program/privacy';
 import {
   assertValidatedSkillEvidence,
   type ValidatedSkillEvidence,
@@ -102,11 +103,11 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     else if (lang.startsWith('nl')) lang = 'nl';
     else lang = 'en';
 
-    return {
+    return applyProgramDataRetention({
       ...DEFAULT_PREFERENCES,
       ...parsed,
       explanationLanguage: lang as UserPreferences['explanationLanguage'],
-    };
+    });
   }
 
   async savePreferences(preferences: UserPreferences): Promise<void> {
@@ -114,7 +115,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     await db.runAsync(
       `INSERT OR REPLACE INTO preferences (id, payload, updated_at) VALUES (?, ?, ?)`,
       PREFERENCES_ID,
-      JSON.stringify(preferences),
+      JSON.stringify(applyProgramDataRetention(preferences)),
       new Date().toISOString()
     );
   }
