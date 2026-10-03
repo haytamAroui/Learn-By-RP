@@ -449,7 +449,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       it: "Italian (Italiano)",
       ja: "Japanese (日本語)",
       en: "English (English)",
-      nl: "Dutch (Nederlands)",
+      nl: "Dutch (Belgium)",
     },
     modes: {
       guided: "Guided (Gentle corrections & hints available)",
@@ -869,7 +869,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       it: "Italien (Italiano)",
       ja: "Japonais (日本語)",
       en: "Anglais (English)",
-      nl: "Néerlandais (Nederlands)",
+      nl: "Néerlandais (Belgique)",
     },
     modes: {
       guided: "Guidé (Corrections douces et indices disponibles)",
@@ -1292,7 +1292,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       it: "Italiano (Italiano)",
       ja: "Japonés (日本語)",
       en: "Inglés (English)",
-      nl: "Holandés (Nederlands)",
+      nl: "Neerlandés (Bélgica)",
     },
     modes: {
       guided: "Guiado (Correcciones suaves y pistas disponibles)",
@@ -1712,7 +1712,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       it: "Italiaans (Italiano)",
       ja: "Japans (日本語)",
       en: "Engels (English)",
-      nl: "Nederlands (Nederlands)",
+      nl: "Nederlands (België)",
     },
     modes: {
       guided: "Begeleid (Zachte correcties & hints beschikbaar)",
