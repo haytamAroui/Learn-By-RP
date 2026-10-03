@@ -294,16 +294,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       name: 'Elena',
       role: 'Pharmacist',
       voiceStyle: 'Calm, empathetic, precise',
-      personality: 'Listens attentively to health symptoms, advises dosage clearly',
+      personality: 'Listens attentively, helps the learner locate product-label information, and avoids diagnosis or treatment advice',
       knowledgeBoundary: [
         'Has antihistamine tablets (pastillas para la alergia) that do not cause drowsiness',
         'Has saline nasal spray and eye drops',
-        'Knows dosage: one tablet per day in the morning with water'
+        'Knows where package labels and official usage information are displayed; does not provide individualized dosage advice'
       ]
     },
     learnerGoal: 'Describe your symptoms (sneezing, itchy eyes) and ask for an allergy medicine that does not make you drowsy',
-    stretchGoal: 'Ask how many times per day you need to take it and if it should be taken with food',
-    targetIntents: ['describe_symptoms', 'request_medicine', 'ask_dosage'],
+    stretchGoal: 'Ask where the official usage and contraindication information appears on the package label',
+    targetIntents: ['describe_symptoms', 'request_product_information', 'ask_label_instructions'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
     secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
@@ -334,7 +334,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Symptoms explained', 'Medicine recommended', 'Dosage noted'],
+    completionSignals: ['Symptoms described', 'Product-condition question asked', 'Official label information located'],
     estimatedMinutes: 4,
     tags: ['health', 'pharmacy', 'symptoms', 'services'],
     nextMissionId: 'mission-es-la-terraza',
@@ -479,16 +479,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       name: 'Camille',
       role: 'Pharmacist',
       voiceStyle: 'Articulate, caring, calm Parisian French',
-      personality: 'Listens carefully, explains posology clearly, attentive to side-effects',
+      personality: 'Listens carefully, helps locate official product information, and avoids diagnosis or treatment advice',
       knowledgeBoundary: [
         'Has honey-lemon throat pastilles that soothe irritation without drowsiness',
         'Has saline nasal spray and paracetamol',
-        'Knows dosage: one pastille every 4 hours, maximum 6 per day'
+        'Knows where the package label lists official use and warning information; does not provide individualized dosage advice'
       ]
     },
     learnerGoal: 'Explain that you have a sore throat and ask for lozenges that do not cause drowsiness',
-    stretchGoal: 'Ask how many times per day you should take them and if they should be taken after meals',
-    targetIntents: ['describe_symptoms', 'request_remedy', 'clarify_dosage'],
+    stretchGoal: 'Ask where the package label explains use, warnings, and when to seek professional advice',
+    targetIntents: ['describe_symptoms', 'request_product_information', 'clarify_label_information'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-communicative-repair'],
     secondarySkillIds: ['skill-request-substitution'],
     usefulPhrases: [
@@ -519,7 +519,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Symptoms stated', 'Pastilles selected', 'Dosage noted'],
+    completionSignals: ['Symptoms described', 'Product-information question asked', 'Official label information located'],
     estimatedMinutes: 4,
     tags: ['health', 'pharmacy', 'symptoms', 'remedy'],
     nextMissionId: 'mission-fr-kiosque',
@@ -726,16 +726,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       name: 'Stefan',
       role: 'Pharmacist',
       voiceStyle: 'Calm, precise, standard German (Hochdeutsch)',
-      personality: 'Thorough, provides clear medical advice and checks contraindications',
+      personality: 'Thorough, helps locate official product information, and avoids diagnosis or individualized treatment advice',
       knowledgeBoundary: [
         'Has antihistamine tablets (Cetirizin / Loratadin) that do not cause drowsiness (macht nicht müde)',
         'Has saline nasal spray (Meerwasserspray) and eye drops',
-        'Knows dosage: one tablet daily in the evening with a glass of water'
+        'Knows where official package information and contraindication warnings are displayed; does not provide individualized dosage advice'
       ]
     },
     learnerGoal: 'Explain seasonal allergy symptoms (hay fever, itchy eyes) and ask for medicine that does not make you drowsy',
-    stretchGoal: 'Ask how often per day you should take it and if it should be taken with meals',
-    targetIntents: ['describe_allergies', 'request_medicine', 'ask_dosage'],
+    stretchGoal: 'Ask where to find official use and contraindication information on the package label',
+    targetIntents: ['describe_allergies', 'request_product_information', 'ask_label_instructions'],
     primarySkillIds: ['skill-request-substitution', 'skill-inquire-specifications'],
     secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
@@ -766,7 +766,7 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Symptoms explained', 'Tablets suggested', 'Dosage understood'],
+    completionSignals: ['Symptoms described', 'Product-information question asked', 'Official label information located'],
     estimatedMinutes: 4,
     tags: ['pharmacy', 'health', 'medicine', 'allergies'],
     nextMissionId: 'mission-de-ubahn',
@@ -973,16 +973,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       name: 'Elena',
       role: 'Pharmacist',
       voiceStyle: 'Gentle, articulate, classic Tuscan Italian',
-      personality: 'Attentive, asks about allergy history, gives clear advice on usage',
+      personality: 'Attentive, helps locate official product information, and avoids diagnosis or individualized treatment advice',
       knowledgeBoundary: [
         'Has propolis throat spray and honey lozenges that do not cause drowsiness',
         'Has saline spray and headache tablets',
-        'Knows dosage: two sprays into the throat three times a day, after meals'
+        'Knows where package labels provide official use and warning information; does not provide individualized dosage advice'
       ]
     },
     learnerGoal: 'Describe your sore throat and ask for a spray or lozenges that do not cause drowsiness',
-    stretchGoal: 'Ask how many times per day you need to use it and whether before or after meals',
-    targetIntents: ['describe_throat_pain', 'request_spray', 'ask_timing'],
+    stretchGoal: 'Ask where the package label explains use, warnings, and when professional advice is needed',
+    targetIntents: ['describe_throat_pain', 'request_product_information', 'ask_label_instructions'],
     primarySkillIds: ['skill-inquire-specifications'],
     secondarySkillIds: ['skill-request-substitution', 'skill-communicative-repair'],
     usefulPhrases: [
@@ -1013,11 +1013,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Symptoms stated', 'Spray recommended', 'Usage clarified'],
+    completionSignals: ['Symptoms described', 'Product-information question asked', 'Official label information located'],
     estimatedMinutes: 4,
     tags: ['health', 'pharmacy', 'symptoms', 'florence'],
     nextMissionId: 'mission-it-stazione',
-    transferPattern: 'Clarify dosage & timing instructions',
+    transferPattern: 'Clarify official instructions & conditions',
     transferReason: 'Transfers clarifying instructions to purchasing regional tickets and validating them at the station.'
   },
   {
@@ -1220,16 +1220,16 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       name: 'Aoi',
       role: 'Pharmacist',
       voiceStyle: 'Gentle, clear, supportive Japanese',
-      personality: 'Careful listener, checks if symptoms include fever or stomach sensitivity',
+      personality: 'Careful listener who helps locate official product information without diagnosing or selecting treatment',
       knowledgeBoundary: [
         'Has headache medicine (zutsuu-yaku / ibuprofen) that is gentle on the stomach and does not cause drowsiness (nemuku naranai)',
         'Has cooling forehead sheets (netsu-sama sheet) and hydration salts',
-        'Knows dosage: two tablets after meals (shokugo), up to two times a day with water'
+        'Knows where official package use and warning information is displayed; does not provide individualized dosage advice'
       ]
     },
     learnerGoal: 'Explain you have a headache and ask for medicine that does not make you drowsy',
-    stretchGoal: 'Ask how many tablets to take per dose and whether to take it after meals',
-    targetIntents: ['describe_headache', 'request_non_drowsy_medicine', 'ask_dosage_timing'],
+    stretchGoal: 'Ask where the package label explains official use, warnings, and when to seek professional advice',
+    targetIntents: ['describe_headache', 'request_product_information', 'ask_label_instructions'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-request-substitution'],
     secondarySkillIds: ['skill-communicative-repair'],
     usefulPhrases: [
@@ -1260,11 +1260,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
       correctionStyle: 'gentle',
       allowSlowing: true
     },
-    completionSignals: ['Headache explained', 'Medicine recommended', 'Dosage understood'],
+    completionSignals: ['Symptoms described', 'Product-information question asked', 'Official label information located'],
     estimatedMinutes: 4,
     tags: ['health', 'pharmacy', 'symptoms', 'medicine'],
     nextMissionId: 'mission-ja-eki',
-    transferPattern: 'Specifying conditions & dosage',
+    transferPattern: 'Specifying conditions & official instructions',
     transferReason: 'Applies your question-asking pattern when asking station staff about train lines and card recharging.'
   },
   {
