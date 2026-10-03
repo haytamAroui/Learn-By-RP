@@ -112,6 +112,9 @@ export type CommunicationChallengeType =
 
 export type RoleplayPressureLevel = 'manageable' | 'standard' | 'stretch';
 
+/** Reviewed speech variety. The runtime may realize the label, never invent it. */
+export type SpeechVariety = 'standard' | 'light_colloquial' | 'colloquial';
+
 export type PressureVariantKind =
   | 'faster_speech'
   | 'more_concise'
@@ -198,6 +201,8 @@ export interface SceneDefinition {
   version: number;
   missionId: string;
   language: string;
+  /** Reviewed production/comprehension variety; required by release validation for Dutch scenes. */
+  speechVariety?: SpeechVariety;
   characters: Array<{
     id: string;
     name: string;
