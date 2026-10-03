@@ -46,6 +46,12 @@ export interface MissionReadiness {
   ready: boolean;
 }
 
+export type RecoveryOffRamp =
+  | 'guided_practice'
+  | 'different_skill'
+  | 'take_break'
+  | 'mute_skill';
+
 export interface NextRpRecommendation {
   policyVersion: number;
   kind: NextRpKind;
@@ -62,6 +68,8 @@ export interface NextRpRecommendation {
    * Recovery is deliberately capped at manageable; absence means no special cap.
    */
   pressureCeiling?: RoleplayPressureLevel;
+  /** Learner-owned alternatives shown when repeated recovery would become coercive. */
+  offRampOptions?: RecoveryOffRamp[];
   reasonCode: NextRpReasonCode;
   requiresLearnerConfirmation: boolean;
 }
@@ -221,7 +229,11 @@ export function recommendNextRp(input: NextRpInput): NextRpRecommendation {
   // A raw failed scene is never present here; only persisted SkillLapse records
   // can reach this branch.
   const recoverySignal = projections
-    .filter(projection => projection.reviewDue)
+    .filter(
+      projection =>
+        projection.reviewDue &&
+        !input.programPreferences.mutedSkillIds.includes(projection.skillId)
+    )
     .sort((a, b) => {
       if (a.revisit !== b.revisit) return a.revisit ? -1 : 1;
       return a.skillId.localeCompare(b.skillId);
@@ -232,11 +244,27 @@ export function recommendNextRp(input: NextRpInput): NextRpRecommendation {
       .filter(lapse => lapse.skillId === recoverySignal.skillId)
       .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))[0];
 
-    const recovery = isRecoveryEligible({
-      lapse: latestMatchingLapse,
-      targetSkillId: recoverySignal.skillId,
-      consecutiveRecoveries: input.consecutiveRecoveries ?? 0,
-    });
+    const latestIndependentAfterLapse = input.observations
+      .filter(
+        observation =>
+          observation.skillId === recoverySignal.skillId &&
+          isIndependentSuccess(observation) &&
+          observation.evidenceSource === 'validated_explicit' &&
+          Boolean(latestMatchingLapse) &&
+          observation.recordedAt > latestMatchingLapse.recordedAt
+      )
+      .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))[0];
+
+    // A later independent demonstration closes the recovery loop. The next
+    // opportunity should return to cold/transfer rather than repeatedly treating
+    // historical failure as the learner's current state.
+    const recovery = latestIndependentAfterLapse
+      ? { eligible: false, offRampRequired: false }
+      : isRecoveryEligible({
+          lapse: latestMatchingLapse,
+          targetSkillId: recoverySignal.skillId,
+          consecutiveRecoveries: input.consecutiveRecoveries ?? 0,
+        });
 
     if (recovery.eligible) {
       const mission = recoveryCandidate(input, recoverySignal.skillId);
@@ -256,11 +284,19 @@ export function recommendNextRp(input: NextRpInput): NextRpRecommendation {
         mission => !input.completedMissionIds.includes(mission.id)
       );
       if (offRamp) {
-        return recommendationForMission(
-          'continue',
-          offRamp,
-          'RECOVERY_CAP_OFF_RAMP'
-        );
+        return {
+          ...recommendationForMission(
+            'continue',
+            offRamp,
+            'RECOVERY_CAP_OFF_RAMP'
+          ),
+          offRampOptions: [
+            'guided_practice',
+            'different_skill',
+            'take_break',
+            'mute_skill',
+          ],
+        };
       }
     }
   }
