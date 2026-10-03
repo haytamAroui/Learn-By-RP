@@ -88,6 +88,31 @@ describe('skill context identity', () => {
     expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
   });
 
+  it('does not count a speech-variety variant as a new transfer context', () => {
+    const standard = observation({
+      id: 'standard-variety',
+      sessionId: 'session-standard-variety',
+      recordedAt: '2026-09-01T09:00:00.000Z',
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.nl-be.cafe.breakfast#standard',
+    });
+    const colloquial = observation({
+      id: 'colloquial-variety',
+      sessionId: 'session-colloquial-variety',
+      recordedAt: '2026-09-03T09:00:00.000Z',
+      domainId: 'cafes',
+      scenarioFamilyId: 'counter-ordering',
+      scenarioId: 'scene.nl-be.cafe.breakfast#light-colloquial',
+    });
+
+    const projection = projectSkill(SKILL_ID, [standard, colloquial]);
+
+    expect(skillContextIdentity(standard)).toBe('cafes::counter-ordering');
+    expect(skillContextIdentity(colloquial)).toBe('cafes::counter-ordering');
+    expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
+  });
+
   it('does not let a retry create a new transfer context', () => {
     const firstAttempt = observation({
       id: 'retry-parent',
