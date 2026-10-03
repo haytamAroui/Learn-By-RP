@@ -632,6 +632,24 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
   },
 ] as const;
 
+export const FLEMISH_SKILL_PATTERNS: Partial<Record<CommunicativeSkillId, string>> = {
+  'skill-request-substitution': 'Hebt u [X] in plaats van [Y]?',
+  'skill-propose-alternative': 'Kunnen we [tijd/plaats] afspreken?',
+  'skill-inquire-specifications': 'Kunt u me zeggen [detail]?',
+  'skill-wayfinding-transit': 'Op welk perron moet ik zijn voor [plaats]?',
+  'skill-communicative-repair': 'Sorry, ik heb u niet goed begrepen.',
+  'skill-request-repetition': 'Kunt u dat nog eens herhalen?',
+  'skill-request-slower-speech': 'Kunt u wat trager spreken?',
+  'skill-ask-clarification': 'Wat bedoelt u met [X]?',
+  'skill-check-understanding': 'Dus u bedoelt [X], klopt dat?',
+  'skill-clarify-misunderstanding': 'Nee, ik bedoelde [X], niet [Y].',
+  'skill-paraphrase-when-stuck': 'Het is iets dat je gebruikt om [doel].',
+  'skill-give-opinion-with-reason': 'Ik vind [X] beter, omdat [Y].',
+  'skill-compare-options': '[X] is goedkoper, maar [Y] is flexibeler.',
+  'skill-make-arrangement': 'Zullen we [tijd] aan [plaats] afspreken?',
+  'skill-narrate-past-event': 'Eerst [gebeurtenis], daarna [gebeurtenis] en uiteindelijk [resultaat].',
+};
+
 const SKILL_BY_ID = new Map<CommunicativeSkillId, CommunicativeSkillDefinition>(
   COMMUNICATIVE_SKILLS_CATALOG.map(skill => [skill.id, skill])
 );
