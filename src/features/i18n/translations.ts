@@ -1815,7 +1815,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         name: "Naar details en aanbevelingen vragen",
         category: "Verduidelijking en informatie",
         description:
-          "Vragen naar aanbevelingen, dosering, ingrediënten of andere details voordat je beslist.",
+          "Vragen naar voorwaarden, aanbevelingen, ingrediënten of andere details voordat je beslist.",
       },
       wayfindingTransit: {
         name: "De weg vinden en reizen met openbaar vervoer",
