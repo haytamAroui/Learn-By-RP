@@ -96,7 +96,7 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
               {program.targetLocale}
             </Text>
           </View>
-          <Text className="text-[30px] font-semibold leading-[36px] tracking-tight text-ink">
+          <Text className="text-[28px] font-semibold leading-[34px] tracking-tight text-ink">
             {program.title}
           </Text>
           <Text className="text-[15px] leading-[22px] text-body">
