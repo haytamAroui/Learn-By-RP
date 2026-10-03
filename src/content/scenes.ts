@@ -1,4 +1,8 @@
 import { SceneDefinition } from '../contracts/scene';
+import { PARCEL_SCENE } from './scenes/parcel';
+import { NEIGHBOR_SCENE } from './scenes/neighbor';
+import { METRO_SCENE } from './scenes/metro';
+import { DINING_SCENE } from './scenes/dining';
 
 /**
  * The breakfast café, worked example from §9.3.
@@ -591,7 +595,11 @@ export const PHARMACY_SCENE: SceneDefinition = {
 
 export const SCENES: Record<string, SceneDefinition> = {
   [CAFE_SCENE.id]: CAFE_SCENE,
+  [PARCEL_SCENE.id]: PARCEL_SCENE,
+  [NEIGHBOR_SCENE.id]: NEIGHBOR_SCENE,
+  [METRO_SCENE.id]: METRO_SCENE,
   [PHARMACY_SCENE.id]: PHARMACY_SCENE,
+  [DINING_SCENE.id]: DINING_SCENE,
 };
 
 export function getScene(sceneId: string): SceneDefinition | undefined {
