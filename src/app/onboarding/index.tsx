@@ -43,6 +43,8 @@ const JOURNEY_COPY: Record<
   {
     intro: string;
     startingPoint: string;
+    completeBeginner: string;
+    notSureShortcut: string;
     studied: string;
     studiedNone: string;
     studiedLittle: string;
@@ -69,6 +71,8 @@ const JOURNEY_COPY: Record<
   en: {
     intro: 'Choose what you want to learn, why you need it, and where you want to start.',
     startingPoint: 'Starting point',
+    completeBeginner: "I'm a complete beginner",
+    notSureShortcut: "I'm not sure",
     studied: 'Have you studied this language before?',
     studiedNone: 'Never',
     studiedLittle: 'A little',
@@ -94,6 +98,8 @@ const JOURNEY_COPY: Record<
   fr: {
     intro: 'Choisissez ce que vous voulez apprendre, pourquoi vous en avez besoin et par où commencer.',
     startingPoint: 'Point de départ',
+    completeBeginner: 'Je débute complètement',
+    notSureShortcut: 'Je ne suis pas sûr',
     studied: 'Avez-vous déjà étudié cette langue ?',
     studiedNone: 'Jamais',
     studiedLittle: 'Un peu',
@@ -119,6 +125,8 @@ const JOURNEY_COPY: Record<
   es: {
     intro: 'Elige qué quieres aprender, para qué lo necesitas y desde dónde quieres empezar.',
     startingPoint: 'Punto de partida',
+    completeBeginner: 'Soy principiante absoluto',
+    notSureShortcut: 'No estoy seguro',
     studied: '¿Has estudiado este idioma antes?',
     studiedNone: 'Nunca',
     studiedLittle: 'Un poco',
@@ -144,6 +152,8 @@ const JOURNEY_COPY: Record<
   nl: {
     intro: 'Kies wat je wilt leren, waarom je het nodig hebt en waar je wilt beginnen.',
     startingPoint: 'Startpunt',
+    completeBeginner: 'Ik ben een absolute beginner',
+    notSureShortcut: 'Ik weet het niet zeker',
     studied: 'Heb je deze taal al eerder geleerd?',
     studiedNone: 'Nog nooit',
     studiedLittle: 'Een beetje',
@@ -343,6 +353,35 @@ export default function OnboardingScreen() {
 
         <Card className="gap-4 bg-surface-sunken">
           <SectionLabel>{copy.startingPoint}</SectionLabel>
+
+          <ChipRow
+            value={
+              startingAnswers.studiedBefore === 'none' &&
+              startingAnswers.understandsEveryday === 'no' &&
+              startingAnswers.canAnswerBasic === 'no'
+                ? 'complete_beginner'
+                : startingAnswers.studiedBefore === 'not_sure' &&
+                    startingAnswers.understandsEveryday === 'not_sure' &&
+                    startingAnswers.canAnswerBasic === 'not_sure'
+                  ? 'not_sure'
+                  : ''
+            }
+            onChange={id => {
+              if (id === 'complete_beginner') {
+                setStartingAnswers({
+                  studiedBefore: 'none',
+                  understandsEveryday: 'no',
+                  canAnswerBasic: 'no',
+                });
+              } else if (id === 'not_sure') {
+                setStartingAnswers(DEFAULT_STARTING_POINT_ANSWERS);
+              }
+            }}
+            options={[
+              { id: 'complete_beginner', label: copy.completeBeginner },
+              { id: 'not_sure', label: copy.notSureShortcut },
+            ]}
+          />
 
           <View className="gap-2">
             <Text className="text-sm font-semibold text-ink">{copy.studied}</Text>
