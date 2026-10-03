@@ -1269,30 +1269,66 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   // --------------------------------------------------------------------- export
 
   async exportArchiveJson(): Promise<string> {
-    const [preferences, sessions, observations, phrases] = await Promise.all([
+    const [
+      preferences,
+      sessions,
+      observations,
+      phrases,
+      skillObservations,
+      skillLapses,
+      voiceConsent,
+      savedAnalysisConsent,
+      pendingJobs,
+    ] = await Promise.all([
       this.getPreferences(),
       this.getSessions(),
       this.getObservations(),
       this.getPhrases(),
+      this.getSkillObservations(),
+      this.getSkillLapses(),
+      this.getConsent('voice'),
+      this.getConsent('saved_analysis'),
+      this.getPendingJobs(),
     ]);
+
+    const db = await getDatabase();
+    const deletionMarkers = await db.getAllAsync<Record<string, unknown>>(
+      'SELECT id, scope, target_id, created_at FROM deletion_markers ORDER BY created_at ASC'
+    );
 
     return JSON.stringify(
       {
         version: 1,
-        schemaVersion: 1,
+        schemaVersion: LATEST_SCHEMA_VERSION,
         policyVersion: LEARNING_POLICY_VERSION,
         consentVersion: CONSENT_VERSION,
         exportedAt: new Date().toISOString(),
         preferences,
+        consentRecords: [voiceConsent, savedAnalysisConsent].filter(Boolean),
         sessions,
         observations,
+        skillObservations,
+        skillLapses,
         phrases,
+        pendingJobs,
+        deletionMarkers: deletionMarkers.map(marker => ({
+          id: String(marker.id),
+          scope: String(marker.scope),
+          targetId: marker.target_id ? String(marker.target_id) : undefined,
+          createdAt: String(marker.created_at),
+        })),
+        contentProvenance: sessions.map(session => ({
+          sessionId: session.id,
+          missionId: session.missionId,
+          missionVersion: session.missionVersion,
+          sceneId: session.sceneState.sceneId,
+          programContext: session.programContext,
+        })),
       },
       null,
       2
     );
   }
-
   async importArchiveJson(json: string): Promise<{
     success: boolean;
     message: string;
