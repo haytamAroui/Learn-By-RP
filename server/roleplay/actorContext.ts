@@ -1,6 +1,6 @@
 import { MISSION_CATALOG } from '../../src/data/missions';
 import { getScene } from '../../src/content/scenes';
-import type { SceneDefinition, SceneFactValue } from '../../src/contracts/scene';
+import type { SceneDefinition, SceneFactValue, SpeechVariety } from '../../src/contracts/scene';
 import type { MissionDefinition } from '../../src/types';
 
 export interface ResolvedActorContext {
@@ -8,6 +8,8 @@ export interface ResolvedActorContext {
   scene?: SceneDefinition;
   sceneFacts: Record<string, SceneFactValue>;
   allowedActions: string[];
+  /** Reviewed server-derived variety; client input cannot override this. */
+  speechVariety?: SpeechVariety;
 }
 
 export type ActorContextResult =
@@ -59,6 +61,7 @@ export function resolveActorContext(body: Record<string, unknown>): ActorContext
         mission,
         sceneFacts: {},
         allowedActions: [],
+        speechVariety: undefined,
       },
     };
   }
@@ -88,6 +91,7 @@ export function resolveActorContext(body: Record<string, unknown>): ActorContext
       scene,
       sceneFacts,
       allowedActions: scene.allowedActions.map(action => action.name),
+      speechVariety: scene.speechVariety,
     },
   };
 }
