@@ -879,35 +879,63 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   // --------------------------------------------------------------------- export
 
   async exportArchiveJson(): Promise<string> {
-    const [preferences, sessions, observations, phrases, skillObservations, skillLapses] =
-      await Promise.all([
-        this.getPreferences(),
-        this.getSessions(),
-        this.getObservations(),
-        this.getPhrases(),
-        this.getSkillObservations(),
-        this.getSkillLapses(),
-      ]);
+    const [
+      preferences,
+      sessions,
+      observations,
+      phrases,
+      skillObservations,
+      skillLapses,
+      voiceConsent,
+      savedAnalysisConsent,
+      pendingJobs,
+      deletionMarkers,
+    ] = await Promise.all([
+      this.getPreferences(),
+      this.getSessions(),
+      this.getObservations(),
+      this.getPhrases(),
+      this.getSkillObservations(),
+      this.getSkillLapses(),
+      this.getConsent('voice'),
+      this.getConsent('saved_analysis'),
+      this.getPendingJobs(),
+      this.readAll<{
+        id: string;
+        scope: string;
+        targetId: string | null;
+        createdAt: string;
+      }>(STORE.deletions),
+    ]);
 
     return JSON.stringify(
       {
         version: 1,
-        schemaVersion: 1,
+        schemaVersion: LATEST_SCHEMA_VERSION,
         policyVersion: LEARNING_POLICY_VERSION,
         consentVersion: CONSENT_VERSION,
         exportedAt: new Date().toISOString(),
         preferences,
+        consentRecords: [voiceConsent, savedAnalysisConsent].filter(Boolean),
         sessions,
         observations,
-        phrases,
         skillObservations,
         skillLapses,
+        phrases,
+        pendingJobs,
+        deletionMarkers,
+        contentProvenance: sessions.map(session => ({
+          sessionId: session.id,
+          missionId: session.missionId,
+          missionVersion: session.missionVersion,
+          sceneId: session.sceneState.sceneId,
+          programContext: session.programContext,
+        })),
       },
       null,
       2
     );
   }
-
   async importArchiveJson(json: string): Promise<{
     success: boolean;
     message: string;
