@@ -882,7 +882,84 @@ Confirmed from `main` after squash merge `520102dc12dd162b081d93c92503e5a3030c47
 
 ---
 
-# 32. Maintenance rule
+# 32. Learner Journey V1 — goal to first independent transfer
+
+This is the learner-facing product path that sits above the existing roleplay/evidence engine.
+
+## Entry and goal routing
+
+- [ ] First-run target language includes reviewed locale identity, starting with `Nederlands (België)` / `nl-BE`.
+- [ ] Goal-first onboarding: daily life, work, travel, study, social/talking with people, or own goal.
+- [ ] Reviewed goal → reviewed program resolver; no free-form executable course generation.
+- [ ] For `nl-BE`, route Daily life to the reviewed Everyday program and Travel to the reviewed Travel program once their release gates pass.
+- [ ] Own-goal free text is matched to reviewed templates only; if no fit exists, say so and offer the closest reviewed options.
+- [ ] Raw free-text goal is discarded by default after extraction/preview unless the learner explicitly chooses to retain it.
+
+## Starting point
+
+- [ ] Three self-report starting-point questions.
+- [ ] Always offer `complete beginner` and `not sure`.
+- [ ] Optional/tolerant ~2-minute warm-up roleplay.
+- [ ] Warm-up output is a program entry position, not a learner-facing CEFR verdict.
+- [ ] Warm-up silence, uncertainty or non-production creates no lapse.
+
+## Beginner task cycle
+
+- [ ] Add explicit `observe` learning phase for a new skill/scene.
+- [ ] Observe plays a short reviewed model exchange and creates no skill evidence.
+- [ ] Guided follows with intentionally visible support and honest assisted evidence semantics.
+- [ ] Do not call a production attempt cold while relevant modeled/revealed forms remain inside the support window.
+- [ ] Later independent attempt may become cold only under the existing support ledger.
+- [ ] Transfer still requires a different reviewed `scenarioFamilyId`.
+- [ ] Recovery remains eligible only from a strict persisted cold lapse.
+- [ ] First beginner scene uses a small reviewed chunk set (roughly 3–6 useful forms) and a plausibly achievable communicative job.
+
+## Honest learner-facing evidence
+
+- [x] One independent observation does not produce a Steady capability claim. (existing `SKILL_POLICY`: multiple contexts + days + validated observations)
+- [x] First independent recap copy is observation-scoped: “You did this on your own today.” (localized recap copy)
+- [ ] Learner-facing skill names are localized for every launch-visible skill.
+- [ ] Target-language pattern/example may appear as secondary text; the primary label follows the learner’s UI language.
+- [ ] Three-family launch coverage remains a content-availability gate, not the learner `Steady` threshold.
+
+## Belgian Dutch variety
+
+- [ ] Production target: reviewed Standard Dutch as naturally used in Belgium.
+- [ ] Add reviewed `speechVariety`: `standard` | `light_colloquial` | `colloquial`.
+- [ ] Beginner scenes default to clear `standard`; later reviewed variants may widen comprehension exposure.
+- [ ] Speech-variety difficulty is listening/comprehension context only and never manufactures a speaking lapse.
+- [ ] Meaning and slower/replay support remain available for colloquial lines.
+- [ ] Variety/pace variants within one scenario family never count as transfer.
+- [ ] Native Belgian-Dutch reviewer signs off on variety/register; the runtime model has no authority to label natural Flemish.
+
+## Retention and real-world bridge
+
+- [ ] Surface review-due roleplays from the existing review model.
+- [ ] Optional real-life micro-task after eligible scenes (for example: order a coffee in Dutch this week).
+- [ ] Real-life micro-task completion is self-reported only and never skill evidence.
+- [ ] Pilot metrics separate rehearsal improvement from cross-family independent transfer.
+
+## Content pipeline
+
+- [ ] S0 Specify: human scenario brief + opportunity definition before dialogue drafting.
+- [ ] S1 Draft: schema-constrained LLM proposal only.
+- [x] S2 Auto-validate foundations: finite scene schema, model checker, reachable opportunities, content/release gates.
+- [ ] S2 add deterministic language-envelope checks for beginner variants; do not rely on CEFR prompting alone.
+- [ ] S3 Human review: native locale + language-teaching review with durable reviewer/version record.
+- [ ] S4 Pilot with real learners; simulated learners are smoke tests only.
+- [x] S5 Versioned content/evidence pins exist; published fixes create new versions rather than rewriting evidence history.
+- [ ] S6 Monitor opportunity trigger rate, help rate and comprehension failures separately from learning evidence.
+
+## Evidence semantic boundary
+
+- [x] Requesting a substitution and accepting/choosing an offered option are different acts in the Flemish launch content.
+- [x] Flemish substitution opportunities require explicit learner request actions before the director may offer a substitute.
+- [x] Opportunity examples explicitly include nearby acts that do **not** count.
+- [ ] Audit the same request-vs-accept semantic boundary across every non-Flemish released scene.
+
+---
+
+# 33. Maintenance rule
 
 When completing an item:
 
