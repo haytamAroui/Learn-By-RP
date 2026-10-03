@@ -87,8 +87,9 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-es-parcel-counter',
-    version: 1,
+    version: 2,
     language: 'es',
+    sceneId: 'scene.es.parcel.reschedule',
     scenarioFamilyId: 'parcel-service',
     levelRange: 'A2',
     title: 'Parcel Drop: The Rescheduled Delivery',
@@ -111,7 +112,11 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     stretchGoal: 'Explain you cannot come this evening and propose collecting it tomorrow morning',
     targetIntents: ['provide_reference', 'reschedule_time', 'confirm_hours'],
     primarySkillIds: ['skill-inquire-specifications', 'skill-propose-alternative'],
-    secondarySkillIds: ['skill-communicative-repair'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-request-repetition',
+      'skill-ask-clarification',
+    ],
     usefulPhrases: [
       {
         id: 'phrase.es.vengo_a_recoger',
@@ -153,8 +158,9 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-es-neighbors-door',
-    version: 1,
+    version: 2,
     language: 'es',
+    sceneId: 'scene.es.neighbor.key-handover',
     scenarioFamilyId: 'neighbour-coordination',
     levelRange: 'A2',
     title: "Neighbor's Door: The Spare Key & The Terrace",
@@ -176,8 +182,12 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     learnerGoal: 'Ask Sofia if she has the terrace key and arrange a quick handover',
     stretchGoal: 'Propose meeting downstairs at Café Sol if she is in a rush right now',
     targetIntents: ['ask_neighbor_help', 'propose_alternative_meeting', 'express_thanks'],
-    primarySkillIds: ['skill-propose-alternative', 'skill-communicative-repair'],
-    secondarySkillIds: ['skill-inquire-specifications'],
+    primarySkillIds: ['skill-propose-alternative', 'skill-inquire-specifications'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-check-understanding',
+      'skill-clarify-misunderstanding',
+    ],
     usefulPhrases: [
       {
         id: 'phrase.es.tienes_un_momento',
@@ -218,8 +228,9 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-es-metro-station',
-    version: 1,
+    version: 2,
     language: 'es',
+    sceneId: 'scene.es.metro.ticket-platform',
     scenarioFamilyId: 'public-transit',
     levelRange: 'A2',
     title: 'Metro Sol: Ticket Machine & Platform Guidance',
@@ -242,7 +253,12 @@ export const MISSION_CATALOG: MissionDefinition[] = [
     stretchGoal: 'Explain the card machine did not return your change or receipt',
     targetIntents: ['purchase_transit_ticket', 'ask_platform', 'clarify_directions'],
     primarySkillIds: ['skill-wayfinding-transit', 'skill-inquire-specifications'],
-    secondarySkillIds: ['skill-communicative-repair'],
+    secondarySkillIds: [
+      'skill-communicative-repair',
+      'skill-request-repetition',
+      'skill-ask-clarification',
+      'skill-check-understanding',
+    ],
     usefulPhrases: [
       {
         id: 'phrase.es.tarjeta_diez_viajes',
@@ -343,8 +359,9 @@ export const MISSION_CATALOG: MissionDefinition[] = [
   },
   {
     id: 'mission-es-la-terraza',
-    version: 1,
+    version: 2,
     language: 'es',
+    sceneId: 'scene.es.dining.terrace',
     scenarioFamilyId: 'social-dining',
     levelRange: 'A2',
     title: 'Restaurante La Terraza: Dinner in the Plaza',
