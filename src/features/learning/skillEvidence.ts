@@ -126,6 +126,7 @@ export interface SkillValidationRejection {
 }
 
 const VALIDATED_SKILL_EVIDENCE_BRAND = Symbol('learnbyrp.validated-skill-evidence');
+const VALIDATED_SKILL_EVIDENCE_INSTANCES = new WeakSet<object>();
 
 /**
  * Opaque archive-write capability for skill evidence.
@@ -145,11 +146,13 @@ function validatedSkillEvidence(
   observations: readonly SkillObservation[],
   lapses: readonly SkillLapse[]
 ): ValidatedSkillEvidence {
-  return Object.freeze({
+  const evidence = Object.freeze({
     observations: Object.freeze([...observations]),
     lapses: Object.freeze([...lapses]),
     [VALIDATED_SKILL_EVIDENCE_BRAND]: true as const,
   });
+  VALIDATED_SKILL_EVIDENCE_INSTANCES.add(evidence);
+  return evidence;
 }
 
 export const EMPTY_VALIDATED_SKILL_EVIDENCE: ValidatedSkillEvidence =
@@ -161,7 +164,8 @@ export function assertValidatedSkillEvidence(
   if (
     !value ||
     typeof value !== 'object' ||
-    (value as Record<PropertyKey, unknown>)[VALIDATED_SKILL_EVIDENCE_BRAND] !== true
+    (value as Record<PropertyKey, unknown>)[VALIDATED_SKILL_EVIDENCE_BRAND] !== true ||
+    !VALIDATED_SKILL_EVIDENCE_INSTANCES.has(value as object)
   ) {
     throw new Error('Skill evidence write rejected: validator-issued evidence bundle required');
   }
