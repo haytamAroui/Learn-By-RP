@@ -15,6 +15,7 @@ const TARGET_LANGUAGES: Array<{ id: LanguageCode; label: string }> = [
   { id: 'de', label: '🇩🇪 German' },
   { id: 'it', label: '🇮🇹 Italian' },
   { id: 'ja', label: '🇯🇵 Japanese' },
+  { id: 'nl', label: '🇧🇪 Dutch (Belgium)' },
 ];
 
 const UI_LANGUAGES: Array<{ id: UiLanguage; label: string }> = [
@@ -84,7 +85,7 @@ export default function OnboardingScreen() {
               {t.nav.brandTitle}
             </Text>
             <Text className="text-sm leading-relaxed text-body">
-              Choose your language, comfort level, goal, and privacy options. No placement test.
+              Choose your language, starting point, goal, and privacy options.
             </Text>
           </View>
 

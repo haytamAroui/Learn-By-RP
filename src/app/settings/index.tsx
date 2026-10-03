@@ -30,13 +30,14 @@ const TARGET_LANGUAGE_FLAGS: Record<LanguageCode, string> = {
   de: '🇩🇪',
   it: '🇮🇹',
   ja: '🇯🇵',
+  nl: '🇧🇪',
 };
 
 const UI_LANGUAGE_FLAGS: Record<UiLanguage, string> = {
   en: '🇬🇧',
   fr: '🇫🇷',
   es: '🇪🇸',
-  nl: '🇳🇱',
+  nl: '🇧🇪',
 };
 
 const APPEARANCE_OPTIONS: Array<{

@@ -59,6 +59,12 @@ const NEIGHBORHOOD_LOOP_TITLES: Record<string, Record<string, string>> = {
     es: 'Yanaka Ginza — Bucle Shitamachi conectado (Tokio)',
     nl: 'Yanaka Ginza — Verbonden Shitamachi-buurtlus (Tokio)',
   },
+  nl: {
+    en: 'Brussels — Belgian Dutch Everyday Loop',
+    fr: 'Bruxelles — Parcours quotidien en néerlandais de Belgique',
+    es: 'Bruselas — Ruta cotidiana en neerlandés de Bélgica',
+    nl: 'Brussel — Verbonden dagelijkse oefenroute in Belgisch Nederlands',
+  },
 };
 
 export const MissionsScreen: React.FC<MissionsScreenProps> = ({

@@ -1,4 +1,4 @@
-export type LanguageCode = 'es' | 'fr' | 'de' | 'it' | 'ja';
+export type LanguageCode = 'es' | 'fr' | 'de' | 'it' | 'ja' | 'nl';
 
 
 export type Mode = 'immersion' | 'guided' | 'focused';

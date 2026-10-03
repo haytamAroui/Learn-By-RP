@@ -60,6 +60,27 @@ describe('native voice selection', () => {
     ).toBe('fr-ca-enhanced');
   });
 
+  it('prefers an exact Belgian Dutch voice over Netherlands Dutch', () => {
+    const dutchVoices = [
+      {
+        identifier: 'nl-nl-enhanced',
+        language: 'nl-NL',
+        name: 'Dutch Netherlands',
+        quality: 'Enhanced',
+      },
+      {
+        identifier: 'nl-be-default',
+        language: 'nl-BE',
+        name: 'Dutch Belgium',
+        quality: 'Default',
+      },
+    ];
+
+    expect(pickBestNativeVoice(dutchVoices, 'nl-BE')?.identifier).toBe(
+      'nl-be-default'
+    );
+  });
+
   it('does not select an unrelated language', () => {
     expect(
       pickBestNativeVoice(

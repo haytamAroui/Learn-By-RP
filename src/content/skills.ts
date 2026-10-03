@@ -137,6 +137,10 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-ja-yakkyoku',
       'mission-es-bike-rental',
       'mission-es-la-terraza',
+      'mission-nl-be-koffiebar',
+      'mission-nl-be-apotheek',
+      'mission-nl-be-terras',
+      'mission-nl-be-fietsverhuur',
     ],
   },
   {
@@ -192,6 +196,10 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-it-trattoria',
       'mission-ja-izakaya',
       'mission-es-hotel-checkin',
+      'mission-nl-be-pakjespunt',
+      'mission-nl-be-buur-sleutel',
+      'mission-nl-be-terras',
+      'mission-nl-be-hotel',
     ],
   },
   {
@@ -251,6 +259,14 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-es-neighbors-door',
       'mission-es-metro-station',
       'mission-es-farmacia-sol',
+      'mission-nl-be-koffiebar',
+      'mission-nl-be-pakjespunt',
+      'mission-nl-be-buur-sleutel',
+      'mission-nl-be-metro',
+      'mission-nl-be-apotheek',
+      'mission-nl-be-terras',
+      'mission-nl-be-hotel',
+      'mission-nl-be-fietsverhuur',
     ],
   },
   {
@@ -303,6 +319,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-de-ubahn',
       'mission-it-stazione',
       'mission-ja-eki',
+      'mission-nl-be-metro',
     ],
   },
   {
@@ -343,6 +360,12 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-es-parcel-counter',
       'mission-es-hotel-checkin',
       'mission-es-bike-rental',
+      'mission-nl-be-koffiebar',
+      'mission-nl-be-pakjespunt',
+      'mission-nl-be-buur-sleutel',
+      'mission-nl-be-metro',
+      'mission-nl-be-hotel',
+      'mission-nl-be-fietsverhuur',
     ],
   },
   {
@@ -371,6 +394,10 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-es-parcel-counter',
       'mission-es-metro-station',
       'mission-es-hotel-checkin',
+      'mission-nl-be-koffiebar',
+      'mission-nl-be-pakjespunt',
+      'mission-nl-be-metro',
+      'mission-nl-be-hotel',
     ],
   },
   {
@@ -383,7 +410,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       en: 'I can ask someone to speak more slowly.',
       fr: 'Je peux demander à quelqu’un de parler plus lentement.',
       es: 'Puedo pedirle a alguien que hable más despacio.',
-      nl: 'Ik kan iemand vragen langzamer te spreken.',
+      nl: 'Ik kan iemand vragen wat trager te spreken.',
     },
     positiveExamples: ['Explicitly asks the speaker to slow down.'],
     negativeExamples: ['Requests simple repetition without asking for a slower pace.'],
@@ -393,7 +420,7 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     evidencePolicy: 'direct',
     deprecated: null,
     patterns: ['Could you speak more slowly?'],
-    samplePhrases: ['Could you speak more slowly?', '¿Puede hablar más despacio?', 'Kunt u wat langzamer spreken?'],
+    samplePhrases: ['Could you speak more slowly?', '¿Puede hablar más despacio?', 'Kunt u wat trager spreken?'],
     associatedMissions: ['mission-es-cafe-sol'],
   },
   {
@@ -425,6 +452,10 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-es-parcel-counter',
       'mission-es-metro-station',
       'mission-es-bike-rental',
+      'mission-nl-be-koffiebar',
+      'mission-nl-be-pakjespunt',
+      'mission-nl-be-metro',
+      'mission-nl-be-fietsverhuur',
     ],
   },
   {
@@ -454,6 +485,11 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
       'mission-es-metro-station',
       'mission-es-hotel-checkin',
       'mission-es-bike-rental',
+      'mission-nl-be-koffiebar',
+      'mission-nl-be-buur-sleutel',
+      'mission-nl-be-metro',
+      'mission-nl-be-hotel',
+      'mission-nl-be-fietsverhuur',
     ],
   },
   {
@@ -477,7 +513,11 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     deprecated: null,
     patterns: ['No, I meant [X].'],
     samplePhrases: ['No, I meant tomorrow, not today.', 'Nee, ik bedoelde morgen, niet vandaag.'],
-    associatedMissions: ['mission-es-cafe-sol', 'mission-es-neighbors-door'],
+    associatedMissions: [
+      'mission-es-cafe-sol',
+      'mission-es-neighbors-door',
+      'mission-nl-be-buur-sleutel',
+    ],
   },
   {
     id: 'skill-paraphrase-when-stuck',
@@ -591,6 +631,24 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     associatedMissions: [],
   },
 ] as const;
+
+export const FLEMISH_SKILL_PATTERNS: Partial<Record<CommunicativeSkillId, string>> = {
+  'skill-request-substitution': 'Hebt u [X] in plaats van [Y]?',
+  'skill-propose-alternative': 'Kunnen we [tijd/plaats] afspreken?',
+  'skill-inquire-specifications': 'Kunt u me zeggen [detail]?',
+  'skill-wayfinding-transit': 'Op welk perron moet ik zijn voor [plaats]?',
+  'skill-communicative-repair': 'Sorry, ik heb u niet goed begrepen.',
+  'skill-request-repetition': 'Kunt u dat nog eens herhalen?',
+  'skill-request-slower-speech': 'Kunt u wat trager spreken?',
+  'skill-ask-clarification': 'Wat bedoelt u met [X]?',
+  'skill-check-understanding': 'Dus u bedoelt [X], klopt dat?',
+  'skill-clarify-misunderstanding': 'Nee, ik bedoelde [X], niet [Y].',
+  'skill-paraphrase-when-stuck': 'Het is iets dat je gebruikt om [doel].',
+  'skill-give-opinion-with-reason': 'Ik vind [X] beter, omdat [Y].',
+  'skill-compare-options': '[X] is goedkoper, maar [Y] is flexibeler.',
+  'skill-make-arrangement': 'Zullen we [tijd] aan [plaats] afspreken?',
+  'skill-narrate-past-event': 'Eerst [gebeurtenis], daarna [gebeurtenis] en uiteindelijk [resultaat].',
+};
 
 const SKILL_BY_ID = new Map<CommunicativeSkillId, CommunicativeSkillDefinition>(
   COMMUNICATIVE_SKILLS_CATALOG.map(skill => [skill.id, skill])

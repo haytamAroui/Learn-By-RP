@@ -36,6 +36,36 @@ export const SPANISH_LAUNCH_CONTENT_V1: LaunchContentSpec = {
   minFamiliesPerCoreSkill: 3,
 };
 
+export const FLEMISH_LAUNCH_CONTENT_V1: LaunchContentSpec = {
+  id: 'launch.nl-be.daily-life.v1',
+  targetLanguage: 'nl',
+  targetLocale: 'nl-BE',
+  missionIds: [
+    'mission-nl-be-koffiebar',
+    'mission-nl-be-pakjespunt',
+    'mission-nl-be-buur-sleutel',
+    'mission-nl-be-metro',
+    'mission-nl-be-apotheek',
+    'mission-nl-be-terras',
+    'mission-nl-be-hotel',
+    'mission-nl-be-fietsverhuur',
+  ],
+  coreSkillIds: [
+    'skill-inquire-specifications',
+    'skill-propose-alternative',
+    'skill-request-substitution',
+    'skill-request-repetition',
+    'skill-ask-clarification',
+    'skill-check-understanding',
+  ],
+  minFamiliesPerCoreSkill: 3,
+};
+
+export const LAUNCH_CONTENT_SPECS: readonly LaunchContentSpec[] = [
+  SPANISH_LAUNCH_CONTENT_V1,
+  FLEMISH_LAUNCH_CONTENT_V1,
+];
+
 export interface LaunchContentCoverage {
   skillId: CommunicativeSkillId;
   scenarioFamilyIds: ScenarioFamilyId[];

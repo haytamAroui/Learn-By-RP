@@ -153,6 +153,9 @@ export interface Translations {
     inquireSpecifications: { name: string; category: string; description: string };
     wayfindingTransit: { name: string; category: string; description: string };
     communicativeRepair: { name: string; category: string; description: string };
+    requestRepetition: { name: string; category: string; description: string };
+    askClarification: { name: string; category: string; description: string };
+    checkUnderstanding: { name: string; category: string; description: string };
   };
   live: {
     liveTag: string;
@@ -216,6 +219,7 @@ export interface Translations {
     validatedEvidence: string;
     noPhrasesValidated: string;
     unassisted: string;
+    independentToday: string;
     assisted: string;
     rehearsal: string;
     quoteLabel: string;
@@ -449,7 +453,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       it: "Italian (Italiano)",
       ja: "Japanese (日本語)",
       en: "English (English)",
-      nl: "Dutch (Nederlands)",
+      nl: "Dutch (Belgium)",
     },
     modes: {
       guided: "Guided (Gentle corrections & hints available)",
@@ -565,6 +569,21 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         description:
           "Report a problem, ask for clarification, or request help gracefully when communication breaks down.",
       },
+      requestRepetition: {
+        name: "Ask for repetition",
+        category: "Repair",
+        description: "Ask the other person to say the previous message again.",
+      },
+      askClarification: {
+        name: "Ask for clarification",
+        category: "Repair",
+        description: "Ask what an unclear word, condition, or statement means.",
+      },
+      checkUnderstanding: {
+        name: "Check your understanding",
+        category: "Repair",
+        description: "State what you understood and ask the other person to confirm it.",
+      },
     },
     live: {
       liveTag: "Session Live",
@@ -632,6 +651,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       noPhrasesValidated:
         "No specific target phrases validated in this session.",
       unassisted: "Unassisted Spontaneous Retrieval",
+      independentToday: "You did this on your own today.",
       assisted: "Assisted Retrieval (Hint / Briefing / Rehearsal)",
       rehearsal: "Rehearsal",
       quoteLabel: "Verified Quote from Your Speech:",
@@ -869,7 +889,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       it: "Italien (Italiano)",
       ja: "Japonais (日本語)",
       en: "Anglais (English)",
-      nl: "Néerlandais (Nederlands)",
+      nl: "Néerlandais (Belgique)",
     },
     modes: {
       guided: "Guidé (Corrections douces et indices disponibles)",
@@ -987,6 +1007,21 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         description:
           "Signaler un problème, demander une clarification ou solliciter de l’aide avec tact lorsque l’échange bloque.",
       },
+      requestRepetition: {
+        name: "Demander de répéter",
+        category: "Réparation",
+        description: "Demander à l’autre personne de répéter ce qu’elle vient de dire.",
+      },
+      askClarification: {
+        name: "Demander une clarification",
+        category: "Réparation",
+        description: "Demander ce que signifie un mot, une condition ou une phrase peu claire.",
+      },
+      checkUnderstanding: {
+        name: "Vérifier sa compréhension",
+        category: "Réparation",
+        description: "Dire ce que vous avez compris et demander confirmation.",
+      },
     },
     live: {
       liveTag: "Session en direct",
@@ -1054,6 +1089,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       noPhrasesValidated:
         "Aucune expression cible spécifique validée lors de cette session.",
       unassisted: "Rappel spontané non assisté",
+      independentToday: "Vous l’avez fait seul aujourd’hui.",
       assisted: "Rappel assisté (Indice / Briefing / Répétition)",
       rehearsal: "Répétition",
       quoteLabel: "Citation vérifiée de vos propos :",
@@ -1292,7 +1328,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       it: "Italiano (Italiano)",
       ja: "Japonés (日本語)",
       en: "Inglés (English)",
-      nl: "Holandés (Nederlands)",
+      nl: "Neerlandés (Bélgica)",
     },
     modes: {
       guided: "Guiado (Correcciones suaves y pistas disponibles)",
@@ -1408,6 +1444,21 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         description:
           "Comunicar un problema, pedir una aclaración o solicitar ayuda con naturalidad cuando la conversación se atasca.",
       },
+      requestRepetition: {
+        name: "Pedir que repitan",
+        category: "Reparación",
+        description: "Pedir a la otra persona que repita lo que acaba de decir.",
+      },
+      askClarification: {
+        name: "Pedir una aclaración",
+        category: "Reparación",
+        description: "Preguntar qué significa una palabra, condición o frase poco clara.",
+      },
+      checkUnderstanding: {
+        name: "Comprobar lo entendido",
+        category: "Reparación",
+        description: "Decir lo que entendiste y pedir a la otra persona que lo confirme.",
+      },
     },
     live: {
       liveTag: "Sesión en vivo",
@@ -1474,6 +1525,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       validatedEvidence: "Evidencia textual verificada",
       noPhrasesValidated: "No se validaron frases específicas en esta sesión.",
       unassisted: "Recuperación espontánea sin ayuda",
+      independentToday: "Hoy lo hiciste por tu cuenta.",
       assisted: "Recuperación asistida (Pista / Briefing / Ensayo)",
       rehearsal: "Ensayo",
       quoteLabel: "Cita verificada de lo que dijiste:",
@@ -1712,7 +1764,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       it: "Italiaans (Italiano)",
       ja: "Japans (日本語)",
       en: "Engels (English)",
-      nl: "Nederlands (Nederlands)",
+      nl: "Nederlands (België)",
     },
     modes: {
       guided: "Begeleid (Zachte correcties & hints beschikbaar)",
@@ -1815,7 +1867,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         name: "Naar details en aanbevelingen vragen",
         category: "Verduidelijking en informatie",
         description:
-          "Vragen naar aanbevelingen, dosering, ingrediënten of andere details voordat je beslist.",
+          "Vragen naar voorwaarden, aanbevelingen, ingrediënten of andere details voordat je beslist.",
       },
       wayfindingTransit: {
         name: "De weg vinden en reizen met openbaar vervoer",
@@ -1828,6 +1880,21 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
         category: "Sociale interactie",
         description:
           "Een probleem melden, om verduidelijking vragen of beleefd hulp vragen wanneer de communicatie vastloopt.",
+      },
+      requestRepetition: {
+        name: "Om herhaling vragen",
+        category: "Herstel",
+        description: "Vragen of de andere persoon net gezegde informatie nog eens wil herhalen.",
+      },
+      askClarification: {
+        name: "Om verduidelijking vragen",
+        category: "Herstel",
+        description: "Vragen wat een onduidelijk woord, een voorwaarde of een uitspraak betekent.",
+      },
+      checkUnderstanding: {
+        name: "Controleren of je het goed begrepen hebt",
+        category: "Herstel",
+        description: "Zeggen wat je begrepen hebt en vragen of dat klopt.",
       },
     },
     live: {
@@ -1896,6 +1963,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       noPhrasesValidated:
         "Geen specifieke doelzinnen gevalideerd in deze sessie.",
       unassisted: "Spontane herinnering zonder hulp",
+      independentToday: "Je deed dit vandaag zelfstandig.",
       assisted: "Ondersteunde herinnering (Hint / Briefing / Oefening)",
       rehearsal: "Herhaling",
       quoteLabel: "Geverifieerd citaat uit jouw spraak:",

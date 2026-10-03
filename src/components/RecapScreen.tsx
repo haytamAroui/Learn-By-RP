@@ -29,9 +29,6 @@ interface RecapScreenProps {
   onNextMission?: (mission: MissionDefinition) => void;
 }
 
-const skillName = (id?: string) =>
-  COMMUNICATIVE_SKILLS_CATALOG.find(skill => skill.id === id)?.name;
-
 export const RecapScreen: React.FC<RecapScreenProps> = ({
   session,
   onClose,
@@ -39,6 +36,30 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
   onNextMission,
 }) => {
   const { t } = useI18n();
+
+  const skillName = (id?: string) => {
+    if (!id) return undefined;
+    switch (id) {
+      case 'skill-request-substitution':
+        return t.skills.requestSubstitution.name;
+      case 'skill-propose-alternative':
+        return t.skills.proposeAlternative.name;
+      case 'skill-inquire-specifications':
+        return t.skills.inquireSpecifications.name;
+      case 'skill-wayfinding-transit':
+        return t.skills.wayfindingTransit.name;
+      case 'skill-communicative-repair':
+        return t.skills.communicativeRepair.name;
+      case 'skill-request-repetition':
+        return t.skills.requestRepetition.name;
+      case 'skill-ask-clarification':
+        return t.skills.askClarification.name;
+      case 'skill-check-understanding':
+        return t.skills.checkUnderstanding.name;
+      default:
+        return COMMUNICATIVE_SKILLS_CATALOG.find(skill => skill.id === id)?.name;
+    }
+  };
   const [showEvidence, setShowEvidence] = useState(false);
   const [observations, setObservations] = useState<LearningObservation[]>(session.observations ?? []);
   const [shareState, setShareState] = useState<'idle' | 'done' | 'failed'>('idle');
@@ -183,7 +204,7 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
                 {demonstratedSkillName}
               </Text>
               <Text className="text-sm leading-5 text-body">
-                {t.progress.coldAttempt}
+                {t.recap.independentToday}
               </Text>
             </View>
           ) : null}
