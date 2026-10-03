@@ -138,6 +138,8 @@ export interface Translations {
     previewPhrasesTitle: string;
     previewPhrasesDesc: string;
     usefulPhrasesTitle: string;
+    minimalSupportTitle: string;
+    minimalSupportDesc: string;
     startMissionButton: string;
     skillRequestSubstitution: string;
     skillInquireSpecifications: string;
@@ -504,6 +506,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Review useful phrases before speaking. Will mark items as assisted in your ledger.",
       usefulPhrasesTitle: "Useful Phrases in this Scene",
+      minimalSupportTitle: "Minimal-support simulation",
+      minimalSupportDesc: "Phrase previews stay hidden. Accessibility accommodations remain active, and you can still ask for Help whenever you choose.",
       startMissionButton: "Start Mission Now",
       skillRequestSubstitution: "Ask for a change",
       skillInquireSpecifications: "Clarify details",
@@ -905,6 +909,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Lisez les expressions avant de parler. Elles seront enregistrées comme assistées dans votre registre.",
       usefulPhrasesTitle: "Expressions utiles dans cette scène",
+      minimalSupportTitle: "Simulation avec soutien minimal",
+      minimalSupportDesc: "Les expressions ne sont pas prévisualisées. Vos aménagements d’accessibilité restent actifs et vous pouvez toujours demander de l’aide.",
       startMissionButton: "Démarrer la mission maintenant",
       skillRequestSubstitution: "Demander un changement",
       skillInquireSpecifications: "Clarifier les détails",
@@ -1305,6 +1311,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Revisa las frases útiles antes de hablar. Quedarán registradas como asistidas en tu libro.",
       usefulPhrasesTitle: "Frases útiles para esta escena",
+      minimalSupportTitle: "Simulación con apoyo mínimo",
+      minimalSupportDesc: "Las frases de apoyo permanecen ocultas. Tus adaptaciones de accesibilidad siguen activas y puedes pedir Ayuda cuando quieras.",
       startMissionButton: "Comenzar misión ahora",
       skillRequestSubstitution: "Pedir un cambio",
       skillInquireSpecifications: "Aclarar detalles",
@@ -1705,6 +1713,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Lees de handige zinnen voor je spreekt. Ze worden als ondersteund gemarkeerd in je register.",
       usefulPhrasesTitle: "Handige zinnen in deze scène",
+      minimalSupportTitle: "Simulatie met minimale ondersteuning",
+      minimalSupportDesc: "Zinsvoorbeelden blijven verborgen. Toegankelijkheidsaanpassingen blijven actief en je kunt altijd zelf om Hulp vragen.",
       startMissionButton: "Start missie nu",
       skillRequestSubstitution: "Om een wijziging vragen",
       skillInquireSpecifications: "Details verduidelijken",
