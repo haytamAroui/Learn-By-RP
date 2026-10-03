@@ -5,6 +5,7 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
   version: 1,
   missionId: 'mission-nl-be-koffiebar',
   language: 'nl',
+  speechVariety: 'standard',
   characters: [{
     id: 'barista',
     name: 'Lotte',
@@ -302,6 +303,7 @@ export const NL_BE_PARCEL_SCENE: SceneDefinition = {
   version: 1,
   missionId: 'mission-nl-be-pakjespunt',
   language: 'nl',
+  speechVariety: 'standard',
   characters: [{
     id: 'parcel-clerk',
     name: 'Tom',
@@ -540,6 +542,7 @@ export const NL_BE_NEIGHBOR_SCENE: SceneDefinition = {
   version: 1,
   missionId: 'mission-nl-be-buur-sleutel',
   language: 'nl',
+  speechVariety: 'standard',
   characters: [{
     id: 'neighbor',
     name: 'Nora',
@@ -759,6 +762,7 @@ export const NL_BE_METRO_SCENE: SceneDefinition = {
   version: 1,
   missionId: 'mission-nl-be-metro',
   language: 'nl',
+  speechVariety: 'standard',
   characters: [{
     id: 'metro-agent',
     name: 'Bram',
@@ -1010,6 +1014,7 @@ export const NL_BE_PHARMACY_SCENE: SceneDefinition = {
   version: 1,
   missionId: 'mission-nl-be-apotheek',
   language: 'nl',
+  speechVariety: 'standard',
   characters: [{
     id: 'pharmacist',
     name: 'Sarah',
@@ -1154,6 +1159,7 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
   version: 1,
   missionId: 'mission-nl-be-terras',
   language: 'nl',
+  speechVariety: 'standard',
   characters: [{
     id: 'waiter',
     name: 'Jeroen',
@@ -1429,6 +1435,7 @@ export const NL_BE_HOTEL_SCENE: SceneDefinition = {
   version: 1,
   missionId: 'mission-nl-be-hotel',
   language: 'nl',
+  speechVariety: 'standard',
   characters: [{
     id: 'receptionist',
     name: 'Anke',
@@ -1663,6 +1670,7 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
   version: 1,
   missionId: 'mission-nl-be-fietsverhuur',
   language: 'nl',
+  speechVariety: 'standard',
   characters: [{
     id: 'rental-clerk',
     name: 'Wout',
