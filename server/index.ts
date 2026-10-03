@@ -12,6 +12,7 @@ import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
+import { createProviderGuard } from './security/requestGuard';
 
 dotenv.config();
 
@@ -20,12 +21,13 @@ const app = express();
 // The Expo client runs from a different origin (Metro, a dev server, or a
 // standalone build), so allow the API to be called cross-origin.
 app.use(cors());
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '512kb' }));
 
 const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Provider choice is centralized. Routes never depend on a vendor SDK directly.
 const providers = createProviderRuntime();
+const guardProviderRequest = createProviderGuard();
 
 console.log('[Server] Provider runtime:', providers.descriptor());
 
@@ -46,6 +48,7 @@ app.get('/api/providers', (_req: Request, res: Response) => {
 });
 
 app.post('/api/realtime/session', async (req: Request, res: Response) => {
+  if (!guardProviderRequest(req, res, 'realtime')) return;
   try {
     if (!providers.realtime) {
       res.status(503).json({ error: 'OpenAI Realtime is not configured' });
@@ -98,6 +101,7 @@ function sanitizeActorResponse(
 }
 
 app.post('/api/actor/respond', async (req: Request, res: Response) => {
+  if (!guardProviderRequest(req, res, 'actor')) return;
   try {
     const {
       character,
@@ -202,6 +206,7 @@ Respond in character as ${character?.name || 'Character'} in ${targetLanguage}:`
 // 3. Coach Hint Ladder (Separate Private Coach Surface)
 // Ladder: intent_hint -> partial_form -> full_form -> explanation
 app.post('/api/coach/hint', async (req: Request, res: Response) => {
+  if (!guardProviderRequest(req, res, 'coach')) return;
   try {
     const {
       step = 'intent_hint',
@@ -285,6 +290,7 @@ Keep your response direct, friendly, and under 35 words. Return JSON: {"hint": "
  * Extracts quotes from user transcript and matches to candidate useful phrases.
  */
 app.post('/api/assessment', async (req: Request, res: Response) => {
+  if (!guardProviderRequest(req, res, 'assessment')) return;
   try {
     const {
       sessionId,
@@ -482,6 +488,7 @@ function generateDeterministicAssessment(
  * Provider-neutral endpoint. /api/tts remains as a compatibility alias.
  */
 const handleSpeechSynthesis = async (req: Request, res: Response) => {
+  if (!guardProviderRequest(req, res, 'speech')) return;
   try {
     const {
       text,
