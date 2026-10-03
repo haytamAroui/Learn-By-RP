@@ -809,7 +809,14 @@ export interface UserPreferences {
   learningLocale?: string;
   explanationLanguage: UiLanguage;
   comfortLevel: 'beginner' | 'elementary' | 'intermediate' | 'not_sure';
-  primaryGoal: 'travel' | 'relocation' | 'work' | 'social' | 'explore';
+  primaryGoal:
+    | 'daily_life'
+    | 'travel'
+    | 'relocation'
+    | 'work'
+    | 'study'
+    | 'social'
+    | 'explore';
   modeDefault: Mode;
   voiceProcessingConsent: boolean;
   savedAnalysisConsent: boolean;
