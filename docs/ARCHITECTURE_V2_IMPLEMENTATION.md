@@ -402,6 +402,34 @@ The remaining four are not fixable here, and deliberately were not forced:
 Re-check when Expo ships a version that drops the `xcode` and `@expo/cli` reach, or when
 `braces` and `node-forge` publish fixes.
 
+**Scene cycle warnings are structural, not 45 undiscovered defects.** `validate:scenes`
+reports `cycle: <action> can repeat without changing logical facts` across all 16 scenes,
+covering `confirm_arrangement`, `ask_specification`, `confirm_selection`,
+`propose_arrangement` and others. Assessed rather than assumed:
+
+- The check explores the state graph using a key of facts plus action counts *capped* at
+  the highest `countOf` threshold in the scene, because a `countOf >= 3` predicate cannot
+  distinguish three repetitions from fifty. **These scenes contain no `countOf` predicate
+  at all**, so the cap map is empty, every count is clamped to zero, and no repetition can
+  ever produce a new key. The warning is therefore guaranteed for any facts-preserving
+  action in a scene that does not use count predicates. It reports the predicate style of
+  the scene as much as the design of the action.
+- The runtime is safe. `reduceSceneAction` records the repetition in `actionCounts` and
+  leaves facts untouched; completion in these scenes is decided by facts alone, so a repeat
+  can never accidentally satisfy a completion predicate. There is no deadlock, no infinite
+  reducer loop and no false completion — a learner who repeats can still choose any other
+  available action, and every scene has a dry-run path to achievement.
+- Repeating a conversational action without changing the world is also legitimate. Asking a
+  specification twice, or confirming twice, is ordinary learner behaviour, and a runtime
+  guard that rejected it would break the retry and repair behaviour the blueprints require.
+
+No change was made. Bulk-editing ~45 action definitions across 16 scenes is an authoring
+decision that needs content review, and tightening the reducer would risk rejecting
+legitimate repetition. The useful next step is either authoring review of repeated
+confirmation in these scenes, or a validator change that reports whether a repeating state
+still has other available actions — which would separate "harmless repeat" from "dead end".
+Both are content/semantics decisions rather than defects.
+
 ### Phase 2 — Speaking UX
 
 Keep existing screen components and tokens. Deliver the short language/goal entry,
