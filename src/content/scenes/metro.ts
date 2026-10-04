@@ -1,4 +1,7 @@
-import type { SceneDefinition } from '../../contracts/scene';
+import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+  type SceneDefinition,
+} from '../../contracts/scene';
 
 export const METRO_SCENE: SceneDefinition = {
   id: 'scene.es.metro.ticket-platform',
@@ -232,6 +235,14 @@ export const METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.es.metro.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "Ticket validation is an unfamiliar institutional rule the learner must interpret to know whether the ticket is usable.",
+      },
       sceneCondition: { op: 'eq', fact: 'ticketQuestionOpen', value: true },
       positiveExamples: [
         'Asks a concrete question about buying, loading, paying for, or validating the ten-journey ticket.',
@@ -245,6 +256,14 @@ export const METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.es.metro.wayfinding',
       skillId: 'skill-wayfinding-transit',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner specifies a destination and must extract an actionable platform and direction from the reply.",
+      },
       sceneCondition: { op: 'eq', fact: 'ticketQuestionOpen', value: true },
       positiveExamples: [
         'Asks which platform, direction, or line reaches Atocha.',
@@ -258,6 +277,14 @@ export const METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.es.metro.repair.request-repetition',
       skillId: 'skill-request-repetition',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic repair clause asking for the just-delivered detail again. No scene-specific content has to be generated and no meaning is at stake beyond hearing it a second time.",
+      },
       sceneCondition: { op: 'eq', fact: 'platformKnown', value: true },
       positiveExamples: [
         'Asks Javier to repeat the compact platform or direction detail.',
@@ -271,6 +298,14 @@ export const METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.es.metro.repair.ask-clarification',
       skillId: 'skill-ask-clarification',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause asking what a single unfamiliar word means. The demand is the request itself, not the domain it happens in, so the setting does not raise the band.",
+      },
       sceneCondition: { op: 'eq', fact: 'ticketInfoKnown', value: true },
       positiveExamples: [
         'Asks what the unfamiliar transit term means rather than guessing.',
@@ -284,6 +319,14 @@ export const METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.es.metro.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'platformKnown', value: true },
       positiveExamples: [
         'States the understood route or platform and asks Javier to confirm it.',

@@ -1,4 +1,7 @@
-import type { SceneDefinition } from '../../contracts/scene';
+import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+  type SceneDefinition,
+} from '../../contracts/scene';
 
 export const DINING_SCENE: SceneDefinition = {
   id: 'scene.es.dining.terrace',
@@ -249,6 +252,14 @@ export const DINING_SCENE: SceneDefinition = {
     {
       id: 'opp.es.dining.propose-alternative',
       skillId: 'skill-propose-alternative',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The preferred terrace table is unavailable and the learner produces a workable alternative.",
+      },
       sceneCondition: { op: 'eq', fact: 'seatingAlternativeOffered', value: true },
       positiveExamples: [
         'Suggests or accepts another workable terrace location after the preferred spot is unavailable.',
@@ -262,6 +273,14 @@ export const DINING_SCENE: SceneDefinition = {
     {
       id: 'opp.es.dining.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "Asking for a recommendation plus an ingredient or dietary check combines obtaining advice with narrowing a choice.",
+      },
       sceneCondition: { op: 'eq', fact: 'seatingConfirmed', value: true },
       positiveExamples: [
         'Asks for a recommendation or a concrete ingredient, allergen, or dish detail needed to decide.',
@@ -275,6 +294,14 @@ export const DINING_SCENE: SceneDefinition = {
     {
       id: 'opp.es.dining.request-substitution',
       skillId: 'skill-request-substitution',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A dietary condition identified earlier has to be carried into a request for another dish.",
+      },
       sceneCondition: { op: 'eq', fact: 'dishAlternativeOffered', value: true },
       positiveExamples: [
         'Requests or chooses another suitable dish after the first option conflicts with the stated condition.',

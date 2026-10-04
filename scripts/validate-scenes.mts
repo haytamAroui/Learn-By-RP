@@ -70,6 +70,16 @@ for (const spec of LAUNCH_CONTENT_SPECS) {
     for (const gap of skill.gaps) {
       console.warn(`  OPEN ${skill.skillId}: ${gap}`);
     }
+    for (const dimension of skill.pendingReviewBandChannels) {
+      console.log(
+        `  ${skill.skillId}: authored band ${dimension.evidenceBand}/${dimension.assessedChannel} [${dimension.eligibleModalities.join(', ')}] awaits a qualified reviewer`
+      );
+    }
+    for (const dimension of skill.qualifiedBandChannels) {
+      console.log(
+        `  ${skill.skillId}: reviewed band ${dimension.evidenceBand}/${dimension.assessedChannel} [${dimension.eligibleModalities.join(', ')}]`
+      );
+    }
     if (skill.laterRetrievalPairs.length > 0) {
       console.log(
         `  ${skill.skillId}: later retrieval path(s) ${skill.laterRetrievalPairs

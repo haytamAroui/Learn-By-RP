@@ -1,4 +1,7 @@
-import type { SceneDefinition } from '../../contracts/scene';
+import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+  type SceneDefinition,
+} from '../../contracts/scene';
 
 export const NEIGHBOR_SCENE: SceneDefinition = {
   id: 'scene.es.neighbor.key-handover',
@@ -212,6 +215,14 @@ export const NEIGHBOR_SCENE: SceneDefinition = {
     {
       id: 'opp.es.neighbor.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A direct question about one shared object, the spare key.",
+      },
       sceneCondition: { op: 'eq', fact: 'neighborInRush', value: true },
       positiveExamples: [
         'Asks directly whether Sofia has the terrace key or another concrete handover detail.',
@@ -225,6 +236,14 @@ export const NEIGHBOR_SCENE: SceneDefinition = {
     {
       id: 'opp.es.neighbor.propose-alternative',
       skillId: 'skill-propose-alternative',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A handover point has to be generated while the neighbour is leaving, so the proposal is produced under time pressure rather than chosen from options.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'Suggests another nearby meeting place or handover arrangement because Sofia is in a rush.',
@@ -238,6 +257,14 @@ export const NEIGHBOR_SCENE: SceneDefinition = {
     {
       id: 'opp.es.neighbor.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'States the understood handover detail and asks Sofia to confirm it.',
@@ -251,6 +278,14 @@ export const NEIGHBOR_SCENE: SceneDefinition = {
     {
       id: 'opp.es.neighbor.repair.clarify-misunderstanding',
       skillId: 'skill-clarify-misunderstanding',
+      evidenceBand: 'b1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The partner states the wrong meeting place. The learner tracks the discrepancy, contradicts it, specifies the correct one, and repairs shared understanding.",
+      },
       sceneCondition: { op: 'eq', fact: 'meetingPlace', value: 'cafe_downstairs' },
       positiveExamples: [
         'Corrects Sofia’s mistaken location and clearly restates the intended meeting place.',

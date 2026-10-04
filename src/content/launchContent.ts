@@ -1,4 +1,6 @@
 import { getScene } from './scenes';
+import { sceneReviewGaps } from './releaseReview';
+import { isOpportunityQualificationReviewed } from '../features/learning/opportunityQualification';
 import { MISSION_CATALOG } from '../data/missions';
 import type { CommunicativeSkillId, EvidenceBand, Modality, ScenarioFamilyId, SkillModality } from '../types';
 
@@ -89,6 +91,16 @@ export interface LaunchSkillLoopReadiness {
     assessedChannel: SkillModality;
     eligibleModalities: Modality[];
   }>;
+  /**
+   * Opportunities whose dimensions have been authored with a rationale but that
+   * no qualified reviewer has accepted yet. They are one signature away from
+   * qualifying, which is a different state from having no decision at all.
+   */
+  pendingReviewBandChannels: Array<{
+    evidenceBand: EvidenceBand;
+    assessedChannel: SkillModality;
+    eligibleModalities: Modality[];
+  }>;
   gaps: string[];
 }
 
@@ -165,6 +177,7 @@ export function validateLaunchContentCoverage(
     const contrastiveRubricOpportunityIds: string[] = [];
     const helpAvailableMissionIds: string[] = [];
     const qualifiedDimensions = new Map<string, LaunchSkillLoopReadiness['qualifiedBandChannels'][number]>();
+    const pendingReviewDimensions = new Map<string, LaunchSkillLoopReadiness['pendingReviewBandChannels'][number]>();
     const opportunitiesByMission = selectedMissions.map(mission => {
       if (!mission?.sceneId) return [];
       const scene = getScene(mission.sceneId);
@@ -185,11 +198,18 @@ export function validateLaunchContentCoverage(
           opportunity.assessedChannel && opportunity.eligibleModalities?.length
         ) {
           const key = `${opportunity.evidenceBand}::${opportunity.assessedChannel}`;
-          qualifiedDimensions.set(key, {
+          const dimension = {
             evidenceBand: opportunity.evidenceBand,
             assessedChannel: opportunity.assessedChannel,
             eligibleModalities: [...opportunity.eligibleModalities],
-          });
+          };
+          // Authored and accepted are separate facts, so they are counted
+          // separately. Collapsing them would let an unreviewed band read as
+          // coverage in the one report a release decision is based on.
+          const target = isOpportunityQualificationReviewed(opportunity)
+            ? qualifiedDimensions
+            : pendingReviewDimensions;
+          target.set(key, dimension);
         }
       }
     }
@@ -228,7 +248,13 @@ export function validateLaunchContentCoverage(
     if (contrastiveRubricOpportunityIds.length === 0) gaps.push('no opportunity has both positive and negative rubric examples');
     if (helpAvailableMissionIds.length === 0) gaps.push('no opportunity mission offers the authored help ladder');
     if (laterRetrievalPairs.length === 0) gaps.push('no later retrieval is authored in a different scenario family');
-    if (qualifiedDimensions.size === 0) gaps.push('no opportunity has a reviewed evidence band, assessed channel, and eligible modality');
+    if (qualifiedDimensions.size === 0) {
+      gaps.push(
+        pendingReviewDimensions.size === 0
+          ? 'no opportunity has an authored evidence band, assessed channel, and eligible modality'
+          : `no opportunity has a reviewed evidence band (${pendingReviewDimensions.size} authored, awaiting a qualified reviewer)`
+      );
+    }
 
     return {
       skillId,
@@ -237,15 +263,20 @@ export function validateLaunchContentCoverage(
       helpAvailableMissionIds: [...new Set(helpAvailableMissionIds)],
       laterRetrievalPairs,
       qualifiedBandChannels: [...qualifiedDimensions.values()],
+      pendingReviewBandChannels: [...pendingReviewDimensions.values()],
       gaps,
     };
   });
 
   // Scene `released` flags do not attest to human locale review, example-audio
-  // review, asset rights, or reviewer sign-off. Those records are not modeled yet.
-  const assetReviewGaps = selectedMissions.flatMap(mission =>
-    mission?.sceneId ? [`${mission.sceneId}: no linked locale/audio/assets review manifest`] : []
-  );
+  // review, asset rights, or reviewer sign-off. The review records are modeled
+  // now and are empty, so these gaps are the reported state rather than a
+  // modelling omission.
+  const assetReviewGaps = selectedMissions.flatMap(mission => {
+    if (!mission?.sceneId) return [];
+    const scene = getScene(mission.sceneId);
+    return scene ? sceneReviewGaps(scene) : [];
+  });
   const readiness: LaunchLearningLoopReadiness = {
     ready: skills.every(skill => skill.gaps.length === 0) && assetReviewGaps.length === 0,
     skills,

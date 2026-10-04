@@ -1,4 +1,7 @@
-import type { SceneDefinition } from '../../contracts/scene';
+import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+  type SceneDefinition,
+} from '../../contracts/scene';
 
 export const BIKE_RENTAL_SCENE: SceneDefinition = {
   id: 'scene.es.rental.bike',
@@ -235,6 +238,14 @@ export const BIKE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.rental.request-substitution',
       skillId: 'skill-request-substitution',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A constraint rules out the first choice, so the request has to be adapted to what is actually available.",
+      },
       sceneCondition: { op: 'eq', fact: 'substituteOffered', value: true },
       positiveExamples: [
         'Requests or accepts another available bike after the preferred type is unavailable.',
@@ -248,6 +259,14 @@ export const BIKE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.rental.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A concrete question about bike size, helmet, or price at the rental counter.",
+      },
       sceneCondition: { op: 'eq', fact: 'rentalSelected', value: true },
       positiveExamples: [
         'Asks a concrete question about return time, included equipment, or another rental condition.',
@@ -261,6 +280,14 @@ export const BIKE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.rental.repair.ask-clarification',
       skillId: 'skill-ask-clarification',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause asking what a single unfamiliar word means. The demand is the request itself, not the domain it happens in, so the setting does not raise the band.",
+      },
       sceneCondition: { op: 'eq', fact: 'rentalSelected', value: true },
       positiveExamples: [
         'Asks what the unfamiliar rental term means instead of guessing.',
@@ -274,6 +301,14 @@ export const BIKE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.rental.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'returnInfoAsked', value: true },
       positiveExamples: [
         'States the understood return condition and asks Diego to confirm it.',

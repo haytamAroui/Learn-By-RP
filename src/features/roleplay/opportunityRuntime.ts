@@ -1,6 +1,29 @@
-import { SceneDefinition, SceneStateSnapshot } from '../../contracts/scene';
+import { SceneDefinition, SceneStateSnapshot, SkillOpportunityDefinition } from '../../contracts/scene';
 import { OpportunityInstance, Passage, SkillDemonstration } from '../../types';
 import { evaluatePredicate } from './sceneReducer';
+
+/**
+ * The authored qualification a runtime instance carries verbatim.
+ *
+ * One definition, used by every place that materialises an instance, because a
+ * qualification dimension added to the contract and forgotten in one of them
+ * would let an instance disagree with its own authored definition for reasons
+ * that have nothing to do with the learner.
+ *
+ * Carrying the values forward is an integrity property, not a competence claim:
+ * whether they may qualify anything is decided in
+ * `features/learning/opportunityQualification`.
+ */
+export function authoredQualificationFields(definition: SkillOpportunityDefinition): Pick<
+  OpportunityInstance,
+  'assessedChannel' | 'evidenceBand' | 'eligibleModalities'
+> {
+  return {
+    assessedChannel: definition.assessedChannel,
+    evidenceBand: definition.evidenceBand,
+    eligibleModalities: definition.eligibleModalities,
+  };
+}
 
 /**
  * Synchronise first-class authored opportunities from authoritative scene state.
@@ -39,9 +62,7 @@ export function syncAuthoredOpportunities(input: {
       attemptId: state.attemptId,
       opportunityId: definition.id,
       skillId: definition.skillId,
-      assessedChannel: definition.assessedChannel,
-      evidenceBand: definition.evidenceBand,
-      eligibleModalities: definition.eligibleModalities,
+      ...authoredQualificationFields(definition),
       status: 'presented',
       detection: 'validated',
       demonstration: 'unknown',
@@ -105,9 +126,7 @@ export function presentAuthoredCommunicationChallenge(input: {
       attemptId: state.attemptId,
       opportunityId: definition.id,
       skillId: definition.skillId,
-      assessedChannel: definition.assessedChannel,
-      evidenceBand: definition.evidenceBand,
-      eligibleModalities: definition.eligibleModalities,
+      ...authoredQualificationFields(definition),
       status: 'presented',
       detection: 'validated',
       demonstration: 'unknown',
@@ -196,9 +215,7 @@ export function finalizeNotPresentedOpportunities(input: {
       attemptId: input.state.attemptId,
       opportunityId: definition.id,
       skillId: definition.skillId,
-      assessedChannel: definition.assessedChannel,
-      evidenceBand: definition.evidenceBand,
-      eligibleModalities: definition.eligibleModalities,
+      ...authoredQualificationFields(definition),
       status: 'not_presented',
       detection: 'validated',
       demonstration: 'unknown',

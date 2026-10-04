@@ -1,4 +1,7 @@
-import type { SceneDefinition } from '../../contracts/scene';
+import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+  type SceneDefinition,
+} from '../../contracts/scene';
 
 export const PARCEL_SCENE: SceneDefinition = {
   id: 'scene.es.parcel.reschedule',
@@ -226,6 +229,14 @@ export const PARCEL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.parcel.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A concrete question about pickup hours or another collection condition at the counter.",
+      },
       sceneCondition: { op: 'eq', fact: 'parcelIdentified', value: true },
       positiveExamples: [
         'Asks a concrete question about pickup hours, identification, or collection conditions.',
@@ -239,6 +250,14 @@ export const PARCEL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.parcel.propose-alternative',
       skillId: 'skill-propose-alternative',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner generates a workable alternative time after the original is refused and must see it through to confirmation.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'Proposes tomorrow morning or another workable collection arrangement after the evening slot is unavailable.',
@@ -252,6 +271,14 @@ export const PARCEL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.parcel.repair.request-repetition',
       skillId: 'skill-request-repetition',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic repair clause asking for the just-delivered detail again. No scene-specific content has to be generated and no meaning is at stake beyond hearing it a second time.",
+      },
       sceneCondition: { op: 'eq', fact: 'parcelIdentified', value: true },
       positiveExamples: [
         'Asks Carmen to repeat the just-delivered opening-hours detail.',
@@ -265,6 +292,14 @@ export const PARCEL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.parcel.repair.ask-clarification',
       skillId: 'skill-ask-clarification',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause asking what a single unfamiliar word means. The demand is the request itself, not the domain it happens in, so the setting does not raise the band.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'Asks what the unfamiliar parcel-service term means instead of guessing.',

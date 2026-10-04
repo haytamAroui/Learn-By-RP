@@ -1,4 +1,7 @@
-import { SceneDefinition } from '../contracts/scene';
+import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+  type SceneDefinition,
+} from '../contracts/scene';
 import { PARCEL_SCENE } from './scenes/parcel';
 import { NEIGHBOR_SCENE } from './scenes/neighbor';
 import { METRO_SCENE } from './scenes/metro';
@@ -326,6 +329,14 @@ export const CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.es.cafe.request-substitution.after-alternative',
       skillId: 'skill-request-substitution',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must actively request another option rather than accept what was offered, after an earlier alternative has already been refused.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'Accepts or requests a viable substitute after learning the preferred option is unavailable.',
@@ -341,6 +352,14 @@ export const CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.es.cafe.inquire-specifications.after-item',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A single factual question about the item just ordered — price, size, or an ingredient the counter can name.",
+      },
       sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
       positiveExamples: [
         'Asks a concrete follow-up about the confirmed item, ingredient, price, or service condition.',
@@ -354,6 +373,14 @@ export const CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.es.cafe.repair.request-repetition',
       skillId: 'skill-request-repetition',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic repair clause asking for the just-delivered detail again. No scene-specific content has to be generated and no meaning is at stake beyond hearing it a second time.",
+      },
       sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
       positiveExamples: [
         'Asks the barista to repeat the just-delivered service detail because it was not caught.',
@@ -369,6 +396,14 @@ export const CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.es.cafe.repair.request-slower-speech',
       skillId: 'skill-request-slower-speech',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause regulating how fast the partner speaks. Typed production cannot satisfy it: the request exists to change the audio channel, so only speech can carry it.",
+      },
       sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
       positiveExamples: [
         'Explicitly asks the barista to speak more slowly after the faster service turn.',
@@ -384,6 +419,14 @@ export const CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.es.cafe.repair.ask-clarification',
       skillId: 'skill-ask-clarification',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause asking what a single unfamiliar word means. The demand is the request itself, not the domain it happens in, so the setting does not raise the band.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'Identifies the unfamiliar café term or unclear phrase and asks what it means.',
@@ -399,6 +442,14 @@ export const CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.es.cafe.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'States an interpretation of the service detail and asks the barista to confirm it.',
@@ -414,6 +465,14 @@ export const CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.es.cafe.repair.clarify-misunderstanding',
       skillId: 'skill-clarify-misunderstanding',
+      evidenceBand: 'b1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The partner has mis-stated an order detail. The learner must detect the discrepancy, contradict it, give the correct value, and re-establish agreement — a negotiation of meaning, not a formula.",
+      },
       sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
       positiveExamples: [
         'Corrects the barista’s wrong interpretation and clearly restates the intended service mode.',
@@ -429,6 +488,14 @@ export const CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.es.cafe.repair.paraphrase-when-stuck',
       skillId: 'skill-paraphrase-when-stuck',
+      evidenceBand: 'a2',
+      assessedChannel: 'production',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner has to re-formulate the same intent in different wording after the partner failed to understand it once. Generating an alternative phrasing under breakdown is the demand.",
+      },
       sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
       positiveExamples: [
         'Explains the same intended idea with different words after the barista asks for reformulation.',
@@ -581,6 +648,14 @@ export const PHARMACY_SCENE: SceneDefinition = {
     {
       id: 'opp.es.pharmacy.inquire-specifications.open',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner asks where official warning and usage information is displayed and must interpret the answer to locate it. Health-related information with a less predictable layout.",
+      },
       sceneCondition: {
         op: 'eq',
         fact: 'nonDrowsyMedicineAvailable',
@@ -598,6 +673,14 @@ export const PHARMACY_SCENE: SceneDefinition = {
     {
       id: 'opp.es.pharmacy.request-substitution.after-label-comparison',
       skillId: 'skill-request-substitution',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The request for another package carries a reason that depends on the earlier label comparison having happened.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'After comparing official label information, asks to look at another available package that matches the stated non-drowsiness constraint.',

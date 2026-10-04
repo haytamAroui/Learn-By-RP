@@ -14,6 +14,11 @@
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { SCENES } from '../src/content/scenes';
+import {
+  isOpportunityQualificationReviewed,
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+} from '../src/features/learning/opportunityQualification';
+import { BUNDLED_ASSET_INVENTORY, recordedReviews } from '../src/content/releaseReview';
 import type { SceneDefinition } from '../src/contracts/scene';
 
 interface Row {
@@ -24,6 +29,8 @@ interface Row {
   band: string;
   channel: string;
   modalities: string;
+  qualification: string;
+  rationale: string;
 }
 
 function collect(): Row[] {
@@ -39,6 +46,12 @@ function collect(): Row[] {
         band: opportunity.evidenceBand ?? '—',
         channel: opportunity.assessedChannel ?? '—',
         modalities: (opportunity.eligibleModalities ?? []).join(', ') || '—',
+        qualification: isOpportunityQualificationReviewed(opportunity)
+          ? `reviewed by ${opportunity.qualification!.reviewerId} on ${opportunity.qualification!.reviewedAt}`
+          : opportunity.qualification
+            ? `authored, awaiting review (rubric v${opportunity.qualification.rubricVersion})`
+            : 'no decision',
+        rationale: opportunity.qualification?.rationale ?? '—',
       });
     }
   }
@@ -51,6 +64,9 @@ const unreleased = rows.filter(row => row.sceneReview !== 'released');
 const missingBand = rows.filter(row => row.band === '—');
 const missingChannel = rows.filter(row => row.channel === '—');
 const missingBoth = rows.filter(row => row.band === '—' && row.channel === '—');
+const awaitingReview = rows.filter(row => row.qualification.startsWith('authored'));
+const reviewed = rows.filter(row => row.qualification.startsWith('reviewed'));
+const noRationale = rows.filter(row => row.rationale === '—');
 
 const byScene = new Map<string, number>();
 for (const row of rows) byScene.set(row.sceneId, (byScene.get(row.sceneId) ?? 0) + 1);
@@ -74,18 +90,45 @@ lines.push(`- In scenes not marked \`released\`: **${unreleased.length}**`);
 lines.push(`- Missing \`evidenceBand\`: **${missingBand.length}**`);
 lines.push(`- Missing \`assessedChannel\`: **${missingChannel.length}**`);
 lines.push(`- Missing both: **${missingBoth.length}**`);
+lines.push(`- Authored with a rationale, awaiting a qualified reviewer: **${awaitingReview.length}**`);
+lines.push(`- Accepted by a named reviewer: **${reviewed.length}**`);
+lines.push(`- With no stated rationale: **${noRationale.length}**`);
+lines.push('');
+lines.push(`Rubric version: **${OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION}**`);
 lines.push('');
 lines.push(
-  '`SceneOpportunity` declares `evidenceBand`, `assessedChannel` and `eligibleModalities` ' +
-    'as optional, so an unqualified opportunity compiles and runs. Nothing fails until a ' +
-    'learner\'s evidence is judged against it, which is why this cannot be closed by a ' +
-    'passing test suite.'
+  'An authored band is a claim about the opportunity, not about a learner. Until a ' +
+    'qualified reviewer accepts it, the runtime reports every observation from that ' +
+    'opportunity as `unknown` band and cannot promote, lapse, or backfill on it.'
+);
+lines.push('');
+lines.push('## Release review (1I)');
+lines.push('');
+lines.push(`- Recorded reviewer acceptances: **${recordedReviews().length}**`);
+lines.push(`- Bundled audio files: **${BUNDLED_ASSET_INVENTORY.audioFiles}**`);
+lines.push(`- Bundled image files: **${BUNDLED_ASSET_INVENTORY.imageFiles}**`);
+lines.push(
+  recordedReviews().length === 0
+    ? '- No locale, voice, or imagery review has been recorded for any scene.'
+    : '- See `src/content/releaseReview.ts` for the recorded acceptances.'
+);
+lines.push('');
+lines.push(
+  '`SkillOpportunityDefinition` declares `evidenceBand`, `assessedChannel` and ' +
+    '`eligibleModalities` as optional, and the scene validator refuses an ' +
+    'opportunity that carries dimensions without a `qualification` record. What no ' +
+    'script can supply is the reviewer: an authored band stays invisible to ' +
+    'promotion until a named person accepts it.'
 );
 lines.push('');
 lines.push('## What a reviewer decides, per opportunity');
 lines.push('');
 lines.push('1. **Evidence band** — the authored demand the rubric actually holds, not the mission display band.');
-lines.push('2. **Assessed channel** — production, comprehension, or both. Determines which performances can qualify.');
+lines.push(
+  '2. **Assessed channel** — normally fixed by the canonical skill, and the scene ' +
+    'validator rejects an opportunity that disagrees with it. It decides which ' +
+    'performances can qualify, so it is checked rather than authored freely.'
+);
 lines.push('3. **Eligible modalities** — whether typed production can satisfy this opportunity at all.');
 lines.push('');
 lines.push(
@@ -96,13 +139,22 @@ lines.push(
 lines.push('');
 lines.push('## Review list');
 lines.push('');
-lines.push('| Opportunity | Scene | Scene review | Skill | Band | Channel | Modalities |');
+lines.push('| Opportunity | Scene | Skill | Band | Channel | Modalities | Qualification |');
 lines.push('|---|---|---|---|---|---|---|');
 
 for (const row of rows) {
   lines.push(
-    `| \`${row.opportunityId}\` | \`${row.sceneId}\` | ${row.sceneReview} | \`${row.skillId}\` | ${row.band} | ${row.channel} | ${row.modalities} |`
+    `| \`${row.opportunityId}\` | \`${row.sceneId}\` | \`${row.skillId}\` | ${row.band} | ${row.channel} | ${row.modalities} | ${row.qualification} |`
   );
+}
+
+lines.push('');
+lines.push('## Stated rationale');
+lines.push('');
+lines.push('| Opportunity | Rationale |');
+lines.push('|---|---|');
+for (const row of rows) {
+  lines.push(`| \`${row.opportunityId}\` | ${row.rationale.replace(/\|/g, '\|')} |`);
 }
 
 lines.push('');
@@ -119,5 +171,6 @@ const target = join(process.cwd(), 'docs', 'PHASE_1H_OPPORTUNITY_REVIEW.md');
 writeFileSync(target, lines.join('\n'), 'utf8');
 
 console.log(
-  `Wrote ${target}: ${rows.length} opportunities, ${missingBoth.length} missing band and channel.`
+  `Wrote ${target}: ${rows.length} opportunities, ${missingBoth.length} missing band and channel, ` +
+    `${awaitingReview.length} awaiting review, ${reviewed.length} reviewed.`
 );

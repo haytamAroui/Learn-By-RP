@@ -5,6 +5,9 @@ import { archiveRepository } from './SqliteArchiveRepository';
 import { MISSION_CATALOG } from '../../data/missions';
 import { validateSkillEvidenceProposal } from '../learning/skillEvidence';
 import { projectSkillsV2 } from '../learning/skillProjection';
+import { withReviewedOpportunityQualification } from '../learning/qualificationTestSupport';
+import { authoredQualificationFields } from '../roleplay/opportunityRuntime';
+import { getScene } from '../../content/scenes';
 import { LEARNING_POLICY_VERSION } from '../learning/policy';
 import { OpportunityInstance, SessionRecord, Passage, SupportExposure } from '../../types';
 
@@ -84,6 +87,16 @@ function modelProposal(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * The authored qualification of the opportunity these fixtures exercise.
+ *
+ * Taken from the scene object the runtime reads rather than restated here, so a
+ * fixture cannot quietly disagree with the content it is claiming to model.
+ */
+const AUTHORED_OPPORTUNITY = getScene('scene.es.cafe.breakfast')!.opportunityDefinitions.find(
+  definition => definition.id === 'opp.es.cafe.request-substitution.after-alternative'
+)!;
+
 function positiveOpportunity(
   overrides: Partial<OpportunityInstance> = {}
 ): OpportunityInstance {
@@ -92,6 +105,7 @@ function positiveOpportunity(
     attemptId: 'attempt-1',
     opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
     skillId: 'skill-request-substitution',
+    ...authoredQualificationFields(AUTHORED_OPPORTUNITY),
     status: 'taken',
     detection: 'validated',
     demonstration: 'demonstrated',
@@ -137,6 +151,7 @@ function failedOpportunity(overrides: Partial<OpportunityInstance> = {}): Opport
     attemptId: 'attempt-1',
     opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
     skillId: 'skill-request-substitution',
+    ...authoredQualificationFields(AUTHORED_OPPORTUNITY),
     status: 'taken',
     detection: 'validated',
     demonstration: 'attempted_not_demonstrated',
@@ -442,20 +457,49 @@ describe('unqualified opportunity failures remain unscored', () => {
     expect(await archiveRepository.getSkillObservations()).toHaveLength(0);
   });
 
-  it('does not duplicate a lapse on replay', async () => {
-    const result = validateSkillEvidenceProposal(
+  it('records one lapse per failed reviewed opportunity, not one per replay', async () => {
+    // With the release gap closed this comparison would hold for zero rows on
+    // both sides, so the review acceptance is applied explicitly: an idempotency
+    // test that passes on an empty set proves nothing.
+    await withReviewedOpportunityQualification(AUTHORED_OPPORTUNITY, async () => {
+      const result = validateSkillEvidenceProposal(
+        modelProposal({ taskOutcome: 'not_achieved', skillItems: [] }) as any,
+        runtimeFacts({ opportunityInstances: [failedOpportunity()] })
+      );
+      expect(result.lapses).toHaveLength(1);
+
+      const session = sessionWith(
+        { observations: result.validated, lapses: result.lapses },
+        [failedOpportunity()]
+      );
+
+      await archiveRepository.completeSession(session, [], result.evidence);
+      await archiveRepository.completeSession(session, [], result.evidence);
+
+      expect((await archiveRepository.getSkillLapses()).length).toBe(1);
+    });
+  });
+
+  it('withdraws the lapse again when the qualification is not reviewed', async () => {
+    // The same session, with the review withdrawn, must not keep a weakness
+    // signal. A lapse is a claim about a learner and needs the same review as a
+    // strength signal; otherwise one asymmetry or the other misleads.
+    const lapse = withReviewedOpportunityQualification(
+      AUTHORED_OPPORTUNITY,
+      () =>
+        validateSkillEvidenceProposal(
+          modelProposal({ taskOutcome: 'not_achieved', skillItems: [] }) as any,
+          runtimeFacts({ opportunityInstances: [failedOpportunity()] })
+        ).lapses[0]
+    );
+
+    const unreviewed = validateSkillEvidenceProposal(
       modelProposal({ taskOutcome: 'not_achieved', skillItems: [] }) as any,
       runtimeFacts({ opportunityInstances: [failedOpportunity()] })
     );
-    const session = sessionWith(
-      { observations: result.validated, lapses: result.lapses },
-      [failedOpportunity()]
-    );
 
-    await archiveRepository.completeSession(session, [], result.evidence);
-    await archiveRepository.completeSession(session, [], result.evidence);
-
-    expect((await archiveRepository.getSkillLapses()).length).toBe(result.lapses.length);
+    expect(lapse.evidenceBand).toBe('a2');
+    expect(unreviewed.lapses).toEqual([]);
   });
 
   it('flags review on the persisted lapse without lowering a steady skill', async () => {

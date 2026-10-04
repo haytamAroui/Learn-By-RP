@@ -1,4 +1,7 @@
-import type { SceneDefinition } from '../../contracts/scene';
+import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+  type SceneDefinition,
+} from '../../contracts/scene';
 
 export const HOTEL_SCENE: SceneDefinition = {
   id: 'scene.es.hotel.checkin',
@@ -229,6 +232,14 @@ export const HOTEL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.hotel.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A concrete question about the room, deposit, or another check-in condition.",
+      },
       sceneCondition: { op: 'eq', fact: 'bookingIdentified', value: true },
       positiveExamples: [
         'Asks when the room will be ready, where luggage can be left, or another concrete check-in condition.',
@@ -242,6 +253,14 @@ export const HOTEL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.hotel.propose-alternative',
       skillId: 'skill-propose-alternative',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner generates and holds a workable alternative arrangement during check-in.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'Proposes leaving luggage and returning later after learning the room is not ready.',
@@ -255,6 +274,14 @@ export const HOTEL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.hotel.repair.request-repetition',
       skillId: 'skill-request-repetition',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic repair clause asking for the just-delivered detail again. No scene-specific content has to be generated and no meaning is at stake beyond hearing it a second time.",
+      },
       sceneCondition: { op: 'eq', fact: 'bookingIdentified', value: true },
       positiveExamples: [
         'Asks Lucía to repeat the just-delivered timing detail.',
@@ -268,6 +295,14 @@ export const HOTEL_SCENE: SceneDefinition = {
     {
       id: 'opp.es.hotel.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: [
         'States the understood storage/return plan and asks Lucía to confirm it.',

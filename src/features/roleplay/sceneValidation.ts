@@ -1,4 +1,5 @@
 import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
   Predicate,
   SceneDefinition,
   SceneFactDefinition,
@@ -252,9 +253,12 @@ export function validateSceneDefinition(scene: SceneDefinition): SceneValidation
   for (const [index, opportunity] of scene.opportunityDefinitions.entries()) {
     const path = `opportunityDefinitions[${index}]`;
     if (opportunity.evidenceBand !== undefined && ![
-      'pre-a1', 'a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'unknown',
+      'pre-a1', 'a1', 'a2', 'b1', 'b2', 'c1', 'c2',
     ].includes(opportunity.evidenceBand)) {
-      errors.push(`${path}: invalid evidenceBand ${opportunity.evidenceBand}`);
+      // `unknown` is a result, not an authored decision. Writing it into content
+      // would make a content owner look as if they had judged the band and found
+      // it undecidable; absence already says that, and absence fails closed.
+      errors.push(`${path}: evidenceBand 'unknown' is not an authored band; omit it instead`);
     }
     if (opportunity.assessedChannel !== undefined && ![
       'production', 'comprehension', 'interaction',
@@ -275,6 +279,36 @@ export function validateSceneDefinition(scene: SceneDefinition): SceneValidation
       ) {
         errors.push(`${path}: eligibleModalities must be a non-empty unique list of spoken/typed`);
       }
+    }
+    // Qualification provenance. A band is a pedagogical claim about a specific
+    // opportunity, so the contract requires the reasoning to travel with it and
+    // refuses a review record that cannot be attributed to a person.
+    const qualification = opportunity.qualification;
+    const hasDimensions =
+      opportunity.evidenceBand !== undefined || opportunity.assessedChannel !== undefined;
+    if (qualification) {
+      if (qualification.rubricVersion !== OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION) {
+        errors.push(
+          `${path}: qualification rubricVersion ${qualification.rubricVersion} is not the current rubric ${OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION}`
+        );
+      }
+      if (!qualification.rationale.trim()) {
+        errors.push(`${path}: qualification requires a rationale a second person could check`);
+      }
+      if (qualification.status === 'reviewed') {
+        if (!qualification.reviewerId?.trim()) {
+          errors.push(`${path}: a reviewed qualification must name its reviewer`);
+        }
+        if (!qualification.reviewedAt?.trim()) {
+          errors.push(`${path}: a reviewed qualification must record when it was reviewed`);
+        }
+      } else if (qualification.reviewerId || qualification.reviewedAt) {
+        errors.push(`${path}: reviewer details without a reviewed status are a half-written review`);
+      }
+    } else if (hasDimensions) {
+      errors.push(
+        `${path}: authored band/channel require a qualification record, so they can be reviewed`
+      );
     }
     if (!declaredSkills.has(opportunity.skillId)) {
       errors.push(`${path}: skill ${opportunity.skillId} is not declared by scene.skillIds`);

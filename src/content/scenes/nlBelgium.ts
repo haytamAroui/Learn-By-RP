@@ -1,4 +1,7 @@
-import type { SceneDefinition } from '../../contracts/scene';
+import {
+  OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+  type SceneDefinition,
+} from '../../contracts/scene';
 
 export const NL_BE_CAFE_SCENE: SceneDefinition = {
   id: 'scene.nl-be.cafe.breakfast',
@@ -236,6 +239,14 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.cafe.request-substitution',
       skillId: 'skill-request-substitution',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner carries a constraint (a plant-based drink) into a request for a different option after learning the first is unavailable. Adapting the request to an unexpected change is the demand, not ordering.",
+      },
       sceneCondition: {
         op: 'and',
         predicates: [
@@ -258,6 +269,14 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.cafe.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A single factual question about the drink already in hand — price, size, or an ingredient the counter can name. Nothing has to be adapted or inferred.",
+      },
       sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
       positiveExamples: [
         'Asks a concrete question about price, ingredients, size, or another service condition.',
@@ -271,6 +290,14 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.cafe.repair.request-repetition',
       skillId: 'skill-request-repetition',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic repair clause asking for the just-delivered detail again. No scene-specific content has to be generated and no meaning is at stake beyond hearing it a second time.",
+      },
       sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
       positiveExamples: ['Asks Lotte to repeat the just-delivered detail.'],
       negativeExamples: ['Asks for a new fact instead of repetition.'],
@@ -280,6 +307,14 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.cafe.repair.ask-clarification',
       skillId: 'skill-ask-clarification',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause asking what a single unfamiliar word means. The demand is the request itself, not the domain it happens in, so the setting does not raise the band.",
+      },
       sceneCondition: { op: 'eq', fact: 'substituteOffered', value: true },
       positiveExamples: ['Asks what the unfamiliar café term means.'],
       negativeExamples: ['Requests verbatim repetition without asking for meaning.'],
@@ -289,6 +324,14 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.cafe.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'itemConfirmed', value: true },
       positiveExamples: ['States the understood service detail and asks Lotte to confirm it.'],
       negativeExamples: ['Asks an open question without offering an interpretation.'],
@@ -502,6 +545,14 @@ export const NL_BE_PARCEL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.parcel.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A concrete question about pickup hours or another collection condition at the counter the learner is standing at. The answer is a fact, not a rule to interpret.",
+      },
       sceneCondition: { op: 'eq', fact: 'parcelIdentified', value: true },
       positiveExamples: ['Asks a concrete question about pickup hours or collection conditions.'],
       negativeExamples: ['Only repeats the pickup code without asking for information.'],
@@ -511,6 +562,14 @@ export const NL_BE_PARCEL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.parcel.propose-alternative',
       skillId: 'skill-propose-alternative',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must generate a workable alternative time after learning the original is unavailable, and hold the exchange until it is confirmed. Proposing differs from selecting an offered option.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: ['Proposes tomorrow morning after learning that evening pickup is unavailable.'],
       negativeExamples: ['Rejects the unavailable time without suggesting another arrangement.'],
@@ -520,6 +579,14 @@ export const NL_BE_PARCEL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.parcel.repair.request-repetition',
       skillId: 'skill-request-repetition',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic repair clause asking for the just-delivered detail again. No scene-specific content has to be generated and no meaning is at stake beyond hearing it a second time.",
+      },
       sceneCondition: { op: 'eq', fact: 'parcelIdentified', value: true },
       positiveExamples: ['Asks Tom to repeat the just-delivered pickup detail.'],
       negativeExamples: ['Asks for a different time without requesting repetition.'],
@@ -529,6 +596,14 @@ export const NL_BE_PARCEL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.parcel.repair.ask-clarification',
       skillId: 'skill-ask-clarification',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause asking what a single unfamiliar word means. The demand is the request itself, not the domain it happens in, so the setting does not raise the band.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: ['Asks what the unfamiliar parcel term means.'],
       negativeExamples: ['Requests repetition without asking for meaning.'],
@@ -723,6 +798,14 @@ export const NL_BE_NEIGHBOR_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.neighbor.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A direct yes/no question about one shared object, the spare key. The whole request fits a single high-frequency question word.",
+      },
       sceneCondition: { op: 'eq', fact: 'neighborInRush', value: true },
       positiveExamples: ['Asks directly whether Nora has the key or another needed handover detail.'],
       negativeExamples: ['Makes small talk without asking for the needed information.'],
@@ -732,6 +815,14 @@ export const NL_BE_NEIGHBOR_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.neighbor.propose-alternative',
       skillId: 'skill-propose-alternative',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must generate a workable handover point while the partner is in a hurry, so the proposal has to be produced under time pressure rather than chosen from options.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: ['Suggests another workable handover place after learning Nora is in a rush.'],
       negativeExamples: ['Only says the current timing is difficult without proposing another arrangement.'],
@@ -741,6 +832,14 @@ export const NL_BE_NEIGHBOR_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.neighbor.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: ['States the understood handover detail and asks Nora to confirm it.'],
       negativeExamples: ['Asks an open question without proposing an interpretation.'],
@@ -750,6 +849,14 @@ export const NL_BE_NEIGHBOR_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.neighbor.repair.clarify-misunderstanding',
       skillId: 'skill-clarify-misunderstanding',
+      evidenceBand: 'b1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The partner has stated a wrong meeting place. The learner must hold the discrepancy between what was said and what was meant, contradict it, specify the correct value, and repair the shared understanding. There is no single formula for that, and success is not guaranteed by one turn.",
+      },
       sceneCondition: { op: 'eq', fact: 'meetingPlace', value: 'building_entrance' },
       positiveExamples: ['Corrects the wrong meeting place and clearly restates the intended one.'],
       negativeExamples: ['Accepts the wrong place without correction.'],
@@ -967,6 +1074,14 @@ export const NL_BE_METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.metro.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "Ticket validation is an unfamiliar institutional rule. The learner has to ask about it and interpret the answer to know whether their ticket is usable; naming a destination does not satisfy the opportunity.",
+      },
       sceneCondition: { op: 'eq', fact: 'ticketInfoKnown', value: false },
       positiveExamples: ['Asks a concrete question about ticket use, validation or another travel condition.'],
       negativeExamples: ['Only names a destination without asking for information.'],
@@ -976,6 +1091,14 @@ export const NL_BE_METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.metro.wayfinding',
       skillId: 'skill-wayfinding-transit',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner specifies a destination and has to extract an actionable platform and direction from the reply. Route language is not self-evident from the question alone.",
+      },
       sceneCondition: { op: 'eq', fact: 'platformKnown', value: false },
       positiveExamples: ['Asks which platform, direction or line to take.'],
       negativeExamples: ['Only names the destination without requesting actionable route information.'],
@@ -985,6 +1108,14 @@ export const NL_BE_METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.metro.repair.request-repetition',
       skillId: 'skill-request-repetition',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic repair clause asking for the just-delivered detail again. No scene-specific content has to be generated and no meaning is at stake beyond hearing it a second time.",
+      },
       sceneCondition: { op: 'eq', fact: 'platformKnown', value: true },
       positiveExamples: ['Asks Bram to repeat the just-delivered route detail.'],
       negativeExamples: ['Asks a new route question instead of requesting repetition.'],
@@ -994,6 +1125,14 @@ export const NL_BE_METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.metro.repair.ask-clarification',
       skillId: 'skill-ask-clarification',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause asking what a single unfamiliar word means. The demand is the request itself, not the domain it happens in, so the setting does not raise the band.",
+      },
       sceneCondition: { op: 'eq', fact: 'ticketInfoKnown', value: true },
       positiveExamples: ['Asks what the unfamiliar transit term means.'],
       negativeExamples: ['Requests the same sentence again without asking for meaning.'],
@@ -1003,6 +1142,14 @@ export const NL_BE_METRO_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.metro.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed. Here the detail is a direction or platform, which is easy to restate wrongly without noticing.",
+      },
       sceneCondition: { op: 'eq', fact: 'platformKnown', value: true },
       positiveExamples: ['States the understood route or platform and asks Bram to confirm it.'],
       negativeExamples: ['Asks an open route question without proposing an interpretation.'],
@@ -1131,6 +1278,14 @@ export const NL_BE_PHARMACY_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.pharmacy.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner asks where official warning and leaflet information is shown on a package and must interpret the answer to find it. This is product-safety information with a less predictable layout than a counter service.",
+      },
       sceneCondition: { op: 'eq', fact: 'warningQuestionAsked', value: false },
       positiveExamples: ['Asks where official warnings, instructions or leaflet information can be found.'],
       negativeExamples: ['Asks the pharmacist to diagnose the condition or choose treatment.'],
@@ -1140,6 +1295,14 @@ export const NL_BE_PHARMACY_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.pharmacy.request-substitution',
       skillId: 'skill-request-substitution',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner asks to compare another package after reviewing the official information, so the request carries a reason and depends on the earlier step having happened.",
+      },
       sceneCondition: {
         op: 'and',
         predicates: [
@@ -1399,6 +1562,14 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.dining.propose-alternative',
       skillId: 'skill-propose-alternative',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The preferred terrace table is unavailable and the learner produces a workable alternative arrangement rather than simply accepting.",
+      },
       sceneCondition: { op: 'eq', fact: 'seatingAlternativeOffered', value: true },
       positiveExamples: ['Suggests or accepts another workable terrace arrangement.'],
       negativeExamples: ['Rejects the unavailable spot without adapting the arrangement.'],
@@ -1408,6 +1579,14 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.dining.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "Asking for a recommendation plus an ingredient or dietary check combines obtaining advice with narrowing a choice, which is more than a single factual question.",
+      },
       sceneCondition: { op: 'eq', fact: 'seatingConfirmed', value: true },
       positiveExamples: ['Asks for a recommendation or a concrete ingredient/detail needed to decide.'],
       negativeExamples: ['States a preference without asking for missing information.'],
@@ -1417,6 +1596,14 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.dining.request-substitution',
       skillId: 'skill-request-substitution',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A dietary condition identified earlier in the scene has to be carried into a request for another dish. The constraint drives the request.",
+      },
       sceneCondition: {
         op: 'and',
         predicates: [
@@ -1635,6 +1822,14 @@ export const NL_BE_HOTEL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.hotel.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A concrete question about the room, deposit, or another check-in condition the learner is currently inside of.",
+      },
       sceneCondition: { op: 'eq', fact: 'bookingIdentified', value: true },
       positiveExamples: ['Asks when the room is ready, where luggage can be left, or another concrete check-in condition.'],
       negativeExamples: ['Only repeats the reservation name without asking for needed information.'],
@@ -1644,6 +1839,14 @@ export const NL_BE_HOTEL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.hotel.propose-alternative',
       skillId: 'skill-propose-alternative',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner has to generate and defend a workable alternative arrangement during check-in, which requires proposing rather than selecting.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: ['Proposes leaving luggage and returning later after learning the room is not ready.'],
       negativeExamples: ['Rejects the delay without proposing a workable alternative.'],
@@ -1653,6 +1856,14 @@ export const NL_BE_HOTEL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.hotel.repair.request-repetition',
       skillId: 'skill-request-repetition',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic repair clause asking for the just-delivered detail again. No scene-specific content has to be generated and no meaning is at stake beyond hearing it a second time.",
+      },
       sceneCondition: { op: 'eq', fact: 'bookingIdentified', value: true },
       positiveExamples: ['Asks Anke to repeat the timing detail.'],
       negativeExamples: ['Asks a new check-in question instead of requesting repetition.'],
@@ -1662,6 +1873,14 @@ export const NL_BE_HOTEL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.hotel.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'alternativeOffered', value: true },
       positiveExamples: ['States the understood luggage/return plan and asks Anke to confirm it.'],
       negativeExamples: ['Asks an open question without proposing an interpretation.'],
@@ -1895,6 +2114,14 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.rental.request-substitution',
       skillId: 'skill-request-substitution',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner asks for a different bike or accessory after a constraint rules out the first choice, which requires adapting the request to what is actually available.",
+      },
       sceneCondition: {
         op: 'and',
         predicates: [
@@ -1914,6 +2141,14 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.rental.inquire-specifications',
       skillId: 'skill-inquire-specifications',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "A concrete question about bike size, helmet, or price at the rental counter. Familiar service vocabulary in a routine transaction.",
+      },
       sceneCondition: { op: 'eq', fact: 'rentalSelected', value: true },
       positiveExamples: ['Asks about return time, included equipment, or another concrete rental condition.'],
       negativeExamples: ['Confirms the bike without asking for the needed rental condition.'],
@@ -1923,6 +2158,14 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.rental.repair.ask-clarification',
       skillId: 'skill-ask-clarification',
+      evidenceBand: 'a1',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "One formulaic clause asking what a single unfamiliar word means. The demand is the request itself, not the domain it happens in, so the setting does not raise the band.",
+      },
       sceneCondition: { op: 'eq', fact: 'rentalSelected', value: true },
       positiveExamples: ['Asks what the unfamiliar rental term means.'],
       negativeExamples: ['Requests repetition without asking for meaning.'],
@@ -1932,6 +2175,14 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
     {
       id: 'opp.nl-be.rental.repair.check-understanding',
       skillId: 'skill-check-understanding',
+      evidenceBand: 'a2',
+      assessedChannel: 'interaction',
+      eligibleModalities: ['typed', 'spoken'],
+      qualification: {
+        rubricVersion: OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION,
+        status: 'authored_pending_review',
+        rationale: "The learner must retain the detail just delivered, re-formulate it as an interpretation, and turn it into a confirmation question. The reformulated clause is generated rather than recalled, and a wrong restatement has to be noticed.",
+      },
       sceneCondition: { op: 'eq', fact: 'returnInfoAsked', value: true },
       positiveExamples: ['States the understood return condition and asks Wout to confirm it.'],
       negativeExamples: ['Asks a new open question without proposing an interpretation.'],

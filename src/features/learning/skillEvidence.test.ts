@@ -13,6 +13,9 @@ import { inferLegacySkillEvidence, projectSkill, projectSkillsV2 } from './skill
 import { allowedSkillIds, evidentiarySkillsForMission } from './skillMembership';
 import { SKILL_POLICY } from './policy';
 import { MISSION_CATALOG as MISSIONS } from '../../data/missions';
+import { getScene } from '../../content/scenes';
+import { authoredQualificationFields } from '../roleplay/opportunityRuntime';
+import { withReviewedOpportunityQualification } from './qualificationTestSupport';
 import {
   COMMUNICATIVE_SKILLS_CATALOG,
   isDirectlyEvidencedSkill,
@@ -103,12 +106,21 @@ function proposal(skillItems: SkillEvidenceCandidate[], taskOutcome: 'achieved' 
   };
 }
 
+/**
+ * The authored qualification of the opportunity this fixture exercises, read
+ * from the same scene object the runtime reads.
+ */
+const AUTHORED_OPPORTUNITY = getScene('scene.es.cafe.breakfast')!.opportunityDefinitions.find(
+  definition => definition.id === 'opp.es.cafe.request-substitution.after-alternative'
+)!;
+
 function opportunity(overrides: Partial<OpportunityInstance> = {}): OpportunityInstance {
   return {
     id: 'opp-1',
     attemptId: 'attempt-1',
     opportunityId: 'opp.es.cafe.request-substitution.after-alternative',
     skillId: SKILL,
+    ...authoredQualificationFields(AUTHORED_OPPORTUNITY),
     status: 'taken',
     detection: 'validated',
     demonstration: 'attempted_not_demonstrated',
@@ -435,6 +447,65 @@ describe('validateSkillEvidenceProposal', () => {
     expect(result.validated[0].sessionId).toBe('s-1');
     expect(result.validated[0].attemptId).toBe('attempt-1');
     expect(result.validated[0].scenarioId).toBe('scene.es.cafe.breakfast');
+  });
+});
+
+describe('opportunity qualification decides what the observation may claim', () => {
+  const positiveProposal = () =>
+    validateSkillEvidenceProposal(
+      proposal([candidate()]),
+      context({ opportunityInstances: [opportunity({ demonstration: 'demonstrated' })] })
+    );
+
+  it('records the performance but withholds the band while the review is pending', () => {
+    const result = positiveProposal();
+
+    // The demonstration itself is real and stays recorded. What is withheld is
+    // the qualification, so nothing downstream can read a level out of it.
+    expect(result.validated).toHaveLength(1);
+    expect(result.validated[0].evidenceBand).toBe('unknown');
+    expect(result.validated[0].assessedChannel).toBeUndefined();
+    expect(isIndependentSuccess(result.validated[0])).toBe(false);
+
+    const projection = projectSkill(SKILL, result.validated);
+    expect(projection.independentContexts).toEqual([]);
+    expect(projection.independentDays).toEqual([]);
+    expect(projection.evidenceBand).toBeUndefined();
+  });
+
+  it('attaches the reviewed band and channel to the same performance', () => {
+    withReviewedOpportunityQualification(AUTHORED_OPPORTUNITY, () => {
+      const result = positiveProposal();
+
+      expect(result.validated).toHaveLength(1);
+      expect(result.validated[0].evidenceBand).toBe('a2');
+      expect(result.validated[0].assessedChannel).toBe('interaction');
+      expect(isIndependentSuccess(result.validated[0])).toBe(true);
+
+      const projection = projectSkill(SKILL, result.validated);
+      expect(projection.evidenceBand).toBe('a2');
+      expect(projection.assessedChannel).toBe('interaction');
+      expect(projection.independentContexts).toHaveLength(1);
+    });
+  });
+
+  it('never lets a higher band fill a lower one', () => {
+    withReviewedOpportunityQualification(AUTHORED_OPPORTUNITY, () => {
+      const reviewed = positiveProposal().validated;
+
+      // The projection reports the band its own evidence carries. An a2 history
+      // is not quietly reported at a1, and a1's thresholds are not reached by
+      // borrowing a2's rows.
+      const atAuthoredBand = projectSkill(SKILL, reviewed);
+      expect(atAuthoredBand.evidenceBand).toBe('a2');
+
+      const atLowerBand = projectSkill(
+        SKILL,
+        reviewed.filter(observation => observation.evidenceBand === 'a1')
+      );
+      expect(atLowerBand.evidenceBand).toBeUndefined();
+      expect(atLowerBand.independentContexts).toEqual([]);
+    });
   });
 });
 

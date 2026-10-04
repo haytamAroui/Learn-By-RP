@@ -202,9 +202,9 @@ cancellation or real provider reconnect behavior.
 | 1D Durable session/attempt ownership | Archive contract + lifecycle + live screen | Kill/reload after a learner turn retains transcript/help; terminal state is correct; retry retains parent/checkpoint context | Full browser visual suite and 320px/large-text/keyboard-height web recovery flow pass; native/process-kill checks remain open |
 | 1E Transport lifecycle | Voice/conversation providers | One operation per event; stopped audio cannot resume late; disposed provider cannot reconnect; mic begins only on learner voice entry | Implemented; runtime/device verification open |
 | 1F Hosted authority | Guard + router + scene store + actor context | Verified owner, bounded quotas, atomic revisions, replayable concurrent writes and deletion across read/write paths | Shared-file quota tests pass across processes; all HTTP quota routes now share one store and fail closed; hosted topology/runtime verification remains open |
-| 1G Scene outcome separation | Finish/recap/program projection | Scene completion can yield zero evidence; phrase use cannot fabricate world completion; assessment failure preserves true scene outcome | Projection and browser no-fabricated-outcome path verified; positive authored-action-to-achieved runtime path remains open |
-| 1H Qualified opportunities | Shared contracts + validators + SQLite/IndexedDB + projection | Mixed-band mission; spoken/typed distinction; no cross-channel or higher-to-lower backfill; legacy unknown remains unknown | Contracts, persistence, fail-closed guards and regressions verified; released authored qualification metadata remains absent |
-| 1I Reviewed nl-BE coverage | Content graph + release validator | First capabilities have guided/cold, near-miss, help, later retrieval and genuinely different-family opportunities; all assets reviewed | Partial; loop-coverage audit added, human review and runtime confirmation open |
+| 1G Scene outcome separation | Finish/recap/program projection | Scene completion can yield zero evidence; phrase use cannot fabricate world completion; assessment failure preserves true scene outcome | Both directions verified: browser no-fabricated-outcome path, and a live typed session driven by the real reducer to `achieved`, with a `partial` negative control |
+| 1H Qualified opportunities | Shared contracts + validators + SQLite/IndexedDB + projection | Mixed-band mission; spoken/typed distinction; no cross-channel or higher-to-lower backfill; legacy unknown remains unknown | Contracts, persistence, guards and regressions verified; all 65 opportunities now carry an authored band/channel/modality plus a rationale, and unreviewed qualification fails closed. **Open: a named reviewer has accepted none of them.** |
+| 1I Reviewed nl-BE coverage | Content graph + release validator | First capabilities have guided/cold, near-miss, help, later retrieval and genuinely different-family opportunities; all assets reviewed | Review records now modeled and reported per scene (`content/releaseReview.ts`), asset inventory verified against the filesystem. **Open: no review recorded, no bundled audio or imagery, guided/cold paths unconfirmed.** |
 
 Phase 1 exit requires all nine gates, not only passing validator tests. Repair the
 historical audit's blockers within these items. No public readiness claim before
@@ -794,3 +794,92 @@ evidence-band/channel/modality qualification, and no locale/audio/assets review
 manifest exists. Phase 1 therefore remains **not release-complete** pending human
 content/asset review, native-device and process-kill checks, a positive live authored
 scene-outcome path, and hosted deployment verification.
+
+### Phase 1 completion pass — 2026-10-04
+
+Phase 1 was re-checked gate by gate rather than read as done. Engineering for the
+gates the machine can verify is complete; the gates that require a person are now
+specific, small and recorded, instead of absent.
+
+**What this pass changed**
+
+*1H — authored qualification, and a review gate that fails closed.* All 65
+authored opportunities now carry `evidenceBand`, `assessedChannel`,
+`eligibleModalities` and a `qualification` record with a per-opportunity rationale
+and rubric version. Authoring a band and accepting it are now separate acts:
+`features/learning/opportunityQualification.ts` requires the current rubric
+version, `status: 'reviewed'` **and** a named `reviewerId` before an authored band
+may qualify anything. Until a reviewer signs, every observation from that
+opportunity is recorded with `evidenceBand: 'unknown'` and no channel, so nothing
+can promote, lapse or backfill on it — the same fail-closed behaviour as before,
+now with the values present and checkable.
+
+Positive and negative evidence both read the band through that gate. The lapse
+path deliberately uses it too: a weakness signal needs the same review as a
+strength signal, or one asymmetry or the other misleads the learner.
+
+`assessedChannel` is checked, not authored freely: the canonical skill taxonomy in
+`content/skills.ts` owns it and `sceneValidation.ts` rejects disagreement. The
+first authoring pass wrote `production` everywhere and the scene validator caught
+it, which is the check working rather than a near miss.
+
+The scene validator now also refuses: authored dimensions without a qualification
+record, an empty rationale, a `reviewed` status with no reviewer or date, reviewer
+details without a `reviewed` status, a stale rubric version, and `unknown` written
+as an authored band. `unknown` is what an unqualified opportunity resolves to;
+writing it into content would look like a content owner having judged the band.
+
+*1I — a review record to review into.* `content/releaseReview.ts` models the
+locale/voice/imagery review per scene. The registry is empty, which is the accurate
+state. It reports each scene's absence as a specific gap, and it derives the asset
+findings from a declared inventory that `releaseReview.test.ts` verifies against
+the filesystem, so the "zero audio, zero images" finding cannot quietly rot into a
+stale claim. A scene's `released` flag is still not treated as a review.
+
+*1G — the positive path.* `e2e/scene-outcome-achieved.spec.ts` drives four real
+learner turns through the authored pharmacy scene and records `achieved`, with the
+scene endpoints answered by the real `reduceSceneAction` so the preconditions and
+completion predicates under test are the authored ones. Only the model is mocked:
+what the character says is a provider's decision, what the world records is not. A
+paired negative test ends the same scene after two turns and requires `partial`
+and the partial copy, which is what makes the positive assertion discriminating.
+
+*Tests made faithful and then made non-vacuous.* Two fixtures claimed to model a
+runtime opportunity instance while omitting the authored qualification, and began
+rejecting everything. They now build the instance from the scene object the
+runtime reads. That in turn made two lapse tests compare empty with empty, so they
+now apply a review acceptance explicitly — the same mutation a reviewer's sign-off
+performs — and a new test asserts that withdrawing it removes the lapse again.
+
+**Verification**
+
+- `npm run typecheck`: passed.
+- `npm test -- --run`: **863 passed, 3 skipped** (provider acceptance only).
+- `npm run build:web`: passed.
+- `npm run validate:scenes`: structure passed; readiness reported per skill.
+- Full Playwright suite, both themes, on a fresh export: **56 passed**.
+- `git diff --check`: passed.
+
+`validate:scenes` now distinguishes the two states instead of blending them:
+`authored band a1/interaction [typed, spoken] awaits a qualified reviewer`, and
+`OPEN review evidence: scene.…: no release review record` / `no bundled audio` /
+`no bundled imagery` per scene.
+
+**What is still open, and what each one needs**
+
+| Gate | Blocker | Who/what closes it |
+|---|---|---|
+| 1H | 65 authored bands awaiting a qualified reviewer; 0 accepted | A named pedagogy/locale reviewer accepting or correcting each value against `docs/OPPORTUNITY_QUALIFICATION_RUBRIC_V1.md`. The rubric itself is authored by this pass and is unverified. |
+| 1I | No locale/voice/imagery review recorded; zero bundled audio; zero images | Reviewer decisions, plus a product decision on whether the illustrated world is in scope. 1I cannot close by review alone while the assets do not exist. |
+| 1C–1E | No attached device: `adb devices -l` lists none | Physical device run of consent withdrawal, capture, process-kill/relaunch recovery, and playback cancellation. No amount of web testing substitutes. |
+| 1E | Provider acceptance unverified | One live session against configured Gemini/OpenAI credentials, including auditioning the `nl-BE` voice actually selected. |
+| 1F | Hosted topology unverified | A deployed run with `GUEST_IDENTITY_SECRET` and `LEARNBYRP_QUOTA_DB` set on every instance, plus a multi-host quota decision — the shared store spans one filesystem only. |
+| 1I | Guided and cold learner paths unconfirmed | Two human-guided sessions, one using the help ladder and one without any support. |
+
+**Not claimed**
+
+Phase 1 is not release-complete, and the engineering pass does not change that. The
+blueprint's exit condition includes "reviewed opportunities", and no reviewed
+opportunity exists yet. What changed is that the remaining work is 65 review
+decisions, two asset/product decisions, and the device and deployment runs — named,
+scoped and checkable — rather than a list of things that had not been started.

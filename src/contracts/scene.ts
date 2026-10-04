@@ -124,6 +124,40 @@ export type PressureVariantKind =
   | 'unexpected_followup'
   | 'time_pressure';
 
+/**
+ * Version of the authored band rubric.
+ *
+ * Bands are derived from the demand an opportunity itself makes, never from the
+ * mission's display level. Bump this when the rubric changes meaning, so an old
+ * band cannot silently keep its old sense under a new rubric.
+ */
+export const OPPORTUNITY_QUALIFICATION_RUBRIC_VERSION = 1;
+
+/**
+ * Authored qualification of an opportunity's evidence dimensions.
+ *
+ * The values below it are a pedagogical judgement about one specific
+ * opportunity, so authoring them and reviewing them are separate acts. An
+ * authored qualification without a named reviewer stays invisible to promotion:
+ * that is the difference between content that is ready to be reviewed and
+ * content a qualified human has accepted.
+ */
+export interface OpportunityQualification {
+  /** Rubric version the band/channel/modalities were derived against. */
+  rubricVersion: number;
+  /** Why this opportunity's own demand holds this band. Never the mission title. */
+  rationale: string;
+  /**
+   * Required for `reviewed`. An unrecognised value is treated as pending review,
+   * so adding a status later cannot silently widen what qualifies.
+   */
+  status: 'authored_pending_review' | 'reviewed';
+  /** Identity of the qualified reviewer. Required before `reviewed` is honoured. */
+  reviewerId?: string;
+  reviewedAt?: string;
+  reviewNotes?: string;
+}
+
 export interface SkillOpportunityDefinition {
   /** Stable content id; never reuse a retired id for a different challenge. */
   id: string;
@@ -133,6 +167,8 @@ export interface SkillOpportunityDefinition {
   evidenceBand?: EvidenceBand;
   assessedChannel?: SkillModality;
   eligibleModalities?: Modality[];
+  /** Provenance of the three dimensions above. Absent means undecided. */
+  qualification?: OpportunityQualification;
   /** Facts that make this opportunity available to the learner. */
   sceneCondition: Predicate;
   /** Reviewer examples for assessor guidance; never executable scene logic. */

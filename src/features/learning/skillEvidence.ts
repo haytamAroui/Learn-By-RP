@@ -4,6 +4,11 @@ import {
   isKnownCommunicativeSkill,
 } from '../../content/skills';
 import { getScene } from '../../content/scenes';
+import type { SkillOpportunityDefinition } from '../../contracts/scene';
+import {
+  qualifiedAssessedChannel,
+  qualifiedEvidenceBand,
+} from './opportunityQualification';
 import {
   exposurePrecedesPassage,
   isSkillProductionSupportRelevant,
@@ -430,6 +435,7 @@ export function validateSkillEvidenceProposal(
     }
 
     let opportunity: OpportunityInstance | undefined;
+    let authoredDefinition: SkillOpportunityDefinition | undefined;
     if (candidate.opportunityInstanceId) {
       opportunity = opportunitiesById.get(candidate.opportunityInstanceId);
       if (!opportunity || opportunity.attemptId !== context.attemptId) {
@@ -441,7 +447,7 @@ export function validateSkillEvidenceProposal(
       }
 
       const scene = context.mission.sceneId ? getScene(context.mission.sceneId) : undefined;
-      const authoredDefinition = scene?.opportunityDefinitions.find(
+      authoredDefinition = scene?.opportunityDefinitions.find(
         definition => definition.id === opportunity!.opportunityId
       );
       if (evidenceSource === 'validated_explicit' && !authoredDefinition) {
@@ -643,6 +649,16 @@ export function validateSkillEvidenceProposal(
       modality: candidate.modality,
     });
 
+    /*
+     * The band and channel an observation may carry come from the reviewed
+     * qualification of the authored opportunity, not from the runtime instance.
+     * The instance's copy is authoritative for integrity and may still be
+     * unreviewed; projection is a claim about a learner, so it only receives
+     * dimensions a qualified human accepted.
+     */
+    const qualifiedBand = qualifiedEvidenceBand(authoredDefinition);
+    const qualifiedChannel = qualifiedAssessedChannel(authoredDefinition);
+
     const observation: SkillObservation = {
       id: `skill-obs-${context.sessionId}-${candidate.skillId}-${candidate.sourcePassageId}`,
       skillId: candidate.skillId,
@@ -656,8 +672,8 @@ export function validateSkillEvidenceProposal(
       contextKey: {
         domainId: context.mission.category,
         scenarioFamilyId: context.mission.scenarioFamilyId,
-        assessedChannel: opportunity?.assessedChannel,
-        evidenceBand: opportunity?.evidenceBand ?? 'unknown',
+        assessedChannel: qualifiedChannel,
+        evidenceBand: qualifiedBand,
         scenarioId: context.mission.sceneId,
       },
 
@@ -666,8 +682,8 @@ export function validateSkillEvidenceProposal(
       scenarioId: context.mission.sceneId,
 
       modality: candidate.modality,
-      assessedChannel: opportunity?.assessedChannel,
-      evidenceBand: opportunity?.evidenceBand ?? 'unknown',
+      assessedChannel: qualifiedChannel,
+      evidenceBand: qualifiedBand,
       retrieval,
       taskOutcome: outcome,
       demonstration: 'demonstrated',
@@ -747,15 +763,19 @@ export function deriveLapses(
 
     // Failure evidence must use the same reviewed opportunity contract as
     // positive evidence. Runtime/client fields cannot supply a band or channel
-    // that the authored scene has not qualified.
+    // that the authored scene has not qualified, and an authored-but-unreviewed
+    // band cannot record a lapse either: a weakness signal needs the same review
+    // as a strength signal, or one asymmetry or the other misleads the learner.
     const authoredDefinition = scene?.opportunityDefinitions.find(
       definition => definition.id === opportunity.opportunityId
     );
+    const qualifiedBand = qualifiedEvidenceBand(authoredDefinition);
+    const qualifiedChannel = qualifiedAssessedChannel(authoredDefinition);
     if (
       !authoredDefinition ||
       authoredDefinition.skillId !== opportunity.skillId ||
-      (authoredDefinition.evidenceBand ?? 'unknown') === 'unknown' ||
-      !authoredDefinition.assessedChannel ||
+      qualifiedBand === 'unknown' ||
+      !qualifiedChannel ||
       (opportunity.evidenceBand ?? 'unknown') !== authoredDefinition.evidenceBand ||
       opportunity.assessedChannel !== authoredDefinition.assessedChannel ||
       JSON.stringify([...(opportunity.eligibleModalities ?? [])].sort()) !==
@@ -770,9 +790,9 @@ export function deriveLapses(
 
     const passage = passagesById.get(passageId);
     if (!passage || passage.speaker !== 'user') continue;
+    // Band and channel were already established as reviewed above; what remains
+    // here is that the passage really is the performance being judged.
     if (
-      opportunity.evidenceBand === undefined || opportunity.evidenceBand === 'unknown' ||
-      !opportunity.assessedChannel ||
       opportunity.observedModality !== passage.modality ||
       (opportunity.eligibleModalities && !opportunity.eligibleModalities.includes(passage.modality))
     ) continue;
@@ -808,12 +828,12 @@ export function deriveLapses(
       contextKey: {
         domainId: context.mission.category,
         scenarioFamilyId: context.mission.scenarioFamilyId,
-        assessedChannel: opportunity.assessedChannel,
-        evidenceBand: opportunity.evidenceBand,
+        assessedChannel: qualifiedChannel,
+        evidenceBand: qualifiedBand,
         scenarioId: context.mission.sceneId,
       },
-      assessedChannel: opportunity.assessedChannel,
-      evidenceBand: opportunity.evidenceBand,
+      assessedChannel: qualifiedChannel,
+      evidenceBand: qualifiedBand,
       domainId: context.mission.category,
       scenarioId: context.mission.sceneId,
       opportunityInstanceId: opportunity.id,
