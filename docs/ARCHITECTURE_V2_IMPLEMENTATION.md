@@ -430,6 +430,60 @@ confirmation in these scenes, or a validator change that reports whether a repea
 still has other available actions — which would separate "harmless repeat" from "dead end".
 Both are content/semantics decisions rather than defects.
 
+### Content blueprint §10.6 acceptance checklist, audited against this checkout
+
+The French/Belgian-Dutch content blueprint closes with a 20-item acceptance checklist. It
+is the most falsifiable artifact in either document, so it was checked item by item rather
+than assumed. Result: **7 met, 4 partly, 9 not met** — and the misses are content and test
+gaps, not contract gaps.
+
+Met, with the code that carries them:
+
+| Item | Evidence |
+|---|---|
+| Exposed forms cannot generate unassisted target credit | `supportExposureIds` referenced across 21 modules |
+| Retry and cosmetic variants cannot generate transfer credit | `retrySupport`, `parentAttemptId` in 7 modules |
+| Silence, noise and disconnection cannot automatically create lapses | `skillLapses` with reason codes across 10 modules |
+| French/Dutch histories and spoken/typed modalities remain distinct | six `LanguageCode` values; modality carried in evidence |
+| Placement hypotheses do not confer durable progress | comfort level stored as a hypothesis only |
+| Colours and typography meet contrast checks | `tests/design.test.ts` asserts WCAG contrast for real token pairs, both themes |
+| Recap distinguishes world result, help, validated behaviour and pending assessment | verified in the rendered screen during this pass |
+
+Narrative rewards trivially satisfy their item: **no badge, collectible or XP system
+exists**, so nothing can masquerade as competence.
+
+Partly met:
+
+- *Every skill alias maps to canonical taxonomy.* Mapped in `LEARNBYRP_CANONICAL_RECONCILIATION_V1.md`
+  (10 exact, 4 conditional, 22 content-only) but not encoded as a machine-checkable mapping.
+- *A1 speech entry after a preparation bridge.* `ProgramEntryMode` exists with
+  `observe_first | guided_first | warmup_first`, and the briefing renders a model option.
+- *Scene, saved language, replay and help reachable.* Confirmed visually for the six
+  captured screens; not covered by an automated reachability test.
+- *Reminder consent is voluntary.* No reminder feature exists at all, so there is nothing
+  to consent to yet.
+
+Not met:
+
+- **48 scenarios / 144 scenes authored.** This checkout has 16 scenes and 65 authored
+  opportunities. The blueprint catalogue is a production plan, not shipped content.
+- **Zero B2 content.** Missions are A1 (6) and A2 (26) only, so the blueprint's entire B2
+  half — including its requirement that B2 scenes elicit sustained negotiation — is absent.
+- **Transfer edges.** No authored `transferTo` edge exists in any scene; only
+  `nextRp.ts` reasons about transfer. The blueprint's transfer graph is unimplemented, which
+  is also why the Phase 3 exit criterion cannot be met.
+- **Complete lexical, pattern, audio and support assets.** There is no bundled audio and no
+  image component anywhere in `src`.
+- **Large text and keyboard must not hide input, help or exit controls.** There is **no test
+  of any kind** for large text or keyboard behaviour. This is the sharpest gap, because it
+  is exactly what the Phase 2 exit criterion requires: a real attempt → help → finish →
+  reload at 320 width on a physical phone with large text, keyboard and permitted typed
+  mode. It is testable on web today at 320 width with a scaled font and a focused typed
+  input, and is not yet written.
+
+Also outstanding from the same blueprint: outcome validation on unseen tasks and delayed
+return is Phase 6/7 work and has not started.
+
 ### Phase 2 — Speaking UX
 
 Keep existing screen components and tokens. Deliver the short language/goal entry,
