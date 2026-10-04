@@ -9,12 +9,13 @@ import { evidentiarySkillsForMission } from '../src/features/learning/skillMembe
 import { SKILL_POLICY } from '../src/features/learning/policy';
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
+import { generateDutchActorFallback } from '../src/features/roleplay/dutchActorFallback';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
 import { resolveActorContext } from './roleplay/actorContext';
 import { createProviderGuard, resolveProviderIdentity } from './security/requestGuard';
-import { createRateLimitStore } from './security/rateLimitStore';
+import { runtimeRateLimitStore } from './security/runtimeRateLimitStore';
 import { issueGuestIdentityToken } from './security/guestIdentity';
 import { deleteHostedSession, getHostedSession } from '../src/features/roleplay/sceneStore';
 import {
@@ -46,26 +47,15 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 const providers = createProviderRuntime();
 // One quota store for the whole deployment. See `createRateLimitStore` for why an
 // absent LEARNBYRP_QUOTA_DB is a per-process budget and what that costs at >1 instance.
-const rateLimitStore = createRateLimitStore();
-const guardProviderRequest = createProviderGuard(rateLimitStore);
-const guestIssueWindows = new Map<string, { startedAt: number; count: number }>();
+const guardProviderRequest = createProviderGuard(runtimeRateLimitStore);
 
 app.post('/api/guest/identity', (req: Request, res: Response) => {
   const ip = req.ip || req.socket.remoteAddress || 'unknown';
   const now = Date.now();
-  if (guestIssueWindows.size >= 256 && guestIssueWindows.size % 128 === 0) {
-    for (const [key, value] of guestIssueWindows) if (now - value.startedAt >= 60_000) guestIssueWindows.delete(key);
-  }
-  if (guestIssueWindows.size >= 50_000 && !guestIssueWindows.has(ip)) {
-    res.status(429).json({ error: 'Guest identity service is busy' });
-    return;
-  }
-  const bucket = guestIssueWindows.get(ip);
-  if (!bucket || now - bucket.startedAt >= 60_000) guestIssueWindows.set(ip, { startedAt: now, count: 1 });
-  else if (bucket.count >= 12) {
+  if (!runtimeRateLimitStore.take(`guest-issue:${ip}`, 12, 60_000, now)) {
     res.status(429).json({ error: 'Guest identity request limit reached' });
     return;
-  } else bucket.count += 1;
+  }
   try {
     res.setHeader('Cache-Control', 'no-store');
     res.json({ token: issueGuestIdentityToken() });
@@ -622,6 +612,7 @@ const handleSpeechSynthesis = async (req: Request, res: Response) => {
       language = 'es',
       locale,
       voice,
+      voiceGender,
       voiceName,
       speed = 1.0,
       style,
@@ -646,6 +637,7 @@ const handleSpeechSynthesis = async (req: Request, res: Response) => {
       language,
       locale,
       voice: voice || voiceName,
+      voiceGender,
       speed,
       style,
     });
@@ -676,6 +668,10 @@ function generateFallbackActorReply(
 ) {
   const lower = userMessage.toLowerCase();
   const lang = (targetLanguage || '').toLowerCase();
+
+  if (lang === 'nl' || lang.includes('dutch') || lang.includes('flemish')) {
+    return generateDutchActorFallback(userMessage);
+  }
 
   // 1. French Characters
   if (characterName === 'Laurent' || lang.includes('french') || lang === 'fr') {

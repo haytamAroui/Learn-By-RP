@@ -92,6 +92,7 @@ export class SqliteRateLimitStore implements RateLimitStore {
     };
     close(): void;
   };
+  private calls = 0;
 
   constructor(location: string) {
     // Required lazily so Metro never bundles the Node builtin into the app.
@@ -121,19 +122,22 @@ export class SqliteRateLimitStore implements RateLimitStore {
       started_at INTEGER NOT NULL,
       count INTEGER NOT NULL
     )`);
+    handle.exec('CREATE INDEX IF NOT EXISTS provider_quota_started_at ON provider_quota(started_at)');
     this.db = handle as unknown as SqliteRateLimitStore['db'];
   }
 
   take(key: string, limit: number, windowMs: number, now: number): boolean {
-    // A quota store that throws would otherwise surface as a 500 on every provider call.
-    // Consent and ownership are already enforced upstream by `checkProviderAccess`, so
-    // degrading to "allow" here costs provider budget rather than learner privacy, and
-    // refusing would turn a quota-store fault into a total outage.
+    // A quota-store failure must not silently disable the cost bound. The caller can
+    // surface a retryable 429/503; allowing the request would turn an infrastructure
+    // fault into unbounded provider spend.
     try {
+      if (++this.calls % 256 === 0) {
+        this.db.prepare('DELETE FROM provider_quota WHERE started_at <= ?').run(now - windowMs);
+      }
       return this.takeInTransaction(key, limit, windowMs, now);
     } catch (error) {
-      console.warn('[quota] shared store unavailable; allowing request', error);
-      return true;
+      console.error('[quota] store unavailable; refusing request', error);
+      return false;
     }
   }
 
@@ -153,8 +157,8 @@ export class SqliteRateLimitStore implements RateLimitStore {
         if (!isBusy(error)) throw error;
       }
     }
-    console.warn('[quota] shared store stayed locked; allowing request');
-    return true;
+    console.error('[quota] shared store stayed locked; refusing request');
+    return false;
   }
 
   private transaction(

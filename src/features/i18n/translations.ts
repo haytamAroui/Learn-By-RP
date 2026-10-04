@@ -178,6 +178,7 @@ export interface Translations {
     ending: string;
     /** R3: voice has failed, typed input still works. */
     voiceFailed: string;
+    nativeVoiceUnavailable: string;
     /** R3: recover the connection without losing the transcript. */
     retryConnection: string;
     /** R3: inactivity countdown. */
@@ -607,6 +608,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       ending: "Ending conversation…",
       reconnecting: "Reconnecting...",
       voiceFailed: "Voice unavailable",
+      nativeVoiceUnavailable:
+        "This browser or device cannot provide an exact Dutch (Belgium, nl-BE) voice. Open the session in a browser or on a device with an installed nl-BE voice, or keep practising by text.",
       retryConnection: "Retry connection",
       sessionEndingSoon: "Ending in",
       tapToSpeak: "Tap to speak",
@@ -1049,6 +1052,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       ending: "Fin de la conversation…",
       reconnecting: "Reconnexion...",
       voiceFailed: "Voix indisponible",
+      nativeVoiceUnavailable:
+        "Ce navigateur ou cet appareil ne peut pas fournir de voix exacte en néerlandais (Belgique, nl-BE). Ouvrez la session dans un navigateur ou sur un appareil doté d’une voix nl-BE ; vous pouvez aussi continuer à vous entraîner par écrit.",
       retryConnection: "Réessayer",
       sessionEndingSoon: "Fin dans",
       tapToSpeak: "Appuyez pour parler",
@@ -1490,6 +1495,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       ending: "Finalizando conversación…",
       reconnecting: "Reconectando...",
       voiceFailed: "Voz no disponible",
+      nativeVoiceUnavailable:
+        "Este navegador o dispositivo no puede proporcionar una voz exacta de neerlandés (Bélgica, nl-BE). Abre la sesión en un navegador o dispositivo con una voz nl-BE instalada, o sigue practicando por escrito.",
       retryConnection: "Reintentar",
       sessionEndingSoon: "Termina en",
       tapToSpeak: "Toca para hablar",
@@ -1931,6 +1938,8 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       ending: "Gesprek afronden…",
       reconnecting: "Opnieuw verbinden...",
       voiceFailed: "Stem niet beschikbaar",
+      nativeVoiceUnavailable:
+        "Deze browser of dit apparaat kan geen exacte stem voor Belgisch Nederlands (nl-BE) aanbieden. Open de sessie in een browser of op een apparaat met een geïnstalleerde nl-BE-stem, of oefen verder via tekst.",
       retryConnection: "Opnieuw proberen",
       sessionEndingSoon: "Eindigt over",
       tapToSpeak: "Tik om te spreken",

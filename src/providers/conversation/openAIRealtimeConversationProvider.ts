@@ -1,6 +1,7 @@
 import type { ActorResponse } from '../../lib/api';
 import { api } from '../../lib/api';
 import { actorInstructions } from './actorInstructions';
+import { parseActorResponse } from './parseActorResponse';
 import type {
   ConversationProvider,
   ConversationProviderEvent,
@@ -36,27 +37,6 @@ function responseDoneText(event: any): string {
     }
   }
   return '';
-}
-
-function parseActorResponse(raw: string): ActorResponse {
-  const trimmed = raw.trim();
-  try {
-    const parsed = JSON.parse(trimmed);
-    return {
-      replyText: typeof parsed.replyText === 'string' ? parsed.replyText : trimmed,
-      meaning: typeof parsed.meaning === 'string' ? parsed.meaning : '',
-      proposedAction:
-        parsed.proposedAction && typeof parsed.proposedAction.name === 'string'
-          ? parsed.proposedAction
-          : null,
-    };
-  } catch {
-    return {
-      replyText: trimmed.replace(/^["'`]+|["'`]+$/g, ''),
-      meaning: '',
-      proposedAction: null,
-    };
-  }
 }
 
 /**

@@ -48,7 +48,7 @@ export function pickBestNativeVoice(
       let score = 0;
 
       if (voiceLocale === desired) score += 100;
-      else if (voiceBase === base) score += 60;
+      else if (voiceBase === base && desired !== 'nl-BE') score += 60;
       else return { voice, score: -1 };
 
       if (String(voice.quality).toLowerCase() === 'enhanced') score += 20;

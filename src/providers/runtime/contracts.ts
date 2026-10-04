@@ -1,3 +1,5 @@
+import type { VoiceGender } from '../../types';
+
 export type ProviderId =
   | 'gemini'
   | 'openai-realtime'
@@ -40,6 +42,7 @@ export interface SpeechSynthesisRequest {
   language: string;
   locale?: string;
   voice?: string;
+  voiceGender?: VoiceGender;
   speed?: number;
   style?: string;
 }

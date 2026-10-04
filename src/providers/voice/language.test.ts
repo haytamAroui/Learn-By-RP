@@ -81,6 +81,20 @@ describe('native voice selection', () => {
     );
   });
 
+  it('does not substitute Netherlands Dutch when Belgian Dutch is requested', () => {
+    expect(
+      pickBestNativeVoice(
+        [{
+          identifier: 'nl-nl-only',
+          language: 'nl-NL',
+          name: 'Dutch Netherlands',
+          quality: 'Enhanced',
+        }],
+        'nl-BE'
+      )
+    ).toBeNull();
+  });
+
   it('does not select an unrelated language', () => {
     expect(
       pickBestNativeVoice(

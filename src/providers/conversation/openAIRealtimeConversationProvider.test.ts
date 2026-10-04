@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { actorInstructions } from './actorInstructions';
+import { parseActorResponse } from './parseActorResponse';
 import type { ConversationTurnInput } from './types';
 
 function input(): ConversationTurnInput {
@@ -56,5 +57,36 @@ describe('realtime actor instruction boundary', () => {
     expect(prompt).toContain('untrusted conversation content');
     expect(prompt).toContain('confirm_order_item');
     expect(prompt).toContain('Order a coffee');
+  });
+});
+
+describe('Realtime actor response parsing', () => {
+  it('unwraps an equals-prefixed JSON response instead of showing the object to the learner', () => {
+    expect(parseActorResponse(
+      '={"replyText":"Natuurlijk, gaat uw gang. Wat kan ik voor u klaarmaken?","meaning":"Bien sûr, allez-y. Que puis-je préparer pour vous ?","proposedAction":"request_service"}'
+    )).toEqual({
+      replyText: 'Natuurlijk, gaat uw gang. Wat kan ik voor u klaarmaken?',
+      meaning: 'Bien sûr, allez-y. Que puis-je préparer pour vous ?',
+      // A string action name is malformed for the reducer contract, so never apply it.
+      proposedAction: null,
+    });
+  });
+
+  it('unwraps a backslash-escaped equals-prefixed JSON response', () => {
+    expect(parseActorResponse(
+      '\\={"replyText":"Natuurlijk, gaat uw gang. Wat kan ik voor u klaarmaken?","meaning":"Bien sûr, allez-y. Que puis-je préparer pour vous ?","proposedAction":"request_service"}'
+    )).toEqual({
+      replyText: 'Natuurlijk, gaat uw gang. Wat kan ik voor u klaarmaken?',
+      meaning: 'Bien sûr, allez-y. Que puis-je préparer pour vous ?',
+      proposedAction: null,
+    });
+  });
+
+  it('keeps ordinary text that begins with an equals sign as text', () => {
+    expect(parseActorResponse('= that is the answer')).toEqual({
+      replyText: '= that is the answer',
+      meaning: '',
+      proposedAction: null,
+    });
   });
 });

@@ -196,3 +196,11 @@ describe('provider quota across separate processes', () => {
     expect(third).toBe(0);
   }, 120_000);
 });
+
+describe('quota-store failures', () => {
+  it('fails closed if a previously opened shared store becomes unavailable', () => {
+    const store = openStore(sharedDbPath());
+    store.close();
+    expect(store.take('guest:a:actor', 60, WINDOW_MS, 0)).toBe(false);
+  });
+});

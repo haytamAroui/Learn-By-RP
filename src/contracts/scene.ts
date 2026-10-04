@@ -1,4 +1,4 @@
-import type { EvidenceBand, Modality, SkillModality } from '../types';
+import type { EvidenceBand, Modality, SkillModality, VoiceGender } from '../types';
 
 /**
  * Shared contracts between the client and the backend.
@@ -214,6 +214,7 @@ export interface SceneDefinition {
     name: string;
     role: string;
     voiceStyle: string;
+    voiceGender?: VoiceGender;
     knowledgeBoundary: string[];
     /** What this character may know about scenes the learner has not reached. */
     mayKnowAboutPriorScenes: string[];

@@ -199,10 +199,10 @@ cancellation or real provider reconnect behavior.
 | 1A Canonical phrase/provenance authority | `learningCore.ts`, live assessment handoff | Model cannot reassign target, modality or attempt; ambiguity abstains; unrelated drill earns no credit | Implemented |
 | 1B Projection integrity | Both archive implementations | Delete/hide/dispute final evidence → no stale recall claim; supported drill preserves earlier valid history | Implemented |
 | 1C Consent at real I/O | Archive consent + voice/assessment/drill operations | Denied/withdrawn voice never captures; denied analysis stores activity with no evidence; 403 is not an outage fallback | Implemented; native device verification open |
-| 1D Durable session/attempt ownership | Archive contract + lifecycle + live screen | Kill/reload after a learner turn retains transcript/help; terminal state is correct; retry retains parent/checkpoint context | Targeted browser paths verified; native/process-kill checks open; visual snapshot gate red |
+| 1D Durable session/attempt ownership | Archive contract + lifecycle + live screen | Kill/reload after a learner turn retains transcript/help; terminal state is correct; retry retains parent/checkpoint context | Full browser visual suite and 320px/large-text/keyboard-height web recovery flow pass; native/process-kill checks remain open |
 | 1E Transport lifecycle | Voice/conversation providers | One operation per event; stopped audio cannot resume late; disposed provider cannot reconnect; mic begins only on learner voice entry | Implemented; runtime/device verification open |
-| 1F Hosted authority | Guard + router + scene store + actor context | Verified owner, bounded quotas, atomic revisions, replayable concurrent writes and deletion across read/write paths | Partial; multi-instance quota implemented and verified across separate processes; hosted runtime verification open |
-| 1G Scene outcome separation | Finish/recap/program projection | Scene completion can yield zero evidence; phrase use cannot fabricate world completion; assessment failure preserves true scene outcome | Implementation and projection regressions verified; live outcome-path confirmation remains open |
+| 1F Hosted authority | Guard + router + scene store + actor context | Verified owner, bounded quotas, atomic revisions, replayable concurrent writes and deletion across read/write paths | Shared-file quota tests pass across processes; all HTTP quota routes now share one store and fail closed; hosted topology/runtime verification remains open |
+| 1G Scene outcome separation | Finish/recap/program projection | Scene completion can yield zero evidence; phrase use cannot fabricate world completion; assessment failure preserves true scene outcome | Projection and browser no-fabricated-outcome path verified; positive authored-action-to-achieved runtime path remains open |
 | 1H Qualified opportunities | Shared contracts + validators + SQLite/IndexedDB + projection | Mixed-band mission; spoken/typed distinction; no cross-channel or higher-to-lower backfill; legacy unknown remains unknown | Contracts, persistence, fail-closed guards and regressions verified; released authored qualification metadata remains absent |
 | 1I Reviewed nl-BE coverage | Content graph + release validator | First capabilities have guided/cold, near-miss, help, later retrieval and genuinely different-family opportunities; all assets reviewed | Partial; loop-coverage audit added, human review and runtime confirmation open |
 
@@ -678,9 +678,11 @@ records an owner-scoped tombstone before removing hosted scene events and state.
 Create, action verdict plus state update, fork, close, reconcile, and deletion use
 SQLite `BEGIN IMMEDIATE` transactions. A write re-reads the current record inside
 the transaction, so concurrent proposals cannot both commit from one scene
-revision. Existing per-identity provider limits remain process-local and bounded;
-the guest-issuance IP limit is also process-local. Production multi-instance quotas
-need a shared limiter, and the deletion tombstone and scene database remain
+revision. Provider, scene and guest-issuance quotas now use one runtime rate-limit
+store, so a configured shared SQLite file bounds each key across server processes.
+Quota-store errors and lock exhaustion fail closed. Without a shared database,
+instances remain process-local; separate-host deployment and production runtime
+verification are still open. The deletion tombstone and scene database remain
 separate stores. This slice is not a production deployment certification.
 
 The guest-identity issuance IP limiter uses Express `req.ip`; configure the
@@ -746,3 +748,49 @@ tests and the scene validator were not run.
 Validation for this slice: `npm run typecheck` and `git diff --check` passed. The
 server/store integration suite and multi-process concurrency checks were not run.
 Phase 1F remains partial pending those checks and shared production quota policy.
+
+### Phase 1 engineering closure pass — 2026-10-04
+
+The stale status rows above are updated to reflect the current browser and source
+checks. Changes in this pass ensure every server quota route shares the same runtime
+store, guest identity issuance no longer keeps a separate per-process IP map,
+expired SQLite quota buckets are pruned, and quota storage failures refuse the
+request. Regression coverage includes the actual separate-process test and a
+fail-closed store failure case.
+
+Character output uses Gemini TTS; OpenAI Realtime is configured for text output
+and does not provide the spoken character audio. The previous local-voice-only
+Belgian Dutch route bypassed Gemini and failed in the Codex in-app browser, which
+does not expose `window.speechSynthesis`. Gemini 3.8 TTS detects Dutch from the
+transcript and accepts regional accent instructions, so `nl-BE` now goes through
+Gemini's Interactions TTS API with explicit Belgian Flemish pronunciation guidance.
+The server selects an exact `nl-BE` Gemini voice-library entry when one is
+available, otherwise a multilingual voice receives that accent instruction; it
+does not silently substitute a Netherlands-specific voice. Returned Gemini audio
+is played directly by the browser audio transport, without requiring local speech
+voices. When Gemini is unavailable, the exact-only native fallback still refuses
+to select a French or `nl-NL` voice and explains why text practice remains
+available. These source and mocked tests do not prove the live Gemini catalog's
+regional voice inventory or auditioned voice quality. A deterministic actor
+fallback also now replies in Dutch.
+
+The Windows host used for this check has French, English and Arabic speech voice
+registrations but no Dutch or Belgian Dutch voice. This no longer blocks Gemini
+audio; it only means the native fallback is unavailable. The local browser preview
+currently has no API server or provider keys, so a real Gemini/OpenAI session cannot
+be verified from this checkout until its server-side environment is configured.
+
+A new browser recovery test exercises an actual Dutch mission at 320px with 200%
+root text size and a keyboard-height viewport. Help, typed submission, finishing,
+reload, transcript durability and an `unknown` scene result all pass. This is web
+coverage, not a substitute for native large-text/keyboard/process-kill verification.
+
+Current verification: `npm test -- --run` passes (815 tests; three provider
+acceptance tests skipped), the full Playwright suite passes (52 tests, including
+the added recovery path), and `npm run typecheck` and `git diff --check` pass.
+`validate:scenes`
+still reports both launch locales open: 65/65 opportunities lack reviewed
+evidence-band/channel/modality qualification, and no locale/audio/assets review
+manifest exists. Phase 1 therefore remains **not release-complete** pending human
+content/asset review, native-device and process-kill checks, a positive live authored
+scene-outcome path, and hosted deployment verification.

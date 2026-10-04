@@ -17,6 +17,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
       name: 'Lotte',
       role: 'Barista',
       voiceStyle: 'Warm Belgisch Nederlands, natuurlijk tempo, korte praktische beurten',
+      voiceGender: 'female',
       personality: 'Vriendelijk, efficiënt en geduldig',
       knowledgeBoundary: [
         'Kent de beschikbare dranken en melkopties',
@@ -88,6 +89,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
       name: 'Tom',
       role: 'Medewerker pakjespunt',
       voiceStyle: 'Duidelijk Belgisch Nederlands, professioneel en vriendelijk',
+      voiceGender: 'male',
       personality: 'Praktisch en oplossingsgericht',
       knowledgeBoundary: [
         'Kent de status van het pakje',
@@ -151,6 +153,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
       name: 'Nora',
       role: 'Buur',
       voiceStyle: 'Informeel Belgisch Nederlands, warm en spontaan',
+      voiceGender: 'female',
       personality: 'Behulpzaam maar een beetje gehaast',
       knowledgeBoundary: [
         'Weet dat ze de reservesleutel heeft',
@@ -214,6 +217,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
       name: 'Bram',
       role: 'Metrostationmedewerker',
       voiceStyle: 'Duidelijk Belgisch Nederlands, praktisch stationstempo',
+      voiceGender: 'male',
       personality: 'Kort, behulpzaam en concreet',
       knowledgeBoundary: [
         'Kan route- en perroninformatie uitleggen',
@@ -278,6 +282,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
       name: 'Sarah',
       role: 'Apotheker',
       voiceStyle: 'Kalm Belgisch Nederlands, precies en kort',
+      voiceGender: 'female',
       personality: 'Helpt informatie terugvinden zonder diagnose of individuele behandelkeuze',
       knowledgeBoundary: [
         'Weet waar officiële waarschuwingen op de verpakking staan',
@@ -337,6 +342,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
       name: 'Jeroen',
       role: 'Ober',
       voiceStyle: 'Beleefd Belgisch Nederlands, gastvrij en duidelijk',
+      voiceGender: 'male',
       personality: 'Helpt met tafelkeuze, aanbevelingen en ingrediënteninformatie',
       knowledgeBoundary: [
         'Weet welke tafels beschikbaar zijn',
@@ -395,6 +401,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
       name: 'Anke',
       role: 'Hotelreceptionist',
       voiceStyle: 'Professioneel Belgisch Nederlands, gastvrij en duidelijk',
+      voiceGender: 'female',
       personality: 'Praktisch en oplossingsgericht',
       knowledgeBoundary: [
         'Kent de reservatie en kamerstatus',
@@ -458,6 +465,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
       name: 'Wout',
       role: 'Medewerker fietsverhuur',
       voiceStyle: 'Vriendelijk Belgisch Nederlands, praktisch en duidelijk',
+      voiceGender: 'male',
       personality: 'Legt opties en huurvoorwaarden kort uit',
       knowledgeBoundary: [
         'Weet dat de gevraagde stadsfiets niet beschikbaar is',

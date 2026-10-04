@@ -16,6 +16,7 @@ describe('provider runtime architecture', () => {
 
   it('keeps vendor SDK calls behind the server provider runtime', () => {
     const server = readFileSync('server/index.ts', 'utf8');
+    const runtime = readFileSync('server/providers/runtime.ts', 'utf8');
 
     expect(server).toContain("createProviderRuntime");
     expect(server).toContain("'/api/providers'");
@@ -23,6 +24,8 @@ describe('provider runtime architecture', () => {
     expect(server).toContain("'/api/speech/synthesize'");
     expect(server).not.toContain('new GoogleGenAI');
     expect(server).not.toContain('.models.generateContent(');
+    expect(runtime).toContain('this.client.interactions.create(');
+    expect(runtime).toContain('Belgian Dutch (Flemish as used in Flanders)');
   });
 
   it('defaults safely to deterministic reasoning and native speech', () => {

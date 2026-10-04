@@ -11,6 +11,7 @@ export const NL_BE_CAFE_SCENE: SceneDefinition = {
     name: 'Lotte',
     role: 'barista',
     voiceStyle: 'Warm Belgian Dutch, natural pace, short practical turns',
+    voiceGender: 'female',
     knowledgeBoundary: [
       'knows the current drinks and milk options',
       'knows oat milk is unavailable today',
@@ -309,6 +310,7 @@ export const NL_BE_PARCEL_SCENE: SceneDefinition = {
     name: 'Tom',
     role: 'parcel-point clerk',
     voiceStyle: 'Clear Belgian Dutch, professional and friendly',
+    voiceGender: 'male',
     knowledgeBoundary: [
       'knows the parcel reference and pickup status',
       'knows this evening pickup is unavailable',
@@ -548,6 +550,7 @@ export const NL_BE_NEIGHBOR_SCENE: SceneDefinition = {
     name: 'Nora',
     role: 'neighbor',
     voiceStyle: 'Informal Belgian Dutch, warm and conversational',
+    voiceGender: 'female',
     knowledgeBoundary: [
       'knows she has the spare key',
       'knows she must leave soon',
@@ -768,6 +771,7 @@ export const NL_BE_METRO_SCENE: SceneDefinition = {
     name: 'Bram',
     role: 'metro station agent',
     voiceStyle: 'Clear Belgian Dutch, practical, natural station pace',
+    voiceGender: 'male',
     knowledgeBoundary: [
       'knows how to explain a route and platform direction',
       'knows how ticket validation works in the station',
@@ -1020,6 +1024,7 @@ export const NL_BE_PHARMACY_SCENE: SceneDefinition = {
     name: 'Sarah',
     role: 'pharmacist',
     voiceStyle: 'Calm Belgian Dutch, precise and brief',
+    voiceGender: 'female',
     knowledgeBoundary: [
       'knows where official package warnings are displayed',
       'knows where official instructions and the leaflet can be found',
@@ -1165,6 +1170,7 @@ export const NL_BE_DINING_SCENE: SceneDefinition = {
     name: 'Jeroen',
     role: 'waiter',
     voiceStyle: 'Courteous Belgian Dutch, friendly and concise',
+    voiceGender: 'male',
     knowledgeBoundary: [
       'knows the available terrace tables',
       'knows the preferred table is unavailable',
@@ -1441,6 +1447,7 @@ export const NL_BE_HOTEL_SCENE: SceneDefinition = {
     name: 'Anke',
     role: 'hotel receptionist',
     voiceStyle: 'Professional Belgian Dutch, welcoming and clear',
+    voiceGender: 'female',
     knowledgeBoundary: [
       'knows the reservation and room status',
       'knows the room is not ready yet',
@@ -1676,6 +1683,7 @@ export const NL_BE_RENTAL_SCENE: SceneDefinition = {
     name: 'Wout',
     role: 'bike-rental clerk',
     voiceStyle: 'Friendly Belgian Dutch, practical and clear',
+    voiceGender: 'male',
     knowledgeBoundary: [
       'knows the standard city bike is unavailable',
       'knows another city bike option is available',

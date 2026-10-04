@@ -1,5 +1,6 @@
 import { api } from '../../lib/api';
 import type { SynthesizedAudio } from '../runtime/contracts';
+import type { VoiceGender } from '../../types';
 import { resolveSpeechLocale } from './language';
 import type { VoiceTransport } from './types';
 
@@ -9,6 +10,7 @@ export interface SpeakCharacterOptions {
   speed?: number;
   style?: string;
   voice?: string;
+  voiceGender?: VoiceGender;
 }
 
 const MAX_AUDIO_CACHE_ITEMS = 20;
@@ -19,6 +21,7 @@ function cacheKey(text: string, options: SpeakCharacterOptions, locale: string):
     options.language,
     locale,
     options.voice || '',
+    options.voiceGender || '',
     options.style || '',
     text,
   ].join('\u241f');
@@ -51,6 +54,7 @@ export async function speakWithBestAvailable(
   options: SpeakCharacterOptions
 ): Promise<void> {
   const locale = resolveSpeechLocale(options.language, options.locale);
+
   const key = cacheKey(text, options, locale);
   const cached = audioCache.get(key);
 
@@ -76,6 +80,7 @@ export async function speakWithBestAvailable(
       speed: 1,
       style: options.style,
       voice: options.voice,
+      voiceGender: options.voiceGender,
     });
 
     if (result.audio?.base64) {

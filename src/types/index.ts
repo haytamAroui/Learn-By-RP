@@ -71,10 +71,14 @@ export type SessionState =
   | 'recap_ready'
   | 'recap_unavailable';
 
+export type VoiceGender = 'female' | 'male' | 'neutral';
+
 export interface CharacterDefinition {
   name: string;
   role: string;
   voiceStyle: string;
+  /** Authored voice presentation, independent of character name or pronouns. */
+  voiceGender?: VoiceGender;
   personality: string;
   knowledgeBoundary: string[];
 }

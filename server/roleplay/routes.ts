@@ -1,6 +1,6 @@
 import express, { Request, Response } from 'express';
 import { ProviderRateLimiter, resolveProviderIdentity } from '../security/requestGuard';
-import { createRateLimitStore } from '../security/rateLimitStore';
+import { runtimeRateLimitStore } from '../security/runtimeRateLimitStore';
 import { isProviderSessionDeleted } from '../security/deletionStore';
 import {
   applySceneAction,
@@ -32,7 +32,7 @@ import {
 export const roleplayRouter = express.Router();
 // Shares the deployment-wide quota store rather than keeping its own buckets, so the
 // scene bound cannot be multiplied by adding an instance.
-const sceneRateLimiter = new ProviderRateLimiter(Date.now, createRateLimitStore());
+const sceneRateLimiter = new ProviderRateLimiter(Date.now, runtimeRateLimitStore);
 
 function ownerIdentity(req: Request): string {
   const access = resolveProviderIdentity(req);

@@ -2,6 +2,13 @@ export interface GeminiCatalogVoice {
   id?: string;
   language_code?: string;
   context?: string;
+  gender?: 'female' | 'male' | 'neutral' | string;
+}
+
+export function localeVoiceEnvironmentKey(locale: string, gender?: string): string {
+  const localeKey = normalizeLocale(locale).replace(/[^a-z0-9]+/gi, '_').toUpperCase();
+  const genderKey = gender ? `_${gender.toUpperCase()}` : '';
+  return `GEMINI_TTS_VOICE_${localeKey}${genderKey}`;
 }
 
 const FALLBACK_CATALOG_LOCALE: Record<string, string> = {
@@ -10,7 +17,6 @@ const FALLBACK_CATALOG_LOCALE: Record<string, string> = {
   de: 'de-DE',
   it: 'it-IT',
   ja: 'ja-JP',
-  nl: 'nl-NL',
   en: 'en-GB',
 };
 
@@ -32,22 +38,30 @@ function normalizeLocale(locale: string): string {
 }
 
 /**
- * Prefer a Gemini catalog voice authored for the requested locale. When that
- * exact region is not in the catalog (for example nl-BE), keep the language
- * correct and let the speech style direct the regional accent.
+ * Prefer a Gemini catalog voice authored for the requested locale. If the
+ * library has no exact regional entry, the caller uses a multilingual voice and
+ * directs its accent through speech metadata; it never substitutes nl-NL for
+ * the learner's requested nl-BE locale.
  */
 export function pickGeminiVoiceForLocale(
   voices: GeminiCatalogVoice[],
-  locale: string
+  locale: string,
+  voiceGender?: string
 ): string | undefined {
   const desired = normalizeLocale(locale);
   const language = desired.split('-')[0];
   const candidates = voices
-    .filter(voice => voice.id && voice.language_code)
+    .filter(voice =>
+      voice.id &&
+      voice.language_code &&
+      (!voiceGender || voice.gender?.toLowerCase() === voiceGender.toLowerCase())
+    )
     .map(voice => ({ voice, locale: normalizeLocale(voice.language_code!) }));
 
   return (
     candidates.find(candidate => candidate.locale === desired)?.voice.id ||
-    candidates.find(candidate => candidate.locale.split('-')[0] === language)?.voice.id
+    (desired !== 'nl-BE'
+      ? candidates.find(candidate => candidate.locale.split('-')[0] === language)?.voice.id
+      : undefined)
   );
 }

@@ -283,6 +283,9 @@ export class NativeVoiceTransport implements VoiceTransport {
     const lang = options.lang || this.targetLanguage;
     const locale = resolveSpeechLocale(lang, options.locale);
 
+    // Gemini TTS supplies locale-directed Dutch audio for nl-BE. Play that
+    // provider audio directly; only fall back to exact-match native speech when
+    // synthesis was unavailable.
     if (options.audioBase64) {
       const played = await this.playBase64Audio(
         options.audioBase64,
@@ -458,6 +461,15 @@ export class NativeVoiceTransport implements VoiceTransport {
   ): Promise<void> {
     const voice = await this.resolveNativeVoice(locale);
     if (this.disposed || generation !== this.playbackGeneration) return;
+
+    // Expo Speech may silently choose the OS default when `voice` is omitted.
+    // That produced French audio for Belgian Dutch on hosts without an nl-BE
+    // voice. Keep the playback boundary locale-safe and let the UI offer text.
+    if (locale.toLowerCase() === 'nl-be' && !voice) {
+      this.finishPlayback(generation);
+      this.emit({ type: 'error', payload: 'voice_locale_unavailable' });
+      return;
+    }
 
     return new Promise(resolve => {
       let settled = false;

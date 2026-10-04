@@ -96,6 +96,7 @@ import {
 } from '../features/learning/supportSurfaces';
 import { negotiateRoleplayCapabilities } from '../features/roleplay/capabilities';
 import { mayCommitActorReply } from '../features/roleplay/actorContract';
+import { normalizeActorPassageForDisplay } from '../features/roleplay/actorPassageDisplay';
 import {
   DirectorCadence,
   type DirectorRuntimeEvent,
@@ -962,7 +963,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           setVoiceState('speaking');
           const transport = voiceTransportRef.current;
           if (transport) {
-            if (response.audioBase64) {
+            const isBelgianDutch = ['nl', 'nl-be'].includes(target.language.toLowerCase());
+            if (response.audioBase64 && !isBelgianDutch) {
               await transport.playSpeech(response.replyText, {
                 audioBase64: response.audioBase64,
                 mimeType: response.audioMimeType,
@@ -973,6 +975,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 language: target.language,
                 speed: slowerSpeechDefault ? effectiveSpeechRate : preferredSpeechRate,
                 style: target.character.voiceStyle,
+                voiceGender: target.character.voiceGender,
               });
             }
             cueLearnerTurn();
@@ -1340,6 +1343,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           if (event.payload === 'mic_denied') {
             setShowTypedInput(true);
             setVoiceState('idle');
+          } else if (event.payload === 'voice_locale_unavailable') {
+            setShowTypedInput(true);
+            setVoiceState('error');
+            setSceneEventNotice(t.live.nativeVoiceUnavailable);
           } else {
             setShowTypedInput(true);
             setVoiceState('error');
@@ -1387,6 +1394,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed: effectiveSpeechRate,
         style: mission.character.voiceStyle,
+        voiceGender: mission.character.voiceGender,
       });
       cueLearnerTurn();
     };
@@ -2067,10 +2075,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
   if (!mission) return null;
 
-  const latestAssistantPassage = [...passages].reverse().find(p => p.speaker === 'assistant');
+  const displayPassages = passages.map(normalizeActorPassageForDisplay);
+  const latestAssistantPassage = [...displayPassages].reverse().find(p => p.speaker === 'assistant');
   const olderPassages = latestAssistantPassage
-    ? passages.filter(passage => passage.id !== latestAssistantPassage.id).slice(-6)
-    : passages.slice(-6);
+    ? displayPassages.filter(passage => passage.id !== latestAssistantPassage.id).slice(-6)
+    : displayPassages.slice(-6);
   const voiceLabel = isSceneFrozen
     ? t.live.pausedTag
     : voiceState === 'connecting'
@@ -2124,9 +2133,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed,
         style: mission.character.voiceStyle,
+        voiceGender: mission.character.voiceGender,
       });
     },
-    [mission.character.voiceStyle, mission.language, recordAssistantAudioExposure]
+    [mission.character.voiceStyle, mission.character.voiceGender, mission.language, recordAssistantAudioExposure]
   );
 
   const playCoachModelPhrase = useCallback(async () => {
@@ -2142,6 +2152,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed: effectiveSpeechRate,
         style: mission.character.voiceStyle,
+        voiceGender: mission.character.voiceGender,
       }
     );
 
@@ -2159,6 +2170,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     attemptId,
     effectiveSpeechRate,
     mission.character.voiceStyle,
+    mission.character.voiceGender,
     mission.language,
     sessionId,
   ]);

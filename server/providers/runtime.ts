@@ -7,7 +7,11 @@ import type {
   SpeechSynthesisRequest,
   SpeechSynthesisResponse,
 } from '../../src/providers/runtime/contracts';
-import { geminiCatalogLocales, pickGeminiVoiceForLocale } from './geminiVoice';
+import {
+  geminiCatalogLocales,
+  localeVoiceEnvironmentKey,
+  pickGeminiVoiceForLocale,
+} from './geminiVoice';
 
 export interface StructuredJsonRequest {
   task: 'actor' | 'coach' | 'assessment';
@@ -79,9 +83,15 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
   }
 
   async synthesize(request: SpeechSynthesisRequest): Promise<SpeechSynthesisResponse> {
-    const configuredVoice = request.voice || process.env.GEMINI_TTS_VOICE;
+    const locale = request.locale || request.language;
+    const configuredVoice =
+      request.voice ||
+      (request.voiceGender
+        ? process.env[localeVoiceEnvironmentKey(locale, request.voiceGender)]
+        : process.env[localeVoiceEnvironmentKey(locale)]);
     const voiceName = configuredVoice || await this.resolveVoiceForLocale(
-      request.locale || request.language
+      locale,
+      request.voiceGender
     );
 
     const pace =
@@ -91,46 +101,37 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
           ? 'Speak briskly but clearly.'
           : 'Use a natural conversational pace.';
 
-    const localeDirection = request.locale
-      ? `Use pronunciation and accent appropriate for ${request.locale}.`
-      : `Speak naturally in language ${request.language}.`;
+    const normalizedLocale = locale.replace('_', '-').toLowerCase();
+    const localeDirection = normalizedLocale === 'nl-be'
+      ? 'Speak in natural Belgian Dutch (Flemish as used in Flanders), with local Belgian pronunciation and cadence. Do not use a Netherlands Dutch accent. The text is the exact transcript; do not translate or paraphrase it.'
+      : request.locale
+        ? `Use natural pronunciation and accent appropriate for ${request.locale}. The text is the exact transcript; do not translate or paraphrase it.`
+        : `Speak naturally in language ${request.language}. The text is the exact transcript; do not translate or paraphrase it.`;
 
-    const response = await this.client.models.generateContent({
+    const interaction = await this.client.interactions.create({
       model: this.speechModel,
-      contents: [
-        {
-          role: 'user',
-          parts: [
-            {
-              // Keep the transcript itself verbatim. Delivery instructions belong
-              // in metadata so the model never reads them aloud.
-              text: request.text,
-              speechMetadata: {
-                style: [
-                  request.style || 'Natural conversational character voice.',
-                  localeDirection,
-                  pace,
-                ].join(' '),
-              },
-            },
-          ],
-        },
-      ],
-      config: {
-        responseModalities: ['AUDIO'],
-        speechConfig: {
-          languageCode: request.language,
-          voiceConfig: {
-            prebuiltVoiceConfig: { voiceName },
-          },
-        },
+      input: [{
+        type: 'user_input',
+        content: [{
+          type: 'text',
+          text: request.text,
+          annotations: [{
+            type: 'speech_metadata',
+            style: [
+              request.style || 'Natural conversational character voice.',
+              localeDirection,
+              pace,
+            ].join(' '),
+          }],
+        }],
+      }],
+      response_format: { type: 'audio' },
+      generation_config: {
+        speech_config: [{ voice: voiceName }],
       },
     });
 
-    const part = response.candidates?.[0]?.content?.parts?.find(
-      (candidate: any) => candidate?.inlineData?.data
-    ) as any;
-    const base64 = part?.inlineData?.data;
+    const base64 = interaction.output_audio?.data;
 
     if (!base64) {
       throw new Error('Gemini TTS returned no audio');
@@ -142,33 +143,41 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
         model: this.speechModel,
         voice: voiceName,
         base64,
-        mimeType: part?.inlineData?.mimeType || 'audio/wav',
+        mimeType: interaction.output_audio?.mime_type || 'audio/wav',
         sampleRateHz: 24000,
       },
       fallback: 'none',
     };
   }
 
-  private resolveVoiceForLocale(locale: string): Promise<string> {
+  private resolveVoiceForLocale(locale: string, voiceGender?: string): Promise<string> {
     const normalizedLocale = locale.replace('_', '-').toLowerCase();
-    let voicePromise = this.localeVoiceCache.get(normalizedLocale);
+    const cacheKey = `${normalizedLocale}:${voiceGender || 'any'}`;
+    let voicePromise = this.localeVoiceCache.get(cacheKey);
     if (!voicePromise) {
       voicePromise = this.client.voices
         .list({
           language_code: geminiCatalogLocales(locale),
+          ...(voiceGender ? { gender: [voiceGender] } : {}),
           type: ['prebuilt'],
           page_size: 100,
         })
-        .then(response => pickGeminiVoiceForLocale(response.voices || [], locale))
+        .then(response => pickGeminiVoiceForLocale(response.voices || [], locale, voiceGender))
         .catch(error => {
           // Voice catalog lookup must not make TTS unavailable. The stable
           // fallback remains multilingual and the prompt still carries locale.
           console.warn(`Gemini voice lookup failed for ${locale}; using Puck:`, error);
           return undefined;
         });
-      this.localeVoiceCache.set(normalizedLocale, voicePromise);
+      this.localeVoiceCache.set(cacheKey, voicePromise);
     }
-    return voicePromise.then(voice => voice || 'Puck');
+    const neutralFallback = 'Puck';
+    const genderFallback: Record<string, string> = {
+      female: 'Aoede',
+      male: 'Puck',
+      neutral: neutralFallback,
+    };
+    return voicePromise.then(voice => voice || genderFallback[voiceGender || ''] || neutralFallback);
   }
 }
 
