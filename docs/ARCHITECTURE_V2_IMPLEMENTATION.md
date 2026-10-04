@@ -369,6 +369,39 @@ agreement, both now delegate to one `renderLearningReceipt`, and the exported te
 of the parity snapshot. The new assertion was verified non-vacuous by reintroducing
 one-character divergence and confirming the suite failed.
 
+### Dependency advisories — exposure analysis
+
+`npm audit` reports 34 advisories (10 moderate, 24 high). None of them reach a learner,
+and the number should not be read as release risk. Establishing that took checking what is
+actually in the shipped bundle rather than reading the dependency tree, because a grep of
+the bundle produces false positives: the string `uuid` is React Native's own module of
+that name, and `braces` is a 24px lucide icon. Neither is the vulnerable package.
+
+| Package | Advisory | Reachable through | Shipped? |
+|---|---|---|---|
+| `decode-uri-component` | DoS via exponential percent-decoding | `expo-router` → `query-string` | **Was; now overridden to 0.5.0** |
+| `uuid` | Missing buffer bounds check in v3/v5/v6 with `buf` | `expo-sharing` → `@expo/config-plugins` → `xcode` (iOS prebuild) | No |
+| `node-forge` | PKCS#1 v1.5 accepts extra nested DigestAlgorithm | `expo` → `@expo/cli` (build/sign) | No |
+| `braces` | Stack exhaustion via deeply nested patterns | `tailwindcss` (devDependency, CSS build) | No |
+| `vitest` | Path traversal via `@vitest/mocker` redirect mock | test runner | No |
+
+Only `decode-uri-component` sat in the shipped path, and an npm `overrides` entry moves it
+to 0.5.0 — one package changed, no tree churn. The override was verified against
+typecheck, the unit suite, a web export and the full browser suite, because an override
+that broke routing would be worse than the advisory it removed.
+
+The remaining four are not fixable here, and deliberately were not forced:
+
+- `node-forge` and `braces` are published with a vulnerable range of `*`, so no patched
+  version exists to move to.
+- `uuid` would need a breaking 7 → 11 major bump on an iOS-build-only dependency.
+- `npm audit fix` was not run: it proposes adding roughly fifty optional platform binaries
+  while resolving none of these, and `--force` would put Expo and React Native version
+  compatibility at risk for advisories with no runtime exposure.
+
+Re-check when Expo ships a version that drops the `xcode` and `@expo/cli` reach, or when
+`braces` and `node-forge` publish fixes.
+
 ### Phase 2 — Speaking UX
 
 Keep existing screen components and tokens. Deliver the short language/goal entry,
