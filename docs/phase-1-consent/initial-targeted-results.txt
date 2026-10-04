@@ -1,0 +1,12 @@
+
+ RUN  v3.2.7 D:/learnbyRP
+
+(node:48344) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+·································
+
+ Test Files  3 passed (3)
+      Tests  33 passed (33)
+   Start at  19:58:30
+   Duration  1.46s (transform 374ms, setup 0ms, collect 955ms, tests 461ms, environment 1ms, prepare 479ms)
+

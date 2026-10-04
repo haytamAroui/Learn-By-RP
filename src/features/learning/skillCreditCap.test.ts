@@ -73,7 +73,7 @@ function validate(
 
 describe('per-passage skill credit cap', () => {
   it('is a versioned tunable policy with a conservative V1 value of two', () => {
-    expect(LEARNING_POLICY_VERSION).toBe(5);
+    expect(LEARNING_POLICY_VERSION).toBe(7);
     expect(SKILL_POLICY.maxSkillsCreditedPerPassage).toBe(2);
   });
 

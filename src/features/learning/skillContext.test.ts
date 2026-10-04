@@ -23,7 +23,11 @@ function observation(input: {
       domainId: input.domainId,
       scenarioFamilyId: input.scenarioFamilyId,
       scenarioId: input.scenarioId,
+      assessedChannel: 'production',
+      evidenceBand: 'a1',
     },
+    assessedChannel: 'production',
+    evidenceBand: 'a1',
     modality: 'spoken',
     retrieval: 'unassisted',
     taskOutcome: 'achieved',
@@ -54,12 +58,12 @@ describe('skill context identity', () => {
       scenarioId: 'cafe-b',
     });
 
-    expect(skillContextIdentity(first)).toBe('cafes::counter-ordering');
-    expect(skillContextIdentity(second)).toBe('cafes::counter-ordering');
+    expect(skillContextIdentity(first)).toBe('production::a1::cafes::counter-ordering');
+    expect(skillContextIdentity(second)).toBe('production::a1::cafes::counter-ordering');
 
     const projection = projectSkill(SKILL_ID, [first, second]);
 
-    expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
+    expect(projection.independentContexts).toEqual(['production::a1::cafes::counter-ordering']);
     expect(projection.status).toBe('supported');
   });
 
@@ -83,9 +87,9 @@ describe('skill context identity', () => {
 
     const projection = projectSkill(SKILL_ID, [base, pressured]);
 
-    expect(skillContextIdentity(base)).toBe('cafes::counter-ordering');
-    expect(skillContextIdentity(pressured)).toBe('cafes::counter-ordering');
-    expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
+    expect(skillContextIdentity(base)).toBe('production::a1::cafes::counter-ordering');
+    expect(skillContextIdentity(pressured)).toBe('production::a1::cafes::counter-ordering');
+    expect(projection.independentContexts).toEqual(['production::a1::cafes::counter-ordering']);
   });
 
   it('does not count a speech-variety variant as a new transfer context', () => {
@@ -108,9 +112,9 @@ describe('skill context identity', () => {
 
     const projection = projectSkill(SKILL_ID, [standard, colloquial]);
 
-    expect(skillContextIdentity(standard)).toBe('cafes::counter-ordering');
-    expect(skillContextIdentity(colloquial)).toBe('cafes::counter-ordering');
-    expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
+    expect(skillContextIdentity(standard)).toBe('production::a1::cafes::counter-ordering');
+    expect(skillContextIdentity(colloquial)).toBe('production::a1::cafes::counter-ordering');
+    expect(projection.independentContexts).toEqual(['production::a1::cafes::counter-ordering']);
   });
 
   it('does not let a retry create a new transfer context', () => {
@@ -137,7 +141,7 @@ describe('skill context identity', () => {
     const projection = projectSkill(SKILL_ID, [firstAttempt, retryAttempt]);
 
     expect(skillContextIdentity(firstAttempt)).toBe(skillContextIdentity(retryAttempt));
-    expect(projection.independentContexts).toEqual(['cafes::counter-ordering']);
+    expect(projection.independentContexts).toEqual(['production::a1::cafes::counter-ordering']);
   });
 
   it('counts the same reviewed family in a different domain as a distinct context', () => {
@@ -159,8 +163,8 @@ describe('skill context identity', () => {
     const projection = projectSkill(SKILL_ID, [cafe, convenience]);
 
     expect(projection.independentContexts).toEqual([
-      'cafes::counter-ordering',
-      'services::counter-ordering',
+      'production::a1::cafes::counter-ordering',
+      'production::a1::services::counter-ordering',
     ]);
     expect(projection.status).toBe('growing');
   });
@@ -184,8 +188,8 @@ describe('skill context identity', () => {
     const projection = projectSkill(SKILL_ID, [counter, parcel]);
 
     expect(projection.independentContexts).toEqual([
-      'cafes::counter-ordering',
-      'services::parcel-service',
+      'production::a1::cafes::counter-ordering',
+      'production::a1::services::parcel-service',
     ]);
     expect(projection.status).toBe('growing');
   });

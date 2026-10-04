@@ -15,8 +15,10 @@ import {
   MISSION_CATALOG,
 } from '../data/missions';
 import { archiveRepository } from '../features/archive/archiveRepository';
+import { useArchive } from '../features/archive/ArchiveProvider';
 import { useI18n } from '../features/i18n';
 import { createRecapPhraseExposures } from '../features/learning/supportSurfaces';
+import { sceneResultCopyKey } from '../features/learning/sceneOutcome';
 import { shareTextFile } from '../lib/share';
 import { Button, EmptyState, SectionLabel } from './ui';
 import { Sheet } from './Sheet';
@@ -36,6 +38,7 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
   onNextMission,
 }) => {
   const { t } = useI18n();
+  const archive = useArchive();
 
   const skillName = (id?: string) => {
     if (!id) return undefined;
@@ -61,11 +64,13 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
     }
   };
   const [showEvidence, setShowEvidence] = useState(false);
-  const [observations, setObservations] = useState<LearningObservation[]>(session.observations ?? []);
+  const [observations, setObservations] = useState<LearningObservation[]>(
+    (session.observations ?? []).filter(o => !o.hidden && !o.userDisputed)
+  );
   const [shareState, setShareState] = useState<'idle' | 'done' | 'failed'>('idle');
 
   React.useEffect(() => {
-    setObservations(session.observations ?? []);
+    setObservations((session.observations ?? []).filter(o => !o.hidden && !o.userDisputed));
     setShareState('idle');
     setShowEvidence(false);
   }, [session.id, session.observations]);
@@ -85,14 +90,7 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
     [session.skillObservations]
   );
 
-  const sceneResultText =
-    session.sceneState.outcome === 'achieved'
-      ? t.recap.sceneAchieved
-      : session.sceneState.outcome === 'partial'
-        ? t.recap.scenePartial
-        : session.sceneState.outcome === 'not_achieved'
-          ? t.recap.sceneNotAchieved
-          : t.recap.sceneUnknown;
+  const sceneResultText = t.recap[sceneResultCopyKey(session.sceneState.outcome)];
 
   const demonstratedSkillName = skillName(independentSkill?.skillId);
   const practiceSkillName =
@@ -101,14 +99,22 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
       .map(id => skillName(id))
       .find(name => name && name !== demonstratedSkillName);
 
-  const handleHide = (obsId: string) => {
-    void archiveRepository.hideObservation(obsId);
-    setObservations(current => current.filter(observation => observation.observationId !== obsId));
+  const handleHide = async (obsId: string) => {
+    try {
+      await archive.hideObservation(obsId);
+      setObservations(current => current.filter(observation => observation.observationId !== obsId));
+    } catch (error) {
+      console.warn('Could not hide observation', error);
+    }
   };
 
-  const handleDispute = (obsId: string) => {
-    void archiveRepository.disputeObservation(obsId);
-    setObservations(current => current.filter(observation => observation.observationId !== obsId));
+  const handleDispute = async (obsId: string) => {
+    try {
+      await archive.disputeObservation(obsId);
+      setObservations(current => current.filter(observation => observation.observationId !== obsId));
+    } catch (error) {
+      console.warn('Could not dispute observation', error);
+    }
   };
 
   const handleShowEvidence = async () => {
@@ -226,6 +232,31 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
               ) : null}
             </View>
           ) : null}
+        </View>
+
+        {/*
+          How this session was processed, and where records live.
+
+          This is a notice, not an action, so it sits in the body of the receipt rather
+          than behind the Evidence sheet. It was dropped during a redesign without a
+          decision being recorded: the wording still existed in all four locales under
+          `settings`, and only the call to it was removed, which is the shape a privacy
+          notice disappearing quietly takes.
+
+          Reused from `settings` rather than duplicated into `recap`. The sentence is
+          approved copy in four locales; a second copy under a different key would be
+          free to drift from the one a learner already consented to in Settings.
+
+          Note for review: this says records are stored locally on the device. That is
+          accurate for the IndexedDB and native archives. Confirm it remains accurate if
+          hosted persistence is ever enabled for a learner, because a disclosure that is
+          confidently wrong is worse than none.
+        */}
+        <View className="gap-2 rounded-2xl border border-border-subtle p-4">
+          <SectionLabel>{t.settings.sectionPrivacy}</SectionLabel>
+          <Text className="text-[13px] leading-5 text-muted">
+            {t.settings.privacyDisclosure}
+          </Text>
         </View>
 
         <View className="gap-2">

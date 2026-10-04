@@ -305,6 +305,8 @@ export type CommunicativeSkillId = string;
 
 export type SkillModality = 'production' | 'comprehension' | 'interaction';
 export type SkillEvidencePolicy = 'direct' | 'derived';
+/** Authored assessment difficulty; `unknown` is retained provenance, never a qualifier. */
+export type EvidenceBand = 'pre-a1' | 'a1' | 'a2' | 'b1' | 'b2' | 'c1' | 'c2' | 'unknown';
 
 export interface CommunicativeSkillDeprecation {
   sincePolicyVersion: number;
@@ -403,6 +405,9 @@ export interface ScenarioFamilyDefinition {
 export interface SkillContextKey {
   domainId: DomainId;
   scenarioFamilyId: ScenarioFamilyId;
+  /** Assessment dimensions are absent on legacy evidence and therefore unknown. */
+  assessedChannel?: SkillModality;
+  evidenceBand?: EvidenceBand;
   /** Informational provenance only; it does not create transfer credit by itself. */
   scenarioId?: ScenarioId;
   /** Exam tasks may supply a specific task id while still belonging to a family. */
@@ -420,6 +425,11 @@ export interface OpportunityInstance {
   attemptId: string;
   opportunityId: string;
   skillId: CommunicativeSkillId;
+  /** Copied from the reviewed opportunity definition; missing/unknown cannot qualify progression. */
+  assessedChannel?: SkillModality;
+  evidenceBand?: EvidenceBand;
+  eligibleModalities?: Modality[];
+  observedModality?: Modality;
 
   status: OpportunityStatus;
   detection: OpportunityDetection;
@@ -510,6 +520,9 @@ export interface SkillObservation {
   examTaskId?: ExamTaskId;
 
   modality: 'spoken' | 'typed';
+  /** Opportunity-authored qualification dimensions; absent historical values stay unknown. */
+  assessedChannel?: SkillModality;
+  evidenceBand?: EvidenceBand;
 
   retrieval: RetrievalType;
 
@@ -571,6 +584,8 @@ export interface SkillLapse {
 
   /** Context where the failed opportunity occurred. */
   contextKey: SkillContextKey;
+  assessedChannel?: SkillModality;
+  evidenceBand?: EvidenceBand;
 
   domainId?: DomainId;
   scenarioId?: ScenarioId;
@@ -600,6 +615,9 @@ export interface SkillProjectionV2 {
   skillId: CommunicativeSkillId;
 
   status: SkillStatus;
+  /** The single channel/band partition that produced this status, when qualified. */
+  assessedChannel?: SkillModality;
+  evidenceBand?: EvidenceBand;
 
   /** Canonical domain + scenario-family identities with qualifying independent evidence. */
   independentContexts: string[];
@@ -680,6 +698,15 @@ export interface OperationalTelemetryEvent {
 }
 
 export interface SessionRecord {
+  activeAttemptId?: string;
+  attemptHistory?: Array<{
+    id: string;
+    parentAttemptId?: string;
+    checkpointId?: string;
+    sceneRevision?: number;
+    rehearsal: boolean;
+    createdAt: string;
+  }>;
   id: string;
   missionId: string;
   missionVersion: number;

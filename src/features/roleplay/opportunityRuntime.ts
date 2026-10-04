@@ -39,6 +39,9 @@ export function syncAuthoredOpportunities(input: {
       attemptId: state.attemptId,
       opportunityId: definition.id,
       skillId: definition.skillId,
+      assessedChannel: definition.assessedChannel,
+      evidenceBand: definition.evidenceBand,
+      eligibleModalities: definition.eligibleModalities,
       status: 'presented',
       detection: 'validated',
       demonstration: 'unknown',
@@ -102,6 +105,9 @@ export function presentAuthoredCommunicationChallenge(input: {
       attemptId: state.attemptId,
       opportunityId: definition.id,
       skillId: definition.skillId,
+      assessedChannel: definition.assessedChannel,
+      evidenceBand: definition.evidenceBand,
+      eligibleModalities: definition.eligibleModalities,
       status: 'presented',
       detection: 'validated',
       demonstration: 'unknown',
@@ -130,12 +136,16 @@ export function takeOpportunity(
   if (passage.speaker !== 'user' || passage.status !== 'final') {
     throw new Error('A taken opportunity requires a final learner passage');
   }
+  if (instance.eligibleModalities && !instance.eligibleModalities.includes(passage.modality)) {
+    throw new Error(`Opportunity ${instance.id} does not accept ${passage.modality} delivery`);
+  }
 
   return {
     ...instance,
     status: 'taken',
     learnerAttemptPassageId: passage.id,
     learnerAttemptRevision: passage.revisionKey,
+    observedModality: passage.modality,
   };
 }
 
@@ -186,6 +196,9 @@ export function finalizeNotPresentedOpportunities(input: {
       attemptId: input.state.attemptId,
       opportunityId: definition.id,
       skillId: definition.skillId,
+      assessedChannel: definition.assessedChannel,
+      evidenceBand: definition.evidenceBand,
+      eligibleModalities: definition.eligibleModalities,
       status: 'not_presented',
       detection: 'validated',
       demonstration: 'unknown',
@@ -239,7 +252,8 @@ export function prepareOpportunityAssessmentView(input: {
       passage.revisionKey !== candidate.sourceRevision ||
       passage.attemptId !== instance.attemptId ||
       passage.speaker !== 'user' ||
-      passage.status !== 'final'
+      passage.status !== 'final' ||
+      (instance.eligibleModalities && !instance.eligibleModalities.includes(passage.modality))
     ) {
       return instance;
     }
@@ -278,7 +292,8 @@ export function commitValidatedOpportunityDemonstrations(input: {
       passage.revisionKey !== accepted.sourceRevision ||
       passage.attemptId !== instance.attemptId ||
       passage.speaker !== 'user' ||
-      passage.status !== 'final'
+      passage.status !== 'final' ||
+      (instance.eligibleModalities && !instance.eligibleModalities.includes(passage.modality))
     ) {
       return instance;
     }

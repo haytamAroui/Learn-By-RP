@@ -28,6 +28,7 @@ beforeEach(async () => {
   driver = createNodeSqliteAdapter();
   await migrate(driver.db);
   __setDatabaseForTesting(driver.db);
+  await archiveRepository.recordConsent('saved_analysis', true);
 });
 
 afterEach(() => {

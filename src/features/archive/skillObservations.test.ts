@@ -21,6 +21,7 @@ beforeEach(async () => {
   driver = createNodeSqliteAdapter();
   await migrate(driver.db);
   __setDatabaseForTesting(driver.db);
+  await archiveRepository.recordConsent('saved_analysis', true);
 });
 
 afterEach(() => {
@@ -40,6 +41,8 @@ function observation(overrides: Partial<SkillObservation> = {}): SkillObservatio
       domainId: 'cafes',
       scenarioFamilyId: 'counter-ordering',
       scenarioId: 'scene.es.cafe.breakfast',
+      assessedChannel: 'production',
+      evidenceBand: 'a1',
     },
     domainId: 'cafes',
     scenarioId: 'scene.es.cafe.breakfast',
@@ -72,10 +75,10 @@ async function insertSkillObservationsDirectly(
       `INSERT OR REPLACE INTO skill_observations
         (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
          domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id,
-         modality, retrieval, task_outcome, demonstration, opportunity_instance_id,
+         assessed_channel, evidence_band, modality, retrieval, task_outcome, demonstration, opportunity_instance_id,
          support_exposure_ids, evidence_source, quote, day_key, reason_code,
          reason_codes, policy_version, hidden, user_disputed, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
       item.id,
       item.skillId,
       item.sessionId,
@@ -87,6 +90,8 @@ async function insertSkillObservationsDirectly(
       item.contextKey.scenarioId ?? item.scenarioId ?? null,
       item.examProgramId ?? null,
       item.examTaskId ?? null,
+      item.assessedChannel ?? item.contextKey.assessedChannel ?? null,
+      item.evidenceBand ?? item.contextKey.evidenceBand ?? 'unknown',
       item.modality,
       item.retrieval,
       item.taskOutcome,
@@ -131,6 +136,8 @@ describe('skill_observations schema / getSkillObservations', () => {
         domainId: 'cafes',
         scenarioFamilyId: 'counter-ordering',
         scenarioId: 'scene.es.cafe.breakfast',
+        assessedChannel: 'production',
+        evidenceBand: 'a1',
       },
       modality: 'spoken',
       retrieval: 'unassisted',
@@ -187,6 +194,8 @@ describe('skill_observations schema / getSkillObservations', () => {
       scenarioFamilyId: 'counter-ordering',
       scenarioId: undefined,
       examTaskId: undefined,
+      assessedChannel: undefined,
+      evidenceBand: 'unknown',
     });
     expect(loaded[0].domainId).toBe('cafes');
     expect(loaded[0].scenarioId).toBeUndefined();

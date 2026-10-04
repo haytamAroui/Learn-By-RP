@@ -1,3 +1,5 @@
+import type { EvidenceBand, Modality, SkillModality } from '../types';
+
 /**
  * Shared contracts between the client and the backend.
  *
@@ -127,6 +129,10 @@ export interface SkillOpportunityDefinition {
   id: string;
   /** Exactly one most-specific communicative skill. */
   skillId: string;
+  /** Reviewer-authored qualification metadata; absent values remain unqualified. */
+  evidenceBand?: EvidenceBand;
+  assessedChannel?: SkillModality;
+  eligibleModalities?: Modality[];
   /** Facts that make this opportunity available to the learner. */
   sceneCondition: Predicate;
   /** Reviewer examples for assessor guidance; never executable scene logic. */

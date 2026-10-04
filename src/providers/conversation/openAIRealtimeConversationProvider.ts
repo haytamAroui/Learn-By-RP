@@ -76,6 +76,8 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
   private connectionGeneration = 0;
   private connectPromise: Promise<void> | null = null;
   private lastInstructions = '';
+  private disposed = false;
+  private connectGeneration = 0;
 
   subscribe(listener: ConversationProviderEventListener): () => void {
     this.listeners.add(listener);
@@ -100,22 +102,37 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
     return undefined;
   }
 
+  private retireSocket(socket: RealtimeSocket | null = this.socket) {
+    if (!socket || this.socket !== socket) return;
+    this.connectGeneration += 1;
+    this.socket = null;
+    this.connected = false;
+    this.connectPromise = null;
+    try { socket.close(); } catch { /* ignore */ }
+  }
+
   async connect(): Promise<void> {
+    if (this.disposed) throw new Error('Realtime provider is disposed');
     if (this.connected && this.socket?.readyState === WebSocket.OPEN) return;
     if (this.connectPromise) return this.connectPromise;
 
-    this.connectPromise = this.openConnection().finally(() => {
-      this.connectPromise = null;
+    const generation = ++this.connectGeneration;
+    const connecting = this.openConnection(generation).finally(() => {
+      if (this.connectPromise === connecting) this.connectPromise = null;
     });
-    return this.connectPromise;
+    this.connectPromise = connecting;
+    return connecting;
   }
 
-  private async openConnection(): Promise<void> {
+  private async openConnection(generation: number): Promise<void> {
     const session = await api.createRealtimeSession({
       targetLanguage: 'auto',
       explanationLanguage: 'auto',
       instructions: 'Roleplay conversation session.',
     });
+    if (this.disposed || generation !== this.connectGeneration) {
+      throw new Error('Realtime connection was cancelled');
+    }
 
     await new Promise<void>((resolve, reject) => {
       const ws = new WebSocket(
@@ -123,6 +140,13 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
         ['realtime', `openai-insecure-api-key.${session.clientSecret}`]
       );
       this.socket = ws as unknown as RealtimeSocket;
+      let settled = false;
+      const fail = (error: Error) => {
+        if (settled) return;
+        settled = true;
+        clearTimeout(timer);
+        reject(error);
+      };
 
       const timer = setTimeout(() => {
         try {
@@ -130,10 +154,17 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
         } catch {
           // ignore
         }
-        reject(new Error('Realtime connection timed out'));
+        fail(new Error('Realtime connection timed out'));
       }, 10000);
 
       ws.onopen = () => {
+        if (this.disposed || generation !== this.connectGeneration) {
+          try { ws.close(); } catch { /* ignore */ }
+          fail(new Error('Realtime connection was cancelled'));
+          return;
+        }
+        if (settled) return;
+        settled = true;
         clearTimeout(timer);
         this.connected = true;
         this.connectionGeneration += 1;
@@ -146,6 +177,10 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
       };
 
       ws.onerror = () => {
+        if (generation !== this.connectGeneration || this.disposed) {
+          fail(new Error('Realtime connection was cancelled'));
+          return;
+        }
         clearTimeout(timer);
         this.connected = false;
         this.emit({
@@ -153,10 +188,14 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
           providerId: this.id,
           message: 'Realtime connection failed',
         });
-        reject(new Error('Realtime connection failed'));
+        fail(new Error('Realtime connection failed'));
       };
 
       ws.onclose = () => {
+        if (generation !== this.connectGeneration || this.disposed) {
+          fail(new Error('Realtime connection was cancelled'));
+          return;
+        }
         this.connected = false;
         this.emit({
           type: 'disconnected',
@@ -168,13 +207,17 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
           this.pending.reject(new Error('Realtime connection closed'));
           this.pending = null;
         }
+        if (!settled) fail(new Error('Realtime connection closed'));
       };
 
-      ws.onmessage = event => this.handleMessage(event.data);
+      ws.onmessage = event => {
+        if (!this.disposed && generation === this.connectGeneration) this.handleMessage(event.data);
+      };
     });
   }
 
   async respond(input: ConversationTurnInput): Promise<ActorResponse> {
+    if (this.disposed) throw new Error('Realtime provider is disposed');
     await this.connect();
     const ws = this.socket;
     if (!ws || ws.readyState !== WebSocket.OPEN) {
@@ -221,8 +264,11 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
 
     return new Promise<ActorResponse>((resolve, reject) => {
       const timer = setTimeout(() => {
-        if (this.pending) this.pending = null;
-        reject(new Error('Realtime response timed out'));
+        const pending = this.pending;
+        if (!pending) return;
+        this.pending = null;
+        pending.reject(new Error('Realtime response timed out'));
+        this.retireSocket(ws);
       }, 30000);
 
       this.pending = { resolve, reject, text: '', timer };
@@ -320,10 +366,12 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
         message,
       });
       pending.reject(new Error(message));
+      this.retireSocket();
     }
   }
 
   cancel() {
+    const hadPendingTurn = Boolean(this.pending);
     if (this.socket?.readyState === WebSocket.OPEN) {
       try {
         this.socket.send(JSON.stringify({ type: 'response.cancel' }));
@@ -340,9 +388,22 @@ export class OpenAIRealtimeConversationProvider implements ConversationProvider 
         providerId: this.id,
       });
     }
+    // A cancelled response may still produce delayed events. Retire its socket
+    // so none of those events can be mistaken for the next turn's response.
+    if (hadPendingTurn) {
+      const socket = this.socket;
+      this.connectGeneration += 1;
+      this.socket = null;
+      this.connected = false;
+      this.connectPromise = null;
+      try { socket?.close(); } catch { /* ignore */ }
+    }
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
+    this.connectGeneration += 1;
     this.cancel();
     try {
       this.socket?.close();

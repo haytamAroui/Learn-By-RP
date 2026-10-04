@@ -15,7 +15,7 @@
  * a validated CEFR alignment.
  */
 
-export const LEARNING_POLICY_VERSION = 5;
+export const LEARNING_POLICY_VERSION = 7;
 
 /**
  * Phrase recall: one item, retrieved over time.

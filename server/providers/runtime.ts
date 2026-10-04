@@ -7,6 +7,7 @@ import type {
   SpeechSynthesisRequest,
   SpeechSynthesisResponse,
 } from '../../src/providers/runtime/contracts';
+import { geminiCatalogLocales, pickGeminiVoiceForLocale } from './geminiVoice';
 
 export interface StructuredJsonRequest {
   task: 'actor' | 'coach' | 'assessment';
@@ -46,6 +47,7 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
   readonly model: string;
   readonly speechModel: string;
   private readonly client: GoogleGenAI;
+  private readonly localeVoiceCache = new Map<string, Promise<string | undefined>>();
 
   constructor(
     apiKey: string,
@@ -77,10 +79,10 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
   }
 
   async synthesize(request: SpeechSynthesisRequest): Promise<SpeechSynthesisResponse> {
-    const voiceName =
-      request.voice ||
-      process.env.GEMINI_TTS_VOICE ||
-      'Puck';
+    const configuredVoice = request.voice || process.env.GEMINI_TTS_VOICE;
+    const voiceName = configuredVoice || await this.resolveVoiceForLocale(
+      request.locale || request.language
+    );
 
     const pace =
       (request.speed ?? 1) < 0.9
@@ -117,6 +119,7 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
       config: {
         responseModalities: ['AUDIO'],
         speechConfig: {
+          languageCode: request.language,
           voiceConfig: {
             prebuiltVoiceConfig: { voiceName },
           },
@@ -144,6 +147,28 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
       },
       fallback: 'none',
     };
+  }
+
+  private resolveVoiceForLocale(locale: string): Promise<string> {
+    const normalizedLocale = locale.replace('_', '-').toLowerCase();
+    let voicePromise = this.localeVoiceCache.get(normalizedLocale);
+    if (!voicePromise) {
+      voicePromise = this.client.voices
+        .list({
+          language_code: geminiCatalogLocales(locale),
+          type: ['prebuilt'],
+          page_size: 100,
+        })
+        .then(response => pickGeminiVoiceForLocale(response.voices || [], locale))
+        .catch(error => {
+          // Voice catalog lookup must not make TTS unavailable. The stable
+          // fallback remains multilingual and the prompt still carries locale.
+          console.warn(`Gemini voice lookup failed for ${locale}; using Puck:`, error);
+          return undefined;
+        });
+      this.localeVoiceCache.set(normalizedLocale, voicePromise);
+    }
+    return voicePromise.then(voice => voice || 'Puck');
   }
 }
 

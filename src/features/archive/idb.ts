@@ -29,6 +29,7 @@ export interface IDBObjectStore {
 }
 
 export interface IDBTransaction {
+  abort(): void;
   objectStore(name: string): IDBObjectStore;
   oncomplete: (() => void) | null;
   onabort: (() => void) | null;

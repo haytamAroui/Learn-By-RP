@@ -122,6 +122,7 @@ function phraseEvidenceFor(session: SessionRecord) {
 }
 
 async function completeSessionWithEvidence(session: SessionRecord): Promise<void> {
+  await archiveRepository.recordConsent('saved_analysis', true);
   await archiveRepository.completeSession(
     { ...session, observations: [] },
     [],

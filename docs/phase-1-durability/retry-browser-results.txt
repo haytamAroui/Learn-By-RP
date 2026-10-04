@@ -1,0 +1,41 @@
+[WebServer] (node:26672) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:44324) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:3544) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 1 test using 1 worker
+
+(node:75392) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  x  1 [light] › e2e\checkpoint-durability.spec.ts:6:5 › checkpoint retry preserves the parent and keeps the active transport (1.1s)
+
+
+  1) [light] › e2e\checkpoint-durability.spec.ts:6:5 › checkpoint retry preserves the parent and keeps the active transport 
+
+    Error: expect(received).toEqual(expected) // deep equality
+
+    - Expected  - 2
+    + Received  + 2
+
+      Array [
+    -   "attempt-1",
+    -   "attempt-child",
+    +   undefined,
+    +   undefined,
+      ]
+
+      71 |   await expect(page.getByText('Antwoord 2', { exact: true }).first()).toBeVisible();
+      72 |   expect(starts).toBe(1);
+    > 73 |   expect(actorAttempts).toEqual(['attempt-1', 'attempt-child']);
+         |                         ^
+      74 |   const saved = await page.evaluate(async id => {
+      75 |     const db = await new Promise<IDBDatabase>(resolve => {
+      76 |       const req = indexedDB.open('mission-coach-archive', 1); req.onsuccess = () => resolve(req.result);
+        at D:\learnbyRP\e2e\checkpoint-durability.spec.ts:73:25
+
+    Error Context: test-results\checkpoint-durability-chec-f9531--keeps-the-active-transport-light\error-context.md
+
+  1 failed
+    [light] › e2e\checkpoint-durability.spec.ts:6:5 › checkpoint retry preserves the parent and keeps the active transport 

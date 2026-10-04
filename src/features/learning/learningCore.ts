@@ -93,6 +93,13 @@ export interface StructuredAssessmentProposal {
   suggestedNextGoal?: string;
 }
 
+/** Authored targets and identity supplied by the runtime, never by an assessor. */
+export interface PhraseAssessmentContext {
+  sessionId: string;
+  attemptId: string;
+  candidates: ReadonlyArray<{ id: string; form: string; meaning: string }>;
+}
+
 /**
  * Deterministically validate model-proposed assessments against the recorded transcript passages
  * and the support exposure ledger. The model proposes; the product validates.
@@ -101,6 +108,7 @@ export function validateAssessmentProposal(
   proposal: StructuredAssessmentProposal,
   passages: Passage[],
   supportExposures: SupportExposure[],
+  context: PhraseAssessmentContext,
   isRehearsalAttempt: boolean = false
 ): {
   validatedObservations: LearningObservation[];
@@ -111,21 +119,25 @@ export function validateAssessmentProposal(
   const validatedObservations: LearningObservation[] = [];
   const rejectedProposals: { candidate: AssessmentCandidate; reason: string }[] = [];
 
-  const userPassages = passages.filter(p => p.speaker === 'user');
-  const allUserText = normalizeText(userPassages.map(p => p.text).join(' '));
+  const userPassages = passages.filter(p =>
+    p.speaker === 'user' && p.status === 'final' &&
+    p.sessionId === context?.sessionId && p.attemptId === context?.attemptId
+  );
+  const authoredTargets = new Map(context?.candidates.map(target => [target.id, target]) ?? []);
 
   for (const candidate of proposal.items) {
+    if (!context || proposal.sessionId !== context.sessionId || proposal.attemptId !== context.attemptId) {
+      rejectedProposals.push({ candidate, reason: 'Assessment identity does not match the runtime session and attempt' });
+      continue;
+    }
     // 1. Provenance: the quote must be the learner's own speech, in a passage
     //    the model is allowed to cite, at the revision it actually cited.
     const matchingPassage = userPassages.find(
       p => p.id === candidate.sourcePassageId && p.revisionKey === candidate.sourceRevision
     );
 
-    // A proposal that names a passage must resolve to that passage at the
-    // revision it claims. Falling back to the whole transcript when the cited
-    // revision is missing would let a stale or invented citation smuggle a
-    // quote in from elsewhere, so a named-but-unresolvable passage is rejected.
-    if (candidate.sourcePassageId && !matchingPassage) {
+    // Every observation must cite a current final learner passage in this attempt.
+    if (!matchingPassage) {
       rejectedProposals.push({
         candidate,
         reason: `Cited passage ${candidate.sourcePassageId}@${candidate.sourceRevision} is not a current learner passage (stale revision or unknown id)`
@@ -141,42 +153,33 @@ export function validateAssessmentProposal(
       continue;
     }
 
+    const target = authoredTargets.get(candidate.itemId);
+    if (!target) {
+      rejectedProposals.push({ candidate, reason: 'Phrase id is not an authored target of this runtime assessment' });
+      continue;
+    }
+
     const quoteClean = normalizeText(candidate.quote || '');
     if (!quoteClean) {
       rejectedProposals.push({ candidate, reason: 'Empty transcript quote in proposal' });
       continue;
     }
 
-    // A proposal that cites a specific passage is verified against that passage.
-    // One that cites nothing is verified against the whole learner transcript,
-    // so a quote cannot be smuggled in from the assistant's side of the
-    // conversation.
-    const passageText = matchingPassage ? normalizeText(matchingPassage.text) : allUserText;
-    const sourceScope = matchingPassage ? 'cited passage' : 'learner transcript';
+    const passageText = normalizeText(matchingPassage.text);
 
     if (!passageText.includes(quoteClean)) {
-      const quoteWords = quoteClean.split(' ').filter(w => w.length > 3);
-      const presentWords = quoteWords.filter(w => passageText.includes(w));
-      const coverage = quoteWords.length === 0 ? 0 : presentWords.length / quoteWords.length;
-
-      if (coverage < LEARNING_POLICY.minQuoteCoverage) {
-        rejectedProposals.push({
-          candidate,
-          reason: `Quote "${candidate.quote}" not verified in learner ${sourceScope}`
-        });
-        continue;
-      }
+      rejectedProposals.push({ candidate, reason: `Quote "${candidate.quote}" not verified in learner cited passage` });
+      continue;
     }
 
     // 2. Semantic check: does the learner's own wording actually convey the
     //    curated form? A model may call any turn a match; this decides.
-    const scopeText = matchingPassage ? matchingPassage.text : allUserText;
-    const match = matchPhraseInText(candidate.candidateForm, scopeText);
+    const match = matchPhraseInText(target.form, matchingPassage.text);
 
-    if (match.verdict === 'none') {
+    if (match.verdict !== 'exact' && match.verdict !== 'paraphrase') {
       rejectedProposals.push({
         candidate,
-        reason: `Learner wording does not convey "${candidate.candidateForm}"`
+        reason: `Learner wording does not convey "${target.form}" with sufficient certainty`
       });
       continue;
     }
@@ -205,7 +208,7 @@ export function validateAssessmentProposal(
 
     if (hadFormExposure || modeledRecently || isRehearsalAttempt) {
       finalRetrieval = 'assisted';
-    } else if (candidate.modality === 'spoken') {
+    } else if (matchingPassage.modality === 'spoken') {
       // Provenance and equivalence both held against real speech.
       finalRetrieval = 'unassisted';
     } else {
@@ -216,17 +219,17 @@ export function validateAssessmentProposal(
       finalRetrieval = 'unknown';
     }
 
-    const finalModality: 'spoken' | 'typed' = candidate.modality === 'typed' ? 'typed' : 'spoken';
+    const finalModality = matchingPassage.modality;
 
     const observation: LearningObservation = {
       observationId: `obs-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
-      sessionId: proposal.sessionId,
-      attemptId: proposal.attemptId,
-      sourceTurnId: candidate.sourcePassageId || 'turn-1',
-      sourceRevision: candidate.sourceRevision || 'rev-1',
-      itemId: candidate.itemId,
-      candidateForm: candidate.candidateForm,
-      meaning: candidate.meaning,
+      sessionId: context.sessionId,
+      attemptId: context.attemptId,
+      sourceTurnId: matchingPassage.id,
+      sourceRevision: matchingPassage.revisionKey,
+      itemId: target.id,
+      candidateForm: target.form,
+      meaning: target.meaning,
       quote: match.matchedText || candidate.quote,
       modality: finalModality,
       retrieval: finalRetrieval,
@@ -242,7 +245,7 @@ export function validateAssessmentProposal(
         modelingWithinWindow: modeledRecently,
         attemptedButFailed: false,
         wasCorrected:
-          normalizeText(matchingPassage?.text ?? '') !== normalizeText(candidate.candidateForm) &&
+          normalizeText(matchingPassage.text) !== normalizeText(target.form) &&
           match.verdict === 'paraphrase',
       }),
       // Retained together when the learner's wording differed from the curated
@@ -285,7 +288,10 @@ export function buildLocalObservations(input: {
   const { sessionId, attemptId, passages, supportExposures, candidates, isColdAttempt, isRehearsalAttempt } =
     input;
 
-  const userPassages = passages.filter(p => p.speaker === 'user');
+  const userPassages = passages.filter(p =>
+    p.speaker === 'user' && p.status === 'final' &&
+    p.sessionId === sessionId && p.attemptId === attemptId
+  );
   const observations: LearningObservation[] = [];
   const seen = new Set<string>();
   let ambiguous = 0;
@@ -370,6 +376,8 @@ export function buildLocalObservations(input: {
 }
 
 export interface DrillReviewProposal {
+  /** Runtime identity shared by reviews in one practice sitting. */
+  practiceSessionId?: string;
   phrase: Pick<PhraseItem, 'id' | 'form' | 'meaning'>;
   quote: string;
   modality: 'spoken' | 'typed';
@@ -396,6 +404,11 @@ export function validateDrillReview(
     return EMPTY_VALIDATED_PHRASE_EVIDENCE;
   }
 
+  const match = matchPhraseInText(input.phrase.form, quote);
+  if (match.verdict !== 'exact' && match.verdict !== 'paraphrase') {
+    return EMPTY_VALIDATED_PHRASE_EVIDENCE;
+  }
+
   const supportBeforeAttempt =
     input.answerRevealedBeforeAttempt ||
     input.modelAudioPlayedBeforeAttempt;
@@ -410,11 +423,12 @@ export function validateDrillReview(
     : 'assisted';
 
   const recordedAt = input.recordedAt ?? new Date().toISOString();
+  const reviewId = `drill-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
   const observation: LearningObservation = {
-    observationId: `drill-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-    sessionId: 'drill',
+    observationId: `${reviewId}-observation`,
+    sessionId: input.practiceSessionId ?? reviewId,
     attemptId: 'drill',
-    sourceTurnId: `drill-${Date.now()}`,
+    sourceTurnId: `${reviewId}-turn`,
     sourceRevision: 'rev-drill',
     itemId: input.phrase.id,
     candidateForm: input.phrase.form,
@@ -447,14 +461,17 @@ export function projectPhraseState(
   currentPhrase: PhraseItem,
   allObservationsForPhrase: LearningObservation[]
 ): PhraseItem {
-  const activeObs = allObservationsForPhrase.filter(o => !o.hidden && !o.userDisputed);
+  const activeObs = allObservationsForPhrase.filter(o => o.itemId === currentPhrase.id && !o.hidden && !o.userDisputed);
 
   if (activeObs.length === 0) {
     return {
       ...currentPhrase,
       recallStatus: 'new',
       scheduling: {
-        ...currentPhrase.scheduling,
+        nextReviewAt: new Date(0).toISOString(),
+        intervalDays: LEARNING_POLICY.intervals.new,
+        modalityHistory: [],
+        contexts: currentPhrase.scheduling.contexts,
         due: true
       },
       stats: {

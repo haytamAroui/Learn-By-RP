@@ -114,6 +114,7 @@ function opportunity(overrides: Partial<OpportunityInstance> = {}): OpportunityI
     demonstration: 'attempted_not_demonstrated',
     learnerAttemptPassageId: 'p-1',
     learnerAttemptRevision: 'rev-1',
+    observedModality: 'spoken',
     recordedAt: '2026-09-20T09:00:04.000Z',
     ...overrides,
   };
@@ -404,7 +405,13 @@ describe('validateSkillEvidenceProposal', () => {
   it('does not treat spoken typing as spoken production', () => {
     const result = validateSkillEvidenceProposal(
       proposal([candidate({ modality: 'typed' })]),
-      context()
+      context({
+        passages: [passage({ modality: 'typed' })],
+        opportunityInstances: [opportunity({
+          observedModality: 'typed',
+          demonstration: 'demonstrated',
+        })],
+      })
     );
 
     expect(result.validated[0].retrieval).toBe('unknown');
@@ -434,19 +441,19 @@ describe('validateSkillEvidenceProposal', () => {
 describe('deriveLapses', () => {
   const proposalWithoutFailureClaim = () => proposal([], 'not_achieved');
 
-  it('records a lapse only from a validated taken cold opportunity that was attempted but not demonstrated', () => {
+  it('fails closed while the authored opportunity has no reviewed evidence band or channel', () => {
     const result = validateSkillEvidenceProposal(
       proposalWithoutFailureClaim(),
-      context({ opportunityInstances: [opportunity()] })
+      context({
+        opportunityInstances: [opportunity({
+          assessedChannel: 'production',
+          evidenceBand: 'a1',
+          eligibleModalities: ['spoken'],
+        })],
+      })
     );
 
-    expect(result.lapses).toHaveLength(1);
-    expect(result.lapses[0]).toMatchObject({
-      basis: 'cold_attempt_failed',
-      skillId: SKILL,
-      opportunityInstanceId: 'opp-1',
-      demonstration: 'attempted_not_demonstrated',
-    });
+    expect(result.lapses).toEqual([]);
   });
 
   it('scene failure alone creates no lapse', () => {
@@ -458,13 +465,13 @@ describe('deriveLapses', () => {
     expect(result.lapses).toEqual([]);
   });
 
-  it('scene success does not erase a real failed skill opportunity', () => {
+  it('does not qualify a failed opportunity from scene outcome when authored dimensions are missing', () => {
     const result = validateSkillEvidenceProposal(
       proposal([], 'achieved'),
       context({ opportunityInstances: [opportunity()] })
     );
 
-    expect(result.lapses).toHaveLength(1);
+    expect(result.lapses).toEqual([]);
   });
 
   it('records no lapse when the opportunity was not presented', () => {
@@ -516,7 +523,7 @@ describe('deriveLapses', () => {
     expect(result.lapses).toEqual([]);
   });
 
-  it('keeps lapse eligibility when support targeted an unrelated skill', () => {
+  it('still fails closed when unrelated support is present but authored dimensions are missing', () => {
     const result = validateSkillEvidenceProposal(
       proposal([], 'not_achieved'),
       context({
@@ -532,7 +539,7 @@ describe('deriveLapses', () => {
       })
     );
 
-    expect(result.lapses).toHaveLength(1);
+    expect(result.lapses).toEqual([]);
   });
 
   it('records no lapse when the learner stayed silent', () => {
@@ -603,8 +610,7 @@ describe('deriveLapses', () => {
       })
     );
 
-    expect(result.lapses[0].sourceRevision).toBe('rev-7');
-    expect(result.lapses[0].sourcePassageId).toBe('p-1');
+    expect(result.lapses).toEqual([]);
   });
 
   it('rejects a stale opportunity passage revision as lapse evidence', () => {
@@ -644,7 +650,7 @@ describe('deriveLapses', () => {
     );
 
     expect(result.validated).toHaveLength(0);
-    expect(result.lapses).toHaveLength(1);
+    expect(result.lapses).toEqual([]);
   });
 });
 
@@ -798,7 +804,11 @@ describe('projectSkill', () => {
       contextKey: {
         domainId: 'cafes',
         scenarioFamilyId: 'family-1',
+        assessedChannel: 'production',
+        evidenceBand: 'a1',
       },
+      assessedChannel: 'production',
+      evidenceBand: 'a1',
       modality: 'spoken',
       retrieval: 'unassisted',
       taskOutcome: 'achieved',
@@ -851,6 +861,27 @@ describe('projectSkill', () => {
     expect(projectSkill(SKILL, observations, [], now).status).toBe('growing');
   });
 
+  it('does not pool evidence across authored bands', () => {
+    const observations = [
+      skillObservation({
+        id: 'a1-use', sessionId: 's-1',
+        contextKey: { domainId: 'test', scenarioFamilyId: 'family-1', assessedChannel: 'production', evidenceBand: 'a1' },
+        assessedChannel: 'production', evidenceBand: 'a1',
+        recordedAt: '2026-09-20T09:00:00.000Z',
+      }),
+      skillObservation({
+        id: 'b1-use', sessionId: 's-2',
+        contextKey: { domainId: 'test', scenarioFamilyId: 'family-2', assessedChannel: 'production', evidenceBand: 'b1' },
+        assessedChannel: 'production', evidenceBand: 'b1',
+        recordedAt: '2026-09-21T09:00:00.000Z',
+      }),
+    ];
+
+    const projection = projectSkill(SKILL, observations, [], now);
+    expect(projection.status).toBe('supported');
+    expect(projection.independentContexts).toHaveLength(1);
+  });
+
   it('does not reach steady at 4 contexts but only 2 days', () => {
     const observations = [
       skillObservation({ id: 'a', sessionId: 's-1', contextKey: { domainId: 'test', scenarioFamilyId: 'family-1' }, recordedAt: '2026-09-20T09:00:00.000Z' }),
@@ -885,14 +916,17 @@ describe('projectSkill', () => {
         id: `legacy-${i}`,
         sessionId: `s-${i}`,
         contextKey: { domainId: 'legacy', scenarioFamilyId: 'legacy-unknown' },
+        assessedChannel: undefined,
+        evidenceBand: 'unknown',
         recordedAt: new Date(Date.parse('2026-09-01T09:00:00.000Z') + i * day).toISOString(),
         evidenceSource: 'legacy_inferred',
       })
     );
 
     const projection = projectSkill(SKILL, observations, [], now);
-    expect(projection.independentContexts).toEqual(['legacy::legacy-unknown']);
-    expect(projection.independentDays.length).toBeGreaterThanOrEqual(SKILL_POLICY.steadyMinDays);
+    expect(projection.independentContexts).toEqual([]);
+    expect(projection.independentDays).toEqual([]);
+    expect(projection.legacyInferredCount).toBe(12);
     expect(projection.status).not.toBe('steady');
   });
 
@@ -918,7 +952,11 @@ describe('projectSkill', () => {
       contextKey: {
         domainId: 'test',
         scenarioFamilyId: 'family-lapse',
+        assessedChannel: 'production',
+        evidenceBand: 'a1',
       },
+      assessedChannel: 'production',
+      evidenceBand: 'a1',
       opportunityInstanceId: 'opp-lapse-1',
       demonstration: 'attempted_not_demonstrated',
       basis: 'cold_attempt_failed',

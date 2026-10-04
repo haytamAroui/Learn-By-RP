@@ -1,12 +1,14 @@
-import { createHash } from 'node:crypto';
 import type { Request, Response } from 'express';
+import { verifyGuestIdentityToken } from './guestIdentity';
+import { InMemoryRateLimitStore, type RateLimitStore } from './rateLimitStore';
 
 export type ProviderEndpoint =
   | 'realtime'
   | 'actor'
   | 'coach'
   | 'assessment'
-  | 'speech';
+  | 'speech'
+  | 'scene';
 
 type ConsentState = 'granted' | 'denied' | 'unknown';
 
@@ -23,11 +25,10 @@ const RATE_LIMITS: Record<ProviderEndpoint, number> = {
   coach: 30,
   assessment: 12,
   speech: 60,
+  scene: 120,
 };
 
 const WINDOW_MS = 60_000;
-const GUEST_ID = /^guest-[a-z0-9][a-z0-9._:-]{7,127}$/i;
-
 function headerValue(req: Pick<Request, 'header'>, name: string): string {
   return (req.header(name) || '').trim();
 }
@@ -43,16 +44,8 @@ export function resolveProviderIdentity(
   const authorization = headerValue(req, 'authorization');
   if (/^Bearer\s+\S+/i.test(authorization)) {
     const token = authorization.replace(/^Bearer\s+/i, '');
-    return {
-      ok: true,
-      status: 200,
-      identity: `auth:${createHash('sha256').update(token).digest('hex').slice(0, 32)}`,
-    };
-  }
-
-  const guestId = headerValue(req, 'x-learnbyrp-client-id');
-  if (GUEST_ID.test(guestId)) {
-    return { ok: true, status: 200, identity: `guest:${guestId}` };
+    const identity = verifyGuestIdentityToken(token);
+    if (identity) return { ok: true, status: 200, identity };
   }
 
   return {
@@ -96,30 +89,40 @@ export function checkProviderAccess(
   return identity;
 }
 
-interface RateBucket {
-  startedAt: number;
-  count: number;
-}
-
+/**
+ * Per-identity, per-endpoint quota.
+ *
+ * State lives in a `RateLimitStore` rather than in this class. It used to be a `Map`
+ * here, which enforces the limit correctly for one process and not for two: behind a
+ * load balancer every instance kept its own buckets, so a client could send
+ * `limit x instances` requests per window and each instance would consider it within
+ * quota. The bound looked enforced in tests because a test only ever has one instance.
+ *
+ * The store is injected so a single process can share one budget with its siblings, and
+ * so tests can drive the clock without sleeping.
+ */
 export class ProviderRateLimiter {
-  private readonly buckets = new Map<string, RateBucket>();
+  private readonly store: RateLimitStore;
 
-  constructor(private readonly now: () => number = Date.now) {}
+  /**
+   * @param now Clock, injectable so expiry can be tested.
+   * @param store Shared quota state. Defaults to per-process, which is correct for one
+   *   instance and wrong for many - see `createRateLimitStore`.
+   */
+  constructor(
+    private readonly now: () => number = Date.now,
+    store?: RateLimitStore
+  ) {
+    this.store = store ?? new InMemoryRateLimitStore();
+  }
 
   take(identity: string, endpoint: ProviderEndpoint): boolean {
-    const key = `${identity}:${endpoint}`;
-    const time = this.now();
-    const existing = this.buckets.get(key);
-    const limit = RATE_LIMITS[endpoint];
-
-    if (!existing || time - existing.startedAt >= WINDOW_MS) {
-      this.buckets.set(key, { startedAt: time, count: 1 });
-      return true;
-    }
-
-    if (existing.count >= limit) return false;
-    existing.count += 1;
-    return true;
+    return this.store.take(
+      `${identity}:${endpoint}`,
+      RATE_LIMITS[endpoint],
+      WINDOW_MS,
+      this.now()
+    );
   }
 }
 
@@ -194,8 +197,15 @@ export function validateProviderBody(
   return null;
 }
 
-export function createProviderGuard() {
-  const limiter = new ProviderRateLimiter();
+/**
+ * Builds the provider middleware guard.
+ *
+ * Pass a shared `store` when more than one instance serves this deployment; without one
+ * each instance enforces its own quota and the effective limit scales with the instance
+ * count. `createRateLimitStore()` resolves that from the environment.
+ */
+export function createProviderGuard(store?: RateLimitStore) {
+  const limiter = new ProviderRateLimiter(Date.now, store);
 
   return function guard(
     req: Request,

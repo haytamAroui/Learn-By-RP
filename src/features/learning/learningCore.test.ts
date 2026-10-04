@@ -3,7 +3,7 @@ import {
   buildLocalObservations,
   projectPhraseState,
   StructuredAssessmentProposal,
-  validateAssessmentProposal,
+  validateAssessmentProposal as validateRuntimeAssessment,
   validateDrillReview,
   assertValidatedPhraseEvidence,
   type ValidatedPhraseEvidence,
@@ -18,6 +18,16 @@ const PHRASE: Pick<UsefulPhraseLike, 'id' | 'form' | 'meaning'> = {
 };
 
 type UsefulPhraseLike = { id: string; form: string; meaning: string };
+
+function validateAssessmentProposal(
+  proposal: StructuredAssessmentProposal,
+  passages: Passage[],
+  exposures: SupportExposure[],
+  rehearsal = false
+) {
+  return validateRuntimeAssessment(proposal, passages, exposures,
+    { sessionId: 's-1', attemptId: 'attempt-1', candidates: [PHRASE] }, rehearsal);
+}
 
 const day = 86_400_000;
 

@@ -43,8 +43,15 @@ export class NativeVoiceTransport implements VoiceTransport {
   private tempAudioFile: File | null = null;
   private audioConfigured = false;
   private disposed = false;
+  private captureGeneration = 0;
+  private listeningRequest: Promise<boolean> | null = null;
+  private nativeStopPending = false;
+  private playbackGeneration = 0;
+  private playbackActive = false;
+  private playbackCancel: (() => void) | null = null;
+  private webAudio: any = null;
 
-  constructor() {
+  constructor(private readonly mayCapture: () => boolean | Promise<boolean> = () => false) {
     this.attachListeners();
   }
 
@@ -58,11 +65,16 @@ export class NativeVoiceTransport implements VoiceTransport {
     };
 
     on('start', () => {
+      if (this.nativeStopPending || this.disposed) {
+        try { ExpoSpeechRecognitionModule.stop(); } catch { /* already stopped */ }
+        return;
+      }
       this.isRecording = true;
       this.emit({ type: 'listening_start' });
     });
 
     on('end', () => {
+      this.nativeStopPending = false;
       this.isRecording = false;
       this.emit({ type: 'listening_end' });
     });
@@ -75,13 +87,14 @@ export class NativeVoiceTransport implements VoiceTransport {
 
       if (!transcript) return;
 
-      this.emit({
-        type: 'speech_result',
-        payload: {
-          transcript,
-          isFinal: Boolean(event.isFinal),
-        },
-      });
+      const generation = this.captureGeneration;
+      void Promise.resolve(this.mayCapture()).then(allowed => {
+        if (!allowed || this.disposed || generation !== this.captureGeneration) return;
+        this.emit({
+          type: 'speech_result',
+          payload: { transcript, isFinal: Boolean(event.isFinal) },
+        });
+      }).catch(() => undefined);
     });
 
     // Native volume is dBFS-ish (-2 inaudible .. 10 loud). Map into 0..1.
@@ -99,6 +112,8 @@ export class NativeVoiceTransport implements VoiceTransport {
         return;
       }
       if (code === 'not-allowed' || code === 'service-not-allowed') {
+        this.isRecording = false;
+        this.nativeStopPending = false;
         this.emit({ type: 'error', payload: 'mic_denied' });
         return;
       }
@@ -143,12 +158,29 @@ export class NativeVoiceTransport implements VoiceTransport {
     }
   }
 
-  public async startListening(): Promise<boolean> {
+  public startListening(): Promise<boolean> {
+    if (this.nativeStopPending) return Promise.resolve(false);
+    if (this.listeningRequest) return this.listeningRequest;
+    const generation = ++this.captureGeneration;
+    const request = this.beginListening(generation).finally(() => {
+      if (this.listeningRequest === request) this.listeningRequest = null;
+    });
+    this.listeningRequest = request;
+    return request;
+  }
+
+  private async beginListening(generation: number): Promise<boolean> {
     if (this.disposed || this.isMuted) return false;
+    if (!(await this.mayCapture())) {
+      this.stopListening();
+      this.emit({ type: 'error', payload: 'mic_denied' });
+      return false;
+    }
     if (this.isRecording) return true;
 
     this.stopPlayback();
     await this.ensureAudioMode();
+    if (generation !== this.captureGeneration || this.disposed || this.isMuted) return false;
 
     try {
       const permission = await ExpoSpeechRecognitionModule.requestPermissionsAsync();
@@ -163,6 +195,11 @@ export class NativeVoiceTransport implements VoiceTransport {
     }
 
     try {
+      // Consent can be withdrawn while the OS permission dialog is open.
+      if (!(await this.mayCapture()) || generation !== this.captureGeneration || this.disposed || this.isMuted) return false;
+      // Native start events arrive asynchronously; stop must already know that
+      // capture has been requested if the learner cancels before that event.
+      this.isRecording = true;
       ExpoSpeechRecognitionModule.start({
         lang: this.targetLocale,
         interimResults: true,
@@ -173,6 +210,7 @@ export class NativeVoiceTransport implements VoiceTransport {
       });
       return true;
     } catch (e) {
+      this.isRecording = false;
       console.warn('Could not start speech recognition:', e);
       this.emit({ type: 'error', payload: 'unknown' });
       return false;
@@ -180,7 +218,9 @@ export class NativeVoiceTransport implements VoiceTransport {
   }
 
   public stopListening() {
+    this.captureGeneration += 1;
     if (!this.isRecording) return;
+    this.nativeStopPending = true;
     try {
       ExpoSpeechRecognitionModule.stop();
     } catch {
@@ -193,11 +233,22 @@ export class NativeVoiceTransport implements VoiceTransport {
     this.isMuted = muted;
     if (muted) {
       this.stopListening();
-      Speech.stop();
+      this.stopPlayback();
     }
   }
 
   public stopPlayback() {
+    const wasActive = this.playbackActive;
+    this.playbackGeneration += 1;
+    this.playbackActive = false;
+    this.playbackCancel?.();
+    this.playbackCancel = null;
+    if (this.webAudio) {
+      this.webAudio.onended = null;
+      this.webAudio.onerror = null;
+      try { this.webAudio.pause(); this.webAudio.removeAttribute?.('src'); this.webAudio.load?.(); } catch { /* best effort */ }
+      this.webAudio = null;
+    }
     if (this.player) {
       try {
         this.player.pause();
@@ -207,14 +258,16 @@ export class NativeVoiceTransport implements VoiceTransport {
       }
       this.player = null;
       this.cleanupTempAudio();
-      this.emit({ type: 'interrupted' });
     }
     try {
       Speech.stop();
     } catch {
       // ignore
     }
-    this.emit({ type: 'playback_end' });
+    if (wasActive) {
+      this.emit({ type: 'interrupted' });
+      this.emit({ type: 'playback_end' });
+    }
   }
 
   public async playSpeech(
@@ -223,6 +276,9 @@ export class NativeVoiceTransport implements VoiceTransport {
   ): Promise<void> {
     if (this.disposed) return;
     this.stopPlayback();
+    const generation = ++this.playbackGeneration;
+    this.playbackActive = true;
+    this.emit({ type: 'playback_start' });
     const speed = options.speed || 1.0;
     const lang = options.lang || this.targetLanguage;
     const locale = resolveSpeechLocale(lang, options.locale);
@@ -231,25 +287,29 @@ export class NativeVoiceTransport implements VoiceTransport {
       const played = await this.playBase64Audio(
         options.audioBase64,
         speed,
-        options.mimeType
+        options.mimeType,
+        generation
       );
       if (played) return;
     }
 
-    return this.fallbackSpeech(text, speed, locale);
+    if (this.disposed || generation !== this.playbackGeneration) return;
+    return this.fallbackSpeech(text, speed, locale, generation);
   }
 
   private async playBase64Audio(
     base64: string,
     speed: number,
-    mimeType = 'audio/wav'
+    mimeType = 'audio/wav',
+    generation: number
   ): Promise<boolean> {
     if (Platform.OS === 'web') {
-      return this.playViaWebAudio(base64, speed, mimeType);
+      return this.playViaWebAudio(base64, speed, mimeType, generation);
     }
 
     try {
       await this.ensureAudioMode();
+      if (this.disposed || generation !== this.playbackGeneration) return false;
 
       const extension =
         mimeType.includes('mpeg') || mimeType.includes('mp3')
@@ -262,8 +322,6 @@ export class NativeVoiceTransport implements VoiceTransport {
       file.write(base64, { encoding: EncodingType.Base64 });
       this.tempAudioFile = file;
 
-      this.emit({ type: 'playback_start' });
-
       const player = createAudioPlayer({ uri: file.uri });
       player.volume = 1.0;
       player.playbackRate = Math.max(0.5, Math.min(2, speed));
@@ -271,9 +329,11 @@ export class NativeVoiceTransport implements VoiceTransport {
 
       await new Promise<void>(resolve => {
         let settled = false;
+        this.playbackCancel = () => { if (!settled) { settled = true; resolve(); } };
         const subscription = player.addListener('playbackStatusUpdate', status => {
-          if (settled || !status?.didJustFinish) return;
+          if (settled || generation !== this.playbackGeneration || !status?.didJustFinish) return;
           settled = true;
+          this.playbackCancel = null;
           subscription.remove();
           try {
             player.remove();
@@ -284,7 +344,7 @@ export class NativeVoiceTransport implements VoiceTransport {
             this.player = null;
           }
           this.cleanupTempAudio();
-          this.emit({ type: 'playback_end' });
+          this.finishPlayback(generation);
           resolve();
         });
 
@@ -302,7 +362,8 @@ export class NativeVoiceTransport implements VoiceTransport {
   private async playViaWebAudio(
     base64: string,
     speed: number,
-    mimeType: string
+    mimeType: string,
+    generation: number
   ): Promise<boolean> {
     try {
       const AudioCtor = (globalThis as any).Audio;
@@ -310,22 +371,40 @@ export class NativeVoiceTransport implements VoiceTransport {
 
       return new Promise<boolean>(resolve => {
         const audio = new AudioCtor(`data:${mimeType};base64,${base64}`);
+        if (this.disposed || generation !== this.playbackGeneration) { resolve(false); return; }
+        this.webAudio = audio;
         audio.playbackRate = speed;
-        this.emit({ type: 'playback_start' });
+        let settled = false;
         const done = () => {
-          this.emit({ type: 'playback_end' });
+          if (settled) return;
+          settled = true;
+          this.webAudio = null;
+          this.playbackCancel = null;
+          this.finishPlayback(generation);
           resolve(true);
         };
         audio.onended = done;
         audio.onerror = () => {
-          this.emit({ type: 'playback_end' });
+          if (settled) return;
+          settled = true;
+          this.webAudio = null;
+          this.playbackCancel = null;
+          resolve(false);
+        };
+        this.playbackCancel = () => {
+          if (settled) return;
+          settled = true;
           resolve(false);
         };
         const attempt = audio.play();
         if (attempt && typeof attempt.catch === 'function') {
           attempt.catch(() => {
-            this.emit({ type: 'playback_end' });
-            resolve(false);
+            if (!settled) {
+              settled = true;
+              this.webAudio = null;
+              this.playbackCancel = null;
+              resolve(false);
+            }
           });
         }
       });
@@ -333,6 +412,13 @@ export class NativeVoiceTransport implements VoiceTransport {
       console.warn('Web base64 playback unavailable:', e);
       return false;
     }
+  }
+
+  private finishPlayback(generation: number) {
+    if (generation !== this.playbackGeneration || !this.playbackActive) return;
+    this.playbackActive = false;
+    this.playbackCancel = null;
+    this.emit({ type: 'playback_end' });
   }
 
   private cleanupTempAudio() {
@@ -367,12 +453,23 @@ export class NativeVoiceTransport implements VoiceTransport {
   private async fallbackSpeech(
     text: string,
     speed: number,
-    locale: string
+    locale: string,
+    generation: number
   ): Promise<void> {
     const voice = await this.resolveNativeVoice(locale);
+    if (this.disposed || generation !== this.playbackGeneration) return;
 
     return new Promise(resolve => {
-      this.emit({ type: 'playback_start' });
+      let settled = false;
+      const finish = () => {
+        if (settled) return;
+        settled = true;
+        if (this.playbackCancel === cancel) this.playbackCancel = null;
+        this.finishPlayback(generation);
+        resolve();
+      };
+      const cancel = () => { if (!settled) { settled = true; resolve(); } };
+      this.playbackCancel = cancel;
 
       Speech.speak(text, {
         language: locale,
@@ -380,18 +477,9 @@ export class NativeVoiceTransport implements VoiceTransport {
         rate: speed,
         pitch: 1.0,
         useApplicationAudioSession: true,
-        onDone: () => {
-          this.emit({ type: 'playback_end' });
-          resolve();
-        },
-        onStopped: () => {
-          this.emit({ type: 'playback_end' });
-          resolve();
-        },
-        onError: () => {
-          this.emit({ type: 'playback_end' });
-          resolve();
-        },
+        onDone: finish,
+        onStopped: finish,
+        onError: finish,
       });
     });
   }

@@ -5,6 +5,7 @@ import {
   type ValidatedPhraseEvidence,
 } from '../learning/learningCore';
 import { LEARNING_POLICY, LEARNING_POLICY_VERSION } from '../learning/policy';
+import { renderLearningReceipt } from './learningReceipt';
 import { applyProgramDataRetention } from '../program/privacy';
 import {
   assertValidatedSkillEvidence,
@@ -155,7 +156,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     return this.dbPromise;
   }
 
-  private transaction: UnitOfWork = async work => {
+  private transaction: UnitOfWork = async <T>(work: (tx: IDBTransaction) => Promise<T>): Promise<T> => {
     const db = await this.open();
     // One store list for the whole transaction, so a multi-store write is atomic.
     const names = Object.values(STORE);
@@ -167,7 +168,14 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       tx.onerror = () => reject(tx.error);
     });
 
-    const result = await work(tx);
+    let result: T;
+    try {
+      result = await work(tx);
+    } catch (error) {
+      try { tx.abort(); } catch { /* already completed or aborted */ }
+      await done.catch(() => undefined);
+      throw error;
+    }
     await done;
     return result;
   };
@@ -311,25 +319,13 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     if (await this.isDeleted(session.id, session.startedAt)) return;
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
+      if (existing) return;
       const safeSession = stripRawEvidence(session);
       const merged: StoredSession = {
-        ...(existing ?? safeSession),
         ...safeSession,
-        // An interrupted session keeps the turns already recorded. Overwriting with
-        // the caller's empty copy is how a recovered session loses its transcript.
-        passages: session.passages.length > 0 ? session.passages : existing?.passages ?? [],
-        supportExposures:
-          session.supportExposures.length > 0
-            ? session.supportExposures
-            : existing?.supportExposures ?? [],
-        opportunityInstances:
-          session.opportunityInstances ?? existing?.opportunityInstances ?? [],
-        // beginSession never accepts evidence from the caller.
-        observations: existing?.observations ?? [],
-        // Never accept these fields from the caller. Existing values can only have
-        // originated from an earlier validator-issued completion on this device.
-        skillObservations: existing?.skillObservations ?? [],
-        skillLapses: existing?.skillLapses ?? [],
+        observations: [],
+        skillObservations: [],
+        skillLapses: [],
       };
       this.putAll(tx, STORE.sessions, [{ key: merged.id, value: merged }]);
     });
@@ -345,16 +341,31 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   async saveSessionState(sessionId: string, state: SessionState): Promise<void> {
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, sessionId);
-      if (!existing) return;
+      if (!existing || ['recap_ready', 'recap_unavailable'].includes(existing.state)) return;
       this.putAll(tx, STORE.sessions, [{ key: sessionId, value: { ...existing, state } }]);
     });
   }
 
   async completeSession(
     session: SessionRecord,
-    _rejectedProposals: { reason: string }[] = [],
+    rejectedProposals: { reason: string }[] = [],
     skillEvidence?: ValidatedSkillEvidence,
     phraseEvidence?: ValidatedPhraseEvidence
+  ): Promise<void> {
+    await this.writeSession(session, rejectedProposals, skillEvidence, phraseEvidence, true);
+  }
+
+  async saveSessionProgress(session: SessionRecord): Promise<void> {
+    await this.writeSession({ ...session, endedAt: undefined, summary: undefined,
+      actionableFeedback: [], observations: [], skillObservations: [], skillLapses: [] }, [], undefined, undefined, false);
+  }
+
+  private async writeSession(
+    session: SessionRecord,
+    _rejectedProposals: { reason: string }[] = [],
+    skillEvidence?: ValidatedSkillEvidence,
+    phraseEvidence?: ValidatedPhraseEvidence,
+    completing = true
   ): Promise<void> {
     if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
     if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
@@ -363,11 +374,24 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
     await this.transaction(async tx => {
       const existing = await this.loadSessionIn(tx, session.id);
+      const consent = await this.request<ConsentRecord | undefined>(
+        tx.objectStore(STORE.consent).get('saved_analysis')
+      );
+      const markers = await this.request<Array<{ scope: string; targetId?: string; createdAt: string }>>(
+        tx.objectStore(STORE.deletions).getAll()
+      );
+      if (markers.some(marker => marker.scope === 'session' ? marker.targetId === session.id : marker.scope === 'all' && marker.createdAt >= session.startedAt)) return;
+      if (!completing && (!existing || ['recap_ready', 'recap_unavailable'].includes(existing.state))) return;
+      if (consent?.granted !== true || consent.withdrawnAt) {
+        phraseEvidence = undefined;
+        skillEvidence = undefined;
+        session = { ...session, summary: undefined, actionableFeedback: [] };
+      }
 
       const safeSession = stripRawEvidence(session);
       const stored: StoredSession = {
         ...safeSession,
-        endedAt: session.endedAt ?? now,
+        endedAt: session.endedAt ?? (completing ? now : undefined),
         // Upsert, not replace: a session that began before an interrupted write
         // still needs its transcript, and so does its evidence.
         passages: session.passages.length > 0 ? session.passages : existing?.passages ?? [],
@@ -424,9 +448,8 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
           l => l.id
         );
       }
+      await this.reprojectPhrasesIn(tx);
     });
-
-    await this.reprojectPhrases();
   }
 
   async getSessions(): Promise<SessionRecord[]> {
@@ -564,41 +587,31 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     return observations.sort((a, b) => (b.recordedAt ?? '').localeCompare(a.recordedAt ?? ''));
   }
 
-  /** Finds a stored observation by its public id, whatever key it is filed under. */
-  private async findObservationById(id: string): Promise<LearningObservation | undefined> {
-    const all = await this.readAll<LearningObservation>(STORE.observations);
-    return all.find(o => o.observationId === id);
-  }
-
   private async updateObservation(
     id: string,
     change: { hidden?: boolean; userDisputed?: boolean }
   ): Promise<void> {
-    // Resolved before the transaction opens: the lookup is a read, and reading
-    // inside a write transaction would hold it open for the scan.
-    const found = await this.findObservationById(id);
-    if (!found) return;
-
-    const key = this.observationKey(found);
-
     await this.transaction(async tx => {
       const store = tx.objectStore(STORE.observations);
-      const existing = await this.request(
-        store.get(key) as IDBRequest<LearningObservation>
-      );
+      const all = await this.request<LearningObservation[]>(store.getAll());
+      const existing = all.find(o => o.observationId === id);
       if (!existing) return;
-      store.put({ ...existing, ...change }, key);
+      store.put({ ...existing, ...change }, this.observationKey(existing));
+      const session = await this.loadSessionIn(tx, existing.sessionId);
+      if (session) this.putAll(tx, STORE.sessions, [{ key: session.id, value: {
+        ...session,
+        observations: (session.observations ?? []).map(o => o.observationId === id ? { ...o, ...change } : o),
+      } }]);
+      await this.reprojectPhrasesIn(tx);
     });
   }
 
   async hideObservation(observationId: string): Promise<void> {
     await this.updateObservation(observationId, { hidden: true });
-    await this.reprojectPhrases();
   }
 
   async disputeObservation(observationId: string): Promise<void> {
     await this.updateObservation(observationId, { hidden: true, userDisputed: true });
-    await this.reprojectPhrases();
   }
 
   async getSkillObservations(): Promise<SkillObservation[]> {
@@ -643,20 +656,14 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   // -------------------------------------------------------------------- phrases
 
   async getPhrases(): Promise<PhraseItem[]> {
-    let phrases = await this.readAll<PhraseItem>(STORE.phrases);
-
-    if (phrases.length === 0) {
-      phrases = INITIAL_PHRASE_ITEMS.map(p => ({ ...p }));
-      await this.savePhrases(phrases);
-    }
-
-    // Merge catalog entries added since this archive was written.
-    const existingIds = new Set(phrases.map(p => p.id));
-    const missing = INITIAL_PHRASE_ITEMS.filter(p => !existingIds.has(p.id));
-    if (missing.length > 0) {
-      phrases = [...phrases, ...missing];
-      await this.savePhrases(phrases);
-    }
+    const phrases = await this.transaction(async tx => {
+      const stored = await this.request<PhraseItem[]>(tx.objectStore(STORE.phrases).getAll());
+      const existingIds = new Set(stored.map(p => p.id));
+      const missing = INITIAL_PHRASE_ITEMS.filter(p => !existingIds.has(p.id));
+      // Only new catalog rows are written, never a stale copy of existing recall.
+      this.putDocs(tx, STORE.phrases, missing, p => p.id);
+      return [...stored, ...missing];
+    });
 
     // "Due" is derived at read time, never stored.
     const now = Date.now();
@@ -700,19 +707,38 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
    * learner ever opened Progress would reproject nothing and its evidence would sit
    * unapplied.
    */
-  private async reprojectPhrases(): Promise<void> {
-    const phrases = await this.getPhrases();
-    const observations = await this.readAll<LearningObservation>(STORE.observations);
-    const usable = observations.filter(o => !o.hidden && !o.userDisputed);
+  async rebuildPhraseProjections(): Promise<void> {
+    await this.transaction(async tx => {
+      await this.reprojectPhrasesIn(tx);
+      const [sessions, observations] = await Promise.all([
+        this.request<StoredSession[]>(tx.objectStore(STORE.sessions).getAll()),
+        this.request<LearningObservation[]>(tx.objectStore(STORE.observations).getAll()),
+      ]);
+      // Repair old embedded recap caches from the same authoritative ledger.
+      const bySession = new Map<string, LearningObservation[]>();
+      for (const observation of observations) {
+        const rows = bySession.get(observation.sessionId) ?? [];
+        rows.push(observation);
+        bySession.set(observation.sessionId, rows);
+      }
+      this.putDocs(tx, STORE.sessions, sessions.map(session => ({
+        ...session, observations: bySession.get(session.id) ?? [],
+      })), session => session.id);
+    });
+  }
+
+  private async reprojectPhrasesIn(tx: IDBTransaction): Promise<void> {
+    const [storedPhrases, observations] = await Promise.all([
+      this.request<PhraseItem[]>(tx.objectStore(STORE.phrases).getAll()),
+      this.request<LearningObservation[]>(tx.objectStore(STORE.observations).getAll()),
+    ]);
+    const existingIds = new Set(storedPhrases.map(p => p.id));
+    const phrases = [...storedPhrases, ...INITIAL_PHRASE_ITEMS.filter(p => !existingIds.has(p.id))];
 
     const projected = phrases.map(current => {
-      const relevant = usable.filter(
-        o => o.itemId === current.id || o.candidateForm.toLowerCase() === current.form.toLowerCase()
-      );
-      return relevant.length > 0 ? projectPhraseState(current, relevant) : current;
+      return projectPhraseState(current, observations.filter(o => o.itemId === current.id));
     });
-
-    await this.savePhrases(projected);
+    this.putDocs(tx, STORE.phrases, projected, p => p.id);
   }
 
   // ------------------------------------------------------------------- deletion
@@ -744,11 +770,13 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   async deleteSession(sessionId: string): Promise<void> {
     // Marker first: late async work must fail closed even while row deletion runs.
     await this.markDeleted('session', sessionId);
-    const observations = await this.readAll<LearningObservation>(STORE.observations);
-    const skillObservations = await this.readAll<SkillObservation>(STORE.skillObservations);
-    const lapses = await this.readAll<SkillLapse>(STORE.skillLapses);
 
     await this.transaction(async tx => {
+      const [observations, skillObservations, lapses] = await Promise.all([
+        this.request<LearningObservation[]>(tx.objectStore(STORE.observations).getAll()),
+        this.request<SkillObservation[]>(tx.objectStore(STORE.skillObservations).getAll()),
+        this.request<SkillLapse[]>(tx.objectStore(STORE.skillLapses).getAll()),
+      ]);
       tx.objectStore(STORE.sessions).delete(sessionId);
 
       // Evidence is deleted by key. Re-putting the survivors would leave this
@@ -770,9 +798,8 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       for (const lapse of lapses) {
         if (lapse.sessionId === sessionId) lapseStore.delete(lapse.id);
       }
+      await this.reprojectPhrasesIn(tx);
     });
-
-    await this.reprojectPhrases();
   }
 
   async clearAllLearningData(): Promise<void> {
@@ -819,14 +846,13 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
     }
     if (observations.length === 0) return;
 
-    const phrases = await this.getPhrases();
-    const updated = phrases.map(p =>
-      p.id === phrase.id ? projectPhraseState(p, observations) : p
-    );
-
     await this.transaction(async tx => {
+      const consent = await this.request<ConsentRecord | undefined>(
+        tx.objectStore(STORE.consent).get('saved_analysis')
+      );
+      if (consent?.granted !== true || consent.withdrawnAt) return;
       this.putDocs(tx, STORE.observations, observations, o => this.observationKey(o));
-      this.putDocs(tx, STORE.phrases, updated, p => p.id);
+      await this.reprojectPhrasesIn(tx);
     });
   }
 
@@ -1054,7 +1080,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
       this.putDocs(tx, STORE.phrases, safePhrases, p => p.id);
     });
 
-    await this.reprojectPhrases();
+    await this.rebuildPhraseProjections();
 
     return {
       success: true,
@@ -1070,22 +1096,7 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
   }
 
   async exportLearningReceiptText(session: SessionRecord): Promise<string> {
-    const phrases = await this.getPhrases();
-    const used = new Set(session.observations.map(o => o.itemId));
-
-    let out = '========================================================\n';
-    out += 'MISSION COACH — LEARNING RECEIPT\n';
-    out += '========================================================\n\n';
-    out += `${session.id}\n`;
-    out += `Mission: ${missionTitle(session.missionId)}\n`;
-    out += `Ended: ${session.endedAt ?? 'unknown'}\n\n`;
-    out += 'What you actually used:\n';
-
-    for (const phrase of phrases.filter(p => used.has(p.id))) {
-      out += `- ${phrase.form} — ${phrase.meaning}\n`;
-    }
-
-    return out;
+    return renderLearningReceipt(session, await this.getPhrases());
   }
 }
 
@@ -1103,10 +1114,6 @@ function toSessionRecord(stored: StoredSession): SessionRecord {
     opportunityInstances: stored.opportunityInstances ?? [],
     observations: stored.observations ?? [],
   } as SessionRecord;
-}
-
-function missionTitle(missionId: string): string {
-  return MISSION_CATALOG.find(m => m.id === missionId)?.title ?? missionId;
 }
 
 export const archiveRepository: ArchiveRepository = new IndexedDbArchiveRepository();

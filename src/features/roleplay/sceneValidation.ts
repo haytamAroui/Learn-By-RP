@@ -5,6 +5,7 @@ import {
   SceneFactValue,
 } from '../../contracts/scene';
 import {
+  communicativeSkillFor,
   isDirectlyEvidencedSkill,
   isKnownCommunicativeSkill,
 } from '../../content/skills';
@@ -250,6 +251,31 @@ export function validateSceneDefinition(scene: SceneDefinition): SceneValidation
   const availableActions = new Set(actionNames);
   for (const [index, opportunity] of scene.opportunityDefinitions.entries()) {
     const path = `opportunityDefinitions[${index}]`;
+    if (opportunity.evidenceBand !== undefined && ![
+      'pre-a1', 'a1', 'a2', 'b1', 'b2', 'c1', 'c2', 'unknown',
+    ].includes(opportunity.evidenceBand)) {
+      errors.push(`${path}: invalid evidenceBand ${opportunity.evidenceBand}`);
+    }
+    if (opportunity.assessedChannel !== undefined && ![
+      'production', 'comprehension', 'interaction',
+    ].includes(opportunity.assessedChannel)) {
+      errors.push(`${path}: invalid assessedChannel ${opportunity.assessedChannel}`);
+    } else if (opportunity.assessedChannel !== undefined) {
+      const skill = communicativeSkillFor(opportunity.skillId);
+      if (skill && skill.modality !== opportunity.assessedChannel) {
+        errors.push(`${path}: assessedChannel does not match canonical skill ${opportunity.skillId}`);
+      }
+    }
+    if (opportunity.eligibleModalities !== undefined) {
+      const modalities = opportunity.eligibleModalities;
+      if (
+        modalities.length === 0 ||
+        modalities.some(modality => modality !== 'spoken' && modality !== 'typed') ||
+        new Set(modalities).size !== modalities.length
+      ) {
+        errors.push(`${path}: eligibleModalities must be a non-empty unique list of spoken/typed`);
+      }
+    }
     if (!declaredSkills.has(opportunity.skillId)) {
       errors.push(`${path}: skill ${opportunity.skillId} is not declared by scene.skillIds`);
     }

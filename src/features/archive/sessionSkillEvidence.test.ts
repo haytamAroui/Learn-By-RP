@@ -24,6 +24,7 @@ beforeEach(async () => {
   driver = createNodeSqliteAdapter();
   await migrate(driver.db);
   __setDatabaseForTesting(driver.db);
+  await archiveRepository.recordConsent('saved_analysis', true);
 });
 
 afterEach(() => {
@@ -96,6 +97,7 @@ function positiveOpportunity(
     demonstration: 'demonstrated',
     learnerAttemptPassageId: 'p-1',
     learnerAttemptRevision: 'rev-1',
+    observedModality: 'spoken',
     recordedAt: '2026-09-20T09:00:04.000Z',
     ...overrides,
   };
@@ -140,6 +142,7 @@ function failedOpportunity(overrides: Partial<OpportunityInstance> = {}): Opport
     demonstration: 'attempted_not_demonstrated',
     learnerAttemptPassageId: 'p-1',
     learnerAttemptRevision: 'rev-1',
+    observedModality: 'spoken',
     recordedAt: '2026-09-20T09:00:04.000Z',
     ...overrides,
   };
@@ -187,6 +190,16 @@ async function completeWithValidatedEvidence(
 }
 
 describe('a live session persists validated skill evidence', () => {
+  it('does not write validated skill evidence after saved-analysis withdrawal', async () => {
+    const result = validateSkillEvidenceProposal(modelProposal() as any, runtimeFacts());
+    expect(result.validated).toHaveLength(1);
+    await archiveRepository.withdrawConsent('saved_analysis');
+    const input = sessionWith({ observations: result.validated, lapses: result.lapses });
+    await archiveRepository.completeSession(input, [], result.evidence);
+    expect(await archiveRepository.getSkillObservations()).toEqual([]);
+    expect(await archiveRepository.getSkillLapses()).toEqual([]);
+    expect((await archiveRepository.getSessionById(input.id))?.passages).toHaveLength(input.passages.length);
+  });
   // 1. A valid independent proposal is persisted once.
   it('persists a valid independent skill proposal exactly once', async () => {
     const result = validateSkillEvidenceProposal(modelProposal() as any, runtimeFacts());
@@ -403,15 +416,15 @@ describe('a live session persists validated skill evidence', () => {
   });
 });
 
-describe('a failed cold attempt is durably recorded as a review signal', () => {
-  it('stores a lapse without promoting or demoting anything', async () => {
+describe('unqualified opportunity failures remain unscored', () => {
+  it('does not persist a lapse while the authored opportunity lacks reviewed dimensions', async () => {
     const result = validateSkillEvidenceProposal(
       modelProposal({ taskOutcome: 'not_achieved', skillItems: [] }) as any,
       runtimeFacts({ opportunityInstances: [failedOpportunity()] })
     );
 
     expect(result.validated).toHaveLength(0);
-    expect(result.lapses.length).toBeGreaterThan(0);
+    expect(result.lapses).toEqual([]);
 
     await completeWithValidatedEvidence(
       sessionWith(
@@ -425,13 +438,7 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
     expect(storedSession?.opportunityInstances).toHaveLength(1);
 
     const lapses = await archiveRepository.getSkillLapses();
-    expect(lapses.length).toBeGreaterThan(0);
-    expect(lapses[0]).toMatchObject({
-      basis: 'cold_attempt_failed',
-      dayKey: '2026-09-20',
-      reasonCode: 'cold_taken_opportunity_not_demonstrated',
-      policyVersion: LEARNING_POLICY_VERSION,
-    });
+    expect(lapses).toEqual([]);
     expect(await archiveRepository.getSkillObservations()).toHaveLength(0);
   });
 
@@ -465,7 +472,11 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       contextKey: {
         domainId: 'test',
         scenarioFamilyId: `family-${i}`,
+        assessedChannel: 'production',
+        evidenceBand: 'a1',
       },
+      assessedChannel: 'production' as const,
+      evidenceBand: 'a1' as const,
       modality: 'spoken' as const,
       retrieval: 'unassisted' as const,
       taskOutcome: 'achieved' as const,
@@ -486,7 +497,11 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       contextKey: {
         domainId: 'test',
         scenarioFamilyId: 'family-lapse',
+        assessedChannel: 'production',
+        evidenceBand: 'a1',
       },
+      assessedChannel: 'production' as const,
+      evidenceBand: 'a1' as const,
       opportunityInstanceId: 'opp-lapse-1',
       demonstration: 'attempted_not_demonstrated' as const,
       basis: 'cold_attempt_failed' as const,
@@ -497,10 +512,10 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       await driver.db.runAsync(
         `INSERT OR REPLACE INTO skill_observations
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-           domain_id, scenario_family_id, modality, retrieval, task_outcome,
+           domain_id, scenario_family_id, assessed_channel, evidence_band, modality, retrieval, task_outcome,
            demonstration, support_exposure_ids, evidence_source, quote, day_key,
            reason_code, reason_codes, policy_version, hidden, user_disputed, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
         item.id,
         item.skillId,
         item.sessionId,
@@ -509,6 +524,8 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
         item.sourceRevision,
         item.contextKey.domainId,
         item.contextKey.scenarioFamilyId,
+        item.assessedChannel,
+        item.evidenceBand,
         item.modality,
         item.retrieval,
         item.taskOutcome,
@@ -526,9 +543,9 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
     await driver.db.runAsync(
       `INSERT OR REPLACE INTO skill_lapses
         (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-         domain_id, scenario_family_id, opportunity_instance_id, demonstration,
+         domain_id, scenario_family_id, assessed_channel, evidence_band, opportunity_instance_id, demonstration,
          basis, day_key, reason_code, policy_version, hidden, created_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
       lapse.id,
       lapse.skillId,
       lapse.sessionId,
@@ -537,6 +554,8 @@ describe('a failed cold attempt is durably recorded as a review signal', () => {
       lapse.sourceRevision,
       lapse.contextKey.domainId,
       lapse.contextKey.scenarioFamilyId,
+      lapse.assessedChannel,
+      lapse.evidenceBand,
       lapse.opportunityInstanceId,
       lapse.demonstration,
       lapse.basis,

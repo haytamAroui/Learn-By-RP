@@ -2,6 +2,7 @@ import { expect, test, type Page } from '@playwright/test';
 
 const CONSENT_VERSION = '2026-09-30.1';
 const SESSION_ID = 'session-mobile-v3-smoke';
+const LIVE_SESSION_ID = 'session-mobile-v3-live';
 
 const SEEDED_SESSION = {
   id: SESSION_ID,
@@ -65,11 +66,37 @@ const SEEDED_SESSION = {
   actionableFeedback: ['Keep practising the takeaway request in a new situation.'],
 };
 
+const SEEDED_LIVE_SESSION = {
+  ...SEEDED_SESSION,
+  id: LIVE_SESSION_ID,
+  state: 'active',
+  endedAt: undefined,
+  endReason: undefined,
+  passages: SEEDED_SESSION.passages.map((passage, index) => ({
+    ...passage,
+    id: `${passage.id}-live`,
+    sessionId: LIVE_SESSION_ID,
+    attemptId: 'attempt-live',
+    startedAt: passage.startedAt,
+    endedAt: passage.endedAt,
+    ...(index === 0 ? { revisionKey: 'rev-live-user' } : { revisionKey: 'rev-live-assistant' }),
+  })),
+  taskOutcome: 'unknown',
+  sceneState: {
+    ...SEEDED_SESSION.sceneState,
+    sceneId: 'scene.es.cafe.breakfast',
+    isFinished: false,
+    outcome: 'unknown',
+  },
+  summary: undefined,
+  actionableFeedback: undefined,
+};
+
 async function seedArchive(page: Page) {
   await page.goto('/');
 
   await page.evaluate(
-    async ([consentVersion, session]) => {
+    async ([consentVersion, sessions]) => {
       await new Promise<void>((resolve, reject) => {
         const request = indexedDB.deleteDatabase('mission-coach-archive');
         request.onsuccess = () => resolve();
@@ -137,7 +164,9 @@ async function seedArchive(page: Page) {
             );
           }
 
-          tx.objectStore('sessions').put(session, session.id);
+          for (const session of sessions) {
+            tx.objectStore('sessions').put(session, session.id);
+          }
 
           tx.oncomplete = () => {
             db.close();
@@ -147,7 +176,7 @@ async function seedArchive(page: Page) {
         };
       });
     },
-    [CONSENT_VERSION, SEEDED_SESSION] as const
+    [CONSENT_VERSION, [SEEDED_SESSION, SEEDED_LIVE_SESSION]] as const
   );
 
   await page.reload();
@@ -174,6 +203,26 @@ test.describe('mobile-first v3 smoke at 390x844', () => {
   test('Talk → Missions → Briefing → Live → Recap → Progress all render without horizontal overflow', async ({
     page,
   }) => {
+    await page.route('**/api/**', async route => {
+      const url = route.request().url();
+      if (url.includes('/api/guest/identity')) {
+        return route.fulfill({ json: { token: 'test-guest-token' } });
+      }
+      if (url.includes('/api/assessment')) {
+        const body = route.request().postDataJSON();
+        return route.fulfill({ json: {
+          schemaVersion: 2,
+          sessionId: body.sessionId,
+          attemptId: body.attemptId,
+          taskOutcome: 'unknown',
+          items: [],
+          skillItems: [],
+          outcomeReasoning: 'You ordered a coffee and answered the follow-up.',
+          actionableFeedback: [],
+        } });
+      }
+      return route.fulfill({ json: {} });
+    });
     await seedArchive(page);
 
     await page.goto('/');
@@ -187,12 +236,13 @@ test.describe('mobile-first v3 smoke at 390x844', () => {
     await expect(page.getByRole('button', { name: /Start/i })).toBeVisible();
 
     await page.goto(
-      `/session/${SESSION_ID}?missionId=mission-es-cafe-sol&mode=guided&coldAttempt=true`
+      `/session/${LIVE_SESSION_ID}?missionId=mission-es-cafe-sol&mode=guided&coldAttempt=true`
     );
     await expectMobileScreen(page, /Mateo/i);
     await expect(page.locator('body')).not.toContainText('no longer available');
 
-    await page.goto(`/recap/${SESSION_ID}`);
+    await page.getByRole('button', { name: /End conversation/i }).last().click();
+    await expect(page).toHaveURL(new RegExp(`recap/${LIVE_SESSION_ID}`));
     await expectMobileScreen(page, /ordered a coffee/i);
 
     await page.goto('/progress');

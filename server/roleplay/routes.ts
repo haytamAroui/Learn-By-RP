@@ -1,11 +1,14 @@
 import express, { Request, Response } from 'express';
+import { ProviderRateLimiter, resolveProviderIdentity } from '../security/requestGuard';
+import { createRateLimitStore } from '../security/rateLimitStore';
+import { isProviderSessionDeleted } from '../security/deletionStore';
 import {
   applySceneAction,
   closeHostedSession,
   createHostedSession,
+  deleteHostedSession,
   forkScene,
   getHostedSession,
-  getSceneSnapshot,
   listAbandonedSessions,
   reconcileHostedSession,
 } from '../../src/features/roleplay/sceneStore';
@@ -27,6 +30,25 @@ import {
  * worker rather than vanishing when the process dies.
  */
 export const roleplayRouter = express.Router();
+// Shares the deployment-wide quota store rather than keeping its own buckets, so the
+// scene bound cannot be multiplied by adding an instance.
+const sceneRateLimiter = new ProviderRateLimiter(Date.now, createRateLimitStore());
+
+function ownerIdentity(req: Request): string {
+  const access = resolveProviderIdentity(req);
+  if (!access.ok || !access.identity) throw Object.assign(new Error(access.error ?? 'Owner authentication required'), { status: access.status });
+  if (!sceneRateLimiter.take(access.identity, 'scene')) throw Object.assign(new Error('Too many scene requests. Try again shortly.'), { status: 429 });
+  return access.identity;
+}
+
+async function requireOwnedSession(sessionId: string, owner: string) {
+  if (await isProviderSessionDeleted(owner, sessionId)) {
+    throw Object.assign(new Error('This session was deleted'), { status: 410 });
+  }
+  const record = await getHostedSession(sessionId);
+  if (!record || record.ownerIdentity !== owner) throw Object.assign(new Error('Unknown session'), { status: 404 });
+  return record;
+}
 
 function requireString(value: unknown, field: string): string {
   if (typeof value !== 'string' || !value.trim()) {
@@ -75,6 +97,7 @@ function wrap(handler: (req: Request, res: Response) => Promise<unknown>) {
 roleplayRouter.post(
   '/v1/voice/sessions',
   wrap(async (req, res) => {
+    const owner = ownerIdentity(req);
     const {
       sessionId,
       sceneId,
@@ -85,6 +108,10 @@ roleplayRouter.post(
     } = req.body ?? {};
 
     const id = requireString(sessionId, 'sessionId');
+    if (await isProviderSessionDeleted(owner, id)) {
+      res.status(410).json({ error: 'This session was deleted' });
+      return;
+    }
     const scene = getScene(requireString(sceneId, 'sceneId'));
 
     if (!scene) {
@@ -96,6 +123,10 @@ roleplayRouter.post(
     // record rather than starting a second one.
     const existing = await getHostedSession(id);
     if (existing) {
+      if (existing.ownerIdentity !== owner) {
+        res.status(404).json({ error: 'Unknown session' });
+        return;
+      }
       res.status(200).json({
         sessionId: existing.sessionId,
         state: existing.state,
@@ -130,12 +161,19 @@ roleplayRouter.post(
 
     const record = await createHostedSession({
       sessionId: id,
+      ownerIdentity: owner,
       sceneId: scene.id,
       sceneVersion: requestedSceneVersion,
       missionId: pinnedMissionId,
       missionVersion: requestedMissionVersion,
       attemptId: typeof attemptId === 'string' ? attemptId : undefined,
     });
+
+    if (await isProviderSessionDeleted(owner, id)) {
+      await deleteHostedSession(id, owner);
+      res.status(410).json({ error: 'This session was deleted' });
+      return;
+    }
 
     res.status(201).json({
       sessionId: record.sessionId,
@@ -149,11 +187,7 @@ roleplayRouter.post(
 roleplayRouter.get(
   '/v1/voice/sessions/:id',
   wrap(async (req, res) => {
-    const record = await getHostedSession(req.params.id);
-    if (!record) {
-      res.status(404).json({ error: 'Unknown session' });
-      return;
-    }
+    const record = await requireOwnedSession(req.params.id, ownerIdentity(req));
     res.json({
       sessionId: record.sessionId,
       state: record.state,
@@ -168,8 +202,10 @@ roleplayRouter.get(
 roleplayRouter.post(
   '/v1/voice/sessions/:id/close',
   wrap(async (req, res) => {
+    const owner = ownerIdentity(req);
+    await requireOwnedSession(req.params.id, owner);
     // Close is idempotent; a second call returns the same closed session.
-    const record = await closeHostedSession(req.params.id);
+    const record = await closeHostedSession(req.params.id, owner);
     res.json({ sessionId: record.sessionId, closed: true, closedAt: record.closedAt });
   })
 );
@@ -179,18 +215,16 @@ roleplayRouter.post(
 roleplayRouter.get(
   '/v1/voice/sessions/:id/scene',
   wrap(async (req, res) => {
-    const snapshot = await getSceneSnapshot(req.params.id);
-    if (!snapshot) {
-      res.status(404).json({ error: 'Unknown session' });
-      return;
-    }
-    res.json({ state: snapshot });
+    const record = await requireOwnedSession(req.params.id, ownerIdentity(req));
+    res.json({ state: record.state });
   })
 );
 
 roleplayRouter.post(
   '/v1/voice/sessions/:id/scene/action',
   wrap(async (req, res) => {
+    const owner = ownerIdentity(req);
+    await requireOwnedSession(req.params.id, owner);
     const body = req.body ?? {};
 
     const proposal: SceneActionProposal = {
@@ -219,7 +253,7 @@ roleplayRouter.post(
 
     // The reducer's verdict is returned verbatim. A rejection carries a reason
     // and the still-permissible options; actor speech cannot override it.
-    const result = await applySceneAction(proposal);
+    const result = await applySceneAction(proposal, owner);
     res.status(result.accepted ? 200 : 409).json({ result });
   })
 );
@@ -227,6 +261,8 @@ roleplayRouter.post(
 roleplayRouter.post(
   '/v1/voice/sessions/:id/scene/fork',
   wrap(async (req, res) => {
+    const owner = ownerIdentity(req);
+    await requireOwnedSession(req.params.id, owner);
     const rawCheckpoint = req.body?.checkpoint ?? {};
     const allowedCheckpointFields = new Set([
       'id',
@@ -266,9 +302,9 @@ roleplayRouter.post(
       rehearsal: Boolean(req.body?.rehearsal),
     };
 
-    const fork = await forkScene(req.params.id, request);
-    const state = await getSceneSnapshot(req.params.id);
-    res.json({ fork, state });
+    const fork = await forkScene(req.params.id, request, owner);
+    const updated = await requireOwnedSession(req.params.id, owner);
+    res.json({ fork, state: updated.state });
   })
 );
 
@@ -276,8 +312,8 @@ roleplayRouter.post(
 
 roleplayRouter.get(
   '/v1/voice/sessions-abandoned',
-  wrap(async (_req, res) => {
-    const abandoned = await listAbandonedSessions();
+  wrap(async (req, res) => {
+    const abandoned = await listAbandonedSessions(5 * 60_000, ownerIdentity(req));
     res.json({ abandoned });
   })
 );
@@ -285,8 +321,10 @@ roleplayRouter.get(
 roleplayRouter.post(
   '/v1/voice/sessions/:id/reconcile',
   wrap(async (req, res) => {
+    const owner = ownerIdentity(req);
+    await requireOwnedSession(req.params.id, owner);
     // Idempotent: replaying the same accepted verdicts yields the same snapshot.
-    const record = await reconcileHostedSession(req.params.id);
+    const record = await reconcileHostedSession(req.params.id, owner);
     res.json({
       sessionId: record.sessionId,
       reconciledAt: record.reconciledAt,

@@ -33,7 +33,9 @@ export function buildProgramProjection(
         session =>
           session.missionId === ref.missionId &&
           session.missionVersion === ref.missionVersion &&
-          session.taskOutcome === 'completed'
+          session.state === 'recap_ready' &&
+          session.sceneState.outcome === 'achieved' &&
+          (!ref.sceneId || session.sceneState.sceneId === ref.sceneId)
       )
     )
     .map(ref => ref.missionId);

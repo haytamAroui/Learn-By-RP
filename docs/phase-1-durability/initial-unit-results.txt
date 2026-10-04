@@ -1,0 +1,28 @@
+
+> mission-coach@1.0.0 test
+> vitest run --reporter=dot
+
+
+ RUN  v3.2.7 D:/learnbyRP
+
+(node:69048) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:35436) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:18600) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:13460) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:22668) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:7544) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+(node:47408) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+·····································································································································································································································································································································································································································································································································································································································································································································································································---
+
+ Test Files  63 passed | 1 skipped (64)
+      Tests  773 passed | 3 skipped (776)
+   Start at  20:39:12
+   Duration  5.94s (transform 6.08s, setup 0ms, collect 23.19s, tests 5.35s, environment 23ms, prepare 16.51s)
+

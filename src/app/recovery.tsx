@@ -85,6 +85,11 @@ export default function RecoveryScreen() {
 
                 <View className="flex-row gap-2">
                   <View className="flex-1">
+                    <Button label="Resume" size="sm" onPress={() => router.push({
+                      pathname: '/session/[sessionId]', params: { sessionId: item.id },
+                    })} />
+                  </View>
+                  <View className="flex-1">
                     <Button
                       label="Review"
                       onPress={() => router.push({ pathname: '/recap/[sessionId]', params: { sessionId: item.id } })}

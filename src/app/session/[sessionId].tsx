@@ -6,7 +6,7 @@ import { getTranslations, I18nProvider } from '../../features/i18n';
 import { LiveSessionView } from '../../components/LiveSessionView';
 import { Button } from '../../components/ui';
 import { MISSION_CATALOG } from '../../data/missions';
-import { MissionDefinition, SessionRecord } from '../../types';
+import { SessionRecord } from '../../types';
 import { useSessionCoordinator } from '../../features/session/SessionProvider';
 import { selectHistoricalCrossSessionSupport } from '../../features/learning/supportScope';
 import type { ValidatedSkillEvidence } from '../../features/learning/skillEvidence';
@@ -24,19 +24,11 @@ export default function SessionScreen() {
     coldAttempt: string;
   }>();
 
-  const [mission] = useState<MissionDefinition | undefined>(() =>
-    MISSION_CATALOG.find(m => m.id === params.missionId)
-  );
   const [persistedSession, setPersistedSession] = useState<SessionRecord | null>(null);
   const [sessionLoading, setSessionLoading] = useState(true);
 
   useEffect(() => {
     let cancelled = false;
-
-    if (params.sessionId) {
-      coordinator.start(params.sessionId);
-      coordinator.dispatch('PREFLIGHT');
-    }
 
     (async () => {
       if (!params.sessionId) {
@@ -46,6 +38,11 @@ export default function SessionScreen() {
 
       const found = await archive.getSessionById(params.sessionId);
       if (cancelled) return;
+      if (found && ['recap_ready', 'recap_unavailable'].includes(found.state)) {
+        router.replace({ pathname: '/recap/[sessionId]', params: { sessionId: found.id } });
+        return;
+      }
+      if (found) coordinator.start(found.id, 'preflight');
       setPersistedSession(found);
       setSessionLoading(false);
     })();
@@ -56,6 +53,8 @@ export default function SessionScreen() {
     // This route instance owns one durable session id.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [params.sessionId]);
+
+  const mission = MISSION_CATALOG.find(m => m.id === persistedSession?.missionId);
 
   if (sessionLoading) {
     return (
@@ -98,10 +97,7 @@ export default function SessionScreen() {
       skillEvidence,
       phraseEvidence
     );
-    coordinator.dispatch('END');
-    coordinator.dispatch('ENDED');
-    coordinator.dispatch('ASSESS_START');
-    coordinator.dispatch('ASSESS_OK');
+    await coordinator.dispatch('ASSESS_OK');
 
     router.replace({ pathname: '/recap/[sessionId]', params: { sessionId: session.id } });
   };

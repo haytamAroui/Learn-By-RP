@@ -64,6 +64,7 @@ async function getStore(): Promise<SceneStore> {
 
 export async function createHostedSession(params: {
   sessionId: string;
+  ownerIdentity?: string;
   sceneId: string;
   sceneVersion?: number;
   missionId: string;
@@ -81,6 +82,7 @@ export async function createHostedSession(params: {
 
   const record: HostedSessionRecord = {
     sessionId: params.sessionId,
+    ownerIdentity: params.ownerIdentity ?? 'local-test-owner',
     sceneId: scene.id,
     sceneVersion: params.sceneVersion ?? scene.version,
     missionId: params.missionId,
@@ -90,8 +92,15 @@ export async function createHostedSession(params: {
     createdAt: now,
   };
 
-  await store.put(record);
-  return record;
+  return store.transaction(async tx => {
+    const existing = await tx.get(record.sessionId);
+    if (existing) {
+      if (existing.ownerIdentity !== record.ownerIdentity) throw Object.assign(new Error('Session id is already owned'), { status: 404 });
+      return existing;
+    }
+    await tx.put(record);
+    return record;
+  });
 }
 
 export async function getHostedSession(sessionId: string): Promise<HostedSessionRecord | null> {
@@ -155,7 +164,7 @@ function checkpointMatchesSceneState(
 }
 
 async function rebuildAttemptState(
-  store: SceneStore,
+  store: Pick<SceneStore, 'listEvents'>,
   record: HostedSessionRecord,
   scene: SceneDefinition,
   attemptId: string,
@@ -272,18 +281,21 @@ export async function rebuildSceneStateFromEventLog(
  * persist the repaired snapshot, then mark the hosted session reconciled.
  */
 export async function reconcileHostedSession(
-  sessionId: string
+  sessionId: string,
+  ownerIdentity?: string
 ): Promise<HostedSessionRecord> {
   const store = await getStore();
-  const record = await store.get(sessionId);
-  if (!record) {
-    throw new Error(`Unknown hosted session: ${sessionId}`);
-  }
-
-  record.state = await rebuildSceneStateFromEventLog(sessionId);
-  record.reconciledAt = new Date().toISOString();
-  await store.put(record);
-  return record;
+  return store.transaction(async tx => {
+    const record = await tx.get(sessionId);
+    if (!record) throw new Error(`Unknown hosted session: ${sessionId}`);
+    if (ownerIdentity && record.ownerIdentity !== ownerIdentity) throw Object.assign(new Error('Unknown session'), { status: 404 });
+    const scene = getScene(record.sceneId);
+    if (!scene || scene.version !== record.sceneVersion) throw new Error('Hosted scene version cannot be reconciled');
+    record.state = await rebuildAttemptState(tx, record, scene, record.state.attemptId);
+    record.reconciledAt = new Date().toISOString();
+    await tx.put(record);
+    return record;
+  });
 }
 
 /**
@@ -294,14 +306,17 @@ export async function reconcileHostedSession(
  * duplicate cannot apply twice even if the client is replaced.
  */
 export async function applySceneAction(
-  proposal: SceneActionProposal
+  proposal: SceneActionProposal,
+  ownerIdentity?: string
 ): Promise<SceneActionResult> {
   const store = await getStore();
-  const record = await store.get(proposal.sessionId);
+  return store.transaction(async tx => {
+  const record = await tx.get(proposal.sessionId);
 
   if (!record) {
     throw new Error(`Unknown hosted session: ${proposal.sessionId}`);
   }
+  if (ownerIdentity && record.ownerIdentity !== ownerIdentity) throw Object.assign(new Error('Unknown session'), { status: 404 });
 
   const scene = getScene(record.sceneId);
   if (!scene) {
@@ -325,7 +340,7 @@ export async function applySceneAction(
   }
 
   // Already applied? Return the stored result without re-evaluating.
-  const prior = await store.getResult(proposal.sessionId, proposal.actionId);
+  const prior = await tx.getResult(proposal.sessionId, proposal.actionId);
   if (prior) {
     return { ...prior, deduplicated: true };
   }
@@ -333,8 +348,6 @@ export async function applySceneAction(
   // Build the applied-results map the reducer consults, so a duplicate within
   // one process short-circuits before touching the database again.
   const appliedResults = new Map<string, SceneActionResult>();
-  const priorResult = await store.getResult(proposal.sessionId, proposal.actionId);
-  if (priorResult) appliedResults.set(proposal.actionId, priorResult);
 
   const result = reduceSceneAction({
     scene,
@@ -345,28 +358,27 @@ export async function applySceneAction(
 
   // Persist the first verdict for every actionId, accepted or rejected. A retry
   // on any channel returns this exact result before re-running validation.
-  await store.putResult(proposal.sessionId, proposal, result);
+  await tx.putResult(proposal.sessionId, proposal, result);
 
   if (result.accepted) {
     record.state = applyResult(scene, record.state, result);
-    await store.put(record);
+    await tx.put(record);
   }
 
   return result;
+  });
 }
 
-export async function closeHostedSession(sessionId: string): Promise<HostedSessionRecord> {
+export async function closeHostedSession(sessionId: string, ownerIdentity?: string): Promise<HostedSessionRecord> {
   const store = await getStore();
-  const record = await store.get(sessionId);
-
-  if (!record) {
-    throw new Error(`Unknown hosted session: ${sessionId}`);
-  }
-
-  // Close is idempotent: calling it twice yields the same closed session.
-  record.closedAt = record.closedAt ?? new Date().toISOString();
-  await store.put(record);
-  return record;
+  return store.transaction(async tx => {
+    const record = await tx.get(sessionId);
+    if (!record) throw new Error(`Unknown hosted session: ${sessionId}`);
+    if (ownerIdentity && record.ownerIdentity !== ownerIdentity) throw Object.assign(new Error('Unknown session'), { status: 404 });
+    record.closedAt = record.closedAt ?? new Date().toISOString();
+    await tx.put(record);
+    return record;
+  });
 }
 
 /**
@@ -375,7 +387,8 @@ export async function closeHostedSession(sessionId: string): Promise<HostedSessi
  */
 export async function forkScene(
   sessionId: string,
-  request: SceneForkRequest
+  request: SceneForkRequest,
+  ownerIdentity?: string
 ): Promise<{
   attemptId: string;
   parentAttemptId: string;
@@ -385,11 +398,13 @@ export async function forkScene(
   assertCheckpointMetadata(request.checkpoint);
 
   const store = await getStore();
-  const record = await store.get(sessionId);
+  return store.transaction(async tx => {
+  const record = await tx.get(sessionId);
 
   if (!record) {
     throw new Error(`Unknown hosted session: ${sessionId}`);
   }
+  if (ownerIdentity && record.ownerIdentity !== ownerIdentity) throw Object.assign(new Error('Unknown session'), { status: 404 });
 
   const scene = getScene(record.sceneId);
   if (!scene) {
@@ -398,7 +413,7 @@ export async function forkScene(
 
   const parentAttemptId = record.state.attemptId;
   const checkpointState = await rebuildAttemptState(
-    store,
+    tx,
     record,
     scene,
     parentAttemptId,
@@ -430,7 +445,7 @@ export async function forkScene(
     isFinished: false,
   };
 
-  await store.put(record);
+  await tx.put(record);
 
   return {
     attemptId,
@@ -438,15 +453,25 @@ export async function forkScene(
     checkpoint: request.checkpoint,
     rehearsal: request.rehearsal,
   };
+  });
 }
 
 /**
  * Sessions left open when the process died, for a recovery worker to reconcile
  * rather than silently expiring (§11.4, §15.3).
  */
-export async function listAbandonedSessions(olderThanMs = 5 * 60_000) {
+export async function listAbandonedSessions(olderThanMs = 5 * 60_000, ownerIdentity?: string) {
   const store = await getStore();
-  return store.listAbandoned(olderThanMs);
+  return store.listAbandoned(olderThanMs, ownerIdentity);
+}
+
+export async function deleteHostedSession(sessionId: string, ownerIdentity: string): Promise<void> {
+  const store = await getStore();
+  await store.transaction(async tx => {
+    const record = await tx.get(sessionId);
+    if (!record || record.ownerIdentity !== ownerIdentity) return;
+    await tx.deleteSession(sessionId);
+  });
 }
 
 export async function markSessionReconciled(sessionId: string): Promise<void> {

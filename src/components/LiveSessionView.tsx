@@ -51,6 +51,10 @@ import type {
 } from '../providers/conversation/types';
 import { speakWithBestAvailable } from '../providers/voice/speechOutput';
 import { useI18n } from '../features/i18n';
+import { useArchive } from '../features/archive/ArchiveProvider';
+import { archiveRepository } from '../features/archive/archiveRepository';
+import { SessionJournal } from '../features/session/SessionJournal';
+import { useSessionCoordinator } from '../features/session/SessionProvider';
 import {
   buildLocalObservations,
   EMPTY_VALIDATED_PHRASE_EVIDENCE,
@@ -75,6 +79,7 @@ import {
   syncAuthoredOpportunities,
 } from '../features/roleplay/opportunityRuntime';
 import { getScene } from '../content/scenes';
+import { getBelgianDutchOpeningGreeting } from '../features/roleplay/openingGreeting';
 import { COMMUNICATIVE_SKILLS_CATALOG } from '../data/missions';
 import {
   FinalizedAttemptEvidence,
@@ -133,7 +138,7 @@ interface LiveSessionViewProps {
     session: SessionRecord,
     skillEvidence: ValidatedSkillEvidence,
     phraseEvidence: ValidatedPhraseEvidence
-  ) => void;
+  ) => Promise<void>;
 }
 
 /**
@@ -234,6 +239,21 @@ function normalizeAssessmentResponse(
   };
 }
 
+function sessionOutcomeFromScene(
+  outcome: TaskOutcome
+): SessionRecord['taskOutcome'] {
+  switch (outcome) {
+    case 'achieved':
+      return 'completed';
+    case 'partial':
+      return 'partly_completed';
+    case 'not_achieved':
+      return 'changed_direction';
+    default:
+      return 'unknown';
+  }
+}
+
 /**
  * Normalises the assessor's skill proposals.
  *
@@ -331,6 +351,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   onEndSession,
 }) => {
   const { t, language } = useI18n();
+  const { consent } = useArchive();
+  const coordinator = useSessionCoordinator();
+  const [saveError, setSaveError] = useState(false);
+  const saveErrorRef = useRef(false);
+  const isRetryingRef = useRef(false);
+  const voiceGranted = consent.voice?.granted === true && !consent.voice.withdrawnAt;
+  const analysisGranted = consent.savedAnalysis?.granted === true && !consent.savedAnalysis.withdrawnAt;
+  const consentRef = useRef({ voice: voiceGranted, analysis: analysisGranted });
+  consentRef.current = { voice: voiceGranted, analysis: analysisGranted };
   const insets = useSafeAreaInsets();
 
   const buildHonestSummary = (
@@ -348,7 +377,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const mode = initialSession.mode;
   const coldAttempt = initialSession.coldAttempt;
   const [attemptId, setAttemptId] = useState(
-    () => initialSession.passages.at(-1)?.attemptId ?? 'attempt-1'
+    () => initialSession.activeAttemptId ?? initialSession.passages.at(-1)?.attemptId ?? 'attempt-1'
   );
   const [passages, setPassages] = useState<Passage[]>(() => initialSession.passages);
   const [supportExposures, setSupportExposures] = useState<SupportExposure[]>(
@@ -468,9 +497,21 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const sceneStateRef = useRef(sceneState);
   const passagesRef = useRef(passages);
   const supportExposuresRef = useRef(supportExposures);
-  const priorAttemptPassagesRef = useRef<Passage[]>([]);
+  const priorAttemptPassagesRef = useRef<Passage[]>(initialSession.passages);
+  const attemptHistoryRef = useRef<NonNullable<SessionRecord['attemptHistory']>>(initialSession.attemptHistory ?? [{ id: 'attempt-1', rehearsal: false, createdAt: initialSession.startedAt }]);
   const finalizedAttemptEvidenceRef = useRef<FinalizedAttemptEvidence[]>([]);
   const finalizedAttemptIdsRef = useRef<Set<string>>(new Set());
+  useEffect(() => {
+    if (!voiceGranted) {
+      voiceTransportRef.current?.stopListening();
+      setInterimUserText('');
+      setShowTypedInput(true);
+    }
+    if (!analysisGranted) {
+      finalizedAttemptEvidenceRef.current = [];
+      finalizedAttemptIdsRef.current.clear();
+    }
+  }, [voiceGranted, analysisGranted]);
   const opportunityInstancesRef = useRef<OpportunityInstance[]>(
     initialSession.opportunityInstances ?? []
   );
@@ -487,6 +528,40 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   supportExposuresRef.current = supportExposures;
   isMutedRef.current = isMuted;
   isSceneFrozenRef.current = isSceneFrozen;
+  const attemptIdRef = useRef(attemptId);
+  attemptIdRef.current = attemptId;
+  const journalRef = useRef<SessionJournal | null>(null);
+  if (!journalRef.current) journalRef.current = new SessionJournal(session => archiveRepository.saveSessionProgress(session));
+  const persistProgress = useCallback(async (overrides: Partial<SessionRecord> = {}) => {
+    const snapshot: SessionRecord = {
+      ...initialSession,
+      activeAttemptId: attemptIdRef.current,
+      attemptHistory: attemptHistoryRef.current,
+      state: isSceneFrozenRef.current ? 'paused' : 'live',
+      endedAt: undefined,
+      endReason: undefined,
+      passages: mergeAttemptPassages(priorAttemptPassagesRef.current, passagesRef.current),
+      supportExposures: supportExposuresRef.current,
+      sceneState: sceneStateRef.current,
+      opportunityInstances: opportunityInstancesRef.current,
+      observations: [], skillObservations: [], skillLapses: [],
+      ...overrides,
+    };
+    try {
+      await journalRef.current!.save(snapshot);
+      saveErrorRef.current = false;
+      if (mountedRef.current) setSaveError(false);
+    } catch (error) {
+      saveErrorRef.current = true;
+      if (mountedRef.current) setSaveError(true);
+      throw error;
+    }
+  }, [initialSession]);
+
+  useEffect(() => {
+    if (isEndingRef.current) return;
+    void persistProgress().catch(() => undefined);
+  }, [passages, supportExposures, sceneState, attemptId, persistProgress]);
 
   const runDirectorCadence = useCallback(
     (
@@ -596,6 +671,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const buildInitialGreeting = useCallback(
     (target: MissionDefinition): { greeting: string; meaning: string } => {
       const { language: lang, category, title } = target;
+
+      if (lang === 'nl') return getBelgianDutchOpeningGreeting(target);
 
       if (lang === 'fr') {
         if (category === 'problems') {
@@ -740,7 +817,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const handleUserMessage = useCallback(
     async (target: MissionDefinition, text: string, modality: 'spoken' | 'typed') => {
       const trimmed = text.trim();
-      if (!trimmed || isEndingRef.current) return;
+      if (!trimmed || isEndingRef.current || isRetryingRef.current || saveErrorRef.current) return;
 
       // Every turn takes a token. If the session ends or a newer turn begins while
       // this reply is in flight, the response is dropped rather than committed.
@@ -795,6 +872,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       setVoiceState('connecting');
 
       try {
+        passagesRef.current = updatedPassages;
+        await persistProgress({ passages: mergeAttemptPassages(priorAttemptPassagesRef.current, updatedPassages) });
+        if (!isGenerationCurrent(generation) || isEndingRef.current) return;
         const provider = conversationProviderRef.current;
         if (!provider) {
           throw new Error('Conversation provider is not initialized');
@@ -868,7 +948,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           ],
         };
 
-        setPassages([...updatedPassages, characterPassage]);
+        const completedTurn = [...updatedPassages, characterPassage];
+        passagesRef.current = completedTurn;
+        setPassages(completedTurn);
+        await persistProgress({ passages: mergeAttemptPassages(priorAttemptPassagesRef.current, completedTurn) });
+        if (!isGenerationCurrent(generation) || isEndingRef.current) return;
         runDirectorCadence({
           type: 'actor_turn_completed',
           turnId: characterPassage.id,
@@ -897,6 +981,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           setVoiceState('idle');
         }
       } catch (err) {
+        if (!isGenerationCurrent(generation) || isEndingRef.current) return;
         console.error('Actor respond error', err);
 
         /*
@@ -1057,7 +1142,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           learnerGoal: mission.learnerGoal,
           ...target,
         });
-        setActiveCoachAdvice(data.hint);
+        if (isEndingRef.current || attemptId !== attemptIdRef.current) return;
+        // The exposed help must be durable before it is shown.
 
         const exposure: SupportExposure = {
           id: `exp-${Date.now()}`,
@@ -1075,7 +1161,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           policyVersion: LEARNING_POLICY_VERSION,
           recordedAt: new Date().toISOString(),
         };
-        setSupportExposures(prev => [...prev, exposure]);
+        const nextSupport = [...supportExposuresRef.current, exposure];
+        supportExposuresRef.current = nextSupport;
+        setSupportExposures(nextSupport);
+        await persistProgress({ supportExposures: nextSupport });
+        setActiveCoachAdvice(data.hint);
 
         const scopedPhraseId = data.targetPhraseId ?? target.targetPhraseId;
         const scopedPhrase = scopedPhraseId
@@ -1093,7 +1183,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         }
       } catch (e) {
         setActiveCoachAudioTarget(null);
-        setActiveCoachAdvice('Try expressing your order in simple, clear words.');
+        if (!saveErrorRef.current) setActiveCoachAdvice('Try expressing your order in simple, clear words.');
       } finally {
         setIsCoachLoading(false);
       }
@@ -1101,10 +1191,20 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     [attemptId, explanationLanguage, mission, sessionId]
   );
 
+  const handleUserMessageRef = useRef(handleUserMessage);
+  handleUserMessageRef.current = handleUserMessage;
+  const runDirectorCadenceRef = useRef(runDirectorCadence);
+  runDirectorCadenceRef.current = runDirectorCadence;
+
   useEffect(() => {
     if (!mission) return;
-
+    let active = true;
+    mountedRef.current = true;
     isEndingRef.current = false;
+    void coordinator.dispatch('CONNECT').then(() => coordinator.dispatch('CONNECTED')).catch(() => {
+      saveErrorRef.current = true;
+      if (active) setSaveError(true);
+    });
 
     // Attach the scene mirror when this mission has a released SceneDefinition.
     // Without one the session still runs; the client just does not mirror
@@ -1120,7 +1220,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       );
       sceneMirrorRef.current = mirror;
       void mirror.begin(attemptId).then(snapshot => {
-        if (!snapshot || !mountedRef.current) return;
+        if (!snapshot || !active) return;
         setSceneState(prev => ({
           ...prev,
           sceneId: snapshot.sceneId,
@@ -1210,9 +1310,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           setAudioLevel(event.payload);
           break;
         case 'speech_result':
+          if (!consentRef.current.voice) return;
           if (event.payload.isFinal) {
             setInterimUserText('');
-            void handleUserMessage(mission, event.payload.transcript, 'spoken');
+            void handleUserMessageRef.current(mission, event.payload.transcript, 'spoken');
           } else {
             setInterimUserText(event.payload.transcript);
           }
@@ -1222,9 +1323,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           break;
         case 'playback_end':
           setVoiceState('idle');
-          if (!isSceneFrozenRef.current && !isMutedRef.current && !isEndingRef.current) {
-            transport.startListening();
-          }
           break;
         case 'interrupted':
           break;
@@ -1251,13 +1349,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     });
 
     const startInitialTurn = async () => {
+      if (initialSession.passages.length > 0) {
+        setVoiceState('idle');
+        return;
+      }
       const { greeting, meaning } = buildInitialGreeting(mission);
       const now = Date.now();
 
       const initialPassage: Passage = {
         id: `p-${now}`,
         sessionId,
-        attemptId: 'attempt-1',
+        attemptId: attemptIdRef.current,
         speaker: 'assistant',
         revisionKey: 'rev-1',
         assemblyVersion: 1,
@@ -1271,8 +1373,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         ],
       };
 
+      passagesRef.current = [initialPassage];
       setPassages([initialPassage]);
-      runDirectorCadence({
+      await persistProgress({ passages: [initialPassage] });
+      if (!active) return;
+      runDirectorCadenceRef.current({
         type: 'actor_turn_completed',
         turnId: initialPassage.id,
       });
@@ -1286,9 +1391,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       cueLearnerTurn();
     };
 
-    void startInitialTurn();
+    void startInitialTurn().catch(() => { if (active) setVoiceState('error'); });
 
     return () => {
+      active = false;
       isEndingRef.current = true;
       mountedRef.current = false;
       unsubscribe();
@@ -1300,18 +1406,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       void sceneMirrorRef.current?.close();
       sceneMirrorRef.current = null;
     };
-  }, [
-    mission,
-    sessionId,
-    coldAttempt,
-    buildInitialGreeting,
-    cueLearnerTurn,
-    effectiveSpeechRate,
-    preferredSpeechRate,
-    slowerSpeechDefault,
-    handleUserMessage,
-    runDirectorCadence,
-  ]);
+    // Runtime resources belong to this session, not to an attempt callback.
+  }, [mission, sessionId]);
 
   useEffect(() => {
     const timer = setTimeout(() => {
@@ -1336,13 +1432,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       setActiveCoachAdvice(null);
       setActiveCoachAudioTarget(null);
       setVoiceState('idle');
-      voiceTransportRef.current?.startListening();
     }
   };
 
   const finalizeAttemptBeforeRetry = useCallback(
     async (parentAttemptId: string, allPassages: Passage[]) => {
-      if (!mission || finalizedAttemptIdsRef.current.has(parentAttemptId)) return;
+      if (!mission || !consentRef.current.analysis || finalizedAttemptIdsRef.current.has(parentAttemptId)) return;
 
       const attemptPassages = passagesForAttempt(
         allPassages,
@@ -1403,12 +1498,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           parentAttemptId
         );
       } catch (error) {
+        if ((error as { status?: number })?.status === 403) return;
         console.warn(
           'Could not remotely assess parent attempt before retry; preserving grounded local phrase evidence only',
           error
         );
       }
 
+      if (!consentRef.current.analysis) return;
       let phraseObservations: LearningObservation[] = [];
       let validatedPhraseEvidence = EMPTY_VALIDATED_PHRASE_EVIDENCE;
       let proposedOutcome: TaskOutcome = 'unknown';
@@ -1418,6 +1515,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           proposal,
           attemptPassages,
           evidenceSupportExposures,
+          { sessionId, attemptId: parentAttemptId, candidates: mission.usefulPhrases },
           isRehearsalAttempt
         );
         phraseObservations = validated.validatedObservations;
@@ -1498,6 +1596,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     const currentPassages = passagesRef.current;
     const mirror = sceneMirrorRef.current;
     if (currentPassages.length <= 1 || !mirror) return;
+    if (isRetryingRef.current || isEndingRef.current) return;
+    isRetryingRef.current = true;
+    invalidateGeneration();
+    conversationProviderRef.current?.cancel?.();
+    try {
 
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
@@ -1559,27 +1662,32 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     if (!forkedAttemptId) {
       setSceneEventNotice(t.live.sceneDirectorUnavailable);
       setTimeout(() => setSceneEventNotice(null), 4000);
-      voiceTransportRef.current?.startListening();
       return;
     }
 
     const retryRecordedAt = new Date().toISOString();
+    attemptHistoryRef.current = [...attemptHistoryRef.current, {
+      id: forkedAttemptId,
+      parentAttemptId: attemptId,
+      checkpointId: checkpoint.id,
+      sceneRevision: checkpoint.sceneRevision,
+      rehearsal: true,
+      createdAt: retryRecordedAt,
+    }];
     priorAttemptPassagesRef.current = mergeAttemptPassages(
       priorAttemptPassagesRef.current,
       currentPassages
     );
 
-    setSupportExposures(prev => {
       const inherited = inheritSupportForRetry({
-        exposures: prev,
+        exposures: supportExposuresRef.current,
         fromAttemptId: attemptId,
         toAttemptId: forkedAttemptId,
         supportLedgerHighWaterMark: checkpoint.supportLedgerHighWaterMark,
         recordedAt: retryRecordedAt,
       });
       supportExposuresRef.current = inherited;
-      return inherited;
-    });
+      setSupportExposures(inherited);
 
     const forkState = mirror.snapshot;
     if (forkState) {
@@ -1590,8 +1698,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         },
         forkState
       );
-      setSceneState(prev => ({
-        ...prev,
+      const restoredScene = {
+        ...sceneStateRef.current,
         sceneId: forkState.sceneId,
         revision: forkState.revision,
         facts: forkState.facts,
@@ -1599,17 +1707,31 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         checkpoints: forkState.checkpoints,
         isFinished: forkState.isFinished,
         outcome: forkState.outcome,
-      }));
+      };
+      sceneStateRef.current = restoredScene;
+      setSceneState(restoredScene);
     }
 
     setAttemptId(forkedAttemptId);
-    setPassages(currentPassages.slice(0, checkpoint.passageIndex + 1));
+    attemptIdRef.current = forkedAttemptId;
+    const restoredPassages = currentPassages.slice(0, checkpoint.passageIndex + 1);
+    passagesRef.current = restoredPassages;
+    setPassages(restoredPassages);
+    await persistProgress({ activeAttemptId: forkedAttemptId, supportExposures: inherited,
+      sceneState: sceneStateRef.current, passages: priorAttemptPassagesRef.current });
     setIsSceneFrozen(false);
     setActiveCoachAdvice(null);
     setActiveCoachAudioTarget(null);
     setSceneEventNotice(t.live.rehearsalRestored);
     setTimeout(() => setSceneEventNotice(null), 4000);
-    voiceTransportRef.current?.startListening();
+    } catch (error) {
+      setSaveError(true);
+      saveErrorRef.current = true;
+      setShowTypedInput(true);
+      console.warn('Checkpoint retry did not complete', error);
+    } finally {
+      isRetryingRef.current = false;
+    }
   };
 
   /**
@@ -1641,6 +1763,13 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     voiceTransportRef.current?.stopListening();
     setVoiceState('ending');
 
+    try {
+    await persistProgress({ state: 'ending', endReason });
+    await journalRef.current!.flush();
+    await coordinator.dispatch('END');
+    await coordinator.dispatch('ENDED');
+    await coordinator.dispatch('ASSESS_START');
+
     // Assessment only sees the current attempt. The archive keeps every prior
     // attempt so retry never erases learner evidence or transcript provenance.
     const visiblePassages = passagesRef.current;
@@ -1656,8 +1785,32 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       priorAttemptPassagesRef.current,
       visiblePassages
     );
+    for (const priorId of new Set(archivedPassages.map(p => p.attemptId))) {
+      if (priorId !== attemptId) await finalizeAttemptBeforeRetry(priorId, archivedPassages);
+    }
     const finalSceneState = sceneStateRef.current;
     const wasRehearsal = attemptId !== 'attempt-1';
+    const completeWithoutAnalysis = () => onEndSession({
+      ...initialSession,
+      activeAttemptId: attemptIdRef.current,
+      attemptHistory: attemptHistoryRef.current,
+      state: 'recap_ready',
+      endedAt: new Date().toISOString(),
+      endReason,
+      passages: archivedPassages,
+      supportExposures,
+      sceneState: finalSceneState,
+      observations: [],
+      skillObservations: [],
+      skillLapses: [],
+      // Analysis availability and learning evidence do not rewrite what the
+      // authored scene itself reached.
+      taskOutcome: sessionOutcomeFromScene(finalSceneState.outcome),
+      summary: t.settings.analysisDisabledNotice,
+      actionableFeedback: [],
+      operationalTelemetry: operationalTelemetryRef.current,
+    }, EMPTY_VALIDATED_SKILL_EVIDENCE, EMPTY_VALIDATED_PHRASE_EVIDENCE);
+    if (!consentRef.current.analysis) return await completeWithoutAnalysis();
 
     let finalOpportunityInstances = opportunityInstancesRef.current;
     const authoredScene = mission.sceneId ? getScene(mission.sceneId) : undefined;
@@ -1728,10 +1881,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       lastAssessmentResponse = response;
       proposal = normalizeAssessmentResponse(response, sessionId, attemptId);
     } catch (fetchErr) {
+      if ((fetchErr as { status?: number })?.status === 403) return await completeWithoutAnalysis();
       assessmentUnavailable = true;
       console.warn('Remote assessment unavailable, using local grounded evaluation:', fetchErr);
     }
 
+    if (!consentRef.current.analysis) return await completeWithoutAnalysis();
     let finalObservations: LearningObservation[] = [];
     let currentPhraseEvidence = EMPTY_VALIDATED_PHRASE_EVIDENCE;
     let rejectedCount = 0;
@@ -1743,6 +1898,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         proposal,
         currentAttemptPassages,
         evidenceSupportExposures,
+        { sessionId, attemptId, candidates: mission.usefulPhrases },
         wasRehearsal
       );
       finalObservations = validated.validatedObservations;
@@ -1852,29 +2008,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       },
     });
 
-    // Map the assessor's scene-level outcome onto the receipt's vocabulary.
-    // `unknown` is preserved rather than collapsed into a flattering label.
-    let resolvedOutcome: SessionRecord['taskOutcome'];
-    if (!hasLearnerSpeech) {
-      // Silence is not a lapse, and it is not evidence of success either.
-      resolvedOutcome = 'unknown';
-    } else {
-      switch (proposedOutcome) {
-        case 'achieved':
-          resolvedOutcome = 'completed';
-          break;
-        case 'partial':
-          resolvedOutcome = 'partly_completed';
-          break;
-        case 'not_achieved':
-          resolvedOutcome = 'changed_direction';
-          break;
-        default:
-          resolvedOutcome = 'unknown';
-      }
-    }
-
-    onEndSession({
+    await onEndSession({
+      ...initialSession,
+      activeAttemptId: attemptIdRef.current,
+      attemptHistory: attemptHistoryRef.current,
       id: sessionId,
       missionId: mission.id,
       missionVersion: mission.version,
@@ -1891,7 +2028,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       // Phrase observations are persisted only through the opaque validator
       // bundle passed beside this read-model record.
       observations: [],
-      taskOutcome: resolvedOutcome,
+      // The assessor's taskOutcome is used only as validator context for skill
+      // evidence. Program completion comes from the authored scene reducer.
+      taskOutcome: sessionOutcomeFromScene(finalSceneState.outcome),
       sceneState: finalSceneState,
       summary: proposal?.outcomeReasoning ?? buildHonestSummary(assessmentUnavailable, mergedEvidence.observations.length, hasLearnerSpeech),
       actionableFeedback: proposal?.actionableFeedback ?? [
@@ -1904,6 +2043,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     },
     mergedEvidence.validatedSkillEvidence,
     mergedEvidence.validatedPhraseEvidence);
+    } catch (error) {
+      isEndingRef.current = false;
+      setSaveError(true);
+      saveErrorRef.current = true;
+      setShowTypedInput(true);
+      setVoiceState('error');
+      coordinator.start(sessionId, 'live');
+      console.warn('Session finalization did not complete', error);
+    }
   }, [
     attemptId,
     coldAttempt,
@@ -2316,6 +2464,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           style={{ paddingBottom: Math.max(insets.bottom, 12) }}
         >
           <View className="w-full self-center gap-3" style={{ maxWidth: 720 }}>
+            {!voiceGranted ? <Text className="text-xs text-muted">{t.settings.voiceDisabledNotice}</Text> : null}
+            {!analysisGranted ? <Text className="text-xs text-muted">{t.settings.analysisDisabledNotice}</Text> : null}
+            {saveError ? <View className="gap-2 rounded-xl bg-warning-soft p-3">
+              <Text className="text-sm text-ink">{t.settings.sessionSaveFailed}</Text>
+              <Button label={t.settings.retrySave} onPress={() => void persistProgress().catch(() => undefined)} size="sm" />
+            </View> : null}
             <View className="flex-row items-center justify-center gap-2">
               <View className={`h-2.5 w-2.5 rounded-full ${VOICE_DOT[voiceState]}`} />
               <Text className="text-xs font-semibold capitalize text-muted">

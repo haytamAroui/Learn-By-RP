@@ -1,164 +1,83 @@
 import { expect, test } from '@playwright/test';
+import { MISSION_CATALOG } from '../src/data/missions';
 
-const CONSENT_VERSION = '2026-09-30.1';
-
-async function seedArchive(page: any) {
-  await page.goto('/');
-  await page.evaluate(
-    async (consentVersion: string) => {
-      await new Promise<void>((resolve, reject) => {
-        const request = indexedDB.deleteDatabase('mission-coach-archive');
-        request.onsuccess = () => resolve();
-        request.onerror = () => reject(request.error);
-        request.onblocked = () => resolve();
-      });
-
-      await new Promise<void>((resolve, reject) => {
-        const open = indexedDB.open('mission-coach-archive', 1);
-        const stores = [
-          'meta',
-          'sessions',
-          'observations',
-          'skill_observations',
-          'skill_lapses',
-          'phrases',
-          'consent',
-          'deletion_markers',
-          'pending_jobs',
-        ];
-
-        open.onupgradeneeded = () => {
-          for (const name of stores) {
-            if (!open.result.objectStoreNames.contains(name)) {
-              open.result.createObjectStore(name);
-            }
-          }
-        };
-
-        open.onerror = () => reject(open.error);
-        open.onsuccess = () => {
-          const db = open.result;
-          const tx = db.transaction(stores, 'readwrite');
-
-          tx.objectStore('meta').put(
-            {
-              id: 'current',
-              payload: {
-                learningLanguage: 'es',
-                explanationLanguage: 'en',
-                comfortLevel: 'beginner',
-                primaryGoal: 'travel',
-                modeDefault: 'guided',
-                voiceProcessingConsent: true,
-                savedAnalysisConsent: true,
-                audioPlaybackEnabled: false,
-                autoPlaySpeech: false,
-                speechRate: 1,
-              },
-            },
-            'current'
-          );
-
-          const decidedAt = new Date().toISOString();
-          for (const scope of ['voice', 'saved_analysis']) {
-            tx.objectStore('consent').put(
-              {
-                id: scope,
-                scope,
-                granted: true,
-                version: consentVersion,
-                decidedAt,
-              },
-              scope
-            );
-          }
-
-          tx.oncomplete = () => {
-            db.close();
-            resolve();
-          };
-          tx.onerror = () => reject(tx.error);
-        };
-      });
-    },
-    CONSENT_VERSION
-  );
-
-  await page.reload();
-  await page.waitForLoadState('networkidle');
-}
-
-test.describe('Transcript survival across dropped connection mid-turn', () => {
-  test('retains user passage in transcript, restores typed text in input box, and recovers', async ({ page }) => {
-    await seedArchive(page);
-
-    await page.goto(
-      '/session/test-session-drop?missionId=mission-es-cafe-sol&mode=guided&coldAttempt=true'
-    );
-    await page.waitForLoadState('networkidle');
-    await page.waitForTimeout(1000);
-
-    // Open typed input
-    const typeButton = page.getByRole('button', { name: /Type instead/i });
-    await expect(typeButton).toBeVisible();
-    await typeButton.click();
-
-    const inputField = page.getByPlaceholder(/Type your response/i);
-    await expect(inputField).toBeVisible();
-
-    const testSentence = 'Un café con leche y un croissant, por favor.';
-    await inputField.fill(testSentence);
-
-    // Simulate dropped connection / network cut on the actor response endpoint
-    await page.route('**/api/actor/respond', async (route) => {
-      await route.abort('failed');
-    });
-
-    const sendButton = page.getByRole('button', { name: 'Send' });
-    await expect(sendButton).toBeVisible();
-    await sendButton.click();
-
-    // 1. Verify user's sentence is recorded in the transcript
-    const transcriptPassage = page.locator('text="' + testSentence + '"');
-    await expect(transcriptPassage).toBeVisible({ timeout: 5000 });
-
-    // 2. Verify sentence returns to the input field so the learner does not lose it
-    await expect(inputField).toHaveValue(testSentence);
-
-    // 3. Verify error banner surfaces the non-leaking message and retry button
-    const errorBanner = page.getByText(/The connection dropped\. Retrying\./i);
-    await expect(errorBanner).toBeVisible();
-
-    const retryButton = page.getByRole('button', { name: /Retry connection/i });
-    await expect(retryButton).toBeVisible();
-
-    // 4. Test recovery: unroute and mock successful server response on retry
-    await page.unroute('**/api/actor/respond');
-    await page.route('**/api/actor/respond', async (route) => {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          replyText: '¡Por supuesto! Enseguida se lo traigo.',
-          meaning: 'Of course! I will bring it right away.',
-          proposedAction: null,
-        }),
-      });
-    });
-
-    await retryButton.click();
-
-    // 5. Verify the assistant's reply arrives and joins the transcript
-    const assistantReply = page.locator('text="¡Por supuesto! Enseguida se lo traigo."');
-    await expect(assistantReply).toBeVisible({ timeout: 5000 });
-
-    // 6. Verify user's sentence is STILL in the transcript (transcript survived!)
-    await expect(transcriptPassage).toBeVisible();
-
-    // 7. Verify the input field is now cleared after successful delivery
-    await expect(inputField).toHaveValue('');
-
-    // 8. Verify the error banner is gone
-    await expect(errorBanner).not.toBeVisible();
+test('durable learner turn survives provider failure, reload, explicit resume and finish', async ({ page }) => {
+  const mission = MISSION_CATALOG.find(m => m.id === 'mission-nl-be-koffiebar')!;
+  let actorCalls = 0;
+  await page.route('**/api/**', route => {
+    if (route.request().url().includes('/api/guest/identity')) {
+      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ token: 'test-guest-token' }) });
+    }
+    if (route.request().url().includes('/actor/respond')) {
+      actorCalls += 1;
+      return route.abort('failed');
+    }
+    return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
   });
+  await page.goto('/');
+  await page.evaluate(async savedAnalysis => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const request = indexedDB.open('mission-coach-archive', 1);
+      request.onupgradeneeded = () => {
+        for (const store of ['meta', 'sessions', 'observations', 'skill_observations', 'skill_lapses', 'phrases', 'consent', 'deletion_markers', 'pending_jobs']) {
+          if (!request.result.objectStoreNames.contains(store)) request.result.createObjectStore(store);
+        }
+      };
+      request.onsuccess = () => resolve(request.result);
+      request.onerror = () => reject(request.error);
+    });
+    const tx = db.transaction(['meta', 'consent', 'sessions'], 'readwrite');
+    const now = new Date().toISOString();
+    tx.objectStore('meta').put({ id: 'current', payload: {
+      learningLanguage: 'nl-BE', explanationLanguage: 'en', comfortLevel: 'beginner', primaryGoal: 'everyday',
+      modeDefault: 'guided', voiceProcessingConsent: false, savedAnalysisConsent: savedAnalysis,
+      audioPlaybackEnabled: false, autoPlaySpeech: false, speechRate: 1,
+    } }, 'current');
+    for (const scope of ['voice', 'saved_analysis']) {
+      tx.objectStore('consent').put({ id: scope, scope, granted: scope === 'saved_analysis' && savedAnalysis, version: '2026-09-30.1', decidedAt: now }, scope);
+    }
+    await new Promise<void>((resolve, reject) => { tx.oncomplete = () => resolve(); tx.onerror = () => reject(tx.error); });
+    db.close();
+  }, false);
+
+
+  await page.goto(`/mission/${mission.id}`);
+  await page.getByRole('button', { name: /Start Mission Now/i }).click();
+  await expect(page).toHaveURL(/session\//);
+  const sessionId = new URL(page.url()).pathname.split('/').at(-1)!;
+  const input = page.getByPlaceholder(/Type your response/i);
+  await expect(input).toBeVisible();
+  const learnerText = 'Een koffie, alstublieft.';
+  await input.fill(learnerText);
+  await page.getByRole('button', { name: 'Send', exact: true }).click();
+  await expect.poll(() => actorCalls).toBe(1);
+  const readSession = () => page.evaluate(async id => {
+    const db = await new Promise<IDBDatabase>((resolve, reject) => {
+      const req = indexedDB.open('mission-coach-archive', 1);
+      req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+    });
+    const value = await new Promise<any>((resolve, reject) => {
+      const req = db.transaction('sessions').objectStore('sessions').get(id);
+      req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error);
+    });
+    db.close(); return value;
+  }, sessionId);
+  await expect.poll(async () => (await readSession()).passages.some((p: any) => p.text === learnerText)).toBe(true);
+  const beforeReload = await readSession();
+  expect(beforeReload.endedAt).toBeUndefined();
+  expect(beforeReload.observations).toEqual([]);
+  await page.reload();
+  await expect(page).toHaveURL(/recovery/);
+  await page.getByRole('button', { name: 'Resume', exact: true }).click();
+  await expect(page).toHaveURL(new RegExp(`session/${sessionId}`));
+  await expect(page.getByText(learnerText, { exact: true }).first()).toBeVisible();
+  expect(actorCalls).toBe(1);
+  expect((await readSession()).passages).toEqual(beforeReload.passages);
+  await page.getByRole('button', { name: /End conversation/i }).last().click();
+  await expect(page).toHaveURL(new RegExp(`recap/${sessionId}`));
+  const completed = await readSession();
+  expect(completed.state).toBe('recap_ready');
+  expect(completed.passages.some((p: any) => p.text === learnerText)).toBe(true);
+  await page.reload();
+  await expect(page).toHaveURL(new RegExp(`recap/${sessionId}`));
 });

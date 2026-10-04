@@ -57,7 +57,7 @@ export default function ProgramRoute() {
             pathname: '/mission/[missionId]',
             params: {
               missionId: mission.id,
-              programId: program.id,
+              ...(options?.standalone ? {} : { programId: program.id }),
               ...(options?.finalSimulation ? { finalSimulation: '1' } : {}),
             },
           })

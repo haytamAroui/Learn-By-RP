@@ -11,7 +11,8 @@ import {
   Volume2,
 } from 'lucide-react-native';
 import { PhraseItem, Modality } from '../types';
-import { NativeVoiceTransport, VoiceEvent } from '../providers/voice';
+import { createVoiceTransport, VoiceEvent, VoiceTransport } from '../providers/voice';
+import { useArchive } from '../features/archive/ArchiveProvider';
 import { useI18n } from '../features/i18n';
 import { Button, Field, SectionLabel } from './ui';
 import { Sheet } from './Sheet';
@@ -23,6 +24,7 @@ interface DuePhrasesPracticeModalProps {
   onClose: () => void;
   onCompleted: () => void;
   onRecordReview: (input: {
+    practiceSessionId: string;
     phrase: PhraseItem;
     quote: string;
     modality: 'spoken' | 'typed';
@@ -48,6 +50,11 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   onRecordReview,
 }) => {
   const { t } = useI18n();
+  const { consent } = useArchive();
+  const voiceGranted = consent.voice?.granted === true && !consent.voice.withdrawnAt;
+  const analysisGranted = consent.savedAnalysis?.granted === true && !consent.savedAnalysis.withdrawnAt;
+  const voiceGrantedRef = useRef(voiceGranted);
+  voiceGrantedRef.current = voiceGranted;
   const [currentIndex, setCurrentIndex] = useState(0);
   const [revealed, setRevealed] = useState(false);
   const [userTranscript, setUserTranscript] = useState('');
@@ -61,7 +68,20 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   const [reviewedItems, setReviewedItems] = useState<ReviewedItem[]>([]);
   const [isFinished, setIsFinished] = useState(false);
 
-  const voiceTransportRef = useRef<NativeVoiceTransport | null>(null);
+  const voiceTransportRef = useRef<VoiceTransport | null>(null);
+  const practiceSessionIdRef = useRef('');
+  useEffect(() => {
+    if (visible) practiceSessionIdRef.current = `drill-practice-${Date.now()}-${Math.random().toString(36).slice(2, 10)}`;
+  }, [visible]);
+
+  useEffect(() => {
+    if (!voiceGranted) {
+      voiceTransportRef.current?.stopListening();
+      setIsListening(false);
+      setInterimText('');
+      setShowTypedInput(true);
+    }
+  }, [voiceGranted, visible]);
 
   const currentPhrase = duePhrases[currentIndex];
 
@@ -72,7 +92,7 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
       setUserTranscript('');
       setInterimText('');
       setTypedAnswer('');
-      setShowTypedInput(false);
+      setShowTypedInput(!voiceGranted);
       setAnswerRevealedBeforeAttempt(false);
       setModelAudioPlayedBeforeAttempt(false);
       setModalityUsed('spoken');
@@ -86,7 +106,7 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   useEffect(() => {
     if (!visible || !currentPhrase) return;
 
-    const transport = new NativeVoiceTransport();
+    const transport = createVoiceTransport();
     transport.setLanguage(currentPhrase.language);
     voiceTransportRef.current = transport;
 
@@ -99,6 +119,7 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
           setIsListening(false);
           break;
         case 'speech_result':
+          if (!voiceGrantedRef.current) return;
           if (event.payload.isFinal) {
             setUserTranscript(event.payload.transcript);
             setInterimText('');
@@ -184,7 +205,8 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
 
     // The UI reports observable facts. validateDrillReview() owns the retrieval
     // decision and the archive accepts only its opaque evidence bundle.
-    void onRecordReview({
+    if (analysisGranted) void onRecordReview({
+      practiceSessionId: practiceSessionIdRef.current,
       phrase: currentPhrase,
       quote,
       modality: modalityUsed,
@@ -205,7 +227,7 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
       setUserTranscript('');
       setInterimText('');
       setTypedAnswer('');
-      setShowTypedInput(false);
+      setShowTypedInput(!voiceGranted);
     } else {
       setIsFinished(true);
     }
@@ -222,6 +244,8 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   return (
     <Sheet visible onClose={handleFinish} title={t.drill.title} scrollable={false}>
       <Text className="-mt-2 text-xs text-muted">{counterText}</Text>
+      {!voiceGranted ? <Text className="text-xs text-muted">{t.settings.voiceDisabledNotice}</Text> : null}
+      {!analysisGranted ? <Text className="text-xs text-muted">{t.settings.analysisDisabledNotice}</Text> : null}
 
       {isFinished ? (
         <ScrollView className="flex-1" contentContainerStyle={{ gap: 18, paddingBottom: 16 }}>

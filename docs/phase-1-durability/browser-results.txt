@@ -1,0 +1,19 @@
+[WebServer] (node:13740) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:31508) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:55064) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 6 tests using 1 worker
+
+(node:21548) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [light] › e2e\checkpoint-durability.spec.ts:6:5 › checkpoint retry preserves the parent and keeps the active transport (1.3s)
+  ok 2 [light] › e2e\consent-boundaries.spec.ts:4:48 › typed live practice saves activity without analysis or evidence (1.0s)
+  ok 3 [light] › e2e\consent-boundaries.spec.ts:4:48 › a forbidden assessment cannot trigger local fallback evidence (1.0s)
+  ok 4 [light] › e2e\projection-integrity.spec.ts:4:48 › hiding the last observation clears recall and stays hidden after reopening Recap (1.3s)
+  ok 5 [light] › e2e\projection-integrity.spec.ts:4:48 › startup repairs old recall and recap caches for hidden evidence (856ms)
+  ok 6 [light] › e2e\transcript-survival.spec.ts:4:5 › durable learner turn survives provider failure, reload, explicit resume and finish (1.6s)
+
+  6 passed (10.2s)

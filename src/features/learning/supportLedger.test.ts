@@ -133,13 +133,13 @@ describe('meaning reveal is support', () => {
 });
 
 describe('an early-ended session is not a failed attempt', () => {
-  it('records a lapse for a naturally completed cold failure', () => {
+  it('keeps a failure unscored until its authored opportunity is qualified', () => {
     const lapses = deriveLapses(failingProposal, {
       ...baseContext,
       sessionEndReason: 'completed',
     });
 
-    expect(lapses.length).toBeGreaterThan(0);
+    expect(lapses).toEqual([]);
   });
 
   it.each([['user_ended'], ['time_limit'], ['error']] as const)(

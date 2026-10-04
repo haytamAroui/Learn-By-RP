@@ -1,5 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import 'fake-indexeddb/auto';
+import { IDBObjectStore as FakeObjectStore } from 'fake-indexeddb';
 import { createNodeSqliteAdapter, Db } from './db';
 import { __setDatabaseForTesting, migrate } from './database';
 import { archiveRepository as sqliteRepository } from './SqliteArchiveRepository';
@@ -13,7 +14,7 @@ import {
   SkillObservation,
   SupportExposure,
 } from '../../types';
-import { buildLocalObservations } from '../learning/learningCore';
+import { buildLocalObservations, validateDrillReview } from '../learning/learningCore';
 
 /**
  * Native/web parity.
@@ -48,7 +49,225 @@ afterEach(async () => {
   await web.__resetForTesting();
 });
 
+describe('saved-analysis consent at the persistence boundary', () => {
+  it.each(['unknown', 'denied', 'withdrawn'] as const)('%s saves the transcript without new evidence', async state => {
+    for (const repo of [sqliteRepository, web]) {
+      if (state === 'denied') await repo.recordConsent('saved_analysis', false);
+      if (state === 'withdrawn') {
+        await repo.recordConsent('saved_analysis', true);
+        await repo.withdrawConsent('saved_analysis');
+      }
+      const input = session({ summary: 'Assessed feedback', actionableFeedback: ['Assessed advice'] });
+      const evidence = phraseEvidenceFor(input);
+      expect(evidence.observations).toHaveLength(1);
+      await repo.completeSession(input, [], undefined, evidence);
+      expect(await repo.getObservations()).toEqual([]);
+      const saved = await repo.getSessionById(input.id);
+      expect(saved?.passages).toHaveLength(1);
+      expect(saved?.actionableFeedback ?? []).toEqual([]);
+      expect(saved?.summary).toBeFalsy();
+    }
+  });
+
+  it('rejects a drill bundle prepared before withdrawal and preserves prior evidence', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      await completeWithEvidence(repo, session());
+      const phrase = (await repo.getPhrases()).find(p => p.id === 'phrase.es.cafe_con_leche')!;
+      const evidence = validateDrillReview({
+        phrase, quote: phrase.form, modality: 'spoken', selfReportedResult: 'remembered',
+        learnerAttemptCaptured: true, answerRevealedBeforeAttempt: false, modelAudioPlayedBeforeAttempt: false,
+      });
+      expect(evidence.observations).toHaveLength(1);
+      const before = await repo.getObservations();
+      await repo.withdrawConsent('saved_analysis');
+      await repo.recordDrillReview({ phrase, evidence });
+      expect(await repo.getObservations()).toEqual(before);
+      expect((await repo.getPhrases()).find(p => p.id === phrase.id)).toEqual(phrase);
+    }
+  });
+});
+
 const T0 = '2026-09-20T09:00:00.000Z';
+
+describe('durable live activity on both storage backends', () => {
+  it('restores turns, support, scene, attempts and program context without awarding evidence', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      await repo.recordConsent('saved_analysis', true);
+      const initial = session({ state: 'preflight', passages: [], observations: [], endedAt: undefined });
+      await repo.beginSession(initial);
+      const progress = session({ state: 'live', endedAt: undefined, activeAttemptId: 'attempt-2',
+        supportExposures: [{ id: 'help-1', sessionId: initial.id, attemptId: 'attempt-1', source: 'coach',
+          kind: 'full_form', targetItemIds: ['phrase.es.cafe_con_leche'], exposure: 'visible', recordedAt: T0 }],
+        attemptHistory: [{ id: 'attempt-1', rehearsal: false, createdAt: T0 },
+          { id: 'attempt-2', parentAttemptId: 'attempt-1', checkpointId: 'cp-start', sceneRevision: 1, rehearsal: true, createdAt: T0 }],
+        programContext: { programId: 'test-program', programVersion: 1, finalSimulation: false },
+        summary: 'Unvalidated feedback', actionableFeedback: ['Unvalidated advice'],
+      });
+      await repo.saveSessionProgress(progress);
+      await repo.beginSession(initial);
+      const restored = await repo.getSessionById(initial.id);
+      expect(restored?.passages).toEqual(progress.passages);
+      expect(restored?.supportExposures).toMatchObject(progress.supportExposures);
+      expect(restored?.sceneState).toMatchObject(progress.sceneState);
+      expect(restored?.activeAttemptId).toBe('attempt-2');
+      expect(restored?.attemptHistory).toEqual(progress.attemptHistory);
+      expect(restored?.programContext).toEqual(progress.programContext);
+      expect(restored?.endedAt).toBeFalsy();
+      expect(restored?.observations).toEqual([]);
+      expect(restored?.summary).toBeFalsy();
+      expect(restored?.actionableFeedback ?? []).toEqual([]);
+      expect(await repo.getObservations()).toEqual([]);
+    }
+  });
+
+  it('late progress and lifecycle writes cannot reopen a completed or deleted session', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      const initial = session({ state: 'live', endedAt: undefined });
+      await repo.beginSession(initial);
+      await repo.completeSession(session());
+      await repo.saveSessionProgress({ ...initial, passages: [] });
+      await repo.saveSessionState(initial.id, 'live');
+      expect((await repo.getSessionById(initial.id))?.state).toBe('recap_ready');
+      await repo.deleteSession(initial.id);
+      await repo.saveSessionProgress(initial);
+      expect(await repo.getSessionById(initial.id)).toBeFalsy();
+    }
+  });
+});
+
+describe('phrase projection integrity', () => {
+  const phraseId = 'phrase.es.cafe_con_leche';
+
+  it('repairs old materialized recall caches from the ledger without creating evidence', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      const phrase = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      await repo.savePhrases([{ ...phrase, recallStatus: 'steady', stats: {
+        ...phrase.stats, unassistedCount: 2, spokenCount: 2,
+      }, scheduling: { ...phrase.scheduling, intervalDays: 14, modalityHistory: ['spoken'], nextReviewAt: '2099-01-01T00:00:00.000Z' } }]);
+      await repo.rebuildPhraseProjections();
+      const repaired = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      expect(repaired.recallStatus).toBe('new');
+      expect(repaired.stats.unassistedCount).toBe(0);
+      expect(repaired.scheduling.due).toBe(true);
+      expect(await repo.getObservations()).toEqual([]);
+      await completeWithEvidence(repo, session());
+      await repo.savePhrases([{ ...repaired, recallStatus: 'supported' }]);
+      await repo.rebuildPhraseProjections();
+      expect((await repo.getPhrases()).find(p => p.id === phraseId)?.recallStatus).toBe('growing');
+      expect(await repo.getObservations()).toHaveLength(1);
+    }
+  });
+
+  it.each(['hide', 'dispute', 'delete'] as const)('clears recall and scheduling after %s removes the last usable observation', async action => {
+    for (const repo of [sqliteRepository, web]) {
+      await completeWithEvidence(repo, session());
+      const before = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      expect(before.recallStatus).toBe('growing');
+      const [observation] = await repo.getObservations();
+      if (action === 'hide') await repo.hideObservation(observation.observationId);
+      if (action === 'dispute') await repo.disputeObservation(observation.observationId);
+      if (action === 'delete') await repo.deleteSession('session-1');
+      const after = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      expect(after.recallStatus).toBe('new');
+      expect(after.stats).toEqual({ assistedCount: 0, unassistedCount: 0, spokenCount: 0, typedCount: 0 });
+      expect(after.scheduling.due).toBe(true);
+      expect(after.scheduling.intervalDays).toBe(1);
+      expect(after.scheduling.modalityHistory).toEqual([]);
+      expect(Date.parse(after.scheduling.nextReviewAt)).toBeLessThanOrEqual(Date.now());
+      if (action !== 'delete') {
+        const archived = await repo.getSessionById('session-1');
+        expect(archived?.observations[0].hidden).toBe(true);
+        if (action === 'dispute') expect(archived?.observations[0].userDisputed).toBe(true);
+      }
+    }
+  });
+
+  it('projects a supported drill from all prior evidence, even with a stale phrase supplied by the caller', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      const stalePhrase = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      await completeWithEvidence(repo, session());
+      const evidence = validateDrillReview({
+        phrase: stalePhrase, quote: stalePhrase.form, modality: 'spoken', selfReportedResult: 'supported',
+        learnerAttemptCaptured: true, answerRevealedBeforeAttempt: true, modelAudioPlayedBeforeAttempt: false,
+      });
+      await repo.recordDrillReview({ phrase: stalePhrase, evidence });
+      const after = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      expect(after.recallStatus).toBe('growing');
+      expect(after.stats.unassistedCount).toBe(1);
+      expect(after.stats.assistedCount).toBe(1);
+      expect(after.stats.spokenCount).toBe(2);
+      await repo.recordDrillReview({ phrase: stalePhrase, evidence });
+      expect((await repo.getPhrases()).find(p => p.id === phraseId)?.stats).toEqual(after.stats);
+    }
+  });
+
+  it('does not transfer an observation into another item with the same displayed form', async () => {
+    for (const repo of [sqliteRepository, web]) {
+      const source = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      await repo.savePhrases([{ ...source, id: 'distinct-authored-target' }]);
+      await completeWithEvidence(repo, session({ passages: [passage('p-1', 'user', source.form)] }));
+      const other = (await repo.getPhrases()).find(p => p.id === 'distinct-authored-target')!;
+      expect(other.recallStatus).toBe('new');
+      expect(other.stats.unassistedCount).toBe(0);
+    }
+  });
+
+  it('rolls back a web drill ledger write when its projection cannot be written', async () => {
+    const phrase = (await web.getPhrases()).find(p => p.id === phraseId)!;
+    await web.recordConsent('saved_analysis', true);
+    const evidence = validateDrillReview({
+      phrase, quote: phrase.form, modality: 'spoken', selfReportedResult: 'remembered',
+      learnerAttemptCaptured: true, answerRevealedBeforeAttempt: false, modelAudioPlayedBeforeAttempt: false,
+    });
+    const original = FakeObjectStore.prototype.put;
+    const fault = vi.spyOn(FakeObjectStore.prototype, 'put').mockImplementation(function(
+      this: InstanceType<typeof FakeObjectStore>, value: unknown, key?: Parameters<typeof original>[1]
+    ) {
+      if (this.name === 'phrases') throw new Error('projection write failed');
+      return original.call(this, value, key);
+    });
+    try {
+      await expect(web.recordDrillReview({ phrase, evidence })).rejects.toThrow('projection write failed');
+    } finally {
+      fault.mockRestore();
+    }
+    expect(await web.getObservations()).toEqual([]);
+    expect((await web.getPhrases()).find(p => p.id === phraseId)?.recallStatus).toBe('new');
+  });
+
+  it('serializes concurrent web drills without dropping either observation from the projection', async () => {
+    const phrase = (await web.getPhrases()).find(p => p.id === phraseId)!;
+    await web.recordConsent('saved_analysis', true);
+    const input = { phrase, quote: phrase.form, modality: 'spoken' as const,
+      learnerAttemptCaptured: true, answerRevealedBeforeAttempt: false, modelAudioPlayedBeforeAttempt: false };
+    const independent = validateDrillReview({ ...input, selfReportedResult: 'remembered' });
+    const supported = validateDrillReview({ ...input, selfReportedResult: 'supported', answerRevealedBeforeAttempt: true });
+    await Promise.all([
+      web.recordDrillReview({ phrase, evidence: independent }),
+      web.recordDrillReview({ phrase, evidence: supported }),
+    ]);
+    const projected = (await web.getPhrases()).find(p => p.id === phraseId)!;
+    expect(projected.stats.unassistedCount).toBe(1);
+    expect(projected.stats.assistedCount).toBe(1);
+  });
+
+  it.each([false, true])('delayed drills require distinct practice sittings for steady recall: %s', async distinctSittings => {
+    for (const repo of [sqliteRepository, web]) {
+      const phrase = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      await repo.recordConsent('saved_analysis', true);
+      const input = { phrase, quote: phrase.form, modality: 'spoken' as const, selfReportedResult: 'remembered' as const,
+        learnerAttemptCaptured: true, answerRevealedBeforeAttempt: false, modelAudioPlayedBeforeAttempt: false };
+      const first = validateDrillReview({ ...input, practiceSessionId: 'drill-practice-1', recordedAt: T0 });
+      const later = validateDrillReview({ ...input, practiceSessionId: distinctSittings ? 'drill-practice-2' : 'drill-practice-1',
+        recordedAt: '2026-09-28T09:00:00.000Z' });
+      await repo.recordDrillReview({ phrase, evidence: first });
+      await repo.recordDrillReview({ phrase, evidence: later });
+      const projected = (await repo.getPhrases()).find(p => p.id === phraseId)!;
+      expect(projected.stats.unassistedCount).toBe(2);
+      expect(projected.recallStatus).toBe(distinctSittings ? 'steady' : 'growing');
+    }
+  });
+});
 
 function passage(id: string, speaker: 'user' | 'assistant', text: string, rev = 'rev-1'): Passage {
   return {
@@ -148,6 +367,7 @@ async function completeWithEvidence(
   repoValue: ArchiveRepository,
   sessionValue: SessionRecord
 ): Promise<void> {
+  await repoValue.recordConsent('saved_analysis', true);
   await repoValue.completeSession(
     { ...sessionValue, observations: [] },
     [],
@@ -229,6 +449,18 @@ async function snapshot(repo: ArchiveRepository) {
     explanationLanguage: preferences.explanationLanguage,
     lapseCount: lapses.length,
     supportExposureIds: sessions[0]?.supportExposures.map(exposure => exposure.id).sort() ?? [],
+    /*
+      The exported receipt, compared as a whole.
+
+      It was left out of this snapshot, and the two archives had drifted: SQLite emitted
+      language, mode, start time, outcome and a per-phrase recall status while IndexedDB
+      emitted none of them and formatted phrases differently. Same learner, different file
+      depending on platform. A method-existence assertion cannot catch that, so the text
+      itself is part of the observable state.
+    */
+    receipt: sessions[0]
+      ? await repo.exportLearningReceiptText(sessions[0])
+      : null,
   };
 }
 
@@ -534,6 +766,7 @@ describe('the contract is enforced at compile time', () => {
       'getPhrases',
       'savePhrases',
       'resetPhrase',
+      'rebuildPhraseProjections',
       'markDeleted',
       'isDeleted',
       'deleteSession',

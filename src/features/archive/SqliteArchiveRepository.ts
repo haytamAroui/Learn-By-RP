@@ -17,6 +17,7 @@ import {
   Fragment,
 } from '../../types';
 import { INITIAL_PHRASE_ITEMS } from '../../data/missions';
+import { renderLearningReceipt } from './learningReceipt';
 import {
   assertValidatedPhraseEvidence,
   projectPhraseState,
@@ -176,6 +177,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     const db = await getDatabase();
 
     await withTransaction(async txn => {
+      if (await txn.getFirstAsync('SELECT id FROM sessions WHERE id = ?', session.id)) return;
       await txn.runAsync(
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
@@ -260,7 +262,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async saveSessionState(sessionId: string, state: SessionState): Promise<void> {
     const db = await getDatabase();
-    await db.runAsync('UPDATE sessions SET state = ? WHERE id = ?', state, sessionId);
+    await db.runAsync("UPDATE sessions SET state = ? WHERE id = ? AND state NOT IN ('recap_ready', 'recap_unavailable')", state, sessionId);
   }
 
   async completeSession(
@@ -268,6 +270,21 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     rejectedProposals: { reason: string }[] = [],
     skillEvidence?: ValidatedSkillEvidence,
     phraseEvidence?: ValidatedPhraseEvidence
+  ): Promise<void> {
+    await this.writeSession(session, rejectedProposals, skillEvidence, phraseEvidence, true);
+  }
+
+  async saveSessionProgress(session: SessionRecord): Promise<void> {
+    await this.writeSession({ ...session, endedAt: undefined, summary: undefined,
+      actionableFeedback: [], observations: [], skillObservations: [], skillLapses: [] }, [], undefined, undefined, false);
+  }
+
+  private async writeSession(
+    session: SessionRecord,
+    rejectedProposals: { reason: string }[] = [],
+    skillEvidence?: ValidatedSkillEvidence,
+    phraseEvidence?: ValidatedPhraseEvidence,
+    completing = true
   ): Promise<void> {
     if (skillEvidence) assertValidatedSkillEvidence(skillEvidence);
     if (phraseEvidence) assertValidatedPhraseEvidence(phraseEvidence);
@@ -279,6 +296,18 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       // was lost — an interrupted boot, a restored backup without the session row —
       // an UPDATE alone would silently discard the transcript and its evidence,
       // with no error anywhere.
+      if (await this.isDeleted(session.id, session.startedAt)) return;
+      const previous = await txn.getFirstAsync<{ state: string }>('SELECT state FROM sessions WHERE id = ?', session.id);
+      if (!completing && (!previous || ['recap_ready', 'recap_unavailable'].includes(previous.state))) return;
+      const consent = await txn.getFirstAsync<{ granted: number; withdrawn_at: string | null }>(
+        'SELECT granted, withdrawn_at FROM consent_records WHERE scope = ?', 'saved_analysis'
+      );
+      if (consent?.granted !== 1 || consent.withdrawn_at) {
+        phraseEvidence = undefined;
+        skillEvidence = undefined;
+        rejectedProposals = [];
+        session = { ...session, summary: undefined, actionableFeedback: [] };
+      }
       await txn.runAsync(
         `INSERT OR REPLACE INTO sessions
           (id, mission_id, mission_version, language, mode, provider, consent_version,
@@ -297,7 +326,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         session.state,
         session.endReason ?? null,
         session.startedAt,
-        session.endedAt ?? new Date().toISOString(),
+        session.endedAt ?? (completing ? new Date().toISOString() : null),
         JSON.stringify(session.operationalTelemetry ?? []),
         session.coldAttempt ? 1 : 0,
         session.programContext?.programId ?? null,
@@ -308,6 +337,11 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         JSON.stringify(session.actionableFeedback ?? [])
       );
 
+      await txn.runAsync('UPDATE sessions SET runtime_snapshot = ? WHERE id = ?', JSON.stringify({
+        activeAttemptId: session.activeAttemptId,
+        attemptHistory: session.attemptHistory,
+        sceneState: session.sceneState,
+      }), session.id);
       await txn.runAsync(
         `INSERT OR IGNORE INTO attempts
           (id, session_id, parent_attempt_id, checkpoint_id, rehearsal, created_at)
@@ -467,10 +501,11 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO skill_observations
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-           domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality, retrieval,
+           domain_id, scenario_family_id, scenario_id, exam_program_id, exam_task_id, modality,
+           assessed_channel, evidence_band, retrieval,
            task_outcome, demonstration, opportunity_instance_id, support_exposure_ids,
            evidence_source, quote, day_key, reason_code, reason_codes, policy_version, hidden, user_disputed, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, 0, ?)`,
         observation.id,
         observation.skillId,
         observation.sessionId,
@@ -483,6 +518,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         observation.examProgramId ?? null,
         observation.examTaskId ?? null,
         observation.modality,
+        observation.assessedChannel ?? null,
+        observation.evidenceBand ?? 'unknown',
         observation.retrieval,
         observation.taskOutcome,
         observation.demonstration,
@@ -505,9 +542,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       await txn.runAsync(
         `INSERT OR REPLACE INTO skill_lapses
           (id, skill_id, session_id, attempt_id, source_passage_id, source_revision,
-           domain_id, scenario_family_id, scenario_id, opportunity_instance_id,
+           domain_id, scenario_family_id, scenario_id, assessed_channel, evidence_band, opportunity_instance_id,
            demonstration, basis, day_key, reason_code, policy_version, hidden, created_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 0, ?)`,
         lapse.id,
         lapse.skillId,
         lapse.sessionId,
@@ -517,6 +554,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         lapse.contextKey.domainId,
         lapse.contextKey.scenarioFamilyId,
         lapse.contextKey.scenarioId ?? lapse.scenarioId ?? null,
+        lapse.assessedChannel ?? lapse.contextKey.assessedChannel ?? null,
+        lapse.evidenceBand ?? lapse.contextKey.evidenceBand ?? 'unknown',
         lapse.opportunityInstanceId,
         lapse.demonstration,
         lapse.basis,
@@ -538,8 +577,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         `INSERT OR REPLACE INTO opportunity_instances
           (id, session_id, attempt_id, opportunity_id, skill_id, status, detection,
            demonstration, presented_at_passage_id, learner_attempt_passage_id,
-           learner_attempt_revision, failure_reason, recorded_at)
-         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           learner_attempt_revision, failure_reason, assessed_channel, evidence_band,
+           eligible_modalities, observed_modality, recorded_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         opportunity.id,
         sessionId,
         opportunity.attemptId,
@@ -552,6 +592,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         opportunity.learnerAttemptPassageId ?? null,
         opportunity.learnerAttemptRevision ?? null,
         opportunity.failureReason ?? null,
+        opportunity.assessedChannel ?? null,
+        opportunity.evidenceBand ?? 'unknown',
+        opportunity.eligibleModalities ? JSON.stringify(opportunity.eligibleModalities) : null,
+        opportunity.observedModality ?? null,
         opportunity.recordedAt
       );
     }
@@ -599,6 +643,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       }
 
       sessions.push({
+        ...parseJson<Pick<SessionRecord, 'activeAttemptId' | 'attemptHistory'>>(row.runtime_snapshot as string, {}),
         id: sessionId,
         missionId: String(row.mission_id),
         missionVersion: Number(row.mission_version),
@@ -643,6 +688,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
           checkpoints: parseJson(sceneRow?.checkpoints as string, []),
           isFinished: bool(sceneRow?.is_finished),
           outcome: (sceneRow?.outcome as TaskOutcome) ?? 'unknown',
+          ...parseJson<{ sceneState?: SessionRecord['sceneState'] }>(row.runtime_snapshot as string, {}).sceneState,
         },
       });
     }
@@ -766,6 +812,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         scenarioFamilyId: row.scenario_family_id
           ? String(row.scenario_family_id)
           : 'legacy-unknown',
+        assessedChannel: row.assessed_channel ? String(row.assessed_channel) as SkillObservation['assessedChannel'] : undefined,
+        evidenceBand: row.evidence_band ? String(row.evidence_band) as SkillObservation['evidenceBand'] : 'unknown',
         scenarioId: row.scenario_id ? String(row.scenario_id) : undefined,
         examTaskId: row.exam_task_id ? String(row.exam_task_id) : undefined,
       },
@@ -774,6 +822,8 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
       examProgramId: row.exam_program_id ? String(row.exam_program_id) : undefined,
       examTaskId: row.exam_task_id ? String(row.exam_task_id) : undefined,
       modality: String(row.modality) as SkillObservation['modality'],
+      assessedChannel: row.assessed_channel ? String(row.assessed_channel) as SkillObservation['assessedChannel'] : undefined,
+      evidenceBand: row.evidence_band ? String(row.evidence_band) as SkillObservation['evidenceBand'] : 'unknown',
       retrieval: String(row.retrieval) as RetrievalType,
       taskOutcome: String(row.task_outcome) as TaskOutcome,
       demonstration: (row.demonstration
@@ -820,8 +870,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         scenarioFamilyId: row.scenario_family_id
           ? String(row.scenario_family_id)
           : 'legacy-unknown',
+        assessedChannel: row.assessed_channel ? String(row.assessed_channel) as SkillLapse['assessedChannel'] : undefined,
+        evidenceBand: row.evidence_band ? String(row.evidence_band) as SkillLapse['evidenceBand'] : 'unknown',
         scenarioId: row.scenario_id ? String(row.scenario_id) : undefined,
       },
+      assessedChannel: row.assessed_channel ? String(row.assessed_channel) as SkillLapse['assessedChannel'] : undefined,
+      evidenceBand: row.evidence_band ? String(row.evidence_band) as SkillLapse['evidenceBand'] : 'unknown',
       domainId: row.domain_id ? String(row.domain_id) : undefined,
       scenarioId: row.scenario_id ? String(row.scenario_id) : undefined,
       opportunityInstanceId: row.opportunity_instance_id
@@ -878,26 +932,14 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
   async getPhrases(): Promise<PhraseItem[]> {
     const db = await getDatabase();
+    await this.seedPhrasesIfEmpty(db);
     const rows = await db.getAllAsync<Record<string, unknown>>('SELECT * FROM phrases');
     const now = Date.now();
 
-    if (rows.length === 0) {
-      const seeded = INITIAL_PHRASE_ITEMS.map(p => ({ ...p }));
-      await this.savePhrases(seeded);
-      return seeded.map(p => ({ ...p }));
-    }
-
     const phrases = rows.map(mapPhraseRow);
 
-    // Merge any phrases added to the catalog since this archive was written.
-    const existingIds = new Set(phrases.map(p => p.id));
-    const missing = INITIAL_PHRASE_ITEMS.filter(p => !existingIds.has(p.id));
-    if (missing.length > 0) {
-      await this.savePhrases([...phrases, ...missing]);
-    }
-
     // "Due" is derived from the schedule at read time, never stored as a status.
-    return [...phrases, ...missing].map(p => ({
+    return phrases.map(p => ({
       ...p,
       scheduling: {
         ...p.scheduling,
@@ -916,9 +958,9 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   }
 
   /** Writes one catalog row on the given handle, for use inside a transaction. */
-  private async writePhraseRow(txn: Db, phrase: PhraseItem): Promise<void> {
+  private async writePhraseRow(txn: Db, phrase: PhraseItem, missingOnly = false): Promise<void> {
     await txn.runAsync(
-      `INSERT OR REPLACE INTO phrases
+      `INSERT ${missingOnly ? 'OR IGNORE' : 'OR REPLACE'} INTO phrases
         (id, language, form, meaning, usage_note, difficulty, recall_status,
          next_review_at, interval_days, modality_history, contexts,
          assisted_count, unassisted_count, spoken_count, typed_count,
@@ -945,17 +987,16 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   }
 
   /**
-   * Seeds the curated catalog when the phrases table is empty. Runs on the
+   * Merges missing curated catalog rows. Runs on the
    * caller's handle so it can join an in-flight transaction.
    */
   private async seedPhrasesIfEmpty(txn: Db): Promise<void> {
-    const row = await txn.getFirstAsync<{ count: number }>(
-      'SELECT COUNT(*) as count FROM phrases'
-    );
-    if ((row?.count ?? 0) > 0) return;
+    const rows = await txn.getAllAsync<{ id: string }>('SELECT id FROM phrases');
+    const existingIds = new Set(rows.map(row => row.id));
 
     for (const phrase of INITIAL_PHRASE_ITEMS) {
-      await this.writePhraseRow(txn, { ...phrase });
+      if (existingIds.has(phrase.id)) continue;
+      await this.writePhraseRow(txn, { ...phrase }, true);
     }
   }
 
@@ -986,6 +1027,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
    * before the learner ever opened the Progress tab would reproject nothing and its
    * evidence would sit unapplied until the next write.
    */
+  async rebuildPhraseProjections(): Promise<void> {
+    await withTransaction(txn => this.reprojectPhrases(txn));
+  }
+
   private async reprojectPhrases(txn: Db): Promise<void> {
     await this.seedPhrasesIfEmpty(txn);
 
@@ -998,13 +1043,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
 
     for (const row of phraseRows) {
       const current = mapPhraseRow(row);
-      const form = current.form.toLowerCase();
 
       const relevant = observations.filter(
-        obs => obs.itemId === current.id || obs.candidateForm.toLowerCase() === form
+        obs => obs.itemId === current.id
       );
-
-      if (relevant.length === 0) continue;
 
       const projected = projectPhraseState(current, relevant);
       await this.writePhraseRow(txn, projected);
@@ -1204,6 +1246,10 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     if (observations.length === 0) return;
 
     await withTransaction(async txn => {
+      const consent = await txn.getFirstAsync<{ granted: number; withdrawn_at: string | null }>(
+        'SELECT granted, withdrawn_at FROM consent_records WHERE scope = ?', 'saved_analysis'
+      );
+      if (consent?.granted !== 1 || consent.withdrawn_at) return;
       for (const observation of observations) {
         await txn.runAsync(
           `INSERT OR REPLACE INTO observations
@@ -1230,7 +1276,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
         );
       }
 
-      await this.writePhraseRow(txn, projectPhraseState(phrase, observations));
+      await this.reprojectPhrases(txn);
     });
   }
 
@@ -1467,33 +1513,7 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
   }
 
   async exportLearningReceiptText(session: SessionRecord): Promise<string> {
-    const phrases = await this.getPhrases();
-    const used = new Set(session.observations.map(o => o.itemId));
-
-    let out = '========================================================\n';
-    out += 'MISSION COACH — LEARNING RECEIPT\n';
-    out += '========================================================\n\n';
-    out += `Session: ${session.id}\n`;
-    out += `Mission: ${session.missionId}\n`;
-    out += `Language: ${session.language}\n`;
-    out += `Mode: ${session.mode}\n`;
-    out += `Started: ${session.startedAt}\n`;
-    out += `Ended: ${session.endedAt ?? 'unknown'}\n`;
-    out += `Outcome: ${session.taskOutcome}\n\n`;
-    out += 'WHAT YOU ACTUALLY USED\n';
-
-    for (const phrase of phrases.filter(p => used.has(p.id))) {
-      out += `\n${phrase.form}\n`;
-      out += `  ${phrase.meaning}\n`;
-      out += `  status: ${phrase.recallStatus}\n`;
-    }
-
-    if (used.size === 0) {
-      out += '\nNo phrases were recorded as used in this session.\n';
-    }
-
-    out += '\n========================================================\n';
-    return out;
+    return renderLearningReceipt(session, await this.getPhrases());
   }
 }
 
@@ -1543,6 +1563,12 @@ function mapOpportunityInstanceRow(row: Record<string, unknown>): OpportunityIns
     attemptId: String(row.attempt_id),
     opportunityId: String(row.opportunity_id),
     skillId: String(row.skill_id),
+    assessedChannel: row.assessed_channel ? String(row.assessed_channel) as OpportunityInstance['assessedChannel'] : undefined,
+    evidenceBand: row.evidence_band ? String(row.evidence_band) as OpportunityInstance['evidenceBand'] : 'unknown',
+    eligibleModalities: row.eligible_modalities
+      ? parseJson<NonNullable<OpportunityInstance['eligibleModalities']>>(String(row.eligible_modalities), [])
+      : undefined,
+    observedModality: row.observed_modality ? String(row.observed_modality) as OpportunityInstance['observedModality'] : undefined,
     status: String(row.status) as OpportunityInstance['status'],
     detection: String(row.detection) as OpportunityInstance['detection'],
     demonstration: String(row.demonstration) as OpportunityInstance['demonstration'],

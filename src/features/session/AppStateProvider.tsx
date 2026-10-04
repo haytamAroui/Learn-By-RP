@@ -9,7 +9,7 @@ import { archiveRepository } from '../archive/archiveRepository';
  */
 export const AppStateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const persist = useCallback((sessionId: string, sessionState: string) => {
-    void archiveRepository.saveSessionState(sessionId, sessionState as never);
+    return archiveRepository.saveSessionState(sessionId, sessionState as never);
   }, []);
 
   return <SessionProvider onPersist={persist}>{children}</SessionProvider>;

@@ -273,9 +273,11 @@ export default function OnboardingScreen() {
       savedAnalysisConsent: analysisConsent,
     };
 
-    await savePreferences(nextPreferences);
     await consent.recordConsent('voice', voiceConsent);
     await consent.recordConsent('saved_analysis', analysisConsent);
+    // Consent persistence also writes a preferences snapshot. Save the final
+    // onboarding choices afterwards so that snapshot cannot overwrite them.
+    await savePreferences(nextPreferences);
 
     const resolution = resolveProgramCandidate({
       learningLanguage,

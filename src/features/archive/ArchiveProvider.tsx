@@ -9,7 +9,7 @@ import { archiveRepository } from './archiveRepository';
 import { ConsentRecord } from './ArchiveRepository.types';
 import type { ValidatedSkillEvidence } from '../learning/skillEvidence';
 import type { ValidatedPhraseEvidence } from '../learning/learningCore';
-import { api, setApiConsentContext } from '../../lib/api';
+import { api, setApiConsentContext, setApiConsentScope } from '../../lib/api';
 
 interface ArchiveContextValue {
   ready: boolean;
@@ -114,6 +114,7 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
     (async () => {
       try {
+        await archiveRepository.rebuildPhraseProjections();
         await refresh();
         if (!cancelled) setReady(true);
       } catch (err) {
@@ -228,6 +229,7 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
         savedAnalysis: savedAnalysisConsent,
         recordConsent: async (scope, granted) => {
           const record = await archiveRepository.recordConsent(scope, granted);
+          setApiConsentScope(scope === 'voice' ? 'voice' : 'savedAnalysis', granted ? 'granted' : 'denied');
           if (scope === 'voice') setVoiceConsent(record);
           else setSavedAnalysisConsent(record);
 
@@ -239,6 +241,7 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setPreferences(prefs);
         },
         withdrawConsent: async scope => {
+          setApiConsentScope(scope === 'voice' ? 'voice' : 'savedAnalysis', 'denied');
           await archiveRepository.withdrawConsent(scope);
           const withdrawn = await archiveRepository.getConsent(scope);
           if (scope === 'voice') setVoiceConsent(withdrawn);

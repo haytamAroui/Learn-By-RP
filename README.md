@@ -25,9 +25,18 @@ is the only thing that changes a scene fact.
 
 These documents are not equal, and the order matters when they disagree.
 
+The user-selected product direction is now
+`docs/LEARNBYRP_COMPLETE_LEARNING_CONTENT_UX_ARCHITECTURE_V2.md`. Its phased
+reconciliation and implementation status are tracked in
+`docs/ARCHITECTURE_V2_IMPLEMENTATION.md`. The first delivery focuses on adult
+learners using Belgian Dutch for everyday life. Existing contracts remain the
+runtime boundary; blueprint examples do not automatically become reviewed content.
+
 | Document | Status |
 | -------- | ------ |
-| `Mission Coach — Master Product Architecture Specification.md` | Product and runtime authority |
+| `docs/LEARNBYRP_COMPLETE_LEARNING_CONTENT_UX_ARCHITECTURE_V2.md` | Current product, learning and delivery blueprint |
+| `docs/ARCHITECTURE_V2_IMPLEMENTATION.md` | Blueprint-to-code reconciliation and acceptance gates |
+| `Mission Coach — Master Product Architecture Specification.md` | Detailed prior runtime specification; reconcile with V2 and existing contracts |
 | `MISSION_COACH_UI_UX_DESIGN_SYSTEM_v2.md` | UI authority. Generated tables come from `src/design/tokens.ts` |
 | `MISSION_COACH_COMPLETE_UI_UX_DESIGN_SYSTEM_2026_v1 (1).md` | **Superseded.** Kept for history; do not copy values from it |
 | `ADOPE_APP_AUDIT_AND_FRAMEWORK_DECISION.md` | Provenance for the stack: why this stayed on NativeWind and the 4,299-line spec was not treated as authority |
@@ -78,9 +87,16 @@ npm run server:dev         # API on :3000
 npm start                  # Expo, in another shell
 ```
 
-The Gemini key stays on the server. `EXPO_PUBLIC_API_BASE_URL` points the app at
-it — `http://localhost:3000` on the iOS simulator, `http://10.0.2.2:3000` on an
-Android emulator, your LAN IP on a physical device.
+Provider keys and `GUEST_IDENTITY_SECRET` stay on the server. Production must set
+a stable random `GUEST_IDENTITY_SECRET` of at least 32 characters on every API
+instance; local development creates a private ignored key under `.data/`. The app
+stores its signed guest credential in platform secure storage (web storage on
+browser builds), so hosted sessions remain tied to that credential across reloads.
+If the API is behind a trusted reverse proxy, set `TRUST_PROXY_HOPS` to the exact
+number of proxy hops so per-IP guest issuance limits use the client IP safely.
+`EXPO_PUBLIC_API_BASE_URL` points the app at the API — `http://localhost:3000` on
+the iOS simulator, `http://10.0.2.2:3000` on an Android emulator, your LAN IP on a
+physical device.
 
 ## Checks
 

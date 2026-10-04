@@ -23,12 +23,18 @@ export interface SceneStore {
     result: SceneActionResult
   ): Promise<void>;
   listEvents(sessionId: string, attemptId: string): Promise<StoredSceneEvent[]>;
-  listAbandoned(olderThanMs: number): Promise<AbandonedSession[]>;
+  listAbandoned(olderThanMs: number, ownerIdentity?: string): Promise<AbandonedSession[]>;
   markReconciled(sessionId: string): Promise<void>;
+  deleteSession(sessionId: string): Promise<void>;
+  transaction<T>(work: (tx: SceneStoreTransaction) => Promise<T>): Promise<T>;
 }
+
+export type SceneStoreTransaction = Pick<SceneStore,
+  'get' | 'put' | 'getResult' | 'putResult' | 'listEvents' | 'markReconciled' | 'deleteSession'>;
 
 export interface HostedSessionRecord {
   sessionId: string;
+  ownerIdentity: string;
   sceneId: string;
   sceneVersion: number;
   missionId: string;
@@ -82,7 +88,8 @@ const SCHEMA = [
     attempts_json TEXT NOT NULL,
     created_at TEXT NOT NULL,
     closed_at TEXT,
-    reconciled_at TEXT
+    reconciled_at TEXT,
+    owner_identity TEXT
   );`,
   `CREATE TABLE IF NOT EXISTS scene_events (
     session_id TEXT NOT NULL,
@@ -99,7 +106,27 @@ const SCHEMA = [
 ];
 
 export class SqliteSceneStore implements SceneStore {
+  private transactionTail: Promise<void> = Promise.resolve();
+
   constructor(private readonly db: SceneStoreDb) {}
+
+  async transaction<T>(work: (tx: SceneStoreTransaction) => Promise<T>): Promise<T> {
+    let release!: () => void;
+    const previous = this.transactionTail;
+    this.transactionTail = new Promise<void>(resolve => { release = resolve; });
+    await previous;
+    try {
+      await this.db.execAsync('BEGIN IMMEDIATE');
+      const result = await work(this);
+      await this.db.execAsync('COMMIT');
+      return result;
+    } catch (error) {
+      await this.db.execAsync('ROLLBACK').catch(() => undefined);
+      throw error;
+    } finally {
+      release();
+    }
+  }
 
   static async open(db: SceneStoreDb): Promise<SqliteSceneStore> {
     for (const statement of SCHEMA) {
@@ -110,6 +137,7 @@ export class SqliteSceneStore implements SceneStore {
     for (const migration of [
       `ALTER TABLE hosted_sessions ADD COLUMN scene_version INTEGER NOT NULL DEFAULT 1;`,
       `ALTER TABLE hosted_sessions ADD COLUMN mission_version INTEGER NOT NULL DEFAULT 1;`,
+      `ALTER TABLE hosted_sessions ADD COLUMN owner_identity TEXT;`,
     ]) {
       try {
         await db.execAsync(migration);
@@ -130,6 +158,7 @@ export class SqliteSceneStore implements SceneStore {
 
     return {
       sessionId: String(row.session_id),
+      ownerIdentity: String(row.owner_identity ?? ''),
       sceneId: String(row.scene_id),
       sceneVersion: Number(row.scene_version ?? 1),
       missionId: String(row.mission_id),
@@ -145,8 +174,8 @@ export class SqliteSceneStore implements SceneStore {
   async put(record: HostedSessionRecord): Promise<void> {
     await this.db.runAsync(
       `INSERT OR REPLACE INTO hosted_sessions
-        (session_id, scene_id, scene_version, mission_id, mission_version, state_json, attempts_json, created_at, closed_at, reconciled_at)
-       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+        (session_id, scene_id, scene_version, mission_id, mission_version, state_json, attempts_json, created_at, closed_at, reconciled_at, owner_identity)
+       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       record.sessionId,
       record.sceneId,
       record.sceneVersion,
@@ -156,7 +185,8 @@ export class SqliteSceneStore implements SceneStore {
       JSON.stringify(record.attempts),
       record.createdAt,
       record.closedAt ?? null,
-      record.reconciledAt ?? null
+      record.reconciledAt ?? null,
+      record.ownerIdentity
     );
   }
 
@@ -218,7 +248,7 @@ export class SqliteSceneStore implements SceneStore {
    * Sessions that were open when the process died, with their last event time.
    * This is what a recovery worker reconciles rather than silently expiring.
    */
-  async listAbandoned(olderThanMs: number): Promise<AbandonedSession[]> {
+  async listAbandoned(olderThanMs: number, ownerIdentity?: string): Promise<AbandonedSession[]> {
     const cutoff = new Date(Date.now() - olderThanMs).toISOString();
 
     const rows = await this.db.getAllAsync<Record<string, unknown>>(
@@ -226,10 +256,13 @@ export class SqliteSceneStore implements SceneStore {
               (SELECT MAX(applied_at) FROM scene_events e WHERE e.session_id = s.session_id) AS last_event
        FROM hosted_sessions s
        WHERE s.closed_at IS NULL AND s.reconciled_at IS NULL
+         AND (? IS NULL OR s.owner_identity = ?)
          AND COALESCE(
            (SELECT MAX(applied_at) FROM scene_events e WHERE e.session_id = s.session_id),
            s.created_at
          ) < ?`,
+      ownerIdentity ?? null,
+      ownerIdentity ?? null,
       cutoff
     );
 
@@ -252,6 +285,11 @@ export class SqliteSceneStore implements SceneStore {
       new Date().toISOString(),
       sessionId
     );
+  }
+
+  async deleteSession(sessionId: string): Promise<void> {
+    await this.db.runAsync('DELETE FROM scene_events WHERE session_id = ?', sessionId);
+    await this.db.runAsync('DELETE FROM hosted_sessions WHERE session_id = ?', sessionId);
   }
 }
 

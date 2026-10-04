@@ -1,0 +1,15 @@
+[WebServer] (node:40464) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:61628) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+[WebServer] (node:36912) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+[WebServer] (Use `node --trace-warnings ...` to show where the warning was created)
+
+Running 2 tests using 1 worker
+
+(node:52580) Warning: The 'NO_COLOR' env is ignored due to the 'FORCE_COLOR' env being set.
+(Use `node --trace-warnings ...` to show where the warning was created)
+  ok 1 [light] › e2e\consent-boundaries.spec.ts:4:48 › typed live practice saves activity without analysis or evidence (976ms)
+  ok 2 [light] › e2e\consent-boundaries.spec.ts:4:48 › a forbidden assessment cannot trigger local fallback evidence (876ms)
+
+  2 passed (6.6s)

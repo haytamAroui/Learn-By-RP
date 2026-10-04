@@ -370,6 +370,25 @@ export const MIGRATIONS: Migration[] = [
       `ALTER TABLE sessions ADD COLUMN actionable_feedback TEXT;`,
     ],
   },
+  {
+    version: 13,
+    name: 'durable_session_runtime_snapshot',
+    statements: ['ALTER TABLE sessions ADD COLUMN runtime_snapshot TEXT;'],
+  },
+  {
+    version: 14,
+    name: 'persist_qualified_opportunity_dimensions',
+    statements: [
+      `ALTER TABLE opportunity_instances ADD COLUMN assessed_channel TEXT;`,
+      `ALTER TABLE opportunity_instances ADD COLUMN evidence_band TEXT;`,
+      `ALTER TABLE opportunity_instances ADD COLUMN eligible_modalities TEXT;`,
+      `ALTER TABLE opportunity_instances ADD COLUMN observed_modality TEXT;`,
+      `ALTER TABLE skill_observations ADD COLUMN assessed_channel TEXT;`,
+      `ALTER TABLE skill_observations ADD COLUMN evidence_band TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN assessed_channel TEXT;`,
+      `ALTER TABLE skill_lapses ADD COLUMN evidence_band TEXT;`,
+    ],
+  },
 ];
 
 export const LATEST_SCHEMA_VERSION = MIGRATIONS[MIGRATIONS.length - 1].version;

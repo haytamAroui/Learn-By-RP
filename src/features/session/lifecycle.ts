@@ -65,7 +65,7 @@ const TRANSITIONS: Record<LifecycleState, Partial<Record<LifecycleEvent, Lifecyc
     GIVE_UP: 'ended',
     END: 'ending',
   },
-  ending: { PLAYBACK_VERIFIED: 'ended', END: 'ended' },
+  ending: { PLAYBACK_VERIFIED: 'ended', ENDED: 'ended', END: 'ended' },
   ended: { ASSESS_START: 'recap_pending' },
   recap_pending: { ASSESS_OK: 'recap_ready', ASSESS_FAILED: 'recap_unavailable' },
   recap_ready: {},

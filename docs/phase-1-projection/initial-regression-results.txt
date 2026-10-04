@@ -1,0 +1,49 @@
+
+ RUN  v3.2.7 D:/learnbyRP
+
+(node:63448) ExperimentalWarning: SQLite is an experimental feature and might change at any time
+(Use `node --trace-warnings ...` to show where the warning was created)
+····xxxx····················
+
+⎯⎯⎯⎯⎯⎯⎯ Failed Tests 4 ⎯⎯⎯⎯⎯⎯⎯
+
+ FAIL  src/features/archive/parity.test.ts > phrase projection integrity > clears recall and scheduling after hide removes the last usable observation
+ FAIL  src/features/archive/parity.test.ts > phrase projection integrity > clears recall and scheduling after dispute removes the last usable observation
+ FAIL  src/features/archive/parity.test.ts > phrase projection integrity > clears recall and scheduling after delete removes the last usable observation
+AssertionError: expected 'growing' to be 'new' // Object.is equality
+
+Expected: "new"
+Received: "growing"
+
+ ❯ src/features/archive/parity.test.ts:104:34
+    102|       if (action === 'delete') await repo.deleteSession('session-1');
+    103|       const after = (await repo.getPhrases()).find(p => p.id === phras…
+    104|       expect(after.recallStatus).toBe('new');
+       |                                  ^
+    105|       expect(after.stats).toEqual({ assistedCount: 0, unassistedCount:…
+    106|       expect(after.scheduling.due).toBe(true);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[1/4]⎯
+
+ FAIL  src/features/archive/parity.test.ts > phrase projection integrity > projects a supported drill from all prior evidence, even with a stale phrase supplied by the caller
+AssertionError: expected 'supported' to be 'growing' // Object.is equality
+
+Expected: "growing"
+Received: "supported"
+
+ ❯ src/features/archive/parity.test.ts:123:34
+    121|       await repo.recordDrillReview({ phrase: stalePhrase, evidence });
+    122|       const after = (await repo.getPhrases()).find(p => p.id === phras…
+    123|       expect(after.recallStatus).toBe('growing');
+       |                                  ^
+    124|       expect(after.stats.unassistedCount).toBe(1);
+    125|       expect(after.stats.assistedCount).toBe(1);
+
+⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯⎯[2/4]⎯
+
+
+ Test Files  1 failed (1)
+      Tests  4 failed | 24 passed (28)
+   Start at  20:07:42
+   Duration  1.58s (transform 274ms, setup 0ms, collect 718ms, tests 367ms, environment 0ms, prepare 135ms)
+

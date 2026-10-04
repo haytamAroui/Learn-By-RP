@@ -67,6 +67,26 @@ const NEIGHBORHOOD_LOOP_TITLES: Record<string, Record<string, string>> = {
   },
 };
 
+/**
+ * The mission card's accessible name.
+ *
+ * `accessibilityLabel` replaces the card's inner text for assistive technology, so
+ * naming the card after its title alone hides both the communicative job and the
+ * interlocutor from anyone not looking at the screen.
+ *
+ * The goal has to be in the name rather than in `accessibilityHint`, because
+ * react-native-web discards `accessibilityHint` entirely: on the rendered page the
+ * card carries `aria-label` and nothing else - no `aria-describedby`, no
+ * `aria-description`, no `title`. A hint that is silently dropped is worse than no
+ * hint, because the source reads as though the task is exposed and it is not.
+ *
+ * Order is deliberate: the title first because it is what makes the name unique across
+ * a 32-entry list, then who the learner is speaking to, then the task itself.
+ */
+function missionAccessibleName(mission: MissionDefinition): string {
+  return `${mission.title}. ${mission.character.name}, ${mission.character.role}. ${mission.learnerGoal}`;
+}
+
 export const MissionsScreen: React.FC<MissionsScreenProps> = ({
   missions,
   programs,
@@ -178,11 +198,21 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
             />
           </View>
 
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={{ gap: 8, paddingRight: 12 }}
-          >
+          {/*
+            Category filters wrap instead of scrolling horizontally.
+
+            This was a horizontal ScrollView with its indicator hidden, so the last chip
+            was cut mid-word at the right edge in both themes with nothing to indicate it
+            could be scrolled. On a phone that is a defensible pattern; at 840 and 1440 it
+            hid filters while leaving a wide empty margin beside them, so a learner had to
+            discover a scroll to reach "Social & Neighborhood".
+
+            Six chips wrapping to two or three lines is a small cost, and it makes every
+            filter visible and reachable without a gesture. Both blueprints rule this out
+            anyway: "avoid horizontal scrolling for ordinary screens" and "keep family
+            filters accessible in a sheet or short segmented control".
+          */}
+          <View className="flex-row flex-wrap gap-2">
             {categories.map(category => {
               const selected = selectedCategory === category.id;
 
@@ -206,7 +236,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                 </Pressable>
               );
             })}
-          </ScrollView>
+          </View>
 
           <View>
             {filteredMissions.map((mission, index) => (
@@ -214,23 +244,44 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                 <Pressable
                   onPress={() => onSelectMission(mission)}
                   accessibilityRole="button"
-                  accessibilityLabel={mission.title}
+                  accessibilityLabel={missionAccessibleName(mission)}
                   className="min-h-[104px] flex-row items-center gap-3 rounded-2xl border border-transparent py-4 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
                 >
                   <View className="h-12 w-12 items-center justify-center rounded-2xl bg-card-warm">
                     <Compass size={21} color={iconColor('brand')} />
                   </View>
 
+                  {/*
+                    The row answers what situation this is, what the learner has to
+                    accomplish, and who they will be speaking with.
+
+                    It used to show `mission.setting` instead, which is a description of
+                    the place rather than of the task: "A bustling neighbourhood cafe
+                    with morning commuters" tells a learner nothing about what they are
+                    meant to do there, and it was truncated to one line, so even the
+                    context it did give was usually cut mid-sentence. `learnerGoal` and
+                    the character are the decision-relevant fields, and both blueprints
+                    require them in mission discovery.
+
+                    Neighbourhood and setting are not lost - the briefing renders both -
+                    so this row stays a summary rather than a second briefing.
+                  */}
                   <View className="flex-1">
                     <Text className="text-[17px] font-semibold leading-[22px] text-ink">
                       {mission.title}
                     </Text>
-                    <Text className="mt-1 text-[13px] leading-[18px] text-muted" numberOfLines={1}>
-                      {mission.neighborhood} · {mission.levelRange} · {mission.estimatedMinutes}{' '}
-                      {t.common.minutes}
+                    {/*
+                      No `numberOfLines` here on purpose. Goals run 61-113 characters
+                      across the 32 authored missions, and truncating one hides the task
+                      the learner is being asked to judge. Wrapping keeps the whole
+                      communicative job readable, including at large text sizes.
+                    */}
+                    <Text className="mt-1 text-[14px] leading-5 text-body">
+                      {mission.learnerGoal}
                     </Text>
-                    <Text className="mt-1 text-[14px] leading-5 text-body" numberOfLines={1}>
-                      {mission.setting}
+                    <Text className="mt-1 text-[13px] leading-[18px] text-muted">
+                      {mission.character.name} · {mission.character.role} ·{' '}
+                      {mission.levelRange} · {mission.estimatedMinutes} {t.common.minutes}
                     </Text>
                   </View>
 

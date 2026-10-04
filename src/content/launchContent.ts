@@ -1,6 +1,6 @@
 import { getScene } from './scenes';
 import { MISSION_CATALOG } from '../data/missions';
-import type { CommunicativeSkillId, ScenarioFamilyId } from '../types';
+import type { CommunicativeSkillId, EvidenceBand, Modality, ScenarioFamilyId, SkillModality } from '../types';
 
 export interface LaunchContentSpec {
   id: string;
@@ -75,12 +75,37 @@ export interface LaunchContentValidation {
   valid: boolean;
   errors: string[];
   coverage: LaunchContentCoverage[];
+  readiness: LaunchLearningLoopReadiness;
+}
+
+export interface LaunchSkillLoopReadiness {
+  skillId: CommunicativeSkillId;
+  opportunityMissionIds: string[];
+  contrastiveRubricOpportunityIds: string[];
+  helpAvailableMissionIds: string[];
+  laterRetrievalPairs: Array<{ firstMissionId: string; laterMissionId: string; familyId: ScenarioFamilyId }>;
+  qualifiedBandChannels: Array<{
+    evidenceBand: EvidenceBand;
+    assessedChannel: SkillModality;
+    eligibleModalities: Modality[];
+  }>;
+  gaps: string[];
+}
+
+export interface LaunchLearningLoopReadiness {
+  ready: boolean;
+  skills: LaunchSkillLoopReadiness[];
+  assetReviewEvidence: 'not-tracked' | 'incomplete';
+  assetReviewGaps: string[];
 }
 
 export function validateLaunchContentCoverage(
   spec: LaunchContentSpec = SPANISH_LAUNCH_CONTENT_V1
 ): LaunchContentValidation {
   const errors: string[] = [];
+  const selectedMissions = spec.missionIds.map(missionId =>
+    MISSION_CATALOG.find(candidate => candidate.id === missionId)
+  );
   const familiesBySkill = new Map<CommunicativeSkillId, Set<ScenarioFamilyId>>(
     spec.coreSkillIds.map(skillId => [skillId, new Set<ScenarioFamilyId>()])
   );
@@ -135,5 +160,98 @@ export function validateLaunchContentCoverage(
     }
   }
 
-  return { valid: errors.length === 0, errors, coverage };
+  const skills: LaunchSkillLoopReadiness[] = spec.coreSkillIds.map(skillId => {
+    const opportunityMissionIds: string[] = [];
+    const contrastiveRubricOpportunityIds: string[] = [];
+    const helpAvailableMissionIds: string[] = [];
+    const qualifiedDimensions = new Map<string, LaunchSkillLoopReadiness['qualifiedBandChannels'][number]>();
+    const opportunitiesByMission = selectedMissions.map(mission => {
+      if (!mission?.sceneId) return [];
+      const scene = getScene(mission.sceneId);
+      return scene?.opportunityDefinitions
+        .filter(opportunity => opportunity.skillId === skillId)
+        .map(opportunity => ({ mission, opportunity })) ?? [];
+    });
+
+    for (const opportunities of opportunitiesByMission) {
+      for (const { mission, opportunity } of opportunities) {
+        opportunityMissionIds.push(mission.id);
+        if (mission.supportPolicy.hintLadderAvailable) helpAvailableMissionIds.push(mission.id);
+        if (opportunity.positiveExamples.length > 0 && opportunity.negativeExamples.length > 0) {
+          contrastiveRubricOpportunityIds.push(opportunity.id);
+        }
+        if (
+          opportunity.evidenceBand && opportunity.evidenceBand !== 'unknown' &&
+          opportunity.assessedChannel && opportunity.eligibleModalities?.length
+        ) {
+          const key = `${opportunity.evidenceBand}::${opportunity.assessedChannel}`;
+          qualifiedDimensions.set(key, {
+            evidenceBand: opportunity.evidenceBand,
+            assessedChannel: opportunity.assessedChannel,
+            eligibleModalities: [...opportunity.eligibleModalities],
+          });
+        }
+      }
+    }
+
+    const selectedById = new Map(
+      selectedMissions.filter((mission): mission is NonNullable<typeof mission> => Boolean(mission))
+        .map(mission => [mission.id, mission])
+    );
+    const laterRetrievalPairs: LaunchSkillLoopReadiness['laterRetrievalPairs'] = [];
+    for (let firstIndex = 0; firstIndex < selectedMissions.length; firstIndex += 1) {
+      const firstMission = selectedMissions[firstIndex];
+      if (!firstMission || opportunitiesByMission[firstIndex].length === 0) continue;
+      const seen = new Set([firstMission.id]);
+      let nextMissionId = firstMission.nextMissionId;
+      while (nextMissionId && !seen.has(nextMissionId)) {
+        seen.add(nextMissionId);
+        const laterMission = selectedById.get(nextMissionId);
+        // A path that leaves this launch pack cannot establish its coverage.
+        if (!laterMission) break;
+        const laterIndex = selectedMissions.findIndex(mission => mission?.id === laterMission.id);
+        if (
+          laterIndex >= 0 && opportunitiesByMission[laterIndex].length > 0 &&
+          laterMission.scenarioFamilyId !== firstMission.scenarioFamilyId
+        ) {
+          laterRetrievalPairs.push({
+            firstMissionId: firstMission.id,
+            laterMissionId: laterMission.id,
+            familyId: laterMission.scenarioFamilyId,
+          });
+        }
+        nextMissionId = laterMission.nextMissionId;
+      }
+    }
+
+    const gaps: string[] = [];
+    if (contrastiveRubricOpportunityIds.length === 0) gaps.push('no opportunity has both positive and negative rubric examples');
+    if (helpAvailableMissionIds.length === 0) gaps.push('no opportunity mission offers the authored help ladder');
+    if (laterRetrievalPairs.length === 0) gaps.push('no later retrieval is authored in a different scenario family');
+    if (qualifiedDimensions.size === 0) gaps.push('no opportunity has a reviewed evidence band, assessed channel, and eligible modality');
+
+    return {
+      skillId,
+      opportunityMissionIds: [...new Set(opportunityMissionIds)],
+      contrastiveRubricOpportunityIds,
+      helpAvailableMissionIds: [...new Set(helpAvailableMissionIds)],
+      laterRetrievalPairs,
+      qualifiedBandChannels: [...qualifiedDimensions.values()],
+      gaps,
+    };
+  });
+
+  // Scene `released` flags do not attest to human locale review, example-audio
+  // review, asset rights, or reviewer sign-off. Those records are not modeled yet.
+  const assetReviewGaps = selectedMissions.flatMap(mission =>
+    mission?.sceneId ? [`${mission.sceneId}: no linked locale/audio/assets review manifest`] : []
+  );
+  const readiness: LaunchLearningLoopReadiness = {
+    ready: skills.every(skill => skill.gaps.length === 0) && assetReviewGaps.length === 0,
+    skills,
+    assetReviewEvidence: 'not-tracked',
+    assetReviewGaps,
+  };
+
+  return { valid: errors.length === 0, errors, coverage, readiness };
 }

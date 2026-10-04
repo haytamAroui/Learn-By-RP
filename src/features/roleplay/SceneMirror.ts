@@ -5,7 +5,7 @@ import type {
   SceneForkRequest,
   SceneStateSnapshot,
 } from './runtime';
-import { API_BASE_URL } from '../../lib/api';
+import { API_BASE_URL, providerAuthorizationHeaders } from '../../lib/api';
 
 /**
  * Client-side mirror of server scene truth (§11.2).
@@ -69,7 +69,7 @@ export class SceneMirror {
       this.connectionGeneration += 1;
       const response = await fetch(`${API_BASE_URL}/v1/voice/sessions`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...await providerAuthorizationHeaders() },
         body: JSON.stringify({
           sessionId: this.sessionId,
           sceneId: this.sceneId,
@@ -95,7 +95,8 @@ export class SceneMirror {
     try {
       this.connectionGeneration += 1;
       const response = await fetch(
-        `${API_BASE_URL}/v1/voice/sessions/${this.sessionId}/scene`
+        `${API_BASE_URL}/v1/voice/sessions/${this.sessionId}/scene`,
+        { headers: await providerAuthorizationHeaders() }
       );
       if (!response.ok) return this.state;
       const data = (await response.json()) as { state: SceneStateSnapshot };
@@ -154,7 +155,7 @@ export class SceneMirror {
         `${API_BASE_URL}/v1/voice/sessions/${this.sessionId}/scene/action`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...await providerAuthorizationHeaders() },
           body: JSON.stringify(proposal),
         }
       );
@@ -194,7 +195,7 @@ export class SceneMirror {
         `${API_BASE_URL}/v1/voice/sessions/${this.sessionId}/scene/fork`,
         {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers: { 'Content-Type': 'application/json', ...await providerAuthorizationHeaders() },
           body: JSON.stringify({ checkpoint, rehearsal }),
         }
       );
@@ -216,6 +217,7 @@ export class SceneMirror {
     try {
       await fetch(`${API_BASE_URL}/v1/voice/sessions/${this.sessionId}/close`, {
         method: 'POST',
+        headers: await providerAuthorizationHeaders(),
       });
     } catch {
       // Close is idempotent server-side; a network failure is not fatal here.

@@ -14,6 +14,9 @@ import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
 import { resolveActorContext } from './roleplay/actorContext';
 import { createProviderGuard, resolveProviderIdentity } from './security/requestGuard';
+import { createRateLimitStore } from './security/rateLimitStore';
+import { issueGuestIdentityToken } from './security/guestIdentity';
+import { deleteHostedSession, getHostedSession } from '../src/features/roleplay/sceneStore';
 import {
   isProviderSessionDeleted,
   markProviderSessionDeleted,
@@ -22,6 +25,15 @@ import {
 dotenv.config();
 
 const app = express();
+
+const trustProxyHopsValue = process.env.TRUST_PROXY_HOPS;
+if (trustProxyHopsValue !== undefined && trustProxyHopsValue !== '') {
+  const trustProxyHops = Number(trustProxyHopsValue);
+  if (!Number.isInteger(trustProxyHops) || trustProxyHops < 0) {
+    throw new Error('TRUST_PROXY_HOPS must be a non-negative integer');
+  }
+  app.set('trust proxy', trustProxyHops);
+}
 
 // The Expo client runs from a different origin (Metro, a dev server, or a
 // standalone build), so allow the API to be called cross-origin.
@@ -32,7 +44,36 @@ const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
 // Provider choice is centralized. Routes never depend on a vendor SDK directly.
 const providers = createProviderRuntime();
-const guardProviderRequest = createProviderGuard();
+// One quota store for the whole deployment. See `createRateLimitStore` for why an
+// absent LEARNBYRP_QUOTA_DB is a per-process budget and what that costs at >1 instance.
+const rateLimitStore = createRateLimitStore();
+const guardProviderRequest = createProviderGuard(rateLimitStore);
+const guestIssueWindows = new Map<string, { startedAt: number; count: number }>();
+
+app.post('/api/guest/identity', (req: Request, res: Response) => {
+  const ip = req.ip || req.socket.remoteAddress || 'unknown';
+  const now = Date.now();
+  if (guestIssueWindows.size >= 256 && guestIssueWindows.size % 128 === 0) {
+    for (const [key, value] of guestIssueWindows) if (now - value.startedAt >= 60_000) guestIssueWindows.delete(key);
+  }
+  if (guestIssueWindows.size >= 50_000 && !guestIssueWindows.has(ip)) {
+    res.status(429).json({ error: 'Guest identity service is busy' });
+    return;
+  }
+  const bucket = guestIssueWindows.get(ip);
+  if (!bucket || now - bucket.startedAt >= 60_000) guestIssueWindows.set(ip, { startedAt: now, count: 1 });
+  else if (bucket.count >= 12) {
+    res.status(429).json({ error: 'Guest identity request limit reached' });
+    return;
+  } else bucket.count += 1;
+  try {
+    res.setHeader('Cache-Control', 'no-store');
+    res.json({ token: issueGuestIdentityToken() });
+  } catch (error) {
+    console.error('Guest identity service is unavailable:', error);
+    res.status(503).json({ error: 'Guest identity service is not configured' });
+  }
+});
 
 console.log('[Server] Provider runtime:', providers.descriptor());
 
@@ -65,7 +106,13 @@ app.post('/api/privacy/deletion', async (req: Request, res: Response) => {
     return;
   }
 
+  const hosted = await getHostedSession(sessionId);
+  if (hosted && hosted.ownerIdentity !== access.identity) {
+    res.status(404).json({ error: 'Unknown session' });
+    return;
+  }
   await markProviderSessionDeleted(access.identity, sessionId);
+  await deleteHostedSession(sessionId, access.identity);
   res.json({ deleted: true });
 });
 
@@ -124,6 +171,37 @@ function sanitizeActorResponse(
 
 app.post('/api/actor/respond', async (req: Request, res: Response) => {
   if (!guardProviderRequest(req, res, 'actor')) return;
+  const identity = resolveProviderIdentity(req).identity;
+  const ownershipPassages: any[] = Array.isArray(req.body?.recentPassages) ? req.body.recentPassages : [];
+  const passageSessionIds = new Set<string>();
+  for (const passage of ownershipPassages) {
+    if (typeof passage?.sessionId === 'string' && passage.sessionId.length > 0) passageSessionIds.add(passage.sessionId);
+  }
+  if (passageSessionIds.size > 1) {
+    res.status(400).json({ error: 'Actor context must belong to one session' });
+    return;
+  }
+  if (req.body?.sceneId && passageSessionIds.size !== 1) {
+    res.status(400).json({ error: 'A hosted scene turn must identify its session' });
+    return;
+  }
+  if (req.body?.sceneId && identity && passageSessionIds.size === 1) {
+    const sessionId = passageSessionIds.values().next().value as string;
+    const owned = await getHostedSession(sessionId);
+    if (!owned || owned.ownerIdentity !== identity) {
+      res.status(404).json({ error: 'Unknown session' });
+      return;
+    }
+    if (owned.sceneId !== req.body.sceneId || owned.missionId !== req.body.missionId ||
+        owned.sceneVersion !== req.body.sceneVersion || owned.missionVersion !== req.body.missionVersion) {
+      res.status(409).json({ error: 'Actor context does not match the owned hosted session' });
+      return;
+    }
+    if (await isProviderSessionDeleted(identity, sessionId)) {
+      res.status(410).json({ error: 'This session was deleted' });
+      return;
+    }
+  }
 
   const resolved = resolveActorContext(req.body ?? {});
   if (!resolved.ok) {
@@ -342,6 +420,12 @@ app.post('/api/assessment', async (req: Request, res: Response) => {
       await isProviderSessionDeleted(access.identity, sessionId)
     ) {
       res.status(410).json({ error: 'This session was deleted' });
+      return;
+    }
+
+    const hosted = await getHostedSession(sessionId);
+    if (hosted && hosted.ownerIdentity !== access.identity) {
+      res.status(404).json({ error: 'Unknown session' });
       return;
     }
 

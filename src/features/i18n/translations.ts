@@ -318,6 +318,10 @@ export interface Translations {
     consentVersionLabel: string;
     voiceWithdrawnNotice: string;
     analysisWithdrawnNotice: string;
+    voiceDisabledNotice: string;
+    analysisDisabledNotice: string;
+    sessionSaveFailed: string;
+    retrySave: string;
     yourDataLabel: string;
     exportArchiveAction: string;
     archiveExportedNotice: string;
@@ -497,7 +501,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       programPreview: "Preview",
       programReleased: "Ready",
       programProgress: "{done} of {total} missions complete",
-      programUnavailable: "This curated path is still under review. Its missions remain available individually in the catalog.",
+      programUnavailable: "This curated path is still under review. Select an available step to practise that mission on its own; it will not count toward this path.",
       noProgramsFound: "No curated programs are available for this language yet.",
       programNotFound: "That program is no longer available.",
       finalSimulation: "Final simulation",
@@ -749,6 +753,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentVersionLabel: "Consent version",
       voiceWithdrawnNotice: "Voice processing withdrawn. Speaking is disabled.",
       analysisWithdrawnNotice: "Analysis withdrawn. No new evidence will be recorded.",
+      voiceDisabledNotice: "Voice is off. You can type your turns.",
+      analysisDisabledNotice: "Analysis is off. This practice will not add learning evidence.",
+      sessionSaveFailed: "This conversation could not be saved. Keep this screen open and try saving again.",
+      retrySave: "Try saving again",
       yourDataLabel: "Your data",
       exportArchiveAction: "Export my archive",
       archiveExportedNotice: "Archive exported.",
@@ -935,7 +943,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       programPreview: "Aperçu",
       programReleased: "Prêt",
       programProgress: "{done} missions terminées sur {total}",
-      programUnavailable: "Ce parcours est encore en révision. Ses missions restent disponibles individuellement dans le catalogue.",
+      programUnavailable: "Ce parcours est encore en révision. Sélectionnez une étape disponible pour pratiquer cette mission individuellement ; elle ne comptera pas dans ce parcours.",
       noProgramsFound: "Aucun programme sélectionné n’est encore disponible pour cette langue.",
       programNotFound: "Ce programme n’est plus disponible.",
       finalSimulation: "Simulation finale",
@@ -1187,6 +1195,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentVersionLabel: "Version du consentement",
       voiceWithdrawnNotice: "Le traitement vocal a été retiré. La parole est désactivée.",
       analysisWithdrawnNotice: "L’analyse a été retirée. Aucune nouvelle preuve ne sera enregistrée.",
+      voiceDisabledNotice: "La voix est désactivée. Vous pouvez saisir vos réponses.",
+      analysisDisabledNotice: "L’analyse est désactivée. Cet entraînement n’ajoutera aucune preuve d’apprentissage.",
+      sessionSaveFailed: "Cette conversation n’a pas pu être enregistrée. Gardez cet écran ouvert et réessayez.",
+      retrySave: "Réessayer l’enregistrement",
       yourDataLabel: "Vos données",
       exportArchiveAction: "Exporter mon archive",
       archiveExportedNotice: "Archive exportée.",
@@ -1372,7 +1384,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       programPreview: "Vista previa",
       programReleased: "Listo",
       programProgress: "{done} de {total} misiones completadas",
-      programUnavailable: "Esta ruta seleccionada sigue en revisión. Sus misiones continúan disponibles individualmente en el catálogo.",
+      programUnavailable: "Esta ruta sigue en revisión. Selecciona una etapa disponible para practicar esa misión por separado; no contará para esta ruta.",
       noProgramsFound: "Todavía no hay programas seleccionados para este idioma.",
       programNotFound: "Ese programa ya no está disponible.",
       finalSimulation: "Simulación final",
@@ -1623,6 +1635,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentVersionLabel: "Versión del consentimiento",
       voiceWithdrawnNotice: "Se retiró el procesamiento de voz. Hablar está desactivado.",
       analysisWithdrawnNotice: "Se retiró el análisis. No se registrarán nuevas evidencias.",
+      voiceDisabledNotice: "La voz está desactivada. Puedes escribir tus respuestas.",
+      analysisDisabledNotice: "El análisis está desactivado. Esta práctica no añadirá evidencias de aprendizaje.",
+      sessionSaveFailed: "No se pudo guardar esta conversación. Mantén esta pantalla abierta e inténtalo de nuevo.",
+      retrySave: "Intentar guardar de nuevo",
       yourDataLabel: "Tus datos",
       exportArchiveAction: "Exportar mi archivo",
       archiveExportedNotice: "Archivo exportado.",
@@ -1809,7 +1825,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       programPreview: "Voorbeeld",
       programReleased: "Klaar",
       programProgress: "{done} van {total} missies voltooid",
-      programUnavailable: "Dit samengestelde traject wordt nog beoordeeld. De missies blijven afzonderlijk beschikbaar in de catalogus.",
+      programUnavailable: "Dit samengestelde traject wordt nog beoordeeld. Kies een beschikbare stap om die missie afzonderlijk te oefenen; ze telt niet mee voor dit traject.",
       noProgramsFound: "Er zijn nog geen samengestelde programma’s voor deze taal.",
       programNotFound: "Dit programma is niet meer beschikbaar.",
       finalSimulation: "Eindsimulatie",
@@ -2061,6 +2077,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       consentVersionLabel: "Toestemmingsversie",
       voiceWithdrawnNotice: "Spraakverwerking is ingetrokken. Spreken is uitgeschakeld.",
       analysisWithdrawnNotice: "Analyse is ingetrokken. Er wordt geen nieuw bewijs opgeslagen.",
+      voiceDisabledNotice: "Spraak is uitgeschakeld. Je kunt je antwoorden typen.",
+      analysisDisabledNotice: "Analyse is uitgeschakeld. Deze oefening voegt geen leerbewijs toe.",
+      sessionSaveFailed: "Dit gesprek kon niet worden opgeslagen. Houd dit scherm open en probeer opnieuw op te slaan.",
+      retrySave: "Opnieuw opslaan",
       yourDataLabel: "Jouw gegevens",
       exportArchiveAction: "Mijn archief exporteren",
       archiveExportedNotice: "Archief geëxporteerd.",

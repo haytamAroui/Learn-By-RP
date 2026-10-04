@@ -28,6 +28,8 @@ function configuredPreference(): ConversationProviderPreference {
 class ResilientConversationProvider implements ConversationProvider {
   readonly id: string;
   private active: ConversationProvider;
+  private disposed = false;
+  private turnGeneration = 0;
 
   constructor(
     private readonly primary: ConversationProvider,
@@ -51,9 +53,12 @@ class ResilientConversationProvider implements ConversationProvider {
   }
 
   async connect() {
+    if (this.disposed) throw new Error('Conversation provider is disposed');
     try {
       if (this.active.connect) await this.active.connect();
+      if (this.disposed) throw new Error('Conversation provider is disposed');
     } catch (error) {
+      if (this.disposed) throw error;
       if (this.active === this.fallback) throw error;
 
       console.warn(
@@ -63,31 +68,40 @@ class ResilientConversationProvider implements ConversationProvider {
       this.primary.dispose();
       this.active = this.fallback;
       await this.fallback.connect?.();
+      if (this.disposed) throw new Error('Conversation provider is disposed');
     }
   }
 
   async respond(input: ConversationTurnInput): Promise<ActorResponse> {
+    if (this.disposed) throw new Error('Conversation provider is disposed');
+    const generation = ++this.turnGeneration;
     try {
-      return await this.active.respond(input);
+      const response = await this.active.respond(input);
+      if (this.disposed || generation !== this.turnGeneration) throw new Error('Conversation turn cancelled');
+      return response;
     } catch (error) {
+      if (this.disposed || generation !== this.turnGeneration) throw error;
       if (this.active === this.fallback) throw error;
 
       console.warn(
-        `Conversation provider ${this.primary.id} failed; using ${this.fallback.id} for the rest of this session:`,
+        `Conversation provider ${this.primary.id} failed. The turn was not replayed; the next learner retry will use ${this.fallback.id}:`,
         error
       );
 
       this.primary.dispose();
       this.active = this.fallback;
-      return this.fallback.respond(input);
+      throw error;
     }
   }
 
   cancel() {
+    this.turnGeneration += 1;
     this.active.cancel?.();
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.primary.dispose();
     if (this.fallback !== this.primary) this.fallback.dispose();
   }
@@ -98,6 +112,7 @@ class AutoConversationProvider implements ConversationProvider {
   private resolved: ConversationProvider | null = null;
   private listeners = new Set<ConversationProviderEventListener>();
   private unsubscribeResolved: (() => void) | null = null;
+  private disposed = false;
 
   private setResolved(provider: ConversationProvider): ConversationProvider {
     this.resolved = provider;
@@ -116,10 +131,12 @@ class AutoConversationProvider implements ConversationProvider {
   }
 
   private async resolve(): Promise<ConversationProvider> {
+    if (this.disposed) throw new Error('Conversation provider is disposed');
     if (this.resolved) return this.resolved;
 
     try {
       const capabilities = await api.providers();
+      if (this.disposed) throw new Error('Conversation provider is disposed');
       if (capabilities.realtime?.available) {
         return this.setResolved(
           new ResilientConversationProvider(
@@ -129,6 +146,7 @@ class AutoConversationProvider implements ConversationProvider {
         );
       }
     } catch (error) {
+      if (this.disposed) throw error;
       console.warn('Provider discovery failed; using HTTP conversation provider:', error);
     }
 
@@ -136,11 +154,13 @@ class AutoConversationProvider implements ConversationProvider {
   }
 
   async connect() {
+    if (this.disposed) throw new Error('Conversation provider is disposed');
     const provider = await this.resolve();
     await provider.connect?.();
   }
 
   async respond(input: ConversationTurnInput): Promise<ActorResponse> {
+    if (this.disposed) throw new Error('Conversation provider is disposed');
     const provider = await this.resolve();
     return provider.respond(input);
   }
@@ -150,6 +170,8 @@ class AutoConversationProvider implements ConversationProvider {
   }
 
   dispose() {
+    if (this.disposed) return;
+    this.disposed = true;
     this.unsubscribeResolved?.();
     this.unsubscribeResolved = null;
     this.resolved?.dispose();

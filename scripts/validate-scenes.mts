@@ -62,6 +62,25 @@ for (const spec of LAUNCH_CONTENT_SPECS) {
       );
     }
   }
+
+  console.log(
+    `[learning-loop] ${spec.targetLocale} readiness: ${launchCoverage.readiness.ready ? 'ready' : 'open'}`
+  );
+  for (const skill of launchCoverage.readiness.skills) {
+    for (const gap of skill.gaps) {
+      console.warn(`  OPEN ${skill.skillId}: ${gap}`);
+    }
+    if (skill.laterRetrievalPairs.length > 0) {
+      console.log(
+        `  ${skill.skillId}: later retrieval path(s) ${skill.laterRetrievalPairs
+          .map(pair => `${pair.firstMissionId} -> ${pair.laterMissionId} (${pair.familyId})`)
+          .join('; ')}`
+      );
+    }
+  }
+  for (const gap of launchCoverage.readiness.assetReviewGaps) {
+    console.warn(`  OPEN review evidence: ${gap}`);
+  }
 }
 
 for (const scene of Object.values(SCENES)) {
@@ -113,4 +132,4 @@ if (failed) {
   process.exit(1);
 }
 
-console.log('\nAll released scenes/programs and mission safety/scenario-family references passed content validation.');
+console.log('\nDeterministic structure checks passed. Learning-loop and human-review readiness is reported separately and does not certify release.');

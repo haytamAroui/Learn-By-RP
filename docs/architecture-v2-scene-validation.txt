@@ -1,0 +1,150 @@
+
+> mission-coach@1.0.0 validate:scenes
+> tsx scripts/validate-scenes.mts
+
+
+[launch-content] es-ES core skill coverage
+  skill-inquire-specifications: 8 families (counter-ordering, equipment-rental, lodging-checkin, neighbour-coordination, parcel-service, pharmacy-consultation, public-transit, social-dining)
+  skill-propose-alternative: 4 families (lodging-checkin, neighbour-coordination, parcel-service, social-dining)
+  skill-request-substitution: 4 families (counter-ordering, equipment-rental, pharmacy-consultation, social-dining)
+  skill-request-repetition: 4 families (counter-ordering, lodging-checkin, parcel-service, public-transit)
+  skill-ask-clarification: 4 families (counter-ordering, equipment-rental, parcel-service, public-transit)
+  skill-check-understanding: 5 families (counter-ordering, equipment-rental, lodging-checkin, neighbour-coordination, public-transit)
+
+[launch-content] nl-BE core skill coverage
+  skill-inquire-specifications: 8 families (counter-ordering, equipment-rental, lodging-checkin, neighbour-coordination, parcel-service, pharmacy-consultation, public-transit, social-dining)
+  skill-propose-alternative: 4 families (lodging-checkin, neighbour-coordination, parcel-service, social-dining)
+  skill-request-substitution: 4 families (counter-ordering, equipment-rental, pharmacy-consultation, social-dining)
+  skill-request-repetition: 4 families (counter-ordering, lodging-checkin, parcel-service, public-transit)
+  skill-ask-clarification: 4 families (counter-ordering, equipment-rental, parcel-service, public-transit)
+  skill-check-understanding: 5 families (counter-ordering, equipment-rental, lodging-checkin, neighbour-coordination, public-transit)
+
+[scene] scene.es.cafe.breakfast v2
+  static: valid
+  reachable states: 26
+  reachable actions: confirm_order_item, offer_alternative, confirm_takeaway, confirm_for_here, ask_about_ingredient, complete_scene
+  reachable opportunities: opp.es.cafe.inquire-specifications.after-item, opp.es.cafe.repair.request-repetition, opp.es.cafe.repair.request-slower-speech, opp.es.cafe.repair.clarify-misunderstanding, opp.es.cafe.repair.paraphrase-when-stuck, opp.es.cafe.request-substitution.after-alternative, opp.es.cafe.repair.ask-clarification, opp.es.cafe.repair.check-understanding
+  reachable pressure branches: pressure.es.cafe.concise-followup, pressure.es.cafe.single-interruption
+  dry-run achieved: confirm_order_item -> confirm_takeaway
+
+[scene] scene.es.parcel.reschedule v1
+  static: valid
+  reachable states: 9
+  reachable actions: provide_reference, ask_specification, offer_alternative, propose_arrangement, confirm_arrangement
+  reachable opportunities: opp.es.parcel.inquire-specifications, opp.es.parcel.repair.request-repetition, opp.es.parcel.propose-alternative, opp.es.parcel.repair.ask-clarification
+  reachable pressure branches: pressure.es.parcel.concise-service-turn
+  dry-run achieved: provide_reference -> offer_alternative -> propose_arrangement -> confirm_arrangement
+
+[scene] scene.es.neighbor.key-handover v1
+  static: valid
+  reachable states: 5
+  reachable actions: ask_specification, offer_alternative, propose_arrangement, confirm_arrangement
+  reachable opportunities: opp.es.neighbor.inquire-specifications, opp.es.neighbor.propose-alternative, opp.es.neighbor.repair.check-understanding, opp.es.neighbor.repair.clarify-misunderstanding
+  reachable pressure branches: pressure.es.neighbor.one-interruption
+  dry-run achieved: ask_specification -> offer_alternative -> propose_arrangement -> confirm_arrangement
+
+[scene] scene.es.metro.ticket-platform v1
+  static: valid
+  reachable states: 10
+  reachable actions: ask_specification, ask_wayfinding, report_issue, confirm_arrangement
+  reachable opportunities: opp.es.metro.inquire-specifications, opp.es.metro.wayfinding, opp.es.metro.repair.ask-clarification, opp.es.metro.repair.request-repetition, opp.es.metro.repair.check-understanding
+  reachable pressure branches: pressure.es.metro.concise-commuter-turn
+  dry-run achieved: ask_specification -> ask_wayfinding -> confirm_arrangement
+
+[scene] scene.es.pharmacy.symptom v1
+  static: valid
+  reachable states: 12
+  reachable actions: ask_about_ingredient, confirm_order_item, offer_alternative, complete_scene
+  reachable opportunities: opp.es.pharmacy.inquire-specifications.open, opp.es.pharmacy.request-substitution.after-label-comparison
+  reachable pressure branches: (none)
+  dry-run achieved: confirm_order_item
+
+[scene] scene.es.dining.terrace v1
+  static: valid
+  reachable states: 10
+  reachable actions: request_seating, offer_alternative, propose_arrangement, ask_recommendation, ask_specification, confirm_selection, offer_substitute
+  reachable opportunities: opp.es.dining.propose-alternative, opp.es.dining.inquire-specifications, opp.es.dining.request-substitution
+  reachable pressure branches: pressure.es.dining.concise-host-turn
+  dry-run achieved: request_seating -> offer_alternative -> propose_arrangement -> ask_recommendation -> confirm_selection
+
+[scene] scene.es.hotel.checkin v1
+  static: valid
+  reachable states: 9
+  reachable actions: provide_reference, ask_specification, offer_alternative, propose_arrangement, confirm_arrangement
+  reachable opportunities: opp.es.hotel.inquire-specifications, opp.es.hotel.repair.request-repetition, opp.es.hotel.propose-alternative, opp.es.hotel.repair.check-understanding
+  reachable pressure branches: pressure.es.hotel.concise-reception-turn
+  dry-run achieved: provide_reference -> offer_alternative -> propose_arrangement -> confirm_arrangement
+
+[scene] scene.es.rental.bike v1
+  static: valid
+  reachable states: 6
+  reachable actions: request_service, offer_substitute, confirm_selection, ask_specification, confirm_arrangement
+  reachable opportunities: opp.es.rental.request-substitution, opp.es.rental.inquire-specifications, opp.es.rental.repair.ask-clarification, opp.es.rental.repair.check-understanding
+  reachable pressure branches: pressure.es.rental.concise-service-turn
+  dry-run achieved: request_service -> offer_substitute -> confirm_selection -> ask_specification -> confirm_arrangement
+
+[scene] scene.nl-be.cafe.breakfast v1
+  static: valid
+  reachable states: 8
+  reachable actions: request_service, request_substitute, offer_substitute, confirm_selection, ask_specification, confirm_takeaway
+  reachable opportunities: opp.nl-be.cafe.request-substitution, opp.nl-be.cafe.repair.ask-clarification, opp.nl-be.cafe.inquire-specifications, opp.nl-be.cafe.repair.request-repetition, opp.nl-be.cafe.repair.check-understanding
+  reachable pressure branches: pressure.nl-be.cafe.concise
+  dry-run achieved: request_service -> request_substitute -> offer_substitute -> confirm_selection -> confirm_takeaway
+
+[scene] scene.nl-be.parcel.pickup v1
+  static: valid
+  reachable states: 9
+  reachable actions: provide_reference, ask_specification, offer_alternative, propose_arrangement, confirm_arrangement
+  reachable opportunities: opp.nl-be.parcel.inquire-specifications, opp.nl-be.parcel.repair.request-repetition, opp.nl-be.parcel.propose-alternative, opp.nl-be.parcel.repair.ask-clarification
+  reachable pressure branches: pressure.nl-be.parcel.concise
+  dry-run achieved: provide_reference -> offer_alternative -> propose_arrangement -> confirm_arrangement
+
+[scene] scene.nl-be.neighbor.key v1
+  static: valid
+  reachable states: 5
+  reachable actions: ask_specification, offer_alternative, propose_arrangement, confirm_arrangement
+  reachable opportunities: opp.nl-be.neighbor.inquire-specifications, opp.nl-be.neighbor.propose-alternative, opp.nl-be.neighbor.repair.check-understanding, opp.nl-be.neighbor.repair.clarify-misunderstanding
+  reachable pressure branches: pressure.nl-be.neighbor.one-interruption
+  dry-run achieved: ask_specification -> offer_alternative -> propose_arrangement -> confirm_arrangement
+
+[scene] scene.nl-be.metro.route v1
+  static: valid
+  reachable states: 10
+  reachable actions: ask_specification, ask_wayfinding, report_issue, confirm_arrangement
+  reachable opportunities: opp.nl-be.metro.inquire-specifications, opp.nl-be.metro.wayfinding, opp.nl-be.metro.repair.ask-clarification, opp.nl-be.metro.repair.request-repetition, opp.nl-be.metro.repair.check-understanding
+  reachable pressure branches: pressure.nl-be.metro.concise
+  dry-run achieved: ask_specification -> ask_wayfinding -> confirm_arrangement
+
+[scene] scene.nl-be.pharmacy.label v1
+  static: valid
+  reachable states: 5
+  reachable actions: ask_specification, request_substitute, offer_substitute, confirm_selection
+  reachable opportunities: opp.nl-be.pharmacy.inquire-specifications, opp.nl-be.pharmacy.request-substitution
+  reachable pressure branches: (none)
+  dry-run achieved: ask_specification -> request_substitute -> offer_substitute -> confirm_selection
+
+[scene] scene.nl-be.dining.terrace v1
+  static: valid
+  reachable states: 12
+  reachable actions: request_seating, offer_alternative, propose_arrangement, ask_recommendation, ask_specification, confirm_selection, request_substitute, offer_substitute
+  reachable opportunities: opp.nl-be.dining.propose-alternative, opp.nl-be.dining.inquire-specifications, opp.nl-be.dining.request-substitution
+  reachable pressure branches: pressure.nl-be.dining.concise
+  dry-run achieved: request_seating -> offer_alternative -> propose_arrangement -> ask_recommendation -> confirm_selection
+
+[scene] scene.nl-be.hotel.checkin v1
+  static: valid
+  reachable states: 9
+  reachable actions: provide_reference, ask_specification, offer_alternative, propose_arrangement, confirm_arrangement
+  reachable opportunities: opp.nl-be.hotel.inquire-specifications, opp.nl-be.hotel.repair.request-repetition, opp.nl-be.hotel.propose-alternative, opp.nl-be.hotel.repair.check-understanding
+  reachable pressure branches: pressure.nl-be.hotel.concise
+  dry-run achieved: provide_reference -> offer_alternative -> propose_arrangement -> confirm_arrangement
+
+[scene] scene.nl-be.rental.bike v1
+  static: valid
+  reachable states: 7
+  reachable actions: request_service, request_substitute, offer_substitute, confirm_selection, ask_specification, confirm_arrangement
+  reachable opportunities: opp.nl-be.rental.request-substitution, opp.nl-be.rental.inquire-specifications, opp.nl-be.rental.repair.ask-clarification, opp.nl-be.rental.repair.check-understanding
+  reachable pressure branches: pressure.nl-be.rental.concise
+  dry-run achieved: request_service -> request_substitute -> offer_substitute -> confirm_selection -> ask_specification -> confirm_arrangement
+
+All released scenes/programs and mission safety/scenario-family references passed content validation.

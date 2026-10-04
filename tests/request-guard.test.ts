@@ -4,6 +4,9 @@ import {
   checkProviderAccess,
   validateProviderBody,
 } from '../server/security/requestGuard';
+import { issueGuestIdentityToken } from '../server/security/guestIdentity';
+
+const identityHeaders = () => ({ authorization: `Bearer ${issueGuestIdentityToken()}` });
 
 function req(headers: Record<string, string>) {
   return {
@@ -14,7 +17,7 @@ function req(headers: Record<string, string>) {
 }
 
 describe('provider request guard', () => {
-  it('requires a bounded guest or bearer identity', () => {
+  it('requires a server-signed guest identity and rejects caller-chosen identities', () => {
     expect(checkProviderAccess(req({}), 'actor')).toMatchObject({
       ok: false,
       status: 401,
@@ -24,11 +27,13 @@ describe('provider request guard', () => {
         req({ 'x-learnbyrp-client-id': 'guest-12345678' }),
         'actor'
       ).ok
-    ).toBe(true);
+    ).toBe(false);
+    expect(checkProviderAccess(req(identityHeaders()), 'actor').ok).toBe(true);
+    expect(checkProviderAccess(req({ authorization: 'Bearer arbitrary-token' }), 'actor').ok).toBe(false);
   });
 
   it('enforces voice and saved-analysis consent independently', () => {
-    const base = { 'x-learnbyrp-client-id': 'guest-12345678' };
+    const base = identityHeaders();
 
     expect(checkProviderAccess(req(base), 'realtime').status).toBe(403);
     expect(

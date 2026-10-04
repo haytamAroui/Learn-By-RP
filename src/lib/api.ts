@@ -6,6 +6,9 @@ import type {
   SpeechSynthesisResponse,
 } from '../providers/runtime/contracts';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import * as SecureStore from 'expo-secure-store';
+import { Platform } from 'react-native';
 
 function resolveBaseUrl(): string {
   const fromExtra = Constants.expoConfig?.extra?.apiBaseUrl;
@@ -38,9 +41,34 @@ let apiConsentContext: {
   savedAnalysis: 'unknown',
 };
 
-const API_CLIENT_ID = `guest-${Date.now().toString(36)}-${Math.random()
-  .toString(36)
-  .slice(2, 12)}`;
+const GUEST_TOKEN_KEY = 'learnbyrp.guest_identity.v1';
+let guestTokenPromise: Promise<string> | null = null;
+
+async function guestIdentityToken(): Promise<string> {
+  if (!guestTokenPromise) {
+    guestTokenPromise = (async () => {
+      const cached = Platform.OS === 'web'
+        ? await AsyncStorage.getItem(GUEST_TOKEN_KEY)
+        : await SecureStore.getItemAsync(GUEST_TOKEN_KEY);
+      if (cached) return cached;
+      const response = await fetch(`${API_BASE_URL}/api/guest/identity`, { method: 'POST' });
+      if (!response.ok) throw new Error('Could not establish a private guest session');
+      const payload = await response.json() as { token?: unknown };
+      if (typeof payload.token !== 'string' || !payload.token) throw new Error('Guest identity response was invalid');
+      if (Platform.OS === 'web') await AsyncStorage.setItem(GUEST_TOKEN_KEY, payload.token);
+      else await SecureStore.setItemAsync(GUEST_TOKEN_KEY, payload.token);
+      return payload.token;
+    })().catch(error => {
+      guestTokenPromise = null;
+      throw error;
+    });
+  }
+  return guestTokenPromise;
+}
+
+export async function providerAuthorizationHeaders(): Promise<Record<string, string>> {
+  return { Authorization: `Bearer ${await guestIdentityToken()}` };
+}
 
 export function setApiConsentContext(input: {
   voice: ApiConsentState;
@@ -49,9 +77,13 @@ export function setApiConsentContext(input: {
   apiConsentContext = input;
 }
 
-function providerHeaders(): Record<string, string> {
+export function setApiConsentScope(scope: 'voice' | 'savedAnalysis', state: ApiConsentState) {
+  apiConsentContext = { ...apiConsentContext, [scope]: state };
+}
+
+function providerHeaders(token: string): Record<string, string> {
   return {
-    'x-learnbyrp-client-id': API_CLIENT_ID,
+    Authorization: `Bearer ${token}`,
     'x-learnbyrp-consent-voice': apiConsentContext.voice,
     'x-learnbyrp-consent-saved-analysis': apiConsentContext.savedAnalysis,
   };
@@ -98,16 +130,23 @@ async function getRequest<T>(path: string, timeoutMs = 10000): Promise<T> {
   }
 }
 
-async function request<T>(path: string, body: unknown, timeoutMs = 30000): Promise<T> {
+async function request<T>(path: string, body: unknown, timeoutMs = 30000, externalSignal?: AbortSignal): Promise<T> {
+  if (path === '/api/assessment' && apiConsentContext.savedAnalysis !== 'granted') {
+    throw new ApiError('Saved-analysis consent is required', 403);
+  }
   const controller = new AbortController();
+  if (externalSignal?.aborted) controller.abort(externalSignal.reason);
+  const abortFromCaller = () => controller.abort(externalSignal?.reason);
+  externalSignal?.addEventListener('abort', abortFromCaller, { once: true });
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
+    const token = await guestIdentityToken();
     const init = {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        ...providerHeaders(),
+        ...providerHeaders(token),
       },
       body: JSON.stringify(body),
       signal: controller.signal,
@@ -136,6 +175,7 @@ async function request<T>(path: string, body: unknown, timeoutMs = 30000): Promi
     return parsed as T;
   } finally {
     clearTimeout(timer);
+    externalSignal?.removeEventListener('abort', abortFromCaller);
   }
 }
 
@@ -170,7 +210,7 @@ export const api = {
     /** Informational on HTTP; server re-derives authority from the pinned scene. */
     speechVariety?: import('../contracts/scene').SpeechVariety;
     explanationLanguage: string;
-  }) => request<ActorResponse>('/api/actor/respond', body),
+  }, signal?: AbortSignal) => request<ActorResponse>('/api/actor/respond', body, 30000, signal),
 
   /**
    * Scene truth is owned by the backend reducer and reached through

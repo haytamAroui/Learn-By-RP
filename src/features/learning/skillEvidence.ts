@@ -120,7 +120,9 @@ export interface SkillValidationRejection {
     | 'opportunity_skill_mismatch'
     | 'opportunity_not_validated'
     | 'opportunity_not_taken'
+    | 'opportunity_metadata_mismatch'
     | 'opportunity_passage_mismatch'
+    | 'modality_mismatch'
     | 'opportunity_not_demonstrated';
   reason: string;
 }
@@ -449,6 +451,21 @@ export function validateSkillEvidenceProposal(
         );
         continue;
       }
+      if (authoredDefinition) {
+        const expectedModalities = [...(authoredDefinition.eligibleModalities ?? [])].sort();
+        const actualModalities = [...(opportunity.eligibleModalities ?? [])].sort();
+        if (
+          (opportunity.evidenceBand ?? 'unknown') !== (authoredDefinition.evidenceBand ?? 'unknown') ||
+          opportunity.assessedChannel !== authoredDefinition.assessedChannel ||
+          JSON.stringify(actualModalities) !== JSON.stringify(expectedModalities)
+        ) {
+          reject(
+            'opportunity_metadata_mismatch',
+            `Opportunity ${opportunity.id} does not preserve its authored band, channel, or eligible modalities`
+          );
+          continue;
+        }
+      }
       if (
         authoredDefinition &&
         authoredDefinition.skillId !== opportunity.skillId
@@ -506,6 +523,10 @@ export function validateSkillEvidenceProposal(
       reject('passage_not_learner', `Passage ${passage.id} is the ${passage.speaker}, not the learner`);
       continue;
     }
+    if (candidate.modality !== passage.modality) {
+      reject('modality_mismatch', `Proposal modality does not match learner passage ${passage.id}`);
+      continue;
+    }
 
     // 5. Is the transcript revision still the one that was read?
     if (passage.revisionKey !== candidate.sourceRevision) {
@@ -519,7 +540,9 @@ export function validateSkillEvidenceProposal(
     if (opportunity) {
       if (
         opportunity.learnerAttemptPassageId !== candidate.sourcePassageId ||
-        opportunity.learnerAttemptRevision !== candidate.sourceRevision
+        opportunity.learnerAttemptRevision !== candidate.sourceRevision ||
+        opportunity.observedModality !== passage.modality ||
+        (opportunity.eligibleModalities && !opportunity.eligibleModalities.includes(passage.modality))
       ) {
         reject(
           'opportunity_passage_mismatch',
@@ -633,6 +656,8 @@ export function validateSkillEvidenceProposal(
       contextKey: {
         domainId: context.mission.category,
         scenarioFamilyId: context.mission.scenarioFamilyId,
+        assessedChannel: opportunity?.assessedChannel,
+        evidenceBand: opportunity?.evidenceBand ?? 'unknown',
         scenarioId: context.mission.sceneId,
       },
 
@@ -641,6 +666,8 @@ export function validateSkillEvidenceProposal(
       scenarioId: context.mission.sceneId,
 
       modality: candidate.modality,
+      assessedChannel: opportunity?.assessedChannel,
+      evidenceBand: opportunity?.evidenceBand ?? 'unknown',
       retrieval,
       taskOutcome: outcome,
       demonstration: 'demonstrated',
@@ -704,6 +731,7 @@ export function deriveLapses(
 
   const primary = missionSkillIds(context.mission).primary;
   if (primary.size === 0) return [];
+  const scene = context.mission.sceneId ? getScene(context.mission.sceneId) : undefined;
 
   const passagesById = new Map(context.passages.map(passage => [passage.id, passage]));
   const lapses: SkillLapse[] = [];
@@ -717,6 +745,23 @@ export function deriveLapses(
     if (opportunity.demonstration !== 'attempted_not_demonstrated') continue;
     if (!primary.has(opportunity.skillId)) continue;
 
+    // Failure evidence must use the same reviewed opportunity contract as
+    // positive evidence. Runtime/client fields cannot supply a band or channel
+    // that the authored scene has not qualified.
+    const authoredDefinition = scene?.opportunityDefinitions.find(
+      definition => definition.id === opportunity.opportunityId
+    );
+    if (
+      !authoredDefinition ||
+      authoredDefinition.skillId !== opportunity.skillId ||
+      (authoredDefinition.evidenceBand ?? 'unknown') === 'unknown' ||
+      !authoredDefinition.assessedChannel ||
+      (opportunity.evidenceBand ?? 'unknown') !== authoredDefinition.evidenceBand ||
+      opportunity.assessedChannel !== authoredDefinition.assessedChannel ||
+      JSON.stringify([...(opportunity.eligibleModalities ?? [])].sort()) !==
+        JSON.stringify([...(authoredDefinition.eligibleModalities ?? [])].sort())
+    ) continue;
+
     // Technical uncertainty must never become a pedagogical weakness signal.
     if (opportunity.failureReason) continue;
 
@@ -725,6 +770,12 @@ export function deriveLapses(
 
     const passage = passagesById.get(passageId);
     if (!passage || passage.speaker !== 'user') continue;
+    if (
+      opportunity.evidenceBand === undefined || opportunity.evidenceBand === 'unknown' ||
+      !opportunity.assessedChannel ||
+      opportunity.observedModality !== passage.modality ||
+      (opportunity.eligibleModalities && !opportunity.eligibleModalities.includes(passage.modality))
+    ) continue;
     if (passage.attemptId !== context.attemptId) continue;
     if (
       opportunity.learnerAttemptRevision &&
@@ -757,8 +808,12 @@ export function deriveLapses(
       contextKey: {
         domainId: context.mission.category,
         scenarioFamilyId: context.mission.scenarioFamilyId,
+        assessedChannel: opportunity.assessedChannel,
+        evidenceBand: opportunity.evidenceBand,
         scenarioId: context.mission.sceneId,
       },
+      assessedChannel: opportunity.assessedChannel,
+      evidenceBand: opportunity.evidenceBand,
       domainId: context.mission.category,
       scenarioId: context.mission.sceneId,
       opportunityInstanceId: opportunity.id,
@@ -861,7 +916,10 @@ export function isIndependentSuccess(observation: SkillObservation): boolean {
   return (
     observation.demonstration === 'demonstrated' &&
     observation.retrieval === 'unassisted' &&
-    observation.modality === 'spoken'
+    observation.modality === 'spoken' &&
+    observation.assessedChannel !== undefined &&
+    observation.evidenceBand !== undefined &&
+    observation.evidenceBand !== 'unknown'
   );
 }
 

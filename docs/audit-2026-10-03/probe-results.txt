@@ -1,0 +1,14 @@
+MODEL ITEM/MODALITY: [{"itemId":"phrase.es.cafe_leche","form":"hola","modality":"spoken","retrieval":"unassisted"}]
+NEGATION MATCH: {"verdict":"exact","score":1,"matchedText":"No quiero un café con leche."}
+WRONG DRILL ANSWER: [{"quote":"banana","retrieval":"unassisted"}]
+FORGED IDENTITY: {"identity":"auth:da53422a4618735f8ae72abdb21c16d3","accepted":12,"rotatedAccepted":true}
+ACTUAL FINISH EVENT SEQUENCE: ending
+PLAYBACK/LISTEN LOOP: {"playbackEnds":25,"recognizerStarts":24,"stoppedAtSafetyLimit":25}
+DELETE LAST EVIDENCE: {"driver":"sqlite","before":"growing","after":"growing","remainingObservations":0,"unassistedCount":1}
+DRILL HISTORY PROJECTION: {"driver":"sqlite","remainingObservations":2,"recallStatus":"supported","unassistedCount":0}
+DELETE LAST EVIDENCE: {"driver":"indexeddb","before":"growing","after":"growing","remainingObservations":0,"unassistedCount":1}
+DRILL HISTORY PROJECTION: {"driver":"indexeddb","remainingObservations":2,"recallStatus":"supported","unassistedCount":0}
+CONCURRENT SCENE ACTIONS: [{"accepted":true,"revision":2},{"accepted":true,"revision":2}]
+REPLAY: Scene event replay gap for race/attempt-1: expected revision 3, got 2
+SNAPSHOT: 2
+ANONYMOUS SCENE ACCESS: {"createStatus":201,"readStatus":200,"closeStatus":200}

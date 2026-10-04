@@ -35,10 +35,15 @@ import {
 function recentLapseCount(
   lapses: SkillLapse[],
   skillId: CommunicativeSkillId,
-  now: number
+  now: number,
+  assessedChannel?: SkillLapse['assessedChannel'],
+  evidenceBand?: SkillLapse['evidenceBand']
 ): number {
   return lapses.filter(lapse => {
     if (lapse.skillId !== skillId) return false;
+    if (!assessedChannel || !evidenceBand || evidenceBand === 'unknown') return false;
+    if ((lapse.assessedChannel ?? lapse.contextKey.assessedChannel) !== assessedChannel) return false;
+    if ((lapse.evidenceBand ?? lapse.contextKey.evidenceBand ?? 'unknown') !== evidenceBand) return false;
     const at = Date.parse(lapse.recordedAt);
     if (!Number.isFinite(at)) return false;
     const ageDays = (now - at) / 86_400_000;
@@ -56,7 +61,9 @@ function recentLapseCount(
  */
 export function skillContextIdentity(observation: SkillObservation): string {
   const { domainId, scenarioFamilyId } = observation.contextKey;
-  return `${domainId}::${scenarioFamilyId}`;
+  const assessedChannel = observation.assessedChannel ?? observation.contextKey.assessedChannel ?? 'unknown';
+  const evidenceBand = observation.evidenceBand ?? observation.contextKey.evidenceBand ?? 'unknown';
+  return `${assessedChannel}::${evidenceBand}::${domainId}::${scenarioFamilyId}`;
 }
 
 export function projectSkill(
@@ -68,29 +75,82 @@ export function projectSkill(
   const mine = observations.filter(o => o.skillId === skillId);
 
   const independent = mine.filter(isIndependentSuccess);
+  const allLegacy = mine.filter(o => o.evidenceSource === 'legacy_inferred');
   const assisted = mine.filter(
     o => o.retrieval === 'assisted' || o.retrieval === 'unknown'
   );
 
-  const independentContexts = [...new Set(independent.map(skillContextIdentity))];
-  const independentDays = [...new Set(independent.map(observationDay))].sort();
-
-  const validatedIndependent = independent.filter(
-    o => o.evidenceSource === 'validated_explicit'
+  // Status thresholds are evaluated inside one assessed channel and one authored
+  // band. Evidence from typed production or a higher band cannot fill a lower
+  // band's history, and different channels cannot pool toward promotion.
+  const partitions = new Map<string, SkillObservation[]>();
+  for (const observation of independent) {
+    const key = `${observation.assessedChannel}::${observation.evidenceBand}`;
+    partitions.set(key, [...(partitions.get(key) ?? []), observation]);
+  }
+  const statusRank: Record<SkillStatus, number> = {
+    new: 0,
+    supported: 1,
+    growing: 2,
+    steady: 3,
+  };
+  const partitionResults = [...partitions.entries()].map(([key, rows]) => {
+    const independentContexts = [...new Set(rows.map(skillContextIdentity))];
+    const independentDays = [...new Set(rows.map(observationDay))].sort();
+    const validatedIndependent = rows.filter(o => o.evidenceSource === 'validated_explicit');
+    const legacyIndependent = rows.filter(o => o.evidenceSource === 'legacy_inferred');
+    return {
+      key,
+      rows,
+      independentContexts,
+      independentDays,
+      validatedIndependent,
+      legacyIndependent,
+      status: deriveStatus({
+        independentContexts: independentContexts.length,
+        independentDays: independentDays.length,
+        hasAnyEvidence: true,
+        hasAssistedOnly: false,
+        validatedCount: validatedIndependent.length,
+        legacyOnly: legacyIndependent.length > 0 && validatedIndependent.length === 0,
+      }),
+    };
+  }).sort((a, b) =>
+    statusRank[b.status] - statusRank[a.status] ||
+    b.validatedIndependent.length - a.validatedIndependent.length
   );
-  const legacyIndependent = independent.filter(
-    o => o.evidenceSource === 'legacy_inferred'
-  );
+  const bestPartition = partitionResults[0];
+  const independentContexts = bestPartition?.independentContexts ?? [];
+  const independentDays = bestPartition?.independentDays ?? [];
+  const validatedIndependent = bestPartition?.validatedIndependent ?? [];
+  const legacyIndependent = bestPartition?.legacyIndependent ?? [];
+  const [assessedChannel, evidenceBand] = bestPartition?.key.split('::') ?? [];
 
-  const recentLapses = recentLapseCount(lapses, skillId, now);
+  const latestQualifiedLapse = [...lapses]
+    .filter(lapse =>
+      lapse.skillId === skillId &&
+      (lapse.assessedChannel ?? lapse.contextKey.assessedChannel) !== undefined &&
+      (lapse.evidenceBand ?? lapse.contextKey.evidenceBand) !== undefined &&
+      (lapse.evidenceBand ?? lapse.contextKey.evidenceBand) !== 'unknown'
+    )
+    .sort((a, b) => b.recordedAt.localeCompare(a.recordedAt))[0];
+  const lapseChannel = latestQualifiedLapse?.assessedChannel ?? latestQualifiedLapse?.contextKey.assessedChannel;
+  const lapseBand = latestQualifiedLapse?.evidenceBand ?? latestQualifiedLapse?.contextKey.evidenceBand;
+  const recentLapses = recentLapseCount(
+    lapses,
+    skillId,
+    now,
+    (bestPartition ? assessedChannel : lapseChannel) as SkillLapse['assessedChannel'] | undefined,
+    (bestPartition ? evidenceBand : lapseBand) as SkillLapse['evidenceBand'] | undefined
+  );
   const reviewDue = recentLapses > 0;
   const revisit = recentLapses >= SKILL_POLICY.revisitMinRecentLapses;
-  const lastIndependentUseAt = independent
+  const lastIndependentUseAt = (bestPartition?.rows ?? [])
     .map(observation => observation.recordedAt)
     .filter(Boolean)
     .sort()
     .at(-1);
-  const status = deriveStatus({
+  const aggregateStatus = deriveStatus({
     independentContexts: independentContexts.length,
     independentDays: independentDays.length,
     hasAnyEvidence: mine.length > 0,
@@ -98,15 +158,24 @@ export function projectSkill(
     validatedCount: validatedIndependent.length,
     legacyOnly: legacyIndependent.length > 0 && validatedIndependent.length === 0,
   });
+  const status = bestPartition
+    ? bestPartition.status
+    : aggregateStatus;
 
   return {
     skillId,
     status,
+    ...(bestPartition && assessedChannel !== 'unknown'
+      ? { assessedChannel: assessedChannel as SkillObservation['assessedChannel'] }
+      : !bestPartition && lapseChannel ? { assessedChannel: lapseChannel } : {}),
+    ...(bestPartition && evidenceBand !== 'unknown'
+      ? { evidenceBand: evidenceBand as SkillObservation['evidenceBand'] }
+      : !bestPartition && lapseBand ? { evidenceBand: lapseBand } : {}),
     independentContexts,
     independentDays,
     assistedCount: assisted.length,
     validatedCount: validatedIndependent.length,
-    legacyInferredCount: legacyIndependent.length,
+    legacyInferredCount: allLegacy.length,
     reviewDue,
     revisit,
     lastIndependentUseAt,

@@ -12,7 +12,10 @@ import type { RoleplayProgram } from '../contracts/program';
 import type { MissionDefinition, SessionRecord } from '../types';
 import { MISSION_CATALOG } from '../data/missions';
 import { buildProgramProjection, isProgramCoreComplete } from '../features/program/projection';
-import { isProgramActivatable } from '../features/program/releaseGates';
+import {
+  isProgramActivatable,
+  validateMissionForProgramRelease,
+} from '../features/program/releaseGates';
 import { useI18n } from '../features/i18n';
 import { Button, EmptyState, Pill, SectionLabel } from './ui';
 import { iconColor } from '../design/iconColor';
@@ -56,7 +59,10 @@ interface ProgramScreenProps {
     match: 'exact' | 'closest';
   };
   onBack: () => void;
-  onStartMission: (mission: MissionDefinition, options?: { finalSimulation?: boolean }) => void;
+  onStartMission: (
+    mission: MissionDefinition,
+    options?: { finalSimulation?: boolean; standalone?: boolean }
+  ) => void;
 }
 
 export const ProgramScreen: React.FC<ProgramScreenProps> = ({
@@ -76,14 +82,29 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
   const canExecute = isProgramActivatable(program);
   const coreComplete = isProgramCoreComplete(program, projection);
 
-  const plan = program.missionPlan
-    .map(ref => ({
-      ref,
-      mission: MISSION_CATALOG.find(
-        candidate => candidate.id === ref.missionId && candidate.version === ref.missionVersion
-      ),
-    }))
-    .filter((entry): entry is typeof entry & { mission: MissionDefinition } => Boolean(entry.mission));
+  const plan = useMemo(
+    () =>
+      program.missionPlan
+        .map(ref => ({
+          ref,
+          mission: MISSION_CATALOG.find(
+            candidate => candidate.id === ref.missionId && candidate.version === ref.missionVersion
+          ),
+        }))
+        .filter(
+          (entry): entry is typeof entry & { mission: MissionDefinition } =>
+            Boolean(entry.mission)
+        ),
+    [program]
+  );
+  const planWithAvailability = useMemo(
+    () =>
+      plan.map(entry => ({
+        ...entry,
+        individuallyAvailable: validateMissionForProgramRelease(entry.mission).ready,
+      })),
+    [plan]
+  );
 
   const finalMission = program.finalSimulation
     ? MISSION_CATALOG.find(
@@ -168,14 +189,16 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
         <View className="gap-3">
           <SectionLabel>{t.missions.tabRoute}</SectionLabel>
 
-          {plan.length === 0 ? (
+          {planWithAvailability.length === 0 ? (
             <EmptyState message={t.missions.noMissionsFound} />
           ) : (
             <View>
-              {plan.map(({ ref, mission }, index) => {
+              {planWithAvailability.map(({ ref, mission, individuallyAvailable }, index) => {
                 const done = completed.has(ref.missionId);
                 const current = projection.currentMissionId === ref.missionId;
-                const unlocked = canExecute && (done || current);
+                const unlocked = canExecute
+                  ? done || current
+                  : individuallyAvailable;
 
                 return (
                   <View key={ref.missionId} className="flex-row gap-3">
@@ -204,7 +227,9 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
 
                     <Pressable
                       disabled={!unlocked}
-                      onPress={() => onStartMission(mission)}
+                      onPress={() =>
+                        onStartMission(mission, { standalone: !canExecute })
+                      }
                       accessibilityRole="button"
                       accessibilityState={{ disabled: !unlocked }}
                       accessibilityLabel={mission.title}

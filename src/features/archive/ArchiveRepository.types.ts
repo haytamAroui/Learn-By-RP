@@ -53,6 +53,8 @@ export interface ArchiveRepository {
 
   // ------------------------------------------------------------------- sessions
   beginSession(session: SessionRecord): Promise<void>;
+  /** Activity checkpoint only; caller-supplied learning evidence is never written. */
+  saveSessionProgress(session: SessionRecord): Promise<void>;
   saveSessionState(sessionId: string, state: SessionState): Promise<void>;
   completeSession(
     session: SessionRecord,
@@ -100,6 +102,8 @@ export interface ArchiveRepository {
   getPhrases(): Promise<PhraseItem[]>;
   savePhrases(phrases: PhraseItem[]): Promise<void>;
   resetPhrase(phraseId: string): Promise<void>;
+  /** Rebuild cached recall from the existing ledger without creating evidence. */
+  rebuildPhraseProjections(): Promise<void>;
 
   // ------------------------------------------------------------------ deletion
   markDeleted(scope: 'session' | 'all', targetId?: string): Promise<string>;

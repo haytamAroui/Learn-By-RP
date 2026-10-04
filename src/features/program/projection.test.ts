@@ -4,6 +4,7 @@ import { SPANISH_DAILY_SERVICES_PILOT } from '../../data/programs';
 import { buildProgramProjection, isProgramCoreComplete } from './projection';
 
 function session(missionId: string, missionVersion: number, completed: boolean): SessionRecord {
+  const sceneId = SPANISH_DAILY_SERVICES_PILOT.missionPlan.find(ref => ref.missionId === missionId)?.sceneId ?? missionId;
   return {
     id: `session-${missionId}`,
     missionId,
@@ -19,7 +20,7 @@ function session(missionId: string, missionVersion: number, completed: boolean):
     observations: [],
     taskOutcome: completed ? 'completed' : 'unknown',
     sceneState: {
-      sceneId: missionId,
+      sceneId,
       revision: 1,
       facts: {},
       learnerKnows: [],
@@ -52,6 +53,25 @@ describe('program projection', () => {
 
     expect(projection.completedMissionIds).toEqual([]);
     expect(projection.currentMissionId).toBe(first.missionId);
+  });
+
+  it('uses the finalized scene outcome rather than the session task summary', () => {
+    const [first] = SPANISH_DAILY_SERVICES_PILOT.missionPlan;
+    const achievedScene = session(first.missionId, first.missionVersion, true);
+    achievedScene.taskOutcome = 'unknown';
+    const unachievedScene = session(first.missionId, first.missionVersion, true);
+    unachievedScene.sceneState.outcome = 'unknown';
+
+    const projection = buildProgramProjection(
+      SPANISH_DAILY_SERVICES_PILOT,
+      [achievedScene]
+    );
+
+    expect(projection.completedMissionIds).toEqual([first.missionId]);
+    expect(buildProgramProjection(
+      SPANISH_DAILY_SERVICES_PILOT,
+      [unachievedScene]
+    ).completedMissionIds).toEqual([]);
   });
 
   it('marks the core route complete only when every pinned mission is completed', () => {
