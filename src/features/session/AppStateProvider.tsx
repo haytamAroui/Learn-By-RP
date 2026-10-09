@@ -1,5 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
+import { ActivityIndicator, View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { SessionProvider } from './SessionProvider';
 import { archiveRepository } from '../archive/archiveRepository';
 

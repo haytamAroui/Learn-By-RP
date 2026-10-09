@@ -83,6 +83,9 @@ export interface Translations {
     focusedDesc: string;
   };
   talk: {
+    currentLesson: string;
+    quickPractice: string;
+    exploreTopics: string;
     tagPractice: string;
     tagMode: string;
     heading: string;
@@ -138,6 +141,10 @@ export interface Translations {
     previewPhrasesTitle: string;
     previewPhrasesDesc: string;
     usefulPhrasesTitle: string;
+    sampleConversationTitle: string;
+    sampleConversationNote: string;
+    conversationLearner: string;
+    conversationCharacter: string;
     minimalSupportTitle: string;
     minimalSupportDesc: string;
     startMissionButton: string;
@@ -158,6 +165,12 @@ export interface Translations {
     checkUnderstanding: { name: string; category: string; description: string };
   };
   live: {
+    usefulReplies: string;
+    replyHint: string;
+    sayMyself: string;
+    sceneProgress: string;
+    options: string;
+    conversationHistory: string;
     liveTag: string;
     frozenTag: string;
     pausedTag: string;
@@ -166,6 +179,7 @@ export interface Translations {
     showMeaning: string;
     hideMeaning: string;
     typeInstead: string;
+    typeButtonLabel: string;
     typePlaceholder: string;
     send: string;
     listening: string;
@@ -473,10 +487,13 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     },
     talk: {
       tagPractice: "Practice",
+      currentLesson: "Current situation",
+      quickPractice: "Quick practice",
+      exploreTopics: "Explore topics",
       tagMode: "Mode",
-      heading: "What would you like to speak today?",
+      heading: "Ready for today?",
       subheading:
-        "Step into a situation, speak naturally, and build phrases you will remember.",
+        "A little Dutch for everyday life.",
       startConversation: "Start conversation",
       spacedRevisit: "Spaced Revisit",
       practiseDueTitle: "Practise phrases due",
@@ -534,6 +551,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Review useful phrases before speaking. Will mark items as assisted in your ledger.",
       usefulPhrasesTitle: "Useful Phrases in this Scene",
+      sampleConversationTitle: "A first conversation in Dutch",
+      sampleConversationNote: "Read the Belgian Dutch dialogue with English and French translations.",
+      conversationLearner: "You",
+      conversationCharacter: "Lotte",
       minimalSupportTitle: "Minimal-support simulation",
       minimalSupportDesc: "Phrase previews stay hidden. Accessibility accommodations remain active, and you can still ask for Help whenever you choose.",
       startMissionButton: "Start Mission Now",
@@ -592,6 +613,12 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     },
     live: {
       liveTag: "Session Live",
+      usefulReplies: "Suggestions & help",
+      replyHint: "Tap a phrase to draft a reply. You choose when to send it.",
+      sayMyself: "I want to say it myself",
+      sceneProgress: "Scene checkpoints",
+      options: "Conversation options",
+      conversationHistory: "Earlier turns",
       frozenTag: "Scene Frozen for Coach Advice",
       pausedTag: "Paused",
       askCoach: "Ask Coach (Freeze)",
@@ -599,6 +626,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       showMeaning: "Show translation line",
       hideMeaning: "Hide translation line",
       typeInstead: "Type instead of speaking",
+      typeButtonLabel: "Type",
       typePlaceholder: "Type your response here...",
       send: "Send",
       listening: "Listening to your speech...",
@@ -915,10 +943,13 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     },
     talk: {
       tagPractice: "Pratique",
+      currentLesson: "Situation du moment",
+      quickPractice: "Pratique rapide",
+      exploreTopics: "Explorer les thèmes",
       tagMode: "Mode",
-      heading: "Que souhaitez-vous pratiquer aujourd’hui ?",
+      heading: "On s’entraîne ?",
       subheading:
-        "Plongez dans une situation réelle, parlez naturellement et ancrez des expressions mémorables.",
+        "Un peu de néerlandais au quotidien.",
       startConversation: "Démarrer la conversation",
       spacedRevisit: "Révision espacée",
       practiseDueTitle: "Pratiquer les expressions à revoir",
@@ -978,6 +1009,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Lisez les expressions avant de parler. Elles seront enregistrées comme assistées dans votre registre.",
       usefulPhrasesTitle: "Expressions utiles dans cette scène",
+      sampleConversationTitle: "Un premier échange en néerlandais",
+      sampleConversationNote: "Lisez le dialogue en néerlandais belge avec les traductions anglaise et française.",
+      conversationLearner: "Vous",
+      conversationCharacter: "Lotte",
       minimalSupportTitle: "Simulation avec soutien minimal",
       minimalSupportDesc: "Les expressions ne sont pas prévisualisées. Vos aménagements d’accessibilité restent actifs et vous pouvez toujours demander de l’aide.",
       startMissionButton: "Démarrer la mission maintenant",
@@ -1036,6 +1071,12 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     },
     live: {
       liveTag: "Session en direct",
+      usefulReplies: "Suggestions et aide",
+      replyHint: "Touchez une phrase pour préparer votre réponse. Envoyez-la quand vous voulez.",
+      sayMyself: "Je veux le dire moi-même",
+      sceneProgress: "Étapes de la scène",
+      options: "Options du dialogue",
+      conversationHistory: "Échanges précédents",
       frozenTag: "Scène gelée pour conseil du coach",
       pausedTag: "En pause",
       askCoach: "Demander au coach (Pause)",
@@ -1043,6 +1084,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       showMeaning: "Afficher la traduction",
       hideMeaning: "Masquer la traduction",
       typeInstead: "Écrire au lieu de parler",
+      typeButtonLabel: "Écrire",
       typePlaceholder: "Écrivez votre réponse ici...",
       send: "Envoyer",
       listening: "Écoute de votre voix...",
@@ -1360,6 +1402,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     },
     talk: {
       tagPractice: "Práctica",
+      currentLesson: "Current situation",
+      quickPractice: "Quick practice",
+      exploreTopics: "Explore topics",
       tagMode: "Modo",
       heading: "¿Qué te gustaría hablar hoy?",
       subheading:
@@ -1421,6 +1466,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Revisa las frases útiles antes de hablar. Quedarán registradas como asistidas en tu libro.",
       usefulPhrasesTitle: "Frases útiles para esta escena",
+      sampleConversationTitle: "Una primera conversación en neerlandés",
+      sampleConversationNote: "Lee el diálogo en neerlandés belga con traducciones al inglés y al francés.",
+      conversationLearner: "Tú",
+      conversationCharacter: "Lotte",
       minimalSupportTitle: "Simulación con apoyo mínimo",
       minimalSupportDesc: "Las frases de apoyo permanecen ocultas. Tus adaptaciones de accesibilidad siguen activas y puedes pedir Ayuda cuando quieras.",
       startMissionButton: "Comenzar misión ahora",
@@ -1479,6 +1528,12 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     },
     live: {
       liveTag: "Sesión en vivo",
+      usefulReplies: "Sugerencias y ayuda",
+      replyHint: "Tap a phrase to draft a reply. You choose when to send it.",
+      sayMyself: "I want to say it myself",
+      sceneProgress: "Scene checkpoints",
+      options: "Conversation options",
+      conversationHistory: "Earlier turns",
       frozenTag: "Escena congelada para consejo",
       pausedTag: "En pausa",
       askCoach: "Preguntar al Coach (Pausar)",
@@ -1486,6 +1541,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       showMeaning: "Mostrar traducción",
       hideMeaning: "Ocultar traducción",
       typeInstead: "Escribir en lugar de hablar",
+      typeButtonLabel: "Escribir",
       typePlaceholder: "Escribe tu respuesta aquí...",
       send: "Enviar",
       listening: "Escuchando tu voz...",
@@ -1802,10 +1858,12 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     },
     talk: {
       tagPractice: "Oefening",
+      currentLesson: "Huidige situatie",
+      quickPractice: "Even oefenen",
+      exploreTopics: "Ontdek thema’s",
       tagMode: "Modus",
-      heading: "Wat wil je vandaag oefenen?",
-      subheading:
-        "Stap in een echte situatie, spreek natuurlijk en leer zinnen die je zult onthouden.",
+      heading: "Klaar voor vandaag?",
+      subheading: "Een beetje Nederlands voor elke dag.",
       startConversation: "Gesprek starten",
       spacedRevisit: "Gespreide herhaling",
       practiseDueTitle: "Herhaal zinnen van vandaag",
@@ -1864,6 +1922,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       previewPhrasesDesc:
         "Lees de handige zinnen voor je spreekt. Ze worden als ondersteund gemarkeerd in je register.",
       usefulPhrasesTitle: "Handige zinnen in deze scène",
+      sampleConversationTitle: "Een eerste gesprek in het Nederlands",
+      sampleConversationNote: "Lees de dialoog in Belgisch Nederlands met Engelse en Franse vertalingen.",
+      conversationLearner: "Jij",
+      conversationCharacter: "Lotte",
       minimalSupportTitle: "Simulatie met minimale ondersteuning",
       minimalSupportDesc: "Zinsvoorbeelden blijven verborgen. Toegankelijkheidsaanpassingen blijven actief en je kunt altijd zelf om Hulp vragen.",
       startMissionButton: "Start missie nu",
@@ -1922,6 +1984,12 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
     },
     live: {
       liveTag: "Sessie live",
+      usefulReplies: "Suggesties & hulp",
+      replyHint: "Tik op een zin om je antwoord klaar te zetten. Je kiest zelf wanneer je het verstuurt.",
+      sayMyself: "Ik wil het zelf zeggen",
+      sceneProgress: "Stappen in de scène",
+      options: "Gespreksopties",
+      conversationHistory: "Vorige beurten",
       frozenTag: "Scène gepauzeerd voor advies van de coach",
       pausedTag: "Gepauzeerd",
       askCoach: "Vraag coach (Pauzeer)",
@@ -1929,6 +1997,7 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       showMeaning: "Toon vertaling",
       hideMeaning: "Verberg vertaling",
       typeInstead: "Typen in plaats van spreken",
+      typeButtonLabel: "Typen",
       typePlaceholder: "Typ je antwoord hier...",
       send: "Verzenden",
       listening: "Luisteren naar je stem...",

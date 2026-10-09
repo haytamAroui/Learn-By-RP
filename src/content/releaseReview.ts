@@ -19,6 +19,7 @@
 
 import type { LanguageCode } from '../types';
 import type { SceneDefinition } from '../contracts/scene';
+import { NL_BE_MISSIONS } from '../data/missions.nlBE';
 
 /** What a reviewer was actually looking at. */
 export type ReviewDimension = 'locale_copy' | 'voice' | 'visuals';
@@ -37,7 +38,7 @@ export interface BundledAssetInventory {
    * pronunciation, pacing or register against.
    */
   audioFiles: number;
-  /** Illustration files shipped with the app. Zero means the product has none. */
+  /** Raster illustration files retained in src. Inline vector artwork is tracked per scene below. */
   imageFiles: number;
 }
 
@@ -57,8 +58,13 @@ export interface SceneReleaseReviewRecord {
  */
 export const BUNDLED_ASSET_INVENTORY: BundledAssetInventory = {
   audioFiles: 0,
-  imageFiles: 0,
+  imageFiles: 2,
 };
+
+/** Presence of current static orientation artwork is distinct from qualified human review. */
+export const SCENE_VISUAL_ASSETS: Readonly<Record<string, readonly string[]>> = Object.fromEntries(
+  NL_BE_MISSIONS.filter(mission => mission.sceneId).map(mission => [mission.sceneId!, ['src/design/lingoArtwork.ts']])
+);
 
 /**
  * Recorded reviews, keyed by scene id.
@@ -96,7 +102,7 @@ export function sceneReviewGaps(scene: SceneDefinition): string[] {
       `${scene.id}: no bundled audio, so every voice is synthesized at runtime and there is nothing to audition`
     );
   }
-  if (BUNDLED_ASSET_INVENTORY.imageFiles === 0) {
+  if (!SCENE_VISUAL_ASSETS[scene.id]?.length) {
     gaps.push(
       `${scene.id}: no bundled imagery, so the scene has no illustrated orientation`
     );

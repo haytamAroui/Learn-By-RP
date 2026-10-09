@@ -136,6 +136,13 @@ describe('WCAG contrast: text', () => {
 });
 
 describe('WCAG contrast: non-text and structure', () => {
+  it('keeps reference lime labels and coral microphone icons readable in both themes', () => {
+    for (const { tokens } of THEMES) {
+      expect(contrast(tokens.limeText, tokens.lime)).toBeGreaterThanOrEqual(AA_TEXT);
+      expect(contrast(tokens.brandText, tokens.coralControl)).toBeGreaterThanOrEqual(NON_TEXT);
+      expect(contrast(tokens.lilac, tokens.surface)).toBeGreaterThanOrEqual(AA_TEXT);
+    }
+  });
   for (const { name, tokens } of THEMES) {
     describe(name, () => {
       it('a control boundary is visible on surface and on canvas', () => {
@@ -237,12 +244,7 @@ describe('no token is an accidental duplicate of another in the same theme', () 
       'raised === brandText',
       'raised === languageText',
       'brandText === languageText',
-      // Light brand is already dark enough for white text, so the CTA fill is
-      // the brand itself.
-      'brand === brandButton',
-      'brandHover === brandButtonHover',
-      'brandPressed === brandButtonPressed',
-      // Focus is the language teal by design: one teal, two roles.
+      // Focus shares the language blue; coral and navy actions stay distinct.
       'language === focus',
       // Light mode has no lighter white, so a raised surface is a card-coloured
       // surface separated by shadow rather than by tone.
@@ -659,6 +661,6 @@ describe('mobile-first learner route architecture', () => {
 
     expect(live).toContain('size="compact"');
     expect(live).toContain('visible={showHelpSheet}');
-    expect(live).toContain('visible={showMeaningLine && Boolean(latestAssistantPassage?.meaning)}');
+    expect(live).toContain('meaningVisible: showMeaningLine, onToggleMeaning: handleToggleMeaning');
   });
 });

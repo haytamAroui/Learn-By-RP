@@ -1,5 +1,6 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
@@ -67,7 +68,7 @@ export default function SettingsPrivacyScreen() {
 
         <ScrollView
           className="flex-1"
-          showsVerticalScrollIndicator={false}
+          showsVerticalScrollIndicator={true}
           contentContainerStyle={{
             width: '100%',
             maxWidth: 720,
@@ -128,7 +129,7 @@ export default function SettingsPrivacyScreen() {
             </View>
           </View>
 
-          <View className="gap-3">
+          <View className="gap-3 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
             <SectionLabel>{t.settings.continuityTitle}</SectionLabel>
             <View className="gap-4 rounded-2xl bg-surface-soft p-4">
               <Text className="text-sm leading-5 text-body">
@@ -160,7 +161,7 @@ export default function SettingsPrivacyScreen() {
                   {t.settings.continuityFactsEmpty}
                 </Text>
               ) : (
-                <View className="gap-3">
+                <View className="gap-3 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
                   {continuity.facts.map(fact => (
                     <ContinuityFactEditor
                       key={fact.id}

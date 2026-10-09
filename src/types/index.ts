@@ -95,6 +95,8 @@ export interface UsefulPhrase {
   id: string;
   form: string;
   meaning: string;
+  /** Authored translations; absent translations stay hidden rather than using another language. */
+  meaningTranslations?: { fr?: string; nl?: string };
   usageNote: string;
   difficulty: 'beginner' | 'elementary' | 'intermediate';
 }
@@ -133,6 +135,13 @@ export interface MissionDefinition {
   stretchGoal: string;
   targetIntents: string[];
   usefulPhrases: UsefulPhrase[];
+  /** Optional authored conversation model with Belgian Dutch and UI translations. */
+  sampleConversation?: Array<{
+    speaker: 'learner' | 'character';
+    nl: string;
+    en: string;
+    fr: string;
+  }>;
   supportPolicy: {
     hintLadderAvailable: boolean;
     correctionStyle: 'gentle' | 'none' | 'after_turn';

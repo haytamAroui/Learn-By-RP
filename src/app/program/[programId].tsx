@@ -1,11 +1,13 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { I18nProvider, getTranslations } from '../../features/i18n';
 import { ROLEPLAY_PROGRAM_CATALOG } from '../../data/programs';
 import { ProgramScreen } from '../../components/ProgramScreen';
 import { Button } from '../../components/ui';
+import { ACTIVE_LEARNING_LANGUAGE } from '../../features/i18n/languagePolicy';
 
 export default function ProgramRoute() {
   const router = useRouter();
@@ -19,7 +21,7 @@ export default function ProgramRoute() {
   }>();
   const program = ROLEPLAY_PROGRAM_CATALOG.find(candidate => candidate.id === programId);
 
-  if (!program) {
+  if (!program || program.targetLanguage !== ACTIVE_LEARNING_LANGUAGE) {
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-canvas p-6">
         <Text className="text-center text-sm text-muted">{t.missions.programNotFound}</Text>

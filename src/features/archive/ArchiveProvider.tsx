@@ -170,7 +170,7 @@ export const ArchiveProvider: React.FC<{ children: React.ReactNode }> = ({ child
       sessions,
       phrases,
       observations,
-      duePhrases: phrases.filter(p => p.scheduling.due),
+      duePhrases: phrases.filter(p => p.language === preferences.learningLanguage && p.scheduling.due),
       lastSession: sessions[0],
       interruptedSessions,
       refresh,

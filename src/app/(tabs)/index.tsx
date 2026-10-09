@@ -49,6 +49,7 @@ export default function TalkTab() {
           }
           onExploreMissions={() => router.push('/(tabs)/missions')}
           onPracticeDue={() => setPracticeDueOpen(true)}
+          onViewProgress={() => router.push('/(tabs)/progress')}
         />
       </View>
 

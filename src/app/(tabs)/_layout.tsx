@@ -6,10 +6,10 @@ import { BarChart2, Compass, MessageSquare } from 'lucide-react-native';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations } from '../../features/i18n';
 import { useTheme } from '../../features/theme';
-import { BREAKPOINTS } from '../../design/tokens';
+import { BREAKPOINTS, ELEVATION } from '../../design/tokens';
 import { iconColor } from '../../design/iconColor';
 
-const BAR_HEIGHT = 64;
+const BAR_HEIGHT = 68;
 const BAR_PADDING = 6;
 
 const TAB_ICONS = {
@@ -34,8 +34,9 @@ export default function TabsLayout() {
     progress: t.nav.progress,
   } as const;
 
-  const activeTint = iconColor('brand');
+  const activeTint = iconColor('language');
   const inactiveTint = iconColor('muted');
+  const glass = Platform.OS === 'web' ? { backdropFilter: 'blur(20px) saturate(1.6)' } : {};
 
   return (
     <Tabs
@@ -50,7 +51,7 @@ export default function TabsLayout() {
           tabBarLabelPosition: isDesktop ? 'beside-icon' : 'below-icon',
           tabBarActiveTintColor: activeTint,
           tabBarInactiveTintColor: inactiveTint,
-          tabBarActiveBackgroundColor: iconColor('brandSoft'),
+          tabBarActiveBackgroundColor: iconColor('languageSoft'),
           tabBarLabel: label,
           tabBarAccessibilityLabel: label,
           tabBarIcon: ({ color, focused }) => (
@@ -60,30 +61,43 @@ export default function TabsLayout() {
             fontSize: isDesktop ? 14 : 12,
             lineHeight: isDesktop ? 18 : 16,
             fontWeight: '600' as const,
+            fontFamily: Platform.OS === 'web' ? 'Figtree, system-ui, sans-serif' : undefined,
           },
           tabBarItemStyle: {
             minHeight: 52,
-            borderRadius: 14,
+            borderRadius: 25,
+            overflow: 'hidden',
             marginHorizontal: isDesktop ? 8 : 4,
             marginVertical: isDesktop ? 3 : 0,
           },
           tabBarStyle: isDesktop
             ? {
-                width: 232,
+                width: 216,
+                margin: 12,
+                borderRadius: 28,
                 paddingTop: 16,
                 paddingBottom: 16,
-                backgroundColor: iconColor('surface'),
+                backgroundColor: `${iconColor('surface')}E6`,
+                ...glass,
                 borderTopWidth: 0,
-                borderRightWidth: 1,
-                borderRightColor: iconColor('borderSubtle'),
+                borderRightWidth: 0,
+                boxShadow: ELEVATION.floating,
               }
             : {
-                height: BAR_HEIGHT + bottomInset,
+                height: BAR_HEIGHT,
                 paddingTop: BAR_PADDING,
-                paddingBottom: bottomInset + BAR_PADDING,
-                paddingHorizontal: 8,
-                backgroundColor: iconColor('surface'),
-                borderTopColor: iconColor('borderSubtle'),
+                paddingBottom: BAR_PADDING,
+                paddingHorizontal: 4,
+                marginHorizontal: Math.max(12, (width - 720) / 2),
+                marginBottom: bottomInset + 12,
+                marginTop: 6,
+                borderRadius: 31,
+                borderTopWidth: 0,
+                boxShadow: ELEVATION.floating,
+                backgroundColor: `${iconColor('surface')}E6`,
+                borderWidth: 1,
+                borderColor: `${iconColor('surface')}D9`,
+                ...glass,
               },
           sceneStyle: {
             backgroundColor: iconColor('canvas'),

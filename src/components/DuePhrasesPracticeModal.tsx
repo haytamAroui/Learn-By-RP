@@ -1,5 +1,6 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Text } from './AppText';
 import {
   AlertCircle,
   Check,

@@ -1,9 +1,21 @@
+> Current visual source (9 October 2026): the user-selected Lingo 2027 HTML supersedes
+> the previous Taalbad palette and conversation photo styling. DESIGN.md records
+> the current typography, warm paper/teal/coral/lime palette, vector artwork,
+> pastel quick actions, conversation dock, and floating navigation. Existing
+> workflow, evidence, ownership, and native acceptance requirements below remain.
+
 # LearnByRP Design System V4 — Implementation TODO
 
 **Version:** 4.0  
 **Status:** active UI/UX implementation authority on `main`  
 **Primary target:** mobile first  
 **Canonical phone review:** **390 × 844**
+
+**Visual update — 9 October 2026:** The user's supplied
+`Taalbad_A1.1_Apple_2026_Redesign.html` now governs palette, rounded surfaces,
+illustration, soft elevation, and floating navigation. `DESIGN.md` records this
+reference adaptation and its mapping to the existing canonical tokens. V4's
+workflow, evidence, persistence, and navigation constraints remain in force.
 
 This document supersedes:
 
@@ -101,11 +113,11 @@ Primary destinations are exactly:
 
 ## Brand and semantics
 
-- [x] Warm off-white canvas.
+- [x] Pale neutral canvas from the supplied reference.
 - [x] Dark high-contrast typography.
-- [x] Terracotta primary action.
-- [x] Teal for language-learning semantics.
-- [x] Green only for verified positive evidence/success.
+- [x] Navy primary actions; coral speaking accent.
+- [x] Blue for language content and selected navigation.
+- [x] Green for verified success in evidence/status surfaces. Reference-derived action-card hues identify navigation categories and confer no evidence or mastery.
 - [x] Amber for assisted/pending/degraded states.
 - [x] Red for destructive/error states.
 - [x] Light/dark semantic token sets exist.
@@ -117,7 +129,7 @@ Primary destinations are exactly:
 ## Elevation
 
 - [x] Prefer tonal hierarchy over heavy shadows.
-- [x] Avoid decorative shadow on routine content.
+- [x] Use the reference's restrained shared card/floating shadows; keep learner text on solid surfaces.
 - [ ] Audit every card-like surface and remove unnecessary borders.
 - [ ] Ensure interactive cards have a visible interaction boundary/state.
 - [ ] Ensure floating sheets/dialogs remain visually distinct in dark mode.
@@ -192,8 +204,8 @@ The question this screen must answer:
 - [x] Mobile-first root header.
 - [x] One hero mission.
 - [x] One dominant Start conversation action.
-- [x] Lightweight review row.
-- [x] Lightweight browse row.
+- [x] Four labeled action cards for Missions, due Phrases, Progress, and Talk, matching the supplied reference without mock progress dots.
+- [x] Review entry uses the active Dutch queue; legacy language history is preserved.
 - [x] Hide implementation IDs and engine metadata.
 - [x] Avoid dashboard charts.
 - [ ] Verify returning-user Continue state.
@@ -213,7 +225,7 @@ The question this screen must answer:
 - [x] Browsable mission presentation.
 - [x] Search.
 - [x] Category chips.
-- [x] Simple mission rows.
+- [x] Readable rounded white mission rows with the goal and interlocutor visible.
 - [x] Connected-route presentation kept secondary.
 - [x] Avoid dense filter matrices.
 - [ ] Verify long mission titles at 360 px.

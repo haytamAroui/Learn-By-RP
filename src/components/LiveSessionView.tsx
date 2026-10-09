@@ -4,9 +4,10 @@ import {
   Platform,
   Pressable,
   ScrollView,
-  Text,
   View,
+  useWindowDimensions,
 } from 'react-native';
+import { Text } from './AppText';
 import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
 import * as Haptics from 'expo-haptics';
 import { categoriseProviderError, type ProviderError } from '../features/voice/lifecycle';
@@ -20,6 +21,7 @@ import {
   Keyboard,
   Mic,
   MicOff,
+  MoreHorizontal,
   Pause,
   Play,
   RotateCcw,
@@ -41,6 +43,7 @@ import {
   OpportunityInstance,
   OperationalTelemetryEvent,
   TaskOutcome,
+  UsefulPhrase,
 } from '../types';
 import { createVoiceTransport } from '../providers/voice';
 import type { VoiceEvent, VoiceTransport } from '../providers/voice';
@@ -110,6 +113,10 @@ import type {
 import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
+import { ELEVATION } from '../design/tokens';
+import { CharacterAvatar, ConversationStage, SuggestedReplies } from './ConversationStage';
+import { ReferenceArtwork } from './ReferenceArtwork';
+import { sceneCheckpointProgress, suggestedPhraseExposure } from '../features/roleplay/sessionPresentation';
 
 function toRuntimeCheckpoints(
   checkpoints: SceneState['checkpoints']
@@ -188,7 +195,6 @@ const VOICE_BLOCKED: ReadonlySet<VoiceState> = new Set<VoiceState>([
 const EXPLANATION_LANGUAGE_NAMES: Record<string, string> = {
   en: 'English',
   fr: 'French',
-  es: 'Spanish',
   nl: 'Dutch',
 };
 
@@ -362,6 +368,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const consentRef = useRef({ voice: voiceGranted, analysis: analysisGranted });
   consentRef.current = { voice: voiceGranted, analysis: analysisGranted };
   const insets = useSafeAreaInsets();
+  const { height: windowHeight } = useWindowDimensions();
 
   const buildHonestSummary = (
     assessmentUnavailable: boolean,
@@ -391,6 +398,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const [isMuted, setIsMuted] = useState(false);
   const [audioPlaybackEnabled, setAudioPlaybackEnabled] = useState(true);
   const [showMeaningLine, setShowMeaningLine] = useState(false);
+  const [suggestionsOpen, setSuggestionsOpen] = useState(false);
+  const [suggestionsBusy, setSuggestionsBusy] = useState(false);
+  const [showOptions, setShowOptions] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [playingId, setPlayingId] = useState<string | null>(null);
+  const supportActionPendingRef = useRef(false);
+  const audioActionPendingRef = useRef(false);
+  useEffect(() => { setSuggestionsOpen(false); }, [attemptId]);
   /** The passage the meaning was revealed for, so a re-reveal is not double counted. */
   const meaningRevealedForRef = useRef<string | null>(null);
 
@@ -612,15 +627,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   );
 
   useEffect(() => {
-    const latestAssistant = [...passages]
-      .reverse()
-      .find(passage => passage.speaker === 'assistant');
-    const olderVisible = latestAssistant
-      ? passages.filter(passage => passage.id !== latestAssistant.id).slice(-6)
-      : passages.slice(-6);
-    const visiblePassages = latestAssistant
-      ? [latestAssistant, ...olderVisible]
-      : olderVisible;
+    const visiblePassages = historyOpen ? passages : passages.slice(-4);
 
     setSupportExposures(existing =>
       mergeVisibleCaptionViewExposures({
@@ -631,7 +638,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         recordedAt: new Date().toISOString(),
       })
     );
-  }, [attemptId, passages, sessionId]);
+  }, [attemptId, passages, sessionId, historyOpen]);
 
   useEffect(() => {
     if (!mission?.sceneId) return;
@@ -959,7 +966,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           turnId: characterPassage.id,
         });
 
-        if (audioPlaybackEnabled && !isSceneFrozenRef.current) {
+        if (audioPlaybackEnabled && consentRef.current.voice && !isSceneFrozenRef.current) {
           setVoiceState('speaking');
           const transport = voiceTransportRef.current;
           if (transport) {
@@ -1388,6 +1395,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         type: 'actor_turn_completed',
         turnId: initialPassage.id,
       });
+      if (!consentRef.current.voice || !audioPlaybackEnabled) {
+        setVoiceState('idle');
+        setShowTypedInput(true);
+        return;
+      }
       setVoiceState('speaking');
 
       await speakWithBestAvailable(transport, greeting, {
@@ -1419,7 +1431,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
   useEffect(() => {
     const timer = setTimeout(() => {
-      scrollRef.current?.scrollToEnd({ animated: true });
+      scrollRef.current?.scrollToEnd({ animated: false });
     }, 60);
     return () => clearTimeout(timer);
   }, [passages, interimUserText]);
@@ -2122,7 +2134,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const replayAssistantLine = useCallback(
     async (passage: Passage, speed = 1) => {
       const transport = voiceTransportRef.current;
-      if (!transport) return;
+      if (!transport || !consentRef.current.voice) return;
+      const replayAttempt = attemptIdRef.current;
 
       recordAssistantAudioExposure(
         passage,
@@ -2134,6 +2147,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         speed,
         style: mission.character.voiceStyle,
         voiceGender: mission.character.voiceGender,
+        canPlay: () => !isEndingRef.current && replayAttempt === attemptIdRef.current && consentRef.current.voice,
       });
     },
     [mission.character.voiceStyle, mission.character.voiceGender, mission.language, recordAssistantAudioExposure]
@@ -2205,10 +2219,94 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     setShowHelpSheet(false);
   };
 
+  const suggestions = mission.usefulPhrases.slice(0, 3);
+  const checkpointProgress = sceneCheckpointProgress(mission, sceneState);
+
+  // Persist exact form support before any new surface displays or uses it.
+  const saveSuggestedSupport = async (phrases: UsefulPhrase[], kind: 'full_form' | 'typed_example' | 'model_phrase_audio') => {
+    const activeAttempt = attemptIdRef.current;
+    const additions = phrases.map(phrase => suggestedPhraseExposure({
+      sessionId, attemptId: activeAttempt, phraseId: phrase.id, kind,
+      recordedAt: new Date().toISOString(),
+    }));
+    const next = [...supportExposuresRef.current, ...additions];
+    supportExposuresRef.current = next;
+    setSupportExposures(next);
+    await persistProgress({ supportExposures: next });
+    return !isEndingRef.current && activeAttempt === attemptIdRef.current;
+  };
+
+  const toggleSuggestions = async () => {
+    if (suggestionsOpen) { setSuggestionsOpen(false); return; }
+    if (supportActionPendingRef.current || isEndingRef.current) return;
+    supportActionPendingRef.current = true;
+    setSuggestionsBusy(true);
+    try {
+      if (await saveSuggestedSupport(suggestions, 'full_form')) setSuggestionsOpen(true);
+    } catch { /* persistProgress supplies the actionable save error. */ }
+    finally { supportActionPendingRef.current = false; setSuggestionsBusy(false); }
+  };
+
+  const useSuggestedPhrase = async (phrase: UsefulPhrase) => {
+    if (supportActionPendingRef.current || isEndingRef.current) return;
+    supportActionPendingRef.current = true;
+    try {
+      if (await saveSuggestedSupport([phrase], 'typed_example')) {
+        setTypedMessage(phrase.form);
+        setShowTypedInput(true);
+      }
+    } catch { /* Retain the existing draft when persistence fails. */ }
+    finally { supportActionPendingRef.current = false; }
+  };
+
+  const playSessionAudio = async (id: string, play: () => Promise<void>) => {
+    if (!consentRef.current.voice || audioActionPendingRef.current || isEndingRef.current) return;
+    audioActionPendingRef.current = true;
+    setPlayingId(id);
+    const activeAttempt = attemptIdRef.current;
+    voiceTransportRef.current?.stopListening();
+    voiceTransportRef.current?.stopPlayback();
+    try {
+      await play();
+    } catch (error) {
+      if (!isEndingRef.current && activeAttempt === attemptIdRef.current) {
+        setLastAssistantError(categoriseProviderError({ code: 'SPEECH_FAILED', message: String(error) }));
+        setShowTypedInput(true);
+      }
+    } finally {
+      audioActionPendingRef.current = false;
+      if (mountedRef.current) setPlayingId(null);
+    }
+  };
+
+  const playSuggestedPhrase = async (phrase: UsefulPhrase) => {
+    const phraseAttempt = attemptIdRef.current;
+    await playSessionAudio(phrase.id, async () => {
+      const transport = voiceTransportRef.current;
+      if (!transport) return;
+      if (!(await saveSuggestedSupport([phrase], 'model_phrase_audio')) || !consentRef.current.voice) return;
+      await speakWithBestAvailable(transport, phrase.form, {
+        language: mission.language, speed: effectiveSpeechRate,
+        style: mission.character.voiceStyle, voiceGender: mission.character.voiceGender,
+        canPlay: () => !isEndingRef.current && phraseAttempt === attemptIdRef.current && consentRef.current.voice,
+      });
+    });
+  };
+
+  const conversationProps: React.ComponentProps<typeof ConversationStage> = {
+    mission, latest: latestAssistantPassage, older: olderPassages, passages: displayPassages,
+    historyOpen, onToggleHistory: () => setHistoryOpen(value => !value),
+    meaningVisible: showMeaningLine, onToggleMeaning: handleToggleMeaning,
+    onReplay: passage => void playSessionAudio(passage.id, () => replayAssistantLine(passage)),
+    suggestions, suggestionsOpen, suggestionsBusy, onToggleSuggestions: () => void toggleSuggestions(),
+    onUsePhrase: phrase => void useSuggestedPhrase(phrase), onPlayPhrase: phrase => void playSuggestedPhrase(phrase),
+    audioDisabled: !voiceGranted || playingId !== null || voiceState === 'ending', playingId,
+  };
+
   return (
     <View className="flex-1 bg-canvas">
-      <SafeAreaView edges={['top']} className="bg-canvas">
-        <View className="w-full self-center flex-row items-center gap-3 px-3 py-2" style={{ maxWidth: 900 }}>
+      <SafeAreaView edges={['top']}>
+        <View className="w-full self-center flex-row items-center gap-3 px-4 py-2" style={{ maxWidth: 900 }}>
           <Pressable
             onPress={() => void handleFinishConversation('user_ended')}
             accessibilityRole="button"
@@ -2218,33 +2316,47 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             <X size={21} color={iconColor('ink')} />
           </Pressable>
 
-          <View className="min-w-0 flex-1 items-center">
-            <Text className="text-sm font-semibold text-ink" numberOfLines={1}>
+          <CharacterAvatar mission={mission} size={56} />
+
+          <View className="min-w-0 flex-1 items-start px-1 py-1">
+            <Text className="font-display text-[19px] font-bold leading-6 text-ink" numberOfLines={1}>
               {mission.character.name}
             </Text>
-            <Text className="mt-0.5 text-xs text-muted" numberOfLines={1}>
+            <Text className="mt-0.5 text-sm text-muted" numberOfLines={1}>
               {mission.title}
             </Text>
           </View>
 
           <Pressable
-            onPress={toggleFreezeScene}
+            onPress={() => setShowOptions(true)}
             accessibilityRole="button"
-            accessibilityLabel={isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
+            accessibilityLabel={t.live.options}
             className={`h-12 w-12 items-center justify-center rounded-full border ${
               isSceneFrozen
                 ? 'border-primary bg-card-warm'
                 : 'border-transparent bg-surface-soft'
             } hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus`}
           >
-            {isSceneFrozen ? (
-              <Play size={20} color={iconColor('brand')} fill={iconColor('brand')} />
-            ) : (
-              <Pause size={20} color={iconColor('ink')} />
-            )}
+            <MoreHorizontal size={22} color={iconColor('ink')} />
           </Pressable>
         </View>
+        {checkpointProgress ? <View className="mx-4 mb-3 flex-row items-center gap-3 self-center rounded-full bg-surface-soft px-4 py-2" style={{ width: '90%', maxWidth: 680 }}
+          accessibilityRole="progressbar" accessibilityValue={{ min: 0, max: checkpointProgress.total, now: checkpointProgress.completed }}
+          aria-valuemin={0} aria-valuemax={checkpointProgress.total} aria-valuenow={checkpointProgress.completed}
+          accessibilityLabel={`${t.live.sceneProgress}: ${checkpointProgress.completed} / ${checkpointProgress.total}`}>
+          <View className="flex-1 flex-row gap-1.5">
+            {Array.from({ length: checkpointProgress.total }, (_, index) => <View key={index}
+              className={`h-2 min-w-0 flex-1 rounded-full ${index < checkpointProgress.completed ? 'bg-language' : 'bg-surface-sunken'}`} />)}
+          </View>
+          <Text className="text-xs font-semibold text-muted">{checkpointProgress.completed} / {checkpointProgress.total}</Text>
+        </View> : null}
       </SafeAreaView>
+      <View className="mx-4 mb-2 flex-row items-center gap-4 self-center rounded-[28px] bg-warning-soft px-4 py-3" style={{ width: '92%', maxWidth: 680 }}>
+        <View className="relative h-14 w-[68px]"><ReferenceArtwork kind="shop" /></View>
+        <View className="min-w-0 flex-1 gap-1"><Text className="font-display text-[17px] font-bold leading-6 text-ink">{mission.title}</Text>
+          <Text className="text-sm text-body">{mission.character.name} · {mission.character.role}</Text></View>
+        <View className="h-11 min-w-11 items-center justify-center rounded-full bg-surface px-2"><Text className="text-sm font-bold text-language">{mission.levelRange}</Text></View>
+      </View>
 
       <View accessibilityLiveRegion="polite" accessible={false}>
         {inactivityCountdown !== null ? (
@@ -2269,39 +2381,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           width: '100%',
           maxWidth: 720,
           alignSelf: 'center',
-          paddingHorizontal: 16,
-          paddingTop: 28,
-          paddingBottom: 28,
-          gap: 24,
+          paddingHorizontal: 18,
+          paddingTop: 22,
+          paddingBottom: 36,
+          gap: 30,
         }}
         keyboardShouldPersistTaps="handled"
-        onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: false })}
       >
-        {latestAssistantPassage ? (
-          <View className="gap-4">
-            <View className="flex-row items-center justify-between gap-3">
-              <Text className="text-sm font-semibold text-primary">
-                {mission.character.name}
-              </Text>
-              {latestAssistantPassage.meaning ? (
-                <Pressable
-                  onPress={handleToggleMeaning}
-                  accessibilityRole="button"
-                  accessibilityLabel={t.common.showTranslation}
-                  className="min-h-12 justify-center rounded-full border border-transparent px-3 hover:bg-surface-hover focus:border-2 focus:border-focus"
-                >
-                  <Text className="text-xs font-semibold text-primary">
-                    {t.common.showTranslation}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </View>
-
-            <Text className="text-[26px] font-medium leading-[35px] tracking-tight text-ink">
-              {latestAssistantPassage.text}
-            </Text>
-          </View>
-        ) : null}
+        <ConversationStage {...conversationProps} />
 
         {interimUserText ? (
           <View className="self-end max-w-[88%] rounded-[22px] bg-card-warm px-4 py-3">
@@ -2312,40 +2399,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           </View>
         ) : null}
 
-        {olderPassages.length > 0 ? (
-          <View className="gap-3 pt-4">
-            {olderPassages.map(passage => {
-              const isUser = passage.speaker === 'user';
-              return (
-                <View
-                  key={passage.id}
-                  className={isUser ? 'items-end' : 'items-start'}
-                >
-                  <View
-                    className={`max-w-[84%] rounded-[20px] px-4 py-3 ${
-                      isUser ? 'bg-action' : 'bg-surface-soft'
-                    }`}
-                  >
-                    <Text
-                      className={`text-xs font-medium ${
-                        isUser ? 'text-action-text/80' : 'text-muted'
-                      }`}
-                    >
-                      {isUser ? t.common.you : mission.character.name}
-                    </Text>
-                    <Text
-                      className={`mt-1 text-sm leading-5 ${
-                        isUser ? 'text-action-text' : 'text-ink'
-                      }`}
-                    >
-                      {passage.text}
-                    </Text>
-                  </View>
-                </View>
-              );
-            })}
-          </View>
-        ) : null}
       </ScrollView>
 
       {isSceneFrozen ? (
@@ -2414,6 +2467,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={insets.top}
       >
+        <ScrollView style={{ maxHeight: windowHeight * 0.6 }} keyboardShouldPersistTaps="handled">
         {showTypedInput ? (
           <View className="border-t border-border-subtle bg-surface px-4 py-3">
             <View className="w-full self-center gap-2" style={{ maxWidth: 720 }}>
@@ -2472,8 +2526,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         ) : null}
 
         <View
-          className="border-t border-border-subtle bg-surface px-4 pt-3"
-          style={{ paddingBottom: Math.max(insets.bottom, 12) }}
+          className="mx-3 mb-2 rounded-[32px] border border-border-subtle/30 bg-surface px-3 pt-3"
+          style={{ paddingBottom: Math.max(insets.bottom, 12), boxShadow: ELEVATION.floating }}
         >
           <View className="w-full self-center gap-3" style={{ maxWidth: 720 }}>
             {!voiceGranted ? <Text className="text-xs text-muted">{t.settings.voiceDisabledNotice}</Text> : null}
@@ -2482,103 +2536,49 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               <Text className="text-sm text-ink">{t.settings.sessionSaveFailed}</Text>
               <Button label={t.settings.retrySave} onPress={() => void persistProgress().catch(() => undefined)} size="sm" />
             </View> : null}
-            <View className="flex-row items-center justify-center gap-2">
-              <View className={`h-2.5 w-2.5 rounded-full ${VOICE_DOT[voiceState]}`} />
-              <Text className="text-xs font-semibold capitalize text-muted">
-                {voiceLabel}
-              </Text>
+            <SuggestedReplies {...conversationProps} />
+            <View className="flex-row items-start justify-between gap-2 px-2 py-1">
+              <Pressable onPress={() => setShowTypedInput(value => !value)} accessibilityRole="button"
+                accessibilityState={{ selected: showTypedInput }} accessibilityLabel={t.live.typeInstead}
+                className="min-h-[72px] w-[72px] items-center justify-start gap-1 rounded-2xl border border-transparent p-1 hover:bg-language-soft focus:border-2 focus:border-focus">
+                <View className="h-12 w-12 items-center justify-center rounded-full border border-border-subtle/70 bg-surface">
+                  <Keyboard size={21} color={iconColor('language')} />
+                </View>
+                <Text className="text-xs font-medium leading-4 text-body" numberOfLines={1}>{t.live.typeButtonLabel}</Text>
+              </Pressable>
+              <View className="w-[116px] items-center justify-center">
+                <View className="h-[108px] w-[108px] items-center justify-center rounded-full bg-language-soft">
+                <Pressable onPress={() => {
+                  if (VOICE_BLOCKED.has(voiceState) || !voiceGranted || isSceneFrozen || playingId !== null) return;
+                  if (voiceState === 'listening') voiceTransportRef.current?.stopListening();
+                  else voiceTransportRef.current?.startListening();
+                }} disabled={VOICE_BLOCKED.has(voiceState) || !voiceGranted || isSceneFrozen || playingId !== null}
+                  accessibilityRole="button" accessibilityState={{ disabled: VOICE_BLOCKED.has(voiceState) || !voiceGranted || isSceneFrozen || playingId !== null }}
+                  accessibilityLabel={voiceState === 'listening' ? t.live.listening : voiceState === 'error' ? t.live.voiceFailed : t.live.tapToSpeak}
+                  className={`h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-surface bg-action active:opacity-75 focus:border-focus ${VOICE_BLOCKED.has(voiceState) || !voiceGranted || isSceneFrozen || playingId !== null ? 'opacity-40' : ''}`}>
+                  {voiceState === 'error' ? <MicOff size={30} color={iconColor('brandText')} /> : <Mic size={32} color={iconColor('brandText')} />}
+                </Pressable>
+                </View>
+                <View className="mt-1 flex-row items-center gap-1">
+                  <View className={`h-2 w-2 rounded-full ${VOICE_DOT[voiceState]}`} />
+                  <Text className="text-xs font-semibold text-muted" numberOfLines={1}>{voiceLabel}</Text>
+                </View>
+              </View>
+              <Pressable onPress={() => setShowHelpSheet(true)} accessibilityRole="button" accessibilityLabel={t.common.help}
+                className="min-h-[72px] w-[72px] items-center justify-start gap-1 rounded-2xl border border-transparent p-1 hover:bg-language-soft focus:border-2 focus:border-focus">
+                <View className="h-12 w-12 items-center justify-center rounded-full border border-border-subtle/70 bg-surface">
+                  <HelpCircle size={23} color={iconColor('ink')} />
+                </View>
+                <Text className="text-xs font-semibold text-muted">{t.common.help}</Text>
+              </Pressable>
             </View>
-
-            <Pressable
-              onPress={() => {
-                if (VOICE_BLOCKED.has(voiceState)) return;
-                if (voiceState === 'listening') {
-                  voiceTransportRef.current?.stopListening();
-                } else {
-                  voiceTransportRef.current?.startListening();
-                }
-              }}
-              disabled={VOICE_BLOCKED.has(voiceState)}
-              accessibilityRole="button"
-              accessibilityState={{ disabled: VOICE_BLOCKED.has(voiceState) }}
-              accessibilityLabel={
-                voiceState === 'listening'
-                  ? t.live.listening
-                  : voiceState === 'reconnecting'
-                    ? t.live.reconnecting
-                    : voiceState === 'error'
-                      ? t.live.voiceFailed
-                      : t.live.tapToSpeak
-              }
-              className={`min-h-14 w-full flex-row items-center justify-center gap-2 rounded-2xl bg-action px-4 ${
-                VOICE_BLOCKED.has(voiceState) ? 'opacity-40' : ''
-              } active:bg-action-pressed focus:border-2 focus:border-brand-on`}
-            >
-              <View
-                className="h-2.5 w-2.5 rounded-full bg-action-text/60"
-                style={{
-                  opacity: voiceState === 'listening' ? 0.4 + audioLevel * 0.6 : 0.3,
-                  transform: [{ scale: 1 + audioLevel * 0.6 }],
-                }}
-              />
-              {voiceState === 'error' ? (
-                <MicOff size={19} color={iconColor('brandText')} />
-              ) : (
-                <Mic size={19} color={iconColor('brandText')} />
-              )}
-              <Text className="text-sm font-semibold text-action-text" numberOfLines={1}>
-                {voiceState === 'listening'
-                  ? t.live.listening
-                  : voiceState === 'reconnecting'
-                    ? t.live.reconnecting
-                    : voiceState === 'error'
-                      ? t.live.voiceFailed
-                      : t.live.tapToSpeak}
-              </Text>
+            <Pressable onPress={() => void handleFinishConversation()} accessibilityRole="button" accessibilityLabel={t.common.endConversation}
+              className="min-h-[58px] flex-row items-center justify-center gap-3 rounded-full border border-danger/30 bg-danger-soft px-4 py-3 hover:opacity-90 focus:border-2 focus:border-focus">
+              <X size={19} color={iconColor('danger')} /><Text className="text-sm font-semibold text-danger">{t.common.endConversation}</Text>
             </Pressable>
-
-            <View className="flex-row gap-2">
-              <Pressable
-                onPress={() => setShowHelpSheet(true)}
-                accessibilityRole="button"
-                accessibilityLabel={t.common.help}
-                className="min-h-12 flex-1 items-center justify-center rounded-xl border border-border-interactive bg-surface hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
-              >
-                <HelpCircle size={18} color={iconColor('brand')} />
-                <Text className="mt-1 text-xs font-semibold text-ink">{t.common.help}</Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => setShowTypedInput(prev => !prev)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: showTypedInput }}
-                accessibilityLabel={t.live.typeInstead}
-                className={`min-h-12 flex-1 items-center justify-center rounded-xl border ${
-                  showTypedInput
-                    ? 'border-primary bg-card-warm'
-                    : 'border-border-interactive bg-surface'
-                } hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus`}
-              >
-                <Keyboard size={18} color={showTypedInput ? iconColor('brand') : iconColor('ink')} />
-                <Text className="mt-1 text-xs font-semibold text-ink" numberOfLines={1}>
-                  {t.live.typeInstead}
-                </Text>
-              </Pressable>
-
-              <Pressable
-                onPress={() => void handleFinishConversation()}
-                accessibilityRole="button"
-                accessibilityLabel={t.common.endConversation}
-                className="min-h-12 flex-1 items-center justify-center rounded-xl border border-danger/30 bg-danger-soft hover:opacity-90 active:opacity-75 focus:border-2 focus:border-focus"
-              >
-                <X size={18} color={iconColor('danger')} />
-                <Text className="mt-1 text-xs font-semibold text-danger" numberOfLines={1}>
-                  {t.common.endConversation}
-                </Text>
-              </Pressable>
-            </View>
           </View>
         </View>
+        </ScrollView>
       </KeyboardAvoidingView>
 
       <Sheet
@@ -2613,9 +2613,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           />
           <Button
             label={t.common.listen}
+            disabled={!voiceGranted || playingId !== null}
             onPress={() => {
               if (latestAssistantPassage) {
-                void replayAssistantLine(latestAssistantPassage, 1);
+                void playSessionAudio(latestAssistantPassage.id, () => replayAssistantLine(latestAssistantPassage, 1));
               }
               setShowHelpSheet(false);
             }}
@@ -2623,9 +2624,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           />
           <Button
             label={t.settings.speedSlower}
+            disabled={!voiceGranted || playingId !== null}
             onPress={() => {
               if (latestAssistantPassage) {
-                void replayAssistantLine(latestAssistantPassage, 0.75);
+                void playSessionAudio(latestAssistantPassage.id, () => replayAssistantLine(latestAssistantPassage, 0.75));
               }
               setShowHelpSheet(false);
             }}
@@ -2634,15 +2636,19 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         </View>
       </Sheet>
 
-      <Sheet
-        visible={showMeaningLine && Boolean(latestAssistantPassage?.meaning)}
-        onClose={() => setShowMeaningLine(false)}
-        title={t.common.meaning}
-        size="compact"
-      >
-        <Text className="text-lg font-medium leading-7 text-ink">
-          {latestAssistantPassage?.meaning}
-        </Text>
+      <Sheet visible={showOptions} onClose={() => setShowOptions(false)} title={t.live.options} size="compact">
+        <Button label={isSceneFrozen ? t.common.resumeScene : t.common.freezeScene}
+          onPress={() => { toggleFreezeScene(); setShowOptions(false); }} variant="secondary"
+          icon={<Pause size={18} color={iconColor('ink')} />} />
+        <Button label={t.settings.speedSlower} variant="secondary"
+          disabled={!voiceGranted || playingId !== null || !latestAssistantPassage}
+          onPress={() => {
+            setShowOptions(false);
+            if (latestAssistantPassage) void playSessionAudio(latestAssistantPassage.id, () => replayAssistantLine(latestAssistantPassage, 0.75));
+          }} />
+        <Button label={t.common.endConversation} onPress={() => {
+          setShowOptions(false); void handleFinishConversation();
+        }} variant="danger" />
       </Sheet>
     </View>
   );

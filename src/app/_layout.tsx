@@ -1,8 +1,11 @@
 import React from "react";
-import { Stack, useRouter } from "expo-router";
+import { Platform } from "react-native";
+import Head from 'expo-router/head';
+import { DarkTheme, DefaultTheme, Stack, ThemeProvider as NavigationThemeProvider, useRouter } from "expo-router";
 import { StatusBar } from "expo-status-bar";
 import { SafeAreaProvider } from "react-native-safe-area-context";
-import { ThemeProvider } from "../features/theme";
+import { ThemeProvider, useTheme } from "../features/theme";
+import { TOKENS } from "../design/tokens";
 import {
   ArchiveProvider,
   useArchive,
@@ -41,45 +44,67 @@ function BootRecoveryGate({ children }: { children: React.ReactNode }) {
  */
 function MotionAwareStack() {
   const reduced = useReducedMotionPreference();
+  const { theme, isDark } = useTheme();
+  const navigationTheme = React.useMemo(() => {
+    const base = isDark ? DarkTheme : DefaultTheme;
+    const tokens = TOKENS[theme];
+    return {
+      ...base,
+      colors: {
+        ...base.colors,
+        background: tokens.canvas,
+        card: tokens.surface,
+        text: tokens.ink,
+        primary: tokens.language,
+        border: tokens.borderSubtle,
+        notification: tokens.danger,
+      },
+    };
+  }, [theme, isDark]);
 
   return (
-    <Stack
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: "transparent" },
-        animation: reduced ? "none" : "default",
-      }}
-    >
-      <Stack.Screen name="(tabs)" />
-      <Stack.Screen name="onboarding" options={{ presentation: "modal" }} />
-      <Stack.Screen name="recovery" options={{ presentation: "modal" }} />
-      <Stack.Screen name="mission/[missionId]" />
-      <Stack.Screen name="program/[programId]" />
-      <Stack.Screen
-        name="session/[sessionId]"
-        options={{
+    <NavigationThemeProvider value={navigationTheme}>
+      <StatusBar style={isDark ? "light" : "dark"} />
+      <Stack
+        screenOptions={{
+          headerShown: false,
+          contentStyle: { backgroundColor: "transparent" },
           animation: reduced ? "none" : "default",
         }}
-      />
-      <Stack.Screen name="recap/[sessionId]" />
-      <Stack.Screen
-        name="phrase/[phraseId]"
-        options={{ presentation: "modal" }}
-      />
-      <Stack.Screen name="settings" options={{ presentation: "modal" }} />
-      <Stack.Screen
-        name="settings/privacy"
-        options={{ presentation: "modal" }}
-      />
-    </Stack>
+      >
+        <Stack.Screen name="(tabs)" />
+        <Stack.Screen name="onboarding" options={{ presentation: "modal" }} />
+        <Stack.Screen name="recovery" options={{ presentation: "modal" }} />
+        <Stack.Screen name="mission/[missionId]" />
+        <Stack.Screen name="program/[programId]" />
+        <Stack.Screen
+          name="session/[sessionId]"
+          options={{
+            animation: reduced ? "none" : "default",
+          }}
+        />
+        <Stack.Screen name="recap/[sessionId]" />
+        <Stack.Screen
+          name="phrase/[phraseId]"
+          options={{ presentation: "modal" }}
+        />
+        <Stack.Screen name="settings" options={{ presentation: "modal" }} />
+        <Stack.Screen
+          name="settings/privacy"
+          options={{ presentation: "modal" }}
+        />
+      </Stack>
+    </NavigationThemeProvider>
   );
 }
 
 export default function RootLayout() {
   return (
     <SafeAreaProvider>
+      {Platform.OS === 'web' ? <Head>
+        <link id="learnbyrp-reference-fonts" rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,600..800&family=Figtree:wght@400..800&display=swap" />
+      </Head> : null}
       <ThemeProvider>
-        <StatusBar style="auto" />
         <AppStateProvider>
           <ArchiveProvider>
             <BootRecoveryGate>

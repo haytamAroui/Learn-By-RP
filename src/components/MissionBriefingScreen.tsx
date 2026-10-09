@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Text } from './AppText';
 import {
   ArrowLeft,
   Check,
@@ -7,7 +8,6 @@ import {
   Eye,
   EyeOff,
   Flag,
-  MessageCircle,
   Play,
   UserRound,
 } from 'lucide-react-native';
@@ -17,6 +17,8 @@ import { useI18n } from '../features/i18n';
 import { Button, SectionLabel } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
+import { ELEVATION } from '../design/tokens';
+import { NeighborhoodArtwork } from './NeighborhoodArtwork';
 
 interface MissionBriefingScreenProps {
   mission: MissionDefinition;
@@ -86,7 +88,7 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
 
       <ScrollView
         className="flex-1"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 720,
@@ -106,8 +108,8 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
               </Text>
             </View>
           ) : null}
-          <View className="h-20 w-20 items-center justify-center rounded-[28px] bg-card-warm">
-            <MessageCircle size={34} color={iconColor('brand')} strokeWidth={1.8} />
+          <View className="w-full overflow-hidden rounded-[28px]" style={{ height: 140, boxShadow: ELEVATION.card }}>
+            <NeighborhoodArtwork />
           </View>
 
           <View className="items-center gap-2">
@@ -123,7 +125,7 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
           </View>
         </View>
 
-        <View className="gap-5">
+        <View className="gap-5 rounded-[24px] border border-border-subtle/50 bg-surface p-5" style={{ boxShadow: ELEVATION.card }}>
           <View className="flex-row items-center gap-3">
             <View className="h-12 w-12 items-center justify-center rounded-2xl bg-surface-soft">
               <UserRound size={21} color={iconColor('muted')} />
@@ -168,6 +170,31 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
             </View>
           </View>
         </View>
+
+        {mission.sampleConversation?.length ? (
+          <View className="gap-3 rounded-[24px] border border-border-subtle bg-surface p-4">
+            <View className="gap-1">
+              <Text className="text-base font-semibold text-ink">
+                {t.briefing.sampleConversationTitle}
+              </Text>
+              <Text className="text-sm leading-5 text-muted">
+                {t.briefing.sampleConversationNote}
+              </Text>
+            </View>
+            {mission.sampleConversation.map((turn, index) => (
+              <View key={`${index}-${turn.speaker}`} className="gap-1 rounded-2xl bg-surface-soft p-3">
+                <Text className="text-xs font-semibold uppercase tracking-wide text-primary">
+                  {turn.speaker === 'learner'
+                    ? t.briefing.conversationLearner
+                    : t.briefing.conversationCharacter}
+                </Text>
+                <Text className="text-[15px] font-semibold leading-5 text-ink">{turn.nl}</Text>
+                <Text className="text-sm leading-5 text-body">EN · {turn.en}</Text>
+                <Text className="text-sm leading-5 text-body">FR · {turn.fr}</Text>
+              </View>
+            ))}
+          </View>
+        ) : null}
 
         {minimalSupport ? (
           <View className="gap-3 rounded-[24px] bg-card-sage p-4">
@@ -282,7 +309,7 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
                 accessibilityState={{ selected }}
                 className={`min-h-[72px] flex-row items-center gap-3 rounded-2xl border p-4 ${
                   selected
-                    ? 'border-primary bg-card-warm'
+                    ? 'border-language bg-language-soft'
                     : 'border-border-interactive bg-surface'
                 } hover:bg-surface-hover focus:border-2 focus:border-focus`}
               >

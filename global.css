@@ -16,39 +16,44 @@
 @layer base {
   /* Light: the default. */
   :root {
-    --color-canvas: 242 237 228;
+    --color-canvas: 248 243 232;
     --color-surface: 255 255 255;
-    --color-surface-soft: 244 240 232;
-    --color-sunken: 232 224 210;
-    --color-surface-hover: 234 227 216;
+    --color-surface-soft: 244 240 233;
+    --color-sunken: 229 233 229;
+    --color-surface-hover: 236 245 240;
     --color-raised: 255 255 255;
-    --color-border-subtle: 200 191 178;
-    --color-border-interactive: 138 127 113;
-    --color-ink: 28 25 23;
-    --color-body: 87 83 78;
-    --color-muted: 110 105 99;
-    --color-brand: 167 68 47;
-    --color-brand-hover: 143 56 38;
-    --color-brand-pressed: 122 48 33;
-    --color-brand-soft: 247 232 226;
+    --color-border-subtle: 210 211 201;
+    --color-border-interactive: 117 133 126;
+    --color-ink: 12 43 46;
+    --color-body: 66 87 91;
+    --color-muted: 85 100 106;
+    --color-brand: 181 65 47;
+    --color-brand-hover: 157 53 39;
+    --color-brand-pressed: 130 43 32;
+    --color-brand-soft: 255 234 226;
     --color-brand-text: 255 255 255;
-    --color-brand-button: 167 68 47;
-    --color-brand-button-hover: 143 56 38;
-    --color-brand-button-pressed: 122 48 33;
-    --color-language: 36 107 99;
-    --color-language-hover: 30 93 86;
-    --color-language-soft: 228 242 239;
+    --color-brand-button: 7 69 75;
+    --color-brand-button-hover: 12 100 105;
+    --color-brand-button-pressed: 5 55 60;
+    --color-language: 10 114 108;
+    --color-language-hover: 9 93 88;
+    --color-language-soft: 221 241 234;
     --color-language-text: 255 255 255;
-    --color-success: 45 107 73;
-    --color-success-soft: 229 241 233;
-    --color-warning: 138 90 18;
-    --color-warning-soft: 247 237 216;
+    --color-success: 33 102 76;
+    --color-success-soft: 227 245 238;
+    --color-warning: 133 88 24;
+    --color-warning-soft: 255 241 220;
     --color-danger: 180 35 24;
     --color-danger-soft: 251 232 230;
-    --color-info: 53 108 150;
-    --color-info-soft: 229 239 247;
-    --color-focus: 36 107 99;
+    --color-info: 13 101 129;
+    --color-info-soft: 224 242 248;
+    --color-focus: 10 114 108;
     --color-focus-on-brand: 255 255 255;
+    --color-lime: 203 243 124;
+    --color-lime-text: 23 49 15;
+    --color-coral-control: 234 75 59;
+    --color-lilac: 101 80 157;
+    --color-lilac-soft: 239 234 255;
   }
 
   /**
@@ -57,39 +62,44 @@
    * wrapper View. Scoping to `html` alone themes the web and leaves native light.
    */
   .dark {
-    --color-canvas: 23 22 19;
-    --color-surface: 41 37 31;
-    --color-surface-soft: 51 46 39;
-    --color-sunken: 18 17 15;
-    --color-raised: 66 58 49;
-    --color-surface-hover: 59 52 44;
-    --color-border-subtle: 81 74 64;
-    --color-border-interactive: 122 112 99;
-    --color-ink: 247 244 238;
-    --color-body: 212 206 196;
-    --color-muted: 175 167 156;
-    --color-brand: 239 155 127;
-    --color-brand-hover: 245 171 147;
-    --color-brand-pressed: 217 130 99;
-    --color-brand-soft: 59 37 30;
-    --color-brand-button: 167 68 47;
-    --color-brand-button-hover: 143 56 38;
-    --color-brand-button-pressed: 122 48 33;
+    --color-canvas: 18 35 34;
+    --color-surface: 29 50 49;
+    --color-surface-soft: 36 60 57;
+    --color-sunken: 11 25 26;
+    --color-raised: 48 75 71;
+    --color-surface-hover: 44 69 65;
+    --color-border-subtle: 82 111 101;
+    --color-border-interactive: 149 173 163;
+    --color-ink: 249 247 240;
+    --color-body: 213 228 221;
+    --color-muted: 178 198 189;
+    --color-brand: 255 171 145;
+    --color-brand-hover: 255 192 170;
+    --color-brand-pressed: 232 150 125;
+    --color-brand-soft: 73 46 40;
+    --color-brand-button: 7 69 75;
+    --color-brand-button-hover: 12 100 105;
+    --color-brand-button-pressed: 5 55 60;
     --color-brand-text: 255 255 255;
-    --color-language: 124 199 190;
-    --color-language-hover: 152 214 206;
-    --color-language-soft: 23 51 47;
-    --color-language-text: 18 17 15;
-    --color-success: 123 197 154;
-    --color-success-soft: 25 51 38;
-    --color-warning: 224 180 102;
-    --color-warning-soft: 59 45 23;
-    --color-danger: 255 138 128;
-    --color-danger-soft: 58 30 27;
-    --color-info: 134 183 223;
-    --color-info-soft: 27 43 56;
-    --color-focus: 124 199 190;
+    --color-language: 130 216 199;
+    --color-language-hover: 173 232 217;
+    --color-language-soft: 24 69 63;
+    --color-language-text: 11 25 26;
+    --color-success: 149 210 175;
+    --color-success-soft: 28 64 48;
+    --color-warning: 239 202 132;
+    --color-warning-soft: 68 56 32;
+    --color-danger: 255 168 153;
+    --color-danger-soft: 73 45 42;
+    --color-info: 153 203 225;
+    --color-info-soft: 32 60 71;
+    --color-focus: 130 216 199;
     --color-focus-on-brand: 255 255 255;
+    --color-lime: 203 243 124;
+    --color-lime-text: 23 49 15;
+    --color-coral-control: 234 75 59;
+    --color-lilac: 195 172 245;
+    --color-lilac-soft: 55 44 77;
   }
 
   html {
@@ -99,6 +109,7 @@
   body {
     background-color: rgb(var(--color-canvas));
     color: rgb(var(--color-ink));
+    font-family: Figtree, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -119,6 +130,18 @@
       transition-duration: 0.01ms !important;
     }
   }
+
+  * { scrollbar-color: rgb(var(--color-border-interactive)) rgb(var(--color-canvas)); scrollbar-width: thin; }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: rgb(var(--color-canvas)); }
+  *::-webkit-scrollbar-thumb { background: rgb(var(--color-border-interactive)); border-radius: 8px; }
+  *::-webkit-scrollbar-thumb:hover { background: rgb(var(--color-muted)); }
+  @media (forced-colors: active) { * { scrollbar-color: auto; } }
+
+  button, [role="button"] {
+    transition: transform 350ms cubic-bezier(.34,1.56,.64,1), background-color 200ms ease, box-shadow 250ms ease;
+  }
+  button:active, [role="button"]:active { transform: scale(0.98); }
 
   @layer utilities {
     /* Safe-area padding that respects a gesture bar without a magic number. */

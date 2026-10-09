@@ -62,6 +62,7 @@ ${block(DARK, '.dark')}
   body {
     background-color: rgb(var(--color-canvas));
     color: rgb(var(--color-ink));
+    font-family: Figtree, system-ui, sans-serif;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }
@@ -82,6 +83,18 @@ ${block(DARK, '.dark')}
       transition-duration: 0.01ms !important;
     }
   }
+
+  * { scrollbar-color: rgb(var(--color-border-interactive)) rgb(var(--color-canvas)); scrollbar-width: thin; }
+  *::-webkit-scrollbar { width: 8px; height: 8px; }
+  *::-webkit-scrollbar-track { background: rgb(var(--color-canvas)); }
+  *::-webkit-scrollbar-thumb { background: rgb(var(--color-border-interactive)); border-radius: 8px; }
+  *::-webkit-scrollbar-thumb:hover { background: rgb(var(--color-muted)); }
+  @media (forced-colors: active) { * { scrollbar-color: auto; } }
+
+  button, [role="button"] {
+    transition: transform 350ms cubic-bezier(.34,1.56,.64,1), background-color 200ms ease, box-shadow 250ms ease;
+  }
+  button:active, [role="button"]:active { transform: scale(0.98); }
 
   @layer utilities {
     /* Safe-area padding that respects a gesture bar without a magic number. */
@@ -176,7 +189,7 @@ const colors: Record<string, ColorSpec> = {
     text: alias('brandText'),
   },
 
-  // Teal is reserved for target-language content. Never generic success.
+  // Language blue is distinct from the green used for semantic success.
   language: {
     DEFAULT: alias('language'),
     hover: alias('languageHover'),
@@ -189,6 +202,9 @@ const colors: Record<string, ColorSpec> = {
   danger: { DEFAULT: alias('danger'), soft: alias('dangerSoft') },
   info: { DEFAULT: alias('info'), soft: alias('infoSoft') },
   focus: alias('focus'),
+  lime: { DEFAULT: alias('lime'), text: alias('limeText') },
+  coral: { DEFAULT: alias('coralControl'), text: alias('brandText') },
+  lilac: { DEFAULT: alias('lilac'), soft: alias('lilacSoft') },
 
   // Legacy names, now pointed at the semantic tokens they were approximating.
   // `accent-sage` was evidence status, `card-warm` was brand selection.

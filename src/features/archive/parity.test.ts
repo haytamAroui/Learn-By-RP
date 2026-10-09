@@ -467,7 +467,7 @@ async function snapshot(repo: ArchiveRepository) {
 describe('native and web agree on the same archive', () => {
   it('produce the same observable state after the same writes', async () => {
     for (const repo of [sqliteRepository, web]) {
-      await repo.savePreferences({ ...(await repo.getPreferences()), learningLanguage: 'fr' });
+      await repo.savePreferences({ ...(await repo.getPreferences()), learningLanguage: 'nl' });
       await repo.recordConsent('voice', true);
       await repo.beginSession(session({ state: 'preflight' }));
       await repo.saveSessionState('session-1', 'live');

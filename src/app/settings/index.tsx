@@ -1,5 +1,6 @@
 import React from 'react';
-import { Pressable, ScrollView, Switch, Text, View } from 'react-native';
+import { Pressable, ScrollView, Switch, View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import {
@@ -24,19 +25,13 @@ import {
 import { Button, ChipRow, SectionLabel } from '../../components/ui';
 import { iconColor } from '../../design/iconColor';
 
-const TARGET_LANGUAGE_FLAGS: Record<LanguageCode, string> = {
-  es: '🇪🇸',
-  fr: '🇫🇷',
-  de: '🇩🇪',
-  it: '🇮🇹',
-  ja: '🇯🇵',
+const TARGET_LANGUAGE_FLAGS: Partial<Record<LanguageCode, string>> = {
   nl: '🇧🇪',
 };
 
-const UI_LANGUAGE_FLAGS: Record<UiLanguage, string> = {
+const UI_LANGUAGE_FLAGS: Partial<Record<UiLanguage, string>> = {
   en: '🇬🇧',
   fr: '🇫🇷',
-  es: '🇪🇸',
   nl: '🇧🇪',
 };
 
@@ -83,7 +78,7 @@ export default function SettingsScreen() {
 
       <ScrollView
         className="flex-1"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 720,
@@ -94,7 +89,7 @@ export default function SettingsScreen() {
           gap: 28,
         }}
       >
-        <View className="gap-3">
+        <View className="gap-3 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
           <SectionLabel>{t.settings.appearanceLabel}</SectionLabel>
           <View className="flex-row gap-2">
             {APPEARANCE_OPTIONS.map(option => {
@@ -107,17 +102,17 @@ export default function SettingsScreen() {
                   accessibilityState={{ selected }}
                   className={`min-h-12 flex-1 items-center justify-center gap-1 rounded-2xl border px-2 ${
                     selected
-                      ? 'border-primary bg-card-warm'
+                      ? 'border-language bg-language-soft'
                       : 'border-border-interactive bg-surface'
                   } hover:bg-surface-hover focus:border-2 focus:border-focus`}
                 >
                   <option.Icon
                     size={18}
-                    color={selected ? iconColor('brand') : iconColor('muted')}
+                    color={selected ? iconColor('language') : iconColor('muted')}
                   />
                   <Text
                     className={`text-xs font-semibold ${
-                      selected ? 'text-primary' : 'text-body'
+                      selected ? 'text-language' : 'text-body'
                     }`}
                   >
                     {option.id === 'light'
@@ -132,7 +127,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View className="gap-4">
+        <View className="gap-4 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
           <SectionLabel>{t.settings.sectionLang}</SectionLabel>
 
           <View className="gap-2">
@@ -160,7 +155,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View className="gap-4">
+        <View className="gap-4 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
           <SectionLabel>{t.settings.modeLabel}</SectionLabel>
           <ChipRow
             value={archive.preferences.modeDefault}
@@ -173,7 +168,7 @@ export default function SettingsScreen() {
           />
         </View>
 
-        <View className="gap-4">
+        <View className="gap-4 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
           <SectionLabel>{t.settings.sectionVoice}</SectionLabel>
           <View className="gap-2">
             <Text className="text-sm font-semibold text-ink">{t.settings.speechSpeedLabel}</Text>
@@ -203,7 +198,7 @@ export default function SettingsScreen() {
           </View>
         </View>
 
-        <View className="gap-4">
+        <View className="gap-4 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
           <SectionLabel>{t.settings.accommodationsLabel}</SectionLabel>
           {([
             ['captions_always', t.settings.captionsAlwaysLabel],
@@ -227,7 +222,7 @@ export default function SettingsScreen() {
           ))}
         </View>
 
-        <View className="gap-3">
+        <View className="gap-3 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
           <SectionLabel>{t.settings.sectionPrivacy}</SectionLabel>
           <Pressable
             onPress={() => router.push('/settings/privacy')}

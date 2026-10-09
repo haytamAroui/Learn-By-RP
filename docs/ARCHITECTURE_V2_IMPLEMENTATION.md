@@ -883,3 +883,66 @@ blueprint's exit condition includes "reviewed opportunities", and no reviewed
 opportunity exists yet. What changed is that the remaining work is 65 review
 decisions, two asset/product decisions, and the device and deployment runs — named,
 scoped and checkable — rather than a list of things that had not been started.
+
+## Reference-design adaptation — 9 October 2026
+
+The user-selected Taalbad Apple 2026 HTML design was adapted through the existing
+`src/design/tokens.ts`, generated CSS/Tailwind maps, shared Button/Card/header,
+and current screen components. It adds the source's geometric city illustration,
+pastel action entries, navy actions, rounded white panels, and floating navigation.
+Talk / Missions / Progress and the current full-screen session routes remain the
+workflow. The router's theme now derives from the same tokens as native/web UI.
+
+Active phrase review is scoped to Dutch; other-language archive records remain
+readable. No mock dots, pronunciation scores, scene outcomes, or assessment targets
+from the reference were imported as learning truth. This visual work does not close
+the Phase 1 human-review, native-device, provider, or hosted acceptance gates.
+See `DESIGN.md`, `UX-CONTRACT.md`, and `docs/design-2026-10-09/AUDIT_NOTES.md` for
+reference decisions, UI ownership, and verification limitations.
+
+### Conversation screenshot adaptation
+
+The additional user-selected screenshot is implemented in `ConversationStage`
+and `LiveSessionView`: café backdrop and Lotte portrait, speech bubbles, inline
+translation, direct replay, collapsed authored answers with draft insertion and
+phrase listening, scene-checkpoint progress, and conversation options with pause,
+slow replay, and stopping. Support is saved before answers are revealed or used;
+drafting never sends automatically. New delayed playback checks current attempt
+ownership and voice consent. The portrait belongs only to Lotte. The asset
+inventory now records two generated images and scopes visual orientation to the
+Belgian Dutch café scene; human review records remain empty.
+
+See `docs/design-2026-10-09/SESSION_REFERENCE.md` for asset provenance and
+verification. This adaptation does not certify provider voice quality or native
+device acceptance, and does not complete the Phase 1 human-review gates.
+
+
+## Lingo 2027 app-wide reference adaptation — 9 October 2026
+
+The user's newer Lingo HTML supersedes the earlier reference's visual styling.
+The complete app now shares AppText typography, warm paper/forest theme tokens,
+deep teal actions, lime mission CTA, teal circular conversation microphone, pastel practice
+cards, exact static reference vectors, tonal dialogue, and floating navigation.
+Briefing, program, recap, settings, privacy, onboarding, phrase detail, recovery,
+and sheets reuse the same owners. Source JavaScript and demo learner metrics
+were not imported. Home review and progress cards use actual archive counts.
+
+The live view renders turns chronologically. Older-turn disclosure scopes caption
+support to the rendered slice. Suggested answers remain opt-in with durable support
+writes before exposure; drafting does not send. The dock owns bounded scrolling
+for narrow/large-text/keyboard layouts; stopping and recovery remain available.
+
+The conversation screen was then aligned to the user's newer portrait reference:
+the character joins the close/options controls in the header, authored scene
+checkpoint progress stays factual, the illustrated mission summary sits above the
+transcript, and the bottom dock exposes typing, speaking, help, and stopping. A
+newer screenshot refinement brings the collapsible, authored suggestions card into
+that dock, with teal microphone rings and compact Type and Help controls. Suggestions
+remain closed until chosen; reveal and draft-insertion persistence rules are unchanged.
+
+The reference's Bricolage Grotesque and Figtree web font link is integrated using
+Expo Router Head, with readable fallbacks. Registry/font downloads failed in the
+shell due to DNS; native system-font fallback is explicit until offline font assets
+are available. This is a visual adaptation, not human content review, native device
+acceptance, a deployment, or an audition of live provider speech. Details and
+verification are in docs/design-2026-10-09/LINGO_REFERENCE.md.

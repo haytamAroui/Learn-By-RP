@@ -1,6 +1,7 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
-import { ChevronRight, Clock3 } from 'lucide-react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Text } from './AppText';
+import { ChevronRight, Clock3, MessageCircle, NotebookPen, Target } from 'lucide-react-native';
 import {
   LanguageCode,
   LearningObservation,
@@ -24,6 +25,9 @@ import { FLEMISH_SKILL_PATTERNS } from '../content/skills';
 import { Button, EmptyState, SectionLabel } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
+import { ReferenceArtwork } from './ReferenceArtwork';
+import { summarizeActivity } from '../features/learning/activitySummary';
+import { ELEVATION } from '../design/tokens';
 
 interface ProgressScreenProps {
   phrases: PhraseItem[];
@@ -73,6 +77,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   const [selectedTab, setSelectedTab] = useState<ProgressTab>('skills');
   const [selectedPhrase, setSelectedPhrase] = useState<PhraseItem | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<CommunicativeSkillMeta | null>(null);
+  const activity = useMemo(() => summarizeActivity(sessions, learningLanguage), [sessions, learningLanguage]);
 
   const duePhrases = useMemo(
     () => phrases.filter(phrase => phrase.scheduling.due),
@@ -226,7 +231,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     <View className="flex-1 bg-canvas">
       <ScrollView
         className="flex-1"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 720,
@@ -237,6 +242,18 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
           gap: 24,
         }}
       >
+        <View className="relative h-[120px] overflow-hidden rounded-[28px]"><ReferenceArtwork kind="landscape" /></View>
+        <View className="flex-row gap-2">
+          {[
+            { label: t.progress.tabHistoryShort, value: activity.sessions, Icon: MessageCircle, tint: 'bg-card-warm', color: 'brand' },
+            { label: t.common.turns, value: activity.turns, Icon: Target, tint: 'bg-warning-soft', color: 'warning' },
+            { label: t.progress.tabPhrasesShort, value: phrases.length, Icon: NotebookPen, tint: 'bg-lilac-soft', color: 'lilac' },
+          ].map(stat => <View key={stat.label} className="min-w-0 flex-1 items-center gap-2 rounded-[24px] bg-surface px-2 py-4" style={{ boxShadow: ELEVATION.card }}>
+            <View className={`h-10 w-10 items-center justify-center rounded-[15px] ${stat.tint}`}><stat.Icon size={21} color={iconColor(stat.color)} /></View>
+            <Text className="font-display text-[24px] font-bold text-ink">{stat.value}</Text>
+            <Text className="text-center text-xs leading-4 text-muted">{stat.label}</Text>
+          </View>)}
+        </View>
         {duePhrases.length > 0 ? (
           <View className="gap-4 rounded-[28px] bg-card-warm p-5">
             <View className="flex-row items-start gap-3">
@@ -264,7 +281,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
           </View>
         ) : null}
 
-        <View className="flex-row rounded-2xl bg-surface-soft p-1">
+        <View className="flex-row rounded-[24px] bg-surface p-1">
           {tabs.map(tab => {
             const selected = selectedTab === tab.id;
             return (
@@ -276,13 +293,13 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                 accessibilityLabel={tab.label}
                 className={`min-h-12 flex-1 items-center justify-center rounded-xl border px-2 ${
                   selected
-                    ? 'border-primary/20 bg-surface'
+                    ? 'border-language/20 bg-action'
                     : 'border-transparent'
                 } hover:bg-surface-hover focus:border-2 focus:border-focus`}
               >
                 <Text
                   className={`text-sm font-semibold ${
-                    selected ? 'text-ink' : 'text-muted'
+                    selected ? 'text-action-text' : 'text-muted'
                   }`}
                   numberOfLines={1}
                 >
@@ -295,7 +312,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
 
         {selectedTab === 'skills' ? (
           <View>
-            {COMMUNICATIVE_SKILLS_CATALOG.map((skill, index) => {
+            {COMMUNICATIVE_SKILLS_CATALOG.map(skill => {
               const projection = skillStats.get(skill.id);
               const localized = localizeSkill(skill);
               return (
@@ -303,8 +320,9 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                   <Pressable
                     onPress={() => setSelectedSkill(skill)}
                     accessibilityRole="button"
-                    className="min-h-[82px] flex-row items-center gap-3 rounded-2xl border border-transparent py-3 hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
+                    className="my-1.5 min-h-[82px] flex-row items-center gap-3 rounded-[20px] border border-border-subtle/50 bg-surface p-4 hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
                   >
+                    <View className="h-10 w-10 items-center justify-center rounded-[15px] bg-language-soft"><MessageCircle size={20} color={iconColor('language')} /></View>
                     <View className="flex-1">
                       <Text className="text-[16px] font-semibold leading-[21px] text-ink">
                         {localized.name}
@@ -331,9 +349,6 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                       <ChevronRight size={18} color={iconColor('muted')} />
                     </View>
                   </Pressable>
-                  {index < COMMUNICATIVE_SKILLS_CATALOG.length - 1 ? (
-                    <View className="h-px bg-border-subtle" />
-                  ) : null}
                 </React.Fragment>
               );
             })}

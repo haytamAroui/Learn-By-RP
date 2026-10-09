@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
-  Text,
   TextInput,
   View,
 } from 'react-native';
+import { Text } from './AppText';
 import {
   BookOpen,
   ChevronRight,
@@ -13,12 +13,23 @@ import {
   MapPin,
   Route,
   Search,
+  X,
 } from 'lucide-react-native';
 import { MissionDefinition, SessionRecord } from '../types';
 import type { RoleplayProgram } from '../contracts/program';
 import { buildProgramProjection } from '../features/program/projection';
 import { useI18n } from '../features/i18n';
 import { iconColor } from '../design/iconColor';
+import { ELEVATION } from '../design/tokens';
+
+const MISSION_TONES: Record<MissionDefinition['category'], { container: string; color: string }> = {
+  cafes: { container: 'bg-card-warm', color: 'brand' },
+  services: { container: 'bg-card-sky', color: 'info' },
+  transit: { container: 'bg-language-soft', color: 'language' },
+  lodging: { container: 'bg-warning-soft', color: 'warning' },
+  social: { container: 'bg-card-sage', color: 'success' },
+  problems: { container: 'bg-card-warm', color: 'brand' },
+};
 
 interface MissionsScreenProps {
   missions: MissionDefinition[];
@@ -96,6 +107,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
 }) => {
   const { t, language: uiLang } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
+  const searchRef = useRef<TextInput>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [activeView, setActiveView] = useState<'catalog' | 'programs' | 'route'>('catalog');
 
@@ -130,13 +142,13 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
   return (
     <ScrollView
       className="flex-1 bg-canvas"
-      showsVerticalScrollIndicator={false}
+      showsVerticalScrollIndicator={true}
       keyboardShouldPersistTaps="handled"
       contentContainerStyle={{
         width: '100%',
         maxWidth: 760,
         alignSelf: 'center',
-        paddingHorizontal: 16,
+        paddingHorizontal: 20,
         paddingTop: 6,
         paddingBottom: 36,
         gap: 22,
@@ -161,19 +173,18 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
               onPress={() => setActiveView(item.id)}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border px-4 hover:bg-surface-hover focus:border-2 focus:border-focus ${
-                selected ? 'border-ink bg-ink' : 'border-transparent bg-surface-soft'
+              className={`min-h-12 flex-1 flex-row items-center justify-center gap-1 rounded-full border px-2 hover:bg-surface-hover focus:border-2 focus:border-focus ${
+                selected ? 'border-language/20 bg-language-soft' : 'border-transparent bg-surface'
               }`}
             >
               <Icon
                 size={17}
-                color={selected ? iconColor('surface') : iconColor('muted')}
+                color={selected ? iconColor('language') : iconColor('muted')}
               />
               <Text
-                className={`text-sm font-semibold ${
-                  selected ? 'text-surface' : 'text-body'
+                className={`flex-shrink text-center text-xs font-semibold ${
+                  selected ? 'text-language' : 'text-body'
                 }`}
-                numberOfLines={1}
               >
                 {item.label}
               </Text>
@@ -184,9 +195,10 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
 
       {activeView === 'catalog' ? (
         <View className="gap-5">
-          <View className="h-12 flex-row items-center gap-3 rounded-2xl bg-surface-soft px-4">
+          <View className="h-14 flex-row items-center gap-3 rounded-[20px] border border-border-interactive bg-surface px-4">
             <Search size={19} color={iconColor('muted')} />
             <TextInput
+              ref={searchRef}
               value={searchQuery}
               onChangeText={setSearchQuery}
               placeholder={t.missions.searchPlaceholder}
@@ -196,6 +208,13 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
               accessibilityLabel={t.missions.searchPlaceholder}
               className="h-full flex-1 text-[15px] text-ink"
             />
+            {searchQuery ? (
+              <Pressable onPress={() => { setSearchQuery(''); searchRef.current?.focus(); }}
+                accessibilityRole="button" accessibilityLabel={t.common.clear}
+                className="h-12 w-12 items-center justify-center rounded-full focus:border-2 focus:border-focus">
+                <X size={18} color={iconColor('muted')} />
+              </Pressable>
+            ) : null}
           </View>
 
           {/*
@@ -238,17 +257,18 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
             })}
           </View>
 
-          <View>
-            {filteredMissions.map((mission, index) => (
+          <View className="gap-3">
+            {filteredMissions.map(mission => (
               <React.Fragment key={mission.id}>
                 <Pressable
                   onPress={() => onSelectMission(mission)}
                   accessibilityRole="button"
                   accessibilityLabel={missionAccessibleName(mission)}
-                  className="min-h-[104px] flex-row items-center gap-3 rounded-2xl border border-transparent py-4 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
+                  className="min-h-[104px] flex-row items-center gap-3 rounded-[20px] border border-border-subtle/60 bg-surface px-4 py-4 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
+                  style={{ boxShadow: ELEVATION.card }}
                 >
-                  <View className="h-12 w-12 items-center justify-center rounded-2xl bg-card-warm">
-                    <Compass size={21} color={iconColor('brand')} />
+                  <View className={`h-12 w-12 items-center justify-center rounded-[15px] ${MISSION_TONES[mission.category].container}`}>
+                    <Compass size={21} color={iconColor(MISSION_TONES[mission.category].color)} />
                   </View>
 
                   {/*
@@ -287,9 +307,6 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
 
                   <ChevronRight size={21} color={iconColor('muted')} />
                 </Pressable>
-                {index < filteredMissions.length - 1 ? (
-                  <View className="h-px bg-border-subtle" />
-                ) : null}
               </React.Fragment>
             ))}
 
@@ -320,7 +337,8 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                   onPress={() => onSelectProgram(program)}
                   accessibilityRole="button"
                   accessibilityLabel={program.title}
-                  className="min-h-[132px] rounded-[24px] border border-transparent bg-surface-soft p-5 hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
+                  className="min-h-[132px] rounded-[24px] border border-border-subtle/60 bg-surface p-5 hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
+                  style={{ boxShadow: ELEVATION.card }}
                 >
                   <View className="flex-row items-start gap-3">
                     <View className="h-11 w-11 items-center justify-center rounded-2xl bg-card-warm">

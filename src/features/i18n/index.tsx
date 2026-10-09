@@ -1,14 +1,14 @@
 import React, { createContext, useContext } from 'react';
 import { UiLanguage } from '../../types';
 import { TRANSLATIONS, Translations } from './translations';
+import { normalizeUiLanguage } from './languagePolicy';
 
 export { TRANSLATIONS };
 export type { Translations };
 
 export function getTranslations(lang: string = 'en'): Translations {
-  const normalized = (lang || 'en').toLowerCase().slice(0, 2) as UiLanguage;
+  const normalized: UiLanguage = normalizeUiLanguage(lang);
   if (normalized === 'fr') return TRANSLATIONS.fr;
-  if (normalized === 'es') return TRANSLATIONS.es;
   if (normalized === 'nl') return TRANSLATIONS.nl;
   return TRANSLATIONS.en;
 }

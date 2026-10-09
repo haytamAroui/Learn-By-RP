@@ -12,6 +12,7 @@ import { join, relative } from 'node:path';
 import {
   BUNDLED_ASSET_INVENTORY,
   SCENE_RELEASE_REVIEW_RECORDS,
+  SCENE_VISUAL_ASSETS,
   isSceneReleaseReviewed,
   recordedReviews,
   sceneReviewGaps,
@@ -50,7 +51,7 @@ describe('bundled asset inventory', () => {
     expect(BUNDLED_ASSET_INVENTORY.imageFiles).toBe(imageFiles);
   });
 
-  it('confirms that no screen renders a bundled image component', () => {
+  it('tracks the bundled image renderer and the scene that owns its assets', () => {
     // An image component usage without an image file would make the inventory
     // above understate what the app tries to load.
     const componentUsers: string[] = [];
@@ -63,6 +64,10 @@ describe('bundled asset inventory', () => {
     });
 
     expect(componentUsers).toEqual([]);
+    expect(Object.keys(SCENE_VISUAL_ASSETS)).toContain('scene.nl-be.cafe.breakfast');
+    for (const file of SCENE_VISUAL_ASSETS['scene.nl-be.cafe.breakfast']) {
+      expect(statSync(join(process.cwd(), file)).size).toBeGreaterThan(0);
+    }
   });
 });
 

@@ -219,7 +219,7 @@ describe('preferences and consent', () => {
     expect(prefs.savedAnalysisConsent).toBe(false);
   });
 
-  it('round-trips preferences', async () => {
+  it('normalizes legacy language choices while preserving other preferences', async () => {
     await archiveRepository.savePreferences({
       learningLanguage: 'fr',
       explanationLanguage: 'es',
@@ -234,7 +234,9 @@ describe('preferences and consent', () => {
     });
 
     const loaded = await archiveRepository.getPreferences();
-    expect(loaded.learningLanguage).toBe('fr');
+    expect(loaded.learningLanguage).toBe('nl');
+    expect(loaded.learningLocale).toBe('nl-BE');
+    expect(loaded.explanationLanguage).toBe('en');
     expect(loaded.speechRate).toBe(0.8);
   });
 

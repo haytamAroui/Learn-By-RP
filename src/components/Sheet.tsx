@@ -1,5 +1,6 @@
 import React from 'react';
-import { Modal, ScrollView, Text, useWindowDimensions, View } from 'react-native';
+import { Modal, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Text } from './AppText';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { BREAKPOINTS } from '../design/tokens';
 import { Button, EmptyState, Pill, SectionLabel } from './ui';
@@ -56,7 +57,7 @@ export const Sheet: React.FC<SheetProps> = ({
       >
         <View
           className={`w-full overflow-hidden border-border-subtle bg-surface ${
-            isPhone ? 'rounded-t-3xl border-t' : 'rounded-3xl border'
+            isPhone ? 'rounded-t-[32px] border-t' : 'rounded-[32px] border'
           }`}
           style={{
             height: sheetHeight,
@@ -85,7 +86,7 @@ export const Sheet: React.FC<SheetProps> = ({
               className="flex-1"
               contentContainerStyle={{ padding: 16, paddingBottom: 24, gap: 16 }}
               keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+              showsVerticalScrollIndicator={true}
             >
               {children}
             </ScrollView>

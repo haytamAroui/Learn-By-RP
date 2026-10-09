@@ -34,4 +34,26 @@ describe('Belgian Dutch speech output', () => {
       locale: 'nl-BE',
     });
   });
+
+  it('discards playback when the owning attempt ends during synthesis', async () => {
+    let active = true;
+    const playSpeech = vi.fn();
+    vi.spyOn(api, 'synthesizeSpeech').mockImplementation(async () => {
+      active = false;
+      return { audio: { provider: 'gemini', base64: 'audio', mimeType: 'audio/wav' }, fallback: 'none' } as any;
+    });
+    await speakWithBestAvailable({ playSpeech } as unknown as VoiceTransport, 'Een koffie.', {
+      language: 'nl', canPlay: () => active,
+    });
+    expect(playSpeech).not.toHaveBeenCalled();
+  });
+
+  it('makes no synthesis request after permission or session ownership is lost', async () => {
+    const synthesize = vi.spyOn(api, 'synthesizeSpeech');
+    synthesize.mockClear();
+    await speakWithBestAvailable({ playSpeech: vi.fn() } as unknown as VoiceTransport, 'Een koffie.', {
+      language: 'nl', canPlay: () => false,
+    });
+    expect(synthesize).not.toHaveBeenCalled();
+  });
 });

@@ -24,7 +24,7 @@ export default function ProgressTab() {
       <View className="flex-1 bg-canvas">
         <RootHeader title={t.nav.progress} />
         <ProgressScreen
-          phrases={archive.phrases}
+          phrases={archive.phrases.filter(phrase => phrase.language === archive.preferences.learningLanguage)}
           sessions={archive.sessions}
           observations={archive.observations}
           learningLanguage={archive.preferences.learningLanguage}

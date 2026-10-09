@@ -30,6 +30,7 @@ import {
   type ValidatedSkillEvidence,
 } from '../learning/skillEvidence';
 import { CONSENT_VERSION, LATEST_SCHEMA_VERSION } from './schema';
+import { normalizeLearningLanguage, normalizeUiLanguage } from '../i18n/languagePolicy';
 import {
   ArchiveRepository as ArchiveRepositoryContract,
   ConsentRecord,
@@ -48,7 +49,8 @@ const PREFERENCES_ID = 'current';
  * before the learner has been asked.
  */
 const DEFAULT_PREFERENCES: UserPreferences = {
-  learningLanguage: 'es',
+  learningLanguage: 'nl',
+  learningLocale: 'nl-BE',
   explanationLanguage: 'en',
   comfortLevel: 'beginner',
   primaryGoal: 'travel',
@@ -98,16 +100,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     if (!row) return { ...DEFAULT_PREFERENCES };
 
     const parsed = parseJson<Partial<UserPreferences>>(row.payload, {});
-    let lang = (parsed.explanationLanguage || 'en').toLowerCase();
-    if (lang.startsWith('fr')) lang = 'fr';
-    else if (lang.startsWith('es') || lang.startsWith('sp')) lang = 'es';
-    else if (lang.startsWith('nl')) lang = 'nl';
-    else lang = 'en';
-
     return applyProgramDataRetention({
       ...DEFAULT_PREFERENCES,
       ...parsed,
-      explanationLanguage: lang as UserPreferences['explanationLanguage'],
+      learningLanguage: normalizeLearningLanguage(parsed.learningLanguage),
+      learningLocale: 'nl-BE',
+      explanationLanguage: normalizeUiLanguage(parsed.explanationLanguage),
     });
   }
 
@@ -116,7 +114,12 @@ export class SqliteArchiveRepository implements ArchiveRepositoryContract {
     await db.runAsync(
       `INSERT OR REPLACE INTO preferences (id, payload, updated_at) VALUES (?, ?, ?)`,
       PREFERENCES_ID,
-      JSON.stringify(applyProgramDataRetention(preferences)),
+      JSON.stringify(applyProgramDataRetention({
+        ...preferences,
+        learningLanguage: normalizeLearningLanguage(preferences.learningLanguage),
+        learningLocale: 'nl-BE',
+        explanationLanguage: normalizeUiLanguage(preferences.explanationLanguage),
+      })),
       new Date().toISOString()
     );
   }

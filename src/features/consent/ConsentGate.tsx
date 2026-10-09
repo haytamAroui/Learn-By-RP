@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useRouter, useSegments } from 'expo-router';
 import { useArchive } from '../archive/ArchiveProvider';
 import { CONSENT_VERSION } from '../archive/schema';

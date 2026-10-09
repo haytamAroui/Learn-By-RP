@@ -91,77 +91,87 @@ One palette. Two themes. No third definition anywhere.
 <!-- BEGIN GENERATED:palette -->
 | Token | Value | Use |
 |---|---|---|
-| `canvas` | `#F2EDE4` | App background |
+| `canvas` | `#F8F3E8` | App background |
 | `surface` | `#FFFFFF` | Cards, main panels |
-| `surface-soft` | `#F4F0E8` | Neutral secondary panel |
-| `sunken` | `#E8E0D2` | Recessed: inputs, wells |
-| `surface-hover` | `#EAE3D8` | Hover on a canvas-level surface |
+| `surface-soft` | `#F4F0E9` | Neutral secondary panel |
+| `sunken` | `#E5E9E5` | Recessed: inputs, wells |
+| `surface-hover` | `#ECF5F0` | Hover on a canvas-level surface |
 | `raised` | `#FFFFFF` | Dialogs, popovers, floating support |
-| `border-subtle` | `#C8BFB2` | Grouping only — not a control boundary |
-| `border-interactive` | `#8A7F71` | Any control the user must see and hit |
-| `ink` | `#1C1917` | Highest emphasis |
-| `body` | `#57534E` | Normal body |
-| `muted` | `#6E6963` | Secondary labels, metadata, dates |
-| `brand` | `#A7442F` | Primary action |
-| `brand-hover` | `#8F3826` | Primary action hover |
-| `brand-pressed` | `#7A3021` | Primary action pressed |
-| `brand-soft` | `#F7E8E2` | Warm highlighted / selected card |
+| `border-subtle` | `#D2D3C9` | Grouping only — not a control boundary |
+| `border-interactive` | `#75857E` | Any control the user must see and hit |
+| `ink` | `#0C2B2E` | Highest emphasis |
+| `body` | `#42575B` | Normal body |
+| `muted` | `#55646A` | Secondary labels, metadata, dates |
+| `brand` | `#B5412F` | Primary action |
+| `brand-hover` | `#9D3527` | Primary action hover |
+| `brand-pressed` | `#822B20` | Primary action pressed |
+| `brand-soft` | `#FFEAE2` | Warm highlighted / selected card |
 | `brand-text` | `#FFFFFF` | Label on a brand fill |
-| `brand-button` | `#A7442F` | CTA fill |
-| `brand-button-hover` | `#8F3826` | CTA hover fill |
-| `brand-button-pressed` | `#7A3021` | CTA pressed fill |
-| `language` | `#246B63` | Target-language semantics |
-| `language-hover` | `#1E5D56` | Target-language hover |
-| `language-soft` | `#E4F2EF` | Phrase card background |
+| `brand-button` | `#07454B` | CTA fill |
+| `brand-button-hover` | `#0C6469` | CTA hover fill |
+| `brand-button-pressed` | `#05373C` | CTA pressed fill |
+| `language` | `#0A726C` | Target-language semantics |
+| `language-hover` | `#095D58` | Target-language hover |
+| `language-soft` | `#DDF1EA` | Phrase card background |
 | `language-text` | `#FFFFFF` | Label on a language fill |
-| `success` | `#2D6B49` | Verified positive evidence |
-| `success-soft` | `#E5F1E9` | Positive surface |
-| `warning` | `#8A5A12` | Assisted, partial, pending, degraded |
-| `warning-soft` | `#F7EDD8` | Attention surface |
+| `success` | `#21664C` | Verified positive evidence |
+| `success-soft` | `#E3F5EE` | Positive surface |
+| `warning` | `#855818` | Assisted, partial, pending, degraded |
+| `warning-soft` | `#FFF1DC` | Attention surface |
 | `danger` | `#B42318` | Destructive, hard error |
 | `danger-soft` | `#FBE8E6` | Error surface |
-| `info` | `#356C96` | Informational |
-| `info-soft` | `#E5EFF7` | Informational surface |
-| `focus` | `#246B63` | Focus ring |
+| `info` | `#0D6581` | Informational |
+| `info-soft` | `#E0F2F8` | Informational surface |
+| `focus` | `#0A726C` | Focus ring |
 | `focus-on-brand` | `#FFFFFF` | Focus ring against a brand fill |
+| `lime` | `#CBF37C` | lime |
+| `lime-text` | `#17310F` | limeText |
+| `coral-control` | `#EA4B3B` | coralControl |
+| `lilac` | `#65509D` | lilac |
+| `lilac-soft` | `#EFEAFF` | lilacSoft |
 
 **Dark theme**
 
 | Token | Value | Use |
 |---|---|---|
-| `canvas` | `#171613` | App background |
-| `surface` | `#29251F` | Cards, main panels |
-| `surface-soft` | `#332E27` | Neutral secondary panel |
-| `sunken` | `#12110F` | Recessed: inputs, wells |
-| `raised` | `#423A31` | Dialogs, popovers, floating support |
-| `surface-hover` | `#3B342C` | Hover on a canvas-level surface |
-| `border-subtle` | `#514A40` | Grouping only — not a control boundary |
-| `border-interactive` | `#7A7063` | Any control the user must see and hit |
-| `ink` | `#F7F4EE` | Highest emphasis |
-| `body` | `#D4CEC4` | Normal body |
-| `muted` | `#AFA79C` | Secondary labels, metadata, dates |
-| `brand` | `#EF9B7F` | Primary action |
-| `brand-hover` | `#F5AB93` | Primary action hover |
-| `brand-pressed` | `#D98263` | Primary action pressed |
-| `brand-soft` | `#3B251E` | Warm highlighted / selected card |
-| `brand-button` | `#A7442F` | CTA fill |
-| `brand-button-hover` | `#8F3826` | CTA hover fill |
-| `brand-button-pressed` | `#7A3021` | CTA pressed fill |
+| `canvas` | `#122322` | App background |
+| `surface` | `#1D3231` | Cards, main panels |
+| `surface-soft` | `#243C39` | Neutral secondary panel |
+| `sunken` | `#0B191A` | Recessed: inputs, wells |
+| `raised` | `#304B47` | Dialogs, popovers, floating support |
+| `surface-hover` | `#2C4541` | Hover on a canvas-level surface |
+| `border-subtle` | `#526F65` | Grouping only — not a control boundary |
+| `border-interactive` | `#95ADA3` | Any control the user must see and hit |
+| `ink` | `#F9F7F0` | Highest emphasis |
+| `body` | `#D5E4DD` | Normal body |
+| `muted` | `#B2C6BD` | Secondary labels, metadata, dates |
+| `brand` | `#FFAB91` | Primary action |
+| `brand-hover` | `#FFC0AA` | Primary action hover |
+| `brand-pressed` | `#E8967D` | Primary action pressed |
+| `brand-soft` | `#492E28` | Warm highlighted / selected card |
+| `brand-button` | `#07454B` | CTA fill |
+| `brand-button-hover` | `#0C6469` | CTA hover fill |
+| `brand-button-pressed` | `#05373C` | CTA pressed fill |
 | `brand-text` | `#FFFFFF` | Label on a brand fill |
-| `language` | `#7CC7BE` | Target-language semantics |
-| `language-hover` | `#98D6CE` | Target-language hover |
-| `language-soft` | `#17332F` | Phrase card background |
-| `language-text` | `#12110F` | Label on a language fill |
-| `success` | `#7BC59A` | Verified positive evidence |
-| `success-soft` | `#193326` | Positive surface |
-| `warning` | `#E0B466` | Assisted, partial, pending, degraded |
-| `warning-soft` | `#3B2D17` | Attention surface |
-| `danger` | `#FF8A80` | Destructive, hard error |
-| `danger-soft` | `#3A1E1B` | Error surface |
-| `info` | `#86B7DF` | Informational |
-| `info-soft` | `#1B2B38` | Informational surface |
-| `focus` | `#7CC7BE` | Focus ring |
+| `language` | `#82D8C7` | Target-language semantics |
+| `language-hover` | `#ADE8D9` | Target-language hover |
+| `language-soft` | `#18453F` | Phrase card background |
+| `language-text` | `#0B191A` | Label on a language fill |
+| `success` | `#95D2AF` | Verified positive evidence |
+| `success-soft` | `#1C4030` | Positive surface |
+| `warning` | `#EFCA84` | Assisted, partial, pending, degraded |
+| `warning-soft` | `#443820` | Attention surface |
+| `danger` | `#FFA899` | Destructive, hard error |
+| `danger-soft` | `#492D2A` | Error surface |
+| `info` | `#99CBE1` | Informational |
+| `info-soft` | `#203C47` | Informational surface |
+| `focus` | `#82D8C7` | Focus ring |
 | `focus-on-brand` | `#FFFFFF` | Focus ring against a brand fill |
+| `lime` | `#CBF37C` | lime |
+| `lime-text` | `#17310F` | limeText |
+| `coral-control` | `#EA4B3B` | coralControl |
+| `lilac` | `#C3ACF5` | lilac |
+| `lilac-soft` | `#372C4D` | lilacSoft |
 <!-- END GENERATED:palette -->
 
 ### Rules

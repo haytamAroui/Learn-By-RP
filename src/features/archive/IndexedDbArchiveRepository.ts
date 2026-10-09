@@ -12,6 +12,7 @@ import {
   type ValidatedSkillEvidence,
 } from '../learning/skillEvidence';
 import { CONSENT_VERSION, LATEST_SCHEMA_VERSION } from './schema';
+import { normalizeLearningLanguage, normalizeUiLanguage } from '../i18n/languagePolicy';
 import {
   IDBDatabase,
   IDBFactory,
@@ -99,7 +100,8 @@ function stripRawEvidence(
 const PREFERENCES_ID = 'current';
 
 const DEFAULT_PREFERENCES: UserPreferences = {
-  learningLanguage: 'es',
+  learningLanguage: 'nl',
+  learningLocale: 'nl-BE',
   explanationLanguage: 'en',
   comfortLevel: 'beginner',
   primaryGoal: 'travel',
@@ -249,9 +251,15 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
 
   async getPreferences(): Promise<UserPreferences> {
     const stored = await this.readOne<{ payload: UserPreferences }>(STORE.meta, PREFERENCES_ID);
-    return applyProgramDataRetention({
+    const merged = {
       ...DEFAULT_PREFERENCES,
       ...(stored?.payload ?? {}),
+    };
+    return applyProgramDataRetention({
+      ...merged,
+      learningLanguage: normalizeLearningLanguage(merged.learningLanguage),
+      learningLocale: 'nl-BE',
+      explanationLanguage: normalizeUiLanguage(merged.explanationLanguage),
     });
   }
 
@@ -261,7 +269,12 @@ export class IndexedDbArchiveRepository implements ArchiveRepository {
         key: PREFERENCES_ID,
         value: {
           id: PREFERENCES_ID,
-          payload: applyProgramDataRetention(preferences),
+          payload: applyProgramDataRetention({
+            ...preferences,
+            learningLanguage: normalizeLearningLanguage(preferences.learningLanguage),
+            learningLocale: 'nl-BE',
+            explanationLanguage: normalizeUiLanguage(preferences.explanationLanguage),
+          }),
         },
       }]);
     });

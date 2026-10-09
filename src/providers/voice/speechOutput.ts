@@ -11,6 +11,8 @@ export interface SpeakCharacterOptions {
   style?: string;
   voice?: string;
   voiceGender?: VoiceGender;
+  /** Session ownership guard evaluated again after asynchronous synthesis. */
+  canPlay?: () => boolean;
 }
 
 const MAX_AUDIO_CACHE_ITEMS = 20;
@@ -53,6 +55,7 @@ export async function speakWithBestAvailable(
   text: string,
   options: SpeakCharacterOptions
 ): Promise<void> {
+  if (options.canPlay && !options.canPlay()) return;
   const locale = resolveSpeechLocale(options.language, options.locale);
 
   const key = cacheKey(text, options, locale);
@@ -85,6 +88,7 @@ export async function speakWithBestAvailable(
 
     if (result.audio?.base64) {
       rememberAudio(key, result.audio);
+      if (options.canPlay && !options.canPlay()) return;
       await transport.playSpeech(text, {
         audioBase64: result.audio.base64,
         mimeType: result.audio.mimeType,
@@ -99,6 +103,7 @@ export async function speakWithBestAvailable(
     console.warn('Cloud speech unavailable; using native voice:', error);
   }
 
+  if (options.canPlay && !options.canPlay()) return;
   await transport.playSpeech(text, {
     speed: options.speed,
     lang: options.language,

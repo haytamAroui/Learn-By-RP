@@ -1,5 +1,6 @@
 import React from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
@@ -13,6 +14,7 @@ import { createInitialScene } from '../../features/roleplay/sceneReducer';
 import { ROLEPLAY_PROGRAM_CATALOG } from '../../data/programs';
 import { buildProgramProjection, isProgramCoreComplete } from '../../features/program/projection';
 import { isProgramActivatable } from '../../features/program/releaseGates';
+import { ACTIVE_LEARNING_LANGUAGE } from '../../features/i18n/languagePolicy';
 
 export default function MissionBriefingRoute() {
   const router = useRouter();
@@ -53,6 +55,7 @@ export default function MissionBriefingRoute() {
 
   if (
     !mission ||
+    mission.language !== ACTIVE_LEARNING_LANGUAGE ||
     (params.programId && !programContextAllowed) ||
     (requestedFinalSimulation && !finalSimulationAllowed)
   ) {

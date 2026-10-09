@@ -2,14 +2,16 @@ import React, { useRef } from 'react';
 import {
   ActivityIndicator,
   Pressable,
+  Platform,
   StyleProp,
-  Text,
   TextInput,
   TextInputProps,
   View,
   ViewStyle,
 } from 'react-native';
+import { Text } from './AppText';
 import { iconColor } from '../design/iconColor';
+import { ELEVATION, RADIUS } from '../design/tokens';
 
 type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'danger';
 type ButtonSize = 'sm' | 'md' | 'lg';
@@ -33,9 +35,9 @@ const VARIANT_LABEL: Record<ButtonVariant, string> = {
 };
 
 const SIZE_CONTAINER: Record<ButtonSize, string> = {
-  sm: 'min-h-12 px-3 rounded-xl',
-  md: 'min-h-12 px-4 rounded-xl',
-  lg: 'min-h-14 px-5 rounded-2xl',
+  sm: 'min-h-12 px-3 rounded-2xl',
+  md: 'min-h-12 px-4 rounded-full',
+  lg: 'min-h-14 px-5 rounded-full',
 };
 
 const SIZE_LABEL: Record<ButtonSize, string> = {
@@ -81,6 +83,7 @@ export const Button: React.FC<ButtonProps> = ({
       accessibilityLabel={accessibilityLabel ?? label}
       accessibilityState={{ disabled: isDisabled, busy: loading }}
       testID={testID}
+      style={variant === 'primary' ? { boxShadow: ELEVATION.card } : undefined}
       className={`flex-row items-center justify-center gap-2 ${VARIANT_CONTAINER[variant]} ${SIZE_CONTAINER[size]} ${
         isDisabled ? 'opacity-40' : ''
       } ${className}`}
@@ -106,11 +109,12 @@ interface CardProps {
 }
 
 export const Card: React.FC<CardProps> = ({ children, className = '', style, onPress, testID }) => {
-  const base = `rounded-2xl border border-border-subtle bg-surface p-4 ${className}`;
+  const base = `border border-border-subtle/60 bg-surface p-4 ${className}`;
+  const cardStyle: StyleProp<ViewStyle> = [{ borderRadius: RADIUS.card, boxShadow: ELEVATION.card }, style];
 
   if (!onPress) {
     return (
-      <View className={base} style={style} testID={testID}>
+      <View className={base} style={cardStyle} testID={testID}>
         {children}
       </View>
     );
@@ -122,7 +126,7 @@ export const Card: React.FC<CardProps> = ({ children, className = '', style, onP
       accessibilityRole="button"
       testID={testID}
       className={`${base} min-h-12 hover:bg-surface-hover active:opacity-85 focus:border-2 focus:border-focus`}
-      style={style}
+      style={cardStyle}
     >
       {children}
     </Pressable>
@@ -199,10 +203,11 @@ export const Field: React.FC<FieldProps> = ({
         ref={inputRef}
         multiline={multiline}
         placeholderTextColor={iconColor('muted')}
-        className={`min-h-12 rounded-xl border border-border-interactive bg-surface-sunken px-4 py-2.5 text-sm text-ink hover:bg-surface-hover focus:border-2 focus:border-focus ${
+        className={`min-h-12 rounded-xl border border-border-interactive bg-surface px-4 py-2.5 text-sm text-ink hover:bg-surface-hover focus:border-2 focus:border-focus ${
           multiline ? 'min-h-[88px] text-left' : ''
         } ${className}`}
         {...inputProps}
+        style={[{ fontFamily: Platform.OS === "web" ? "Figtree, system-ui, sans-serif" : undefined }, inputProps.style]}
       />
     </View>
   );
@@ -227,7 +232,7 @@ export function Segmented<T extends string>({
     <View
       accessibilityRole="tablist"
       accessibilityLabel={accessibilityLabel}
-      className={`flex-row items-center rounded-xl border border-border-interactive bg-surface-sunken p-1 ${className}`}
+      className={`flex-row items-center rounded-[24px] border border-border-subtle/60 bg-surface-soft p-1 ${className}`}
     >
       {options.map(option => {
         const isActive = option.id === value;
@@ -244,7 +249,6 @@ export function Segmented<T extends string>({
             {option.icon}
             <Text
               className={`text-xs ${isActive ? 'font-semibold text-ink' : 'font-medium text-muted'}`}
-              numberOfLines={1}
             >
               {option.label}
             </Text>
@@ -271,7 +275,7 @@ export const ChipRow: React.FC<ChipRowProps> = ({
   scrollable = false,
 }) => (
   <View
-    className={`flex-row gap-1 rounded-xl border border-border-interactive bg-surface-sunken p-1 ${
+    className={`flex-row gap-1 rounded-[24px] border border-border-subtle/60 bg-surface-soft p-1 ${
       scrollable ? '' : 'flex-wrap'
     } ${className}`}
   >
@@ -283,13 +287,12 @@ export const ChipRow: React.FC<ChipRowProps> = ({
           onPress={() => onChange(option.id)}
           accessibilityRole="button"
           accessibilityState={{ selected: isActive }}
-          className={`min-h-12 justify-center rounded-lg border px-3 focus:border-2 focus:border-focus ${isActive ? 'border-primary/30 bg-card-warm' : 'border-transparent'} ${
+          className={`min-h-12 justify-center rounded-full border px-3 focus:border-2 focus:border-focus ${isActive ? 'border-language/30 bg-language-soft' : 'border-transparent'} ${
             scrollable ? 'shrink-0' : ''
           }`}
         >
           <Text
             className={`text-xs ${isActive ? 'font-semibold text-ink' : 'font-medium text-muted'}`}
-            numberOfLines={1}
           >
             {option.label}
           </Text>

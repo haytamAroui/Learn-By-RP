@@ -1,7 +1,7 @@
 /**
  * Mission Coach design tokens.
  *
- * Single source of truth for colour. `index.css` mirrors these values for the
+ * Single source of truth for colour. `global.css` is generated from these values for the
  * web, because CSS is the only thing the web bundle reads; `tests/design.test.ts`
  * asserts the two stay identical, because that duplication is the exact thing
  * that silently drifted before.
@@ -13,14 +13,14 @@
 
 /** Canvas is deliberately not white, so a card can separate from it. */
 export const LIGHT = {
-  canvas: '#F2EDE4',
+  canvas: '#F8F3E8',
   surface: '#FFFFFF',
-  /** Neutral secondary panel. Distinct from the warm brand soft on purpose. */
-  surfaceSoft: '#F4F0E8',
+  /** Pale neutral secondary panel from the reference, distinct from coral. */
+  surfaceSoft: '#F4F0E9',
   /** Recessed: inputs and wells. Darker than canvas. */
-  sunken: '#E8E0D2',
+  sunken: '#E5E9E5',
   /** Hover on a surface that sits directly on canvas. */
-  surfaceHover: '#EAE3D8',
+  surfaceHover: '#ECF5F0',
   /**
    * Dialogs and popovers. In light mode a raised surface is the same white as a
    * card and is separated by shadow instead of tone; there is no lighter white
@@ -29,99 +29,106 @@ export const LIGHT = {
   raised: '#FFFFFF',
 
   /** Grouping only. Decorative: not a control boundary. */
-  borderSubtle: '#C8BFB2',
+  borderSubtle: '#D2D3C9',
   /** Any control the user must be able to see and hit. Clears 3:1 on canvas. */
-  borderInteractive: '#8A7F71',
+  borderInteractive: '#75857E',
 
-  ink: '#1C1917',
-  body: '#57534E',
-  muted: '#6E6963',
+  ink: '#0C2B2E',
+  body: '#42575B',
+  muted: '#55646A',
 
-  brand: '#A7442F',
-  brandHover: '#8F3826',
-  brandPressed: '#7A3021',
-  brandSoft: '#F7E8E2',
+  brand: '#B5412F',
+  brandHover: '#9D3527',
+  brandPressed: '#822B20',
+  brandSoft: '#FFEAE2',
   brandText: '#FFFFFF',
   /**
-   * The CTA background. Same value in both themes: light mode's brand is already
-   * dark enough to carry white text, so only the *foreground* brand changes for
-   * dark mode.
+   * Deep teal action fill from the Lingo 2027 reference. Coral remains the speaking
+   * accent; primary actions carry a readable white label in both themes.
    */
-  brandButton: '#A7442F',
-  brandButtonHover: '#8F3826',
-  brandButtonPressed: '#7A3021',
+  brandButton: '#07454B',
+  brandButtonHover: '#0C6469',
+  brandButtonPressed: '#05373C',
 
-  language: '#246B63',
-  languageHover: '#1E5D56',
-  languageSoft: '#E4F2EF',
+  language: '#0A726C',
+  languageHover: '#095D58',
+  languageSoft: '#DDF1EA',
   languageText: '#FFFFFF',
 
-  success: '#2D6B49',
-  successSoft: '#E5F1E9',
-  warning: '#8A5A12',
-  warningSoft: '#F7EDD8',
+  success: '#21664C',
+  successSoft: '#E3F5EE',
+  warning: '#855818',
+  warningSoft: '#FFF1DC',
   danger: '#B42318',
   dangerSoft: '#FBE8E6',
-  info: '#356C96',
-  infoSoft: '#E5EFF7',
+  info: '#0D6581',
+  infoSoft: '#E0F2F8',
 
-  focus: '#246B63',
+  focus: '#0A726C',
   /**
    * Focus ring for use directly against the brand fill.
    *
-   * `focus` cannot do both jobs: teal clears the canvas at 5.36:1 but is
-   * invisible on the terracotta CTA at 1.05:1, and any colour that works on the
-   * CTA is invisible on the canvas. That is why a focus ring must use an offset
+   * A focus ring is stronger on the canvas than on a filled action. Use an offset
    * (see FOCUS_RING) so it is drawn against the background rather than against
    * the component. This token covers the flush case where that is not possible.
    */
   focusOnBrand: '#FFFFFF',
+  lime: '#CBF37C',
+  limeText: '#17310F',
+  coralControl: '#EA4B3B',
+  lilac: '#65509D',
+  lilacSoft: '#EFEAFF',
 } as const;
 
 export const DARK = {
-  canvas: '#171613',
-  surface: '#29251F',
+  canvas: '#122322',
+  surface: '#1D3231',
   /** Neutral secondary panel. Deliberately not the warm brand soft. */
-  surfaceSoft: '#332E27',
-  sunken: '#12110F',
+  surfaceSoft: '#243C39',
+  sunken: '#0B191A',
   /** Dialogs, popovers, floating support. Separates from both surface and canvas. */
-  raised: '#423A31',
-  surfaceHover: '#3B342C',
+  raised: '#304B47',
+  surfaceHover: '#2C4541',
 
-  borderSubtle: '#514A40',
-  borderInteractive: '#7A7063',
+  borderSubtle: '#526F65',
+  borderInteractive: '#95ADA3',
 
-  ink: '#F7F4EE',
-  body: '#D4CEC4',
-  muted: '#AFA79C',
+  ink: '#F9F7F0',
+  body: '#D5E4DD',
+  muted: '#B2C6BD',
 
   /** Dark mode needs a lighter brand to read as text; the button stays dark. */
-  brand: '#EF9B7F',
-  brandHover: '#F5AB93',
-  brandPressed: '#D98263',
-  brandSoft: '#3B251E',
-  brandButton: '#A7442F',
-  brandButtonHover: '#8F3826',
-  brandButtonPressed: '#7A3021',
+  brand: '#FFAB91',
+  brandHover: '#FFC0AA',
+  brandPressed: '#E8967D',
+  brandSoft: '#492E28',
+  brandButton: '#07454B',
+  brandButtonHover: '#0C6469',
+  brandButtonPressed: '#05373C',
   brandText: '#FFFFFF',
 
-  language: '#7CC7BE',
-  languageHover: '#98D6CE',
-  languageSoft: '#17332F',
-  languageText: '#12110F',
+  language: '#82D8C7',
+  languageHover: '#ADE8D9',
+  languageSoft: '#18453F',
+  languageText: '#0B191A',
 
-  success: '#7BC59A',
-  successSoft: '#193326',
-  warning: '#E0B466',
-  warningSoft: '#3B2D17',
-  danger: '#FF8A80',
-  dangerSoft: '#3A1E1B',
-  info: '#86B7DF',
-  infoSoft: '#1B2B38',
+  success: '#95D2AF',
+  successSoft: '#1C4030',
+  warning: '#EFCA84',
+  warningSoft: '#443820',
+  danger: '#FFA899',
+  dangerSoft: '#492D2A',
+  info: '#99CBE1',
+  infoSoft: '#203C47',
 
-  focus: '#7CC7BE',
-  /** White reads against the dark brand fill; teal would not. */
+  focus: '#82D8C7',
+  /** White reads against the deep teal action fill. */
   focusOnBrand: '#FFFFFF',
+  lime: '#CBF37C',
+  limeText: '#17310F',
+  coralControl: '#EA4B3B',
+  lilac: '#C3ACF5',
+  lilacSoft: '#372C4D',
 } as const;
 
 /**
@@ -244,7 +251,21 @@ export const SPACE = {
 } as const;
 
 export const RADIUS = {
-  xs: 8, sm: 10, control: 14, card: 20, hero: 24, sheet: 28, pill: 999,
+  xs: 8, sm: 12, control: 20, card: 26, hero: 28, sheet: 32, pill: 999,
+} as const;
+
+/** Decorative elevation from the supplied HTML; never a status indicator. */
+export const ELEVATION = {
+  card: '0px 14px 30px -16px rgba(7,69,75,0.28)',
+  floating: '0px 14px 32px -10px rgba(7,69,75,0.32)',
+} as const;
+
+/** Theme-independent illustration paints adapted from the reference skyline. */
+export const CITY_ART = {
+  sky: '#B7D3E7', sunset: '#F0CDA7', horizon: '#6F91A5',
+  house: '#694F40', houseLight: '#8B6653', tower: '#74503F',
+  water: '#6D97AA', waterDeep: '#3E7188', window: '#FFE4AA',
+  shade: '#172D3D',
 } as const;
 
 /** Apple and Android both treat this as the minimum comfortable target. */

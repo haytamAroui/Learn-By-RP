@@ -1,6 +1,7 @@
 import { expect, test, type Page } from '@playwright/test';
 import { MISSION_CATALOG } from '../src/data/missions';
 import type { SessionRecord } from '../src/types';
+import { TRANSLATIONS } from '../src/features/i18n/translations';
 
 /**
  * The mission the briefing snapshot opens.
@@ -13,8 +14,8 @@ import type { SessionRecord } from '../src/types';
  * its screenshot. Deriving the name from the same catalog the screen renders from is
  * what stops that rotting again.
  */
-const CAFE_MISSION = MISSION_CATALOG.find(mission => mission.id === 'mission-es-cafe-sol');
-if (!CAFE_MISSION) throw new Error('mission-es-cafe-sol is missing from MISSION_CATALOG');
+const CAFE_MISSION = MISSION_CATALOG.find(mission => mission.id === 'mission-nl-be-koffiebar');
+if (!CAFE_MISSION) throw new Error('mission-nl-be-koffiebar is missing from MISSION_CATALOG');
 
 /** Escapes a mission title for use inside a RegExp. Titles contain `:` and `.`. */
 function escapeForRegex(value: string): string {
@@ -61,9 +62,9 @@ const CONSENT_VERSION = '2026-09-30.1';
  */
 const SEEDED_SESSION: SessionRecord = {
   id: 'session-visual-recap',
-  missionId: 'mission-es-cafe-sol',
+  missionId: 'mission-nl-be-koffiebar',
   missionVersion: 1,
-  language: 'es',
+  language: 'nl',
   mode: 'guided',
   coldAttempt: true,
   state: 'completed',
@@ -79,7 +80,7 @@ const SEEDED_SESSION: SessionRecord = {
       revisionKey: 'turn-1',
       assemblyVersion: 1,
       status: 'final',
-      text: 'Dos cafés con leche, por favor.',
+      text: 'Twee koffies met melk, alstublieft.',
       meaning: 'Two coffees with milk, please.',
       modality: 'voice',
       startedAt: '2026-09-28T09:16:00.000Z',
@@ -94,7 +95,7 @@ const SEEDED_SESSION: SessionRecord = {
       revisionKey: 'turn-2',
       assemblyVersion: 1,
       status: 'final',
-      text: 'Perfecto. ¿Para aquí o para llevar?',
+      text: 'Prima. Is het voor hier of om mee te nemen?',
       meaning: 'Perfect. For here or to go?',
       modality: 'voice',
       startedAt: '2026-09-28T09:16:12.000Z',
@@ -112,7 +113,7 @@ const SEEDED_SESSION: SessionRecord = {
       sourceTurnId: 'passage-visual-1',
       sourceRevision: 'turn-1',
       skillId: 'cafe-ordering',
-      candidateForm: 'pedir una bebida',
+      candidateForm: 'een drank bestellen',
       evidenceSource: 'validated_explicit',
       confirmedAt: '2026-09-28T09:16:04.000Z',
       connectedSceneCount: 2,
@@ -121,7 +122,7 @@ const SEEDED_SESSION: SessionRecord = {
   skillLapses: [],
   taskOutcome: 'completed',
   sceneState: {
-    sceneId: 'mission-es-cafe-sol',
+    sceneId: 'mission-nl-be-koffiebar',
     revision: 4,
     facts: { drinksOrdered: 2 },
     learnerKnows: ['drink-preference'],
@@ -132,7 +133,7 @@ const SEEDED_SESSION: SessionRecord = {
   },
   summary: 'You ordered two drinks and answered a follow-up question without prompting.',
   actionableFeedback: [
-    'Keep articles consistent when naming a quantity — "dos cafés con leche".',
+    'Keep articles consistent when naming a quantity — "twee koffies met melk".',
   ],
 };
 
@@ -182,7 +183,7 @@ async function seedArchive(page: Page) {
             {
               id: 'current',
               payload: {
-                learningLanguage: 'es',
+                learningLanguage: 'nl',
                 explanationLanguage: 'en',
                 comfortLevel: 'beginner',
                 primaryGoal: 'travel',
@@ -283,7 +284,10 @@ async function scrollableContentHeight(page: Page): Promise<number> {
       if (element.scrollHeight <= element.clientHeight + 4) continue;
       if (element.clientHeight <= 40) continue;
       const rect = element.getBoundingClientRect();
-      total = Math.max(total, rect.top + window.scrollY + element.scrollHeight);
+      // Include fixed app chrome below the content scroller. Without this, a
+      // floating bottom bar leaves the last action row outside the capture.
+      const bottomChrome = Math.max(0, window.innerHeight - rect.bottom);
+      total = Math.max(total, rect.top + window.scrollY + element.scrollHeight + bottomChrome);
     }
     return Math.ceil(total);
   });
@@ -338,6 +342,54 @@ async function expectFullScreenScreenshot(page: Page, name: string) {
 for (const viewport of WIDTHS) {
   test.describe(`width ${viewport.name}`, () => {
     test.use({ viewport: { width: viewport.width, height: viewport.height } });
+
+    if (viewport.name === '390') {
+      test('redesigned home actions, search clearing, and Dutch briefing work', async ({ page }) => {
+        await seedArchive(page);
+        await page.goto('/');
+        const dutchPhraseCount = MISSION_CATALOG.filter(mission => mission.language === 'nl')
+          .reduce((count, mission) => count + mission.usefulPhrases.length, 0);
+        await expect(page.getByRole('button', { name: `Phrases. Review phrases (${dutchPhraseCount})`, exact: true })).toBeVisible();
+        await page.getByRole('button', { name: 'Start conversation', exact: true }).press('Enter');
+        await expect(page).toHaveURL(/mission\/mission-nl-be-koffiebar/);
+        await expect(page.getByText('Goedemorgen. Is deze stoel vrij?')).toBeVisible();
+        await expect(page.getByText('EN · Good morning. Is this seat free?')).toBeVisible();
+        await expect(page.getByText('FR · Bonjour. Cette place est libre ?')).toBeVisible();
+        await page.getByRole('button', { name: 'Back', exact: true }).click();
+        await expect(page).toHaveURL(/\/$/);
+        await page.getByRole('button', { name: /^Progress\./ }).click();
+        await expect(page).toHaveURL(/\/progress$/);
+        await page.goto('/');
+        await page.getByRole('button', { name: /^Missions\./ }).click();
+        await expect(page).toHaveURL(/\/missions$/);
+        const search = page.getByRole('textbox');
+        await search.fill('zz-no-such-mission');
+        await expect(page.getByRole('button', { name: new RegExp(escapeForRegex(CAFE_MISSION.title)) })).toHaveCount(0);
+        await page.getByRole('button', { name: 'Clear', exact: true }).click();
+        await expect(search).toHaveValue('');
+        await expect(search).toBeFocused();
+        await expect(page.getByRole('button', { name: new RegExp(escapeForRegex(CAFE_MISSION.title)) })).toBeVisible();
+        expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+      });
+
+      test('320px locale choices and reduced motion keep the home usable', async ({ page }) => {
+        await seedArchive(page);
+        await page.setViewportSize({ width: 320, height: 740 });
+        await page.emulateMedia({ reducedMotion: 'reduce' });
+        let currentLanguage: 'en' | 'fr' | 'nl' = 'en';
+        for (const nextLanguage of ['fr', 'nl', 'en'] as const) {
+          await page.goto('/settings');
+          const uiChoices = page.getByText(TRANSLATIONS[currentLanguage].settings.uiLangLabel, { exact: true }).locator('..');
+          const flag = nextLanguage === 'fr' ? '🇫🇷' : nextLanguage === 'nl' ? '🇧🇪' : '🇬🇧';
+          await uiChoices.getByRole('button', { name: new RegExp(flag) }).click();
+          currentLanguage = nextLanguage;
+          await expect(page.getByText(TRANSLATIONS[nextLanguage].settings.title, { exact: true })).toBeVisible();
+          await page.goto('/');
+          await expect(page.getByRole('button', { name: TRANSLATIONS[nextLanguage].talk.startConversation, exact: true })).toBeVisible();
+          expect(await page.evaluate(() => document.documentElement.scrollWidth <= window.innerWidth)).toBe(true);
+        }
+      });
+    }
 
     test('talk', async ({ page }) => {
       await seedArchive(page);
@@ -454,7 +506,7 @@ for (const viewport of WIDTHS) {
       await seedArchive(page);
       /*
         The route takes the session id in the path and the mission id as a query
-        parameter. This test used to pass `/session/mission-es-cafe-sol`, which put a
+        parameter. This test used to pass `/session/mission-nl-be-koffiebar`, which put a
         mission id where a session id was expected, so the mission never resolved and
         the snapshot recorded "That mission is no longer available." For months the
         gate protected a dead-end screen and called it the live session.
@@ -463,14 +515,15 @@ for (const viewport of WIDTHS) {
         an error screen is worse than no baseline, because it reports green.
       */
       await page.goto(
-        `/session/${SEEDED_SESSION.id}?missionId=mission-es-cafe-sol&mode=guided&coldAttempt=true`
+        `/session/${SEEDED_SESSION.id}?missionId=mission-nl-be-koffiebar&mode=guided&coldAttempt=true`
       );
       await page.waitForLoadState('networkidle');
-      // The voice transport will not connect in CI, so the session is captured in
-      // its connecting state. That is a real state worth guarding.
+      // Fixture transcript exercises rendering. Support is revealed through the
+      // real controls; this screenshot does not certify a live provider session.
       await page.waitForTimeout(1500);
       await expectRenderedApp(page);
       await expect(page.locator('body')).not.toContainText('no longer available');
+      await page.getByRole('button', { name: 'Show translation', exact: true }).click();
       await expectFullScreenScreenshot(page, `live-${viewport.name}.png`);
     });
   });

@@ -1,5 +1,6 @@
 import React, { useEffect, useState } from 'react';
-import { Text, View } from 'react-native';
+import { View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';

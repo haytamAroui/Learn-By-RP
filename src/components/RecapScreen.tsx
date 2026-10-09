@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Text } from './AppText';
 import {
   ArrowRight,
   CheckCircle2,
@@ -23,6 +24,7 @@ import { shareTextFile } from '../lib/share';
 import { Button, EmptyState, SectionLabel } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
+import { ELEVATION } from '../design/tokens';
 
 interface RecapScreenProps {
   session: SessionRecord;
@@ -159,7 +161,7 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
 
       <ScrollView
         className="flex-1"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 720,
@@ -189,7 +191,7 @@ export const RecapScreen: React.FC<RecapScreenProps> = ({
           ) : null}
         </View>
 
-        <View className="gap-2 rounded-[24px] bg-surface-soft p-5">
+        <View className="gap-2 rounded-[24px] border border-border-subtle/50 bg-surface p-5" style={{ boxShadow: ELEVATION.card }}>
           <SectionLabel>{t.recap.sceneResult}</SectionLabel>
           <Text className="text-[17px] font-semibold leading-6 text-ink">
             {sceneResultText}

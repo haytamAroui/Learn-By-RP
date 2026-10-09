@@ -45,7 +45,7 @@ describe('voice/session G0 regressions', () => {
   it('reads mute and freeze decisions from current refs rather than stale callbacks', () => {
     expect(live).toContain('isMutedRef.current = isMuted');
     expect(live).toContain('isSceneFrozenRef.current = isSceneFrozen');
-    expect(live).toContain('if (audioPlaybackEnabled && !isSceneFrozenRef.current)');
+    expect(live).toContain('if (audioPlaybackEnabled && consentRef.current.voice && !isSceneFrozenRef.current)');
   });
 
   it('keeps reconnect, sustained failure and microphone denial explicit', () => {

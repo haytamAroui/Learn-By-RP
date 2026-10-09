@@ -26,6 +26,12 @@
       "buttonHover": "rgb(var(--color-brand-button-hover) / <alpha-value>)",
       "buttonPressed": "rgb(var(--color-brand-button-pressed) / <alpha-value>)"
     },
+    "action": {
+      "DEFAULT": "rgb(var(--color-brand-button) / <alpha-value>)",
+      "hover": "rgb(var(--color-brand-button-hover) / <alpha-value>)",
+      "pressed": "rgb(var(--color-brand-button-pressed) / <alpha-value>)",
+      "text": "rgb(var(--color-brand-text) / <alpha-value>)"
+    },
     "primary": {
       "DEFAULT": "rgb(var(--color-brand) / <alpha-value>)",
       "dark": "rgb(var(--color-brand-hover) / <alpha-value>)",
@@ -55,6 +61,18 @@
       "soft": "rgb(var(--color-info-soft) / <alpha-value>)"
     },
     "focus": "rgb(var(--color-focus) / <alpha-value>)",
+    "lime": {
+      "DEFAULT": "rgb(var(--color-lime) / <alpha-value>)",
+      "text": "rgb(var(--color-lime-text) / <alpha-value>)"
+    },
+    "coral": {
+      "DEFAULT": "rgb(var(--color-coral-control) / <alpha-value>)",
+      "text": "rgb(var(--color-brand-text) / <alpha-value>)"
+    },
+    "lilac": {
+      "DEFAULT": "rgb(var(--color-lilac) / <alpha-value>)",
+      "soft": "rgb(var(--color-lilac-soft) / <alpha-value>)"
+    },
     "accent": {
       "sage": "rgb(var(--color-success) / <alpha-value>)",
       "sky": "rgb(var(--color-info) / <alpha-value>)"
@@ -64,12 +82,6 @@
       "sage": "rgb(var(--color-success-soft) / <alpha-value>)",
       "sky": "rgb(var(--color-info-soft) / <alpha-value>)",
       "heather": "rgb(var(--color-warning-soft) / <alpha-value>)"
-    },
-    "action": {
-      "DEFAULT": "rgb(var(--color-brand-button) / <alpha-value>)",
-      "hover": "rgb(var(--color-brand-button-hover) / <alpha-value>)",
-      "pressed": "rgb(var(--color-brand-button-pressed) / <alpha-value>)",
-      "text": "rgb(var(--color-brand-text) / <alpha-value>)"
     }
   }
 }

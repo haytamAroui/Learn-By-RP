@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
+import { Text } from './AppText';
 import {
   ArrowLeft,
   Check,
@@ -19,6 +20,8 @@ import {
 import { useI18n } from '../features/i18n';
 import { Button, EmptyState, Pill, SectionLabel } from './ui';
 import { iconColor } from '../design/iconColor';
+import { NeighborhoodArtwork } from './NeighborhoodArtwork';
+import { ELEVATION } from '../design/tokens';
 
 const PROGRAM_RECOMMENDATION_COPY = {
   en: {
@@ -133,7 +136,7 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
 
       <ScrollView
         className="flex-1"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 720,
@@ -145,6 +148,9 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
         }}
       >
         <View className="gap-3">
+          <View className="w-full overflow-hidden rounded-[28px]" style={{ height: 128, boxShadow: ELEVATION.card }}>
+            <NeighborhoodArtwork />
+          </View>
           {recommendation ? (
             <View className="gap-2 rounded-[22px] bg-card-sky p-4">
               <Text className="text-xs font-semibold uppercase tracking-wider text-accent-sky">
@@ -236,7 +242,7 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
                       className={`mb-5 min-h-[104px] flex-1 rounded-[22px] border p-4 focus:border-2 focus:border-focus ${
                         current
                           ? 'border-primary/20 bg-card-warm'
-                          : 'border-transparent bg-surface-soft'
+                          : 'border-border-subtle/50 bg-surface'
                       } ${unlocked ? 'hover:bg-surface-hover active:opacity-75' : 'opacity-60'}`}
                     >
                       <View className="flex-row items-start gap-3">

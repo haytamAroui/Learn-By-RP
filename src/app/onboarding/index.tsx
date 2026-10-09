@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, Text, View } from 'react-native';
+import { ScrollView, View } from 'react-native';
+import { Text } from '../../components/AppText';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
@@ -21,20 +22,13 @@ import {
   defaultLearningLocale,
   resolveProgramCandidate,
 } from '../../features/program/goalResolver';
+import { normalizeUiLanguage } from '../../features/i18n/languagePolicy';
 
-const TARGET_LANGUAGES: Array<{ id: LanguageCode; label: string }> = [
-  { id: 'es', label: '🇪🇸 Spanish' },
-  { id: 'fr', label: '🇫🇷 French' },
-  { id: 'de', label: '🇩🇪 German' },
-  { id: 'it', label: '🇮🇹 Italian' },
-  { id: 'ja', label: '🇯🇵 Japanese' },
-  { id: 'nl', label: '🇧🇪 Dutch (Belgium)' },
-];
+const TARGET_LANGUAGES: Array<{ id: LanguageCode }> = [{ id: 'nl' }];
 
 const UI_LANGUAGES: Array<{ id: UiLanguage; label: string }> = [
   { id: 'en', label: '🇬🇧 English' },
   { id: 'fr', label: '🇫🇷 Français' },
-  { id: 'es', label: '🇪🇸 Español' },
   { id: 'nl', label: '🇧🇪 Nederlands' },
 ];
 
@@ -215,13 +209,13 @@ export default function OnboardingScreen() {
   const { preferences, savePreferences, consent } = useArchive();
 
   const [learningLanguage, setLearningLanguage] = useState<LanguageCode>(
-    preferences.learningLanguage
+    'nl'
   );
   const [learningLocale, setLearningLocale] = useState(
-    preferences.learningLocale ?? defaultLearningLocale(preferences.learningLanguage)
+    'nl-BE'
   );
   const [explanationLanguage, setExplanationLanguage] = useState<UiLanguage>(
-    preferences.explanationLanguage
+    normalizeUiLanguage(preferences.explanationLanguage)
   );
   const [primaryGoal, setPrimaryGoal] = useState<UserPreferences['primaryGoal']>(
     preferences.primaryGoal === 'relocation'
@@ -307,7 +301,7 @@ export default function OnboardingScreen() {
       <ScrollView
         className="flex-1"
         keyboardShouldPersistTaps="handled"
-        showsVerticalScrollIndicator={false}
+        showsVerticalScrollIndicator={true}
         contentContainerStyle={{
           width: '100%',
           maxWidth: 720,
@@ -331,7 +325,10 @@ export default function OnboardingScreen() {
           <ChipRow
             value={learningLanguage}
             onChange={id => chooseLearningLanguage(id as LanguageCode)}
-            options={TARGET_LANGUAGES}
+            options={TARGET_LANGUAGES.map(({ id }) => ({
+              id,
+              label: `🇧🇪 ${t.languages[id]}`,
+            }))}
           />
         </View>
 
