@@ -670,6 +670,7 @@ export const FLEMISH_SKILL_PATTERNS: Partial<Record<CommunicativeSkillId, string
   'skill-compare-options': '[X] is goedkoper, maar [Y] is flexibeler.',
   'skill-make-arrangement': 'Zullen we [tijd] aan [plaats] afspreken?',
   'skill-narrate-past-event': 'Eerst [gebeurtenis], daarna [gebeurtenis] en uiteindelijk [resultaat].',
+  'skill-report-workplace-problem': 'Er is een probleem met [zaak]: [feit].',
 };
 
 const SKILL_BY_ID = new Map<CommunicativeSkillId, CommunicativeSkillDefinition>(
