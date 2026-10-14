@@ -259,7 +259,10 @@ export function validateProgramAgainstCatalog(
           `${path}: scene version pin ${entry.sceneVersion} != catalog ${scene.version}`
         );
       }
-      if (scene.reviewStatus !== 'released') {
+      // Draft programmes may pin draft scenes for preview/authoring. Only
+      // released programmes require released scenes at the catalog boundary.
+      // The activation gate separately checks every pinned mission/scene.
+      if (program.reviewStatus === 'released' && scene.reviewStatus !== 'released') {
         errors.push(`${path}: scene ${scene.id} is not released`);
       }
     }
