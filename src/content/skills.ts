@@ -630,6 +630,28 @@ export const COMMUNICATIVE_SKILLS_CATALOG: readonly CommunicativeSkillDefinition
     samplePhrases: ['First I spoke to the customer, then I checked the order, and finally we solved the problem.'],
     associatedMissions: [],
   },
+  {
+    id: 'skill-report-workplace-problem',
+    name: 'Report a workplace problem',
+    category: 'Coordination & Negotiation',
+    description: 'Clearly report an observed operational problem to a colleague or supervisor without inventing a cause or procedure.',
+    canDo: {
+      en: 'I can report a concrete problem at work and state what I observed.',
+      fr: 'Je peux signaler un problème concret au travail et décrire ce que j’ai constaté.',
+      es: 'Puedo informar de un problema concreto en el trabajo y describir lo que he observado.',
+      nl: 'Ik kan een concreet probleem op het werk melden en zeggen wat ik heb vastgesteld.',
+    },
+    positiveExamples: ['Identifies the affected item and describes the observed problem intelligibly.'],
+    negativeExamples: ['Names an object without reporting what went wrong.', 'Invents a cause that was not observed.'],
+    boundaryNotes: ['This is communication practice, not verification of technical or workplace safety compliance.'],
+    modality: 'production',
+    typicalOpportunityPatterns: ['a supervisor needs a clear description of a damaged delivery or unexpected problem'],
+    evidencePolicy: 'direct',
+    deprecated: null,
+    patterns: ['Er is een probleem met [zaak]: [waarneembaar feit].'],
+    samplePhrases: ['Er zijn drie dozen beschadigd bij de levering.'],
+    associatedMissions: ['mission-nl-be-work-damaged-delivery'],
+  },
 ] as const;
 
 export const FLEMISH_SKILL_PATTERNS: Partial<Record<CommunicativeSkillId, string>> = {
