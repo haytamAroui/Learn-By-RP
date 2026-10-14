@@ -118,7 +118,11 @@ export interface MissionDefinition {
   primarySkillIds: CommunicativeSkillId[];
   /** Exercised along the way, but not the point of the mission. */
   secondarySkillIds: CommunicativeSkillId[];
-  levelRange: 'A1' | 'A2' | 'B1';
+  /** Authored challenge band; never a general learner ability label. */
+  levelRange: 'A1' | 'A2' | 'B1' | 'B2' | 'C1';
+  /** Reviewed occupational task affiliation; optional for ordinary roleplay. */
+  workplaceContextId?: string;
+  workplaceTaskId?: string;
   title: string;
   category: 'cafes' | 'services' | 'transit' | 'lodging' | 'social' | 'problems';
   neighborhood: string;
