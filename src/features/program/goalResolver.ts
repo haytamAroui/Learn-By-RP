@@ -3,7 +3,7 @@ import type { RoleplayProgram } from '../../contracts/program';
 import {
   FLEMISH_EVERYDAY_PILOT,
   FLEMISH_TRAVEL_PILOT,
-  FLEMISH_WORK_LOGISTICS_PILOT,
+  ROLEPLAY_PROGRAM_CATALOG,
   SPANISH_DAILY_SERVICES_PILOT,
   SPANISH_TRAVEL_PILOT,
 } from '../../data/programs';
@@ -52,8 +52,14 @@ export function resolveProgramCandidate(input: {
   if (input.learningLanguage === 'nl' && targetLocale === 'nl-BE') {
     if (input.primaryGoal === 'work') {
       const context = input.contextId ? workplaceContextFor(input.contextId) : undefined;
-      if (context && context.locale === targetLocale && context.programId === FLEMISH_WORK_LOGISTICS_PILOT.id) {
-        return candidate(targetLocale, 'exact', FLEMISH_WORK_LOGISTICS_PILOT);
+      const program = context
+        ? ROLEPLAY_PROGRAM_CATALOG.find(item => item.id === context.programId)
+        : undefined;
+      if (context && context.locale === targetLocale &&
+          program?.targetLocale === targetLocale &&
+          program.goalBinding?.domain === 'work' &&
+          program.goalBinding.contextId === context.id) {
+        return candidate(targetLocale, 'exact', program);
       }
       return { targetLocale, match: 'none', executable: false };
     }
