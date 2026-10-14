@@ -123,6 +123,19 @@ export interface MissionDefinition {
   /** Reviewed occupational task affiliation; optional for ordinary roleplay. */
   workplaceContextId?: string;
   workplaceTaskId?: string;
+  /**
+   * Reviewed task-based Mission DNA. Mandatory for workplace missions in
+   * release validation, and gradually adoptable for other tracks.
+   * These fields describe authored content, not learner performance.
+   */
+  taskContract?: {
+    learnerRole: string;
+    communicationNeed: string;
+    friction: string;
+    consequence: string;
+    rescue: string;
+    realWorldBridge: string;
+  };
   title: string;
   category: 'cafes' | 'services' | 'transit' | 'lodging' | 'social' | 'problems';
   neighborhood: string;
