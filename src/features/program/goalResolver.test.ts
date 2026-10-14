@@ -53,14 +53,25 @@ describe('reviewed program candidate resolution', () => {
     expect(result.executable).toBe(false);
   });
 
-  it('does not invent a Dutch work program', () => {
+  it('previews the authored Dutch workplace pilot without bypassing release gates', () => {
     const result = resolveProgramCandidate({
       learningLanguage: 'nl',
       primaryGoal: 'work',
     });
 
+    expect(result.targetLocale).toBe('nl-BE');
+    expect(result.match).toBe('exact');
+    expect(result.program?.id).toBe('program.nl-be.work.logistics.pilot');
+    expect(result.executable).toBe(false);
+  });
+
+  it('does not present the Belgian Dutch work pilot for another locale', () => {
+    const result = resolveProgramCandidate({
+      learningLanguage: 'nl',
+      learningLocale: 'nl-NL',
+      primaryGoal: 'work',
+    });
     expect(result.match).toBe('none');
-    expect(result.program).toBeUndefined();
     expect(result.executable).toBe(false);
   });
 });
