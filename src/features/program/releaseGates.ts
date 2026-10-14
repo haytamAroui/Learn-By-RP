@@ -23,6 +23,12 @@ export function validateMissionForProgramRelease(
   if (!Number.isInteger(mission.version) || mission.version < 1) {
     errors.push(`${mission.id}: version must be a positive integer`);
   }
+  // PR #28 specifies opportunity-banded evidence for B2/C1. The existing
+  // projection is not yet band-aware, so higher-band programmes must not be
+  // released with misleading unbanded skill statuses.
+  if (mission.levelRange === 'B2' || mission.levelRange === 'C1') {
+    errors.push(`${mission.id}: B2/C1 release requires banded evidence projection`);
+  }
   if (!mission.scenarioFamilyId.trim()) {
     errors.push(`${mission.id}: scenarioFamilyId is required`);
   }
