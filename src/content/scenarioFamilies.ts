@@ -235,6 +235,32 @@ export const SCENARIO_FAMILY_CATALOG: readonly ScenarioFamilyDefinition[] = [
     reviewNote:
       'Table-service restaurant variants stay together across languages and venues unless the interaction structure materially changes.',
   },
+  {
+    id: 'workplace-incident-handover',
+    version: 1,
+    reviewStatus: 'reviewed',
+    domainIds: ['problems'],
+    learnerLabel: {
+      en: 'Reporting a workplace issue',
+      fr: 'Signaler un problème au travail',
+      es: 'Comunicar un problema en el trabajo',
+      nl: 'Een probleem op het werk melden',
+    },
+    internalDescription: 'A worker reports an observed operational issue, requests the next instruction and checks understanding with a supervisor. Review status covers the family boundary, not native-language release approval.',
+    includedContexts: [
+      'warehouse damaged-delivery handover',
+      'maintenance issue handover to a supervisor',
+      'workplace task issue reporting and clarification',
+    ],
+    excludedContexts: [
+      'general social complaints unrelated to work',
+      'medical or legal advice',
+      'employer competency or safety certification',
+    ],
+    reviewedAt: '2026-10-14',
+    reviewedBy: 'learnbyrp-authoring-boundary-review',
+    reviewNote: 'Count the same operational report/clarification act in only one family; venue and superficial variants are not new transfer contexts. Professional Dutch scene remains draft.',
+  },
 ] as const;
 
 const FAMILY_BY_ID = new Map<ScenarioFamilyId, ScenarioFamilyDefinition>(
