@@ -4,6 +4,7 @@ import { getScene } from '../content/scenes';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import { validateMissionScenarioFamily } from '../content/scenarioFamilies';
 import { workplaceContextFor } from '../content/workplaceContexts';
+import { validateWorkplaceMissionContract } from '../features/program/workplaceMissionContract';
 
 /**
  * First executable consumer of the curated-program contract.
@@ -251,6 +252,13 @@ export function validateProgramAgainstCatalog(
 
     for (const familyError of validateMissionScenarioFamily(mission)) {
       errors.push(`${path}: ${familyError}`);
+    }
+
+    if (program.goalBinding?.domain === 'work') {
+      if (mission.workplaceContextId !== program.goalBinding.contextId) {
+        errors.push(`${path}: mission workplace context does not match programme goal`);
+      }
+      errors.push(...validateWorkplaceMissionContract(mission).map(error => `${path}: ${error}`));
     }
 
     if (entry.sceneId) {
