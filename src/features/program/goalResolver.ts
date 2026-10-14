@@ -8,6 +8,7 @@ import {
   SPANISH_TRAVEL_PILOT,
 } from '../../data/programs';
 import { isProgramActivatable } from './releaseGates';
+import { workplaceContextFor } from '../../content/workplaceContexts';
 
 export type ProgramGoalMatch = 'exact' | 'closest' | 'none';
 
@@ -42,13 +43,19 @@ export function resolveProgramCandidate(input: {
   learningLanguage: LanguageCode;
   learningLocale?: string;
   primaryGoal: UserPreferences['primaryGoal'];
+  /** Required for work goals: never silently substitute a different occupation. */
+  contextId?: string;
 }): ProgramCandidateResolution {
   const targetLocale =
     input.learningLocale?.trim() || defaultLearningLocale(input.learningLanguage);
 
   if (input.learningLanguage === 'nl' && targetLocale === 'nl-BE') {
     if (input.primaryGoal === 'work') {
-      return candidate(targetLocale, 'exact', FLEMISH_WORK_LOGISTICS_PILOT);
+      const context = input.contextId ? workplaceContextFor(input.contextId) : undefined;
+      if (context && context.locale === targetLocale && context.programId === FLEMISH_WORK_LOGISTICS_PILOT.id) {
+        return candidate(targetLocale, 'exact', FLEMISH_WORK_LOGISTICS_PILOT);
+      }
+      return { targetLocale, match: 'none', executable: false };
     }
     if (input.primaryGoal === 'travel') {
       return candidate(targetLocale, 'exact', FLEMISH_TRAVEL_PILOT);
