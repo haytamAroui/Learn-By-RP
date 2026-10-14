@@ -3,6 +3,8 @@ import { MISSION_CATALOG } from './missions';
 import { getScene } from '../content/scenes';
 import { LEARNING_POLICY_VERSION } from '../features/learning/policy';
 import { validateMissionScenarioFamily } from '../content/scenarioFamilies';
+import { workplaceContextFor } from '../content/workplaceContexts';
+import { validateWorkplaceMissionContract } from '../features/program/workplaceMissionContract';
 
 /**
  * First executable consumer of the curated-program contract.
@@ -191,6 +193,7 @@ export const FLEMISH_WORK_LOGISTICS_PILOT: RoleplayProgram = {
   targetLocale: 'nl-BE',
   policyVersion: LEARNING_POLICY_VERSION,
   title: 'Nederlands op het werk — Logistiek',
+  goalBinding: { domain: 'work', contextId: 'logistics-warehouse' },
   reviewStatus: 'draft',
   missionPlan: [
     {
@@ -221,6 +224,13 @@ export function validateProgramAgainstCatalog(
   const base = validateRoleplayProgram(program);
   const errors = [...base.errors];
 
+  if (program.goalBinding?.domain === 'work') {
+    const context = workplaceContextFor(program.goalBinding.contextId);
+    if (!context || context.programId !== program.id || context.locale !== program.targetLocale) {
+      errors.push(`${program.id}: unknown or mismatched workplace goal binding`);
+    }
+  }
+
   for (const [index, entry] of program.missionPlan.entries()) {
     const path = `missionPlan[${index}]`;
     const mission = MISSION_CATALOG.find(candidate => candidate.id === entry.missionId);
@@ -242,6 +252,13 @@ export function validateProgramAgainstCatalog(
 
     for (const familyError of validateMissionScenarioFamily(mission)) {
       errors.push(`${path}: ${familyError}`);
+    }
+
+    if (program.goalBinding?.domain === 'work') {
+      if (mission.workplaceContextId !== program.goalBinding.contextId) {
+        errors.push(`${path}: mission workplace context does not match programme goal`);
+      }
+      errors.push(...validateWorkplaceMissionContract(mission).map(error => `${path}: ${error}`));
     }
 
     if (entry.sceneId) {

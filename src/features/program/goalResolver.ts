@@ -3,11 +3,12 @@ import type { RoleplayProgram } from '../../contracts/program';
 import {
   FLEMISH_EVERYDAY_PILOT,
   FLEMISH_TRAVEL_PILOT,
-  FLEMISH_WORK_LOGISTICS_PILOT,
+  ROLEPLAY_PROGRAM_CATALOG,
   SPANISH_DAILY_SERVICES_PILOT,
   SPANISH_TRAVEL_PILOT,
 } from '../../data/programs';
 import { isProgramActivatable } from './releaseGates';
+import { workplaceContextFor } from '../../content/workplaceContexts';
 
 export type ProgramGoalMatch = 'exact' | 'closest' | 'none';
 
@@ -42,13 +43,25 @@ export function resolveProgramCandidate(input: {
   learningLanguage: LanguageCode;
   learningLocale?: string;
   primaryGoal: UserPreferences['primaryGoal'];
+  /** Required for work goals: never silently substitute a different occupation. */
+  contextId?: string;
 }): ProgramCandidateResolution {
   const targetLocale =
     input.learningLocale?.trim() || defaultLearningLocale(input.learningLanguage);
 
   if (input.learningLanguage === 'nl' && targetLocale === 'nl-BE') {
     if (input.primaryGoal === 'work') {
-      return candidate(targetLocale, 'exact', FLEMISH_WORK_LOGISTICS_PILOT);
+      const context = input.contextId ? workplaceContextFor(input.contextId) : undefined;
+      const program = context
+        ? ROLEPLAY_PROGRAM_CATALOG.find(item => item.id === context.programId)
+        : undefined;
+      if (context && context.locale === targetLocale &&
+          program?.targetLocale === targetLocale &&
+          program.goalBinding?.domain === 'work' &&
+          program.goalBinding.contextId === context.id) {
+        return candidate(targetLocale, 'exact', program);
+      }
+      return { targetLocale, match: 'none', executable: false };
     }
     if (input.primaryGoal === 'travel') {
       return candidate(targetLocale, 'exact', FLEMISH_TRAVEL_PILOT);

@@ -2,6 +2,7 @@ import type {
   LanguageCode,
   CommunicativeSkillId,
   ProgramGoalInput,
+  ProgramGoalDomain,
 } from '../types';
 
 export type {
@@ -50,6 +51,8 @@ export interface RoleplayProgram {
   targetLocale: string;
   policyVersion: number;
   title: string;
+  /** Reviewed goal affinity, never a model-generated learner or proficiency label. */
+  goalBinding?: { domain: ProgramGoalDomain; contextId: string };
   missionPlan: ProgramMissionRef[];
   finalSimulation?: {
     mission: ProgramMissionRef;
@@ -101,6 +104,12 @@ export function validateRoleplayProgram(
   }
   if (!Number.isInteger(program.policyVersion) || program.policyVersion < 1) {
     errors.push('policyVersion must be a positive integer');
+  }
+  if (program.goalBinding && !program.goalBinding.contextId.trim()) {
+    errors.push('goalBinding.contextId must not be blank');
+  }
+  if (program.goalBinding && !['travel', 'relocation', 'work', 'social', 'services', 'exam'].includes(program.goalBinding.domain)) {
+    errors.push('goalBinding.domain is not a known program goal');
   }
   if (program.missionPlan.length === 0) {
     errors.push('missionPlan must contain at least one pinned mission');

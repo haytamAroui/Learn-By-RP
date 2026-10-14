@@ -37,7 +37,7 @@ describe('Taalbad Werk pilot contracts', () => {
     expect(FLEMISH_WORK_LOGISTICS_PILOT.reviewStatus).toBe('draft');
     expect(NL_BE_WORK_DAMAGED_DELIVERY_SCENE.reviewStatus).toBe('draft');
     expect(validateProgramForActivation(FLEMISH_WORK_LOGISTICS_PILOT).ready).toBe(false);
-    const candidate = resolveProgramCandidate({ learningLanguage: 'nl', primaryGoal: 'work' });
+    const candidate = resolveProgramCandidate({ learningLanguage: 'nl', primaryGoal: 'work', contextId: 'logistics-warehouse' });
     expect(candidate.match).toBe('exact');
     expect(candidate.executable).toBe(false);
   });

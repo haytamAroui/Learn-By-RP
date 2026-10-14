@@ -7,6 +7,8 @@ import { MISSION_CATALOG } from '../src/data/missions';
 import { modelCheckScene } from '../src/features/roleplay/sceneModelChecker';
 import { validateSceneDefinition } from '../src/features/roleplay/sceneValidation';
 import { validateCharacterBehaviorPolicy } from '../src/features/roleplay/characterPolicy';
+import { validateWorkplaceMissionContract } from '../src/features/program/workplaceMissionContract';
+import { NL_BE_WORK_DAMAGED_DELIVERY_SCENE } from '../src/content/scenes/work.nlBE';
 import { ROLEPLAY_PROGRAM_CATALOG } from '../src/data/programs';
 import { validateProgramForActivation } from '../src/features/program/releaseGates';
 import { LAUNCH_CONTENT_SPECS, validateLaunchContentCoverage } from '../src/content/launchContent';
@@ -25,6 +27,7 @@ for (const mission of MISSION_CATALOG) {
   const errors = [
     ...validateMissionScenarioFamily(mission),
     ...validateCharacterBehaviorPolicy(mission),
+    ...validateWorkplaceMissionContract(mission),
   ];
   if (errors.length === 0) continue;
   failed = true;
@@ -62,6 +65,20 @@ for (const spec of LAUNCH_CONTENT_SPECS) {
       );
     }
   }
+}
+
+// Draft workplace scenes are never executable, but must be structurally sound.
+const workScene = NL_BE_WORK_DAMAGED_DELIVERY_SCENE;
+const workStatic = validateSceneDefinition(workScene);
+const workModel = workStatic.valid ? modelCheckScene(workScene) : null;
+if (!workStatic.valid || !workModel || workModel.errors.length > 0 || !workModel.achievedPath) {
+  failed = true;
+  for (const error of [...workStatic.errors, ...(workModel?.errors ?? [])]) {
+    console.error(`  ERROR draft workplace scene: ${error}`);
+  }
+  if (!workModel?.achievedPath) console.error('  ERROR draft workplace scene: achieved completion unreachable');
+} else {
+  console.log(`[draft-workplace] ${workScene.id} validated; still not releasable without locale review`);
 }
 
 for (const scene of Object.values(SCENES)) {
