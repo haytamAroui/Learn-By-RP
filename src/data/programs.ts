@@ -179,11 +179,35 @@ export const FLEMISH_TRAVEL_PILOT: RoleplayProgram = {
   ],
 };
 
+/**
+ * Taalbad Werk's first professional Dutch programme candidate.
+ * A draft only: it cannot be activated until scene/locale review is completed.
+ * No employer analytics or professional certification is implied.
+ */
+export const FLEMISH_WORK_LOGISTICS_PILOT: RoleplayProgram = {
+  id: 'program.nl-be.work.logistics.pilot',
+  version: 1,
+  targetLanguage: 'nl',
+  targetLocale: 'nl-BE',
+  policyVersion: LEARNING_POLICY_VERSION,
+  title: 'Nederlands op het werk — Logistiek',
+  reviewStatus: 'draft',
+  missionPlan: [
+    {
+      missionId: 'mission-nl-be-work-damaged-delivery',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.work.damaged-delivery',
+      sceneVersion: 1,
+    },
+  ],
+};
+
 export const ROLEPLAY_PROGRAM_CATALOG: RoleplayProgram[] = [
   SPANISH_DAILY_SERVICES_PILOT,
   SPANISH_TRAVEL_PILOT,
   FLEMISH_EVERYDAY_PILOT,
   FLEMISH_TRAVEL_PILOT,
+  FLEMISH_WORK_LOGISTICS_PILOT,
 ];
 
 export interface ProgramCatalogValidation {
