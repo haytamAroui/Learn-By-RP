@@ -21,6 +21,7 @@ import {
   defaultLearningLocale,
   resolveProgramCandidate,
 } from '../../features/program/goalResolver';
+import { WORKPLACE_CONTEXTS, workplaceContextFor } from '../../content/workplaceContexts';
 
 const TARGET_LANGUAGES: Array<{ id: LanguageCode; label: string }> = [
   { id: 'es', label: '🇪🇸 Spanish' },
@@ -63,6 +64,10 @@ const JOURNEY_COPY: Record<
     dailyLife: string;
     study: string;
     talkWithPeople: string;
+    workContextTitle: string;
+    workScenarioLabel: string;
+    workUnderstand: string;
+    workAnswer: string;
     noProgramTitle: string;
     noProgramBody: string;
     start: string;
@@ -91,6 +96,10 @@ const JOURNEY_COPY: Record<
     dailyLife: 'Daily life',
     study: 'Study',
     talkWithPeople: 'Talk with people',
+    workContextTitle: 'Choose your workplace',
+    workScenarioLabel: 'Practise a conversation you could face on your shift. This route is in editorial preview.',
+    workUnderstand: 'Can you understand simple instructions from a colleague in Dutch?',
+    workAnswer: 'Could you explain a simple problem at work in Dutch?',
     noProgramTitle: 'No reviewed path for that goal yet',
     noProgramBody: 'We will not generate an unreviewed course. Choose Daily life or Travel to preview the reviewed paths currently available.',
     start: 'Show my learning path',
@@ -118,6 +127,10 @@ const JOURNEY_COPY: Record<
     dailyLife: 'Vie quotidienne',
     study: 'Études',
     talkWithPeople: 'Parler avec des gens',
+    workContextTitle: 'Choisissez votre environnement de travail',
+    workScenarioLabel: 'Entraînez-vous à une conversation professionnelle. Ce parcours est encore en préparation.',
+    workUnderstand: 'Comprenez-vous des consignes simples en néerlandais au travail ?',
+    workAnswer: 'Pourriez-vous expliquer un problème simple au travail en néerlandais ?',
     noProgramTitle: 'Pas encore de parcours examiné pour cet objectif',
     noProgramBody: 'Nous ne générons pas de cours non examiné. Choisissez Vie quotidienne ou Voyage pour voir les parcours actuellement disponibles.',
     start: 'Afficher mon parcours',
@@ -145,6 +158,10 @@ const JOURNEY_COPY: Record<
     dailyLife: 'Vida cotidiana',
     study: 'Estudios',
     talkWithPeople: 'Hablar con gente',
+    workContextTitle: 'Elige tu lugar de trabajo',
+    workScenarioLabel: 'Practica una conversación de trabajo. Esta ruta está aún en revisión.',
+    workUnderstand: '¿Entiendes instrucciones simples de un compañero en neerlandés?',
+    workAnswer: '¿Puedes explicar un problema sencillo del trabajo en neerlandés?',
     noProgramTitle: 'Todavía no hay una ruta revisada para ese objetivo',
     noProgramBody: 'No generaremos un curso sin revisar. Elige Vida cotidiana o Viajes para ver las rutas revisadas disponibles.',
     start: 'Ver mi recorrido',
@@ -172,6 +189,10 @@ const JOURNEY_COPY: Record<
     dailyLife: 'Dagelijks leven',
     study: 'Studie',
     talkWithPeople: 'Met mensen praten',
+    workContextTitle: 'Kies je werkomgeving',
+    workScenarioLabel: 'Oefen een gesprek dat op het werk kan voorkomen. Dit traject is nog in voorbereiding.',
+    workUnderstand: 'Begrijp je eenvoudige instructies van een collega in het Nederlands?',
+    workAnswer: 'Kun je een eenvoudig probleem op het werk uitleggen in het Nederlands?',
     noProgramTitle: 'Voor dit doel is er nog geen beoordeeld leerpad',
     noProgramBody: 'We maken geen niet-beoordeelde cursus. Kies Dagelijks leven of Reizen om de beschikbare beoordeelde leerpaden te bekijken.',
     start: 'Toon mijn leerpad',
@@ -230,6 +251,10 @@ export default function OnboardingScreen() {
         ? 'social'
         : preferences.primaryGoal
   );
+  const [workplaceContextId, setWorkplaceContextId] = useState(
+    preferences.programGoals?.find(goal => goal.domain === 'work' && goal.targetLocale === 'nl-BE')?.contextId
+    ?? WORKPLACE_CONTEXTS[0].id
+  );
   const [startingAnswers, setStartingAnswers] = useState<StartingPointSelfReport>(
     startingAnswersFromPreferences(preferences)
   );
@@ -261,6 +286,16 @@ export default function OnboardingScreen() {
 
   const handleContinue = async () => {
     const profile = buildStartingPointProfile(startingAnswers);
+    const workplaceGoal = primaryGoal === 'work' && learningLanguage === 'nl' && learningLocale === 'nl-BE'
+      && workplaceContextFor(workplaceContextId)
+      ? {
+          targetLanguage: learningLanguage,
+          targetLocale: learningLocale,
+          domain: 'work' as const,
+          contextId: workplaceContextId,
+          recordedAt: new Date().toISOString(),
+        }
+      : undefined;
     const nextPreferences: UserPreferences = {
       ...preferences,
       learningLanguage,
@@ -269,6 +304,14 @@ export default function OnboardingScreen() {
       comfortLevel: legacyComfortLevelForEntryMode(profile.entryMode),
       primaryGoal,
       startingPoint: profile,
+      ...(workplaceGoal ? {
+        programGoals: [
+          ...(preferences.programGoals ?? []).filter(goal =>
+            !(goal.domain === 'work' && goal.targetLocale === workplaceGoal.targetLocale)
+          ),
+          workplaceGoal,
+        ],
+      } : {}),
       voiceProcessingConsent: voiceConsent,
       savedAnalysisConsent: analysisConsent,
     };
@@ -281,6 +324,7 @@ export default function OnboardingScreen() {
       learningLanguage,
       learningLocale,
       primaryGoal,
+      contextId: primaryGoal === 'work' ? workplaceContextId : undefined,
     });
 
     if (resolution.program) {
@@ -351,6 +395,24 @@ export default function OnboardingScreen() {
           />
         </View>
 
+        {primaryGoal === 'work' && learningLanguage === 'nl' && learningLocale === 'nl-BE' ? (
+          <Card className="gap-3 bg-surface-sunken">
+            <SectionLabel>{copy.workContextTitle}</SectionLabel>
+            <ChipRow
+              value={workplaceContextId}
+              onChange={setWorkplaceContextId}
+              options={WORKPLACE_CONTEXTS.map(context => ({
+                id: context.id,
+                label: context.label[explanationLanguage],
+              }))}
+            />
+            <Text className="text-sm leading-5 text-body">
+              {workplaceContextFor(workplaceContextId)?.description[explanationLanguage]}
+            </Text>
+            <Text className="text-sm leading-5 text-muted">{copy.workScenarioLabel}</Text>
+          </Card>
+        ) : null}
+
         <Card className="gap-4 bg-surface-sunken">
           <SectionLabel>{copy.startingPoint}</SectionLabel>
 
@@ -403,7 +465,7 @@ export default function OnboardingScreen() {
           </View>
 
           <View className="gap-2">
-            <Text className="text-sm font-semibold text-ink">{copy.understands}</Text>
+            <Text className="text-sm font-semibold text-ink">{primaryGoal === 'work' && learningLanguage === 'nl' ? copy.workUnderstand : copy.understands}</Text>
             <ChipRow
               value={startingAnswers.understandsEveryday}
               onChange={id =>
@@ -423,7 +485,7 @@ export default function OnboardingScreen() {
           </View>
 
           <View className="gap-2">
-            <Text className="text-sm font-semibold text-ink">{copy.canAnswer}</Text>
+            <Text className="text-sm font-semibold text-ink">{primaryGoal === 'work' && learningLanguage === 'nl' ? copy.workAnswer : copy.canAnswer}</Text>
             <ChipRow
               value={startingAnswers.canAnswerBasic}
               onChange={id =>
