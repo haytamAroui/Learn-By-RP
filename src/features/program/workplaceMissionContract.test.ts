@@ -7,7 +7,7 @@ import {
 } from '../../data/programs';
 import { WORKPLACE_CONTEXTS } from '../../content/workplaceContexts';
 import { validateWorkplaceMissionContract } from './workplaceMissionContract';
-import { validateProgramForActivation } from './releaseGates';
+import { validateMissionForProgramRelease, validateProgramForActivation } from './releaseGates';
 
 const mission = MISSION_CATALOG.find(item => item.id === 'mission-nl-be-work-damaged-delivery')!;
 
@@ -52,6 +52,14 @@ describe('workplace task-based contract', () => {
       goalBinding: { domain: 'work' as const, contextId: 'retail' },
     };
     expect(validateProgramAgainstCatalog(invalid).valid).toBe(false);
+  });
+
+  it('does not promote B2/C1 mission claims before band-aware evidence exists', () => {
+    for (const levelRange of ['B2', 'C1'] as const) {
+      const result = validateMissionForProgramRelease({ ...mission, levelRange });
+      expect(result.ready).toBe(false);
+      expect(result.errors.some(error => error.includes('banded evidence projection'))).toBe(true);
+    }
   });
 
   it('retains an authoritative draft release gate regardless of valid task DNA', () => {
