@@ -57,6 +57,7 @@ describe('reviewed program candidate resolution', () => {
     const result = resolveProgramCandidate({
       learningLanguage: 'nl',
       primaryGoal: 'work',
+      contextId: 'logistics-warehouse',
     });
 
     expect(result.targetLocale).toBe('nl-BE');
@@ -65,11 +66,31 @@ describe('reviewed program candidate resolution', () => {
     expect(result.executable).toBe(false);
   });
 
+  it('never guesses a workplace programme without a context', () => {
+    const result = resolveProgramCandidate({
+      learningLanguage: 'nl',
+      primaryGoal: 'work',
+    });
+    expect(result.match).toBe('none');
+    expect(result.executable).toBe(false);
+  });
+
+  it('rejects unknown professions rather than routing to logistics', () => {
+    const result = resolveProgramCandidate({
+      learningLanguage: 'nl',
+      primaryGoal: 'work',
+      contextId: 'care-sector',
+    });
+    expect(result.match).toBe('none');
+    expect(result.program).toBeUndefined();
+  });
+
   it('does not present the Belgian Dutch work pilot for another locale', () => {
     const result = resolveProgramCandidate({
       learningLanguage: 'nl',
       learningLocale: 'nl-NL',
       primaryGoal: 'work',
+      contextId: 'logistics-warehouse',
     });
     expect(result.match).toBe('none');
     expect(result.executable).toBe(false);
