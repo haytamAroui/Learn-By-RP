@@ -24,6 +24,10 @@ const PROGRAM_RECOMMENDATION_COPY = {
     observe: 'Your first step is Observe: watch a short model scene before you speak.',
     guided: 'Your first step is Guided: start with visible support, then reduce it.',
     warmup: 'Your first step is a short warm-up to find the right point in this path.',
+    workHeading: 'Your next workplace conversation',
+    workGoal: 'What you need to communicate',
+    workPreview: 'This situation is still being reviewed. Speaking practice is not enabled yet.',
+    workStart: 'Start the situation',
   },
   fr: {
     exact: 'Recommandé pour votre objectif',
@@ -31,6 +35,10 @@ const PROGRAM_RECOMMENDATION_COPY = {
     observe: 'Première étape : Observer une courte scène modèle avant de parler.',
     guided: 'Première étape : Guidé, avec une aide visible qui diminue ensuite.',
     warmup: 'Première étape : un court échauffement pour trouver le bon point d’entrée.',
+    workHeading: 'Votre prochaine conversation au travail',
+    workGoal: 'Ce que vous devez communiquer',
+    workPreview: 'Cette situation est en cours de révision. La pratique orale n’est pas encore activée.',
+    workStart: 'Commencer la situation',
   },
   es: {
     exact: 'Recomendado para tu objetivo',
@@ -38,6 +46,10 @@ const PROGRAM_RECOMMENDATION_COPY = {
     observe: 'Primer paso: Observar una escena modelo breve antes de hablar.',
     guided: 'Primer paso: Guiado, con ayuda visible que se reducirá después.',
     warmup: 'Primer paso: un calentamiento breve para encontrar el punto adecuado.',
+    workHeading: 'Tu próxima conversación de trabajo',
+    workGoal: 'Lo que necesitas comunicar',
+    workPreview: 'Esta situación aún está en revisión. La práctica oral todavía no está activa.',
+    workStart: 'Comenzar la situación',
   },
   nl: {
     exact: 'Aanbevolen voor je doel',
@@ -45,6 +57,10 @@ const PROGRAM_RECOMMENDATION_COPY = {
     observe: 'Je eerste stap is Observeren: bekijk een korte voorbeeldscène voordat je spreekt.',
     guided: 'Je eerste stap is Begeleid: start met zichtbare hulp en bouw die daarna af.',
     warmup: 'Je eerste stap is een korte opwarming om het juiste startpunt in dit leerpad te vinden.',
+    workHeading: 'Je volgende gesprek op het werk',
+    workGoal: 'Wat je wilt overbrengen',
+    workPreview: 'Deze situatie wordt nog nagekeken. Spreekoefening is nog niet beschikbaar.',
+    workStart: 'Start dit gesprek',
   },
 } as const;
 
@@ -75,6 +91,7 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
   const completed = new Set(projection.completedMissionIds);
   const canExecute = isProgramActivatable(program);
   const coreComplete = isProgramCoreComplete(program, projection);
+  const isWorkplaceProgram = program.goalBinding?.domain === 'work';
 
   const plan = program.missionPlan
     .map(ref => ({
@@ -84,6 +101,9 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
       ),
     }))
     .filter((entry): entry is typeof entry & { mission: MissionDefinition } => Boolean(entry.mission));
+
+  const nextWorkplaceMission = plan.find(item => item.ref.missionId === projection.currentMissionId)?.mission
+    ?? plan[0]?.mission;
 
   const finalMission = program.finalSimulation
     ? MISSION_CATALOG.find(
@@ -153,11 +173,11 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
           <Text className="text-[28px] font-semibold leading-[34px] tracking-tight text-ink">
             {program.title}
           </Text>
-          <Text className="text-[15px] leading-[22px] text-body">
+          {!isWorkplaceProgram ? <Text className="text-[15px] leading-[22px] text-body">
             {t.missions.programProgress
               .replace('{done}', String(projection.completedMissionIds.length))
               .replace('{total}', String(program.missionPlan.length))}
-          </Text>
+          </Text> : null}
           {!canExecute ? (
             <Text className="rounded-2xl bg-card-warm px-4 py-3 text-sm leading-5 text-body">
               {t.missions.programUnavailable}
@@ -165,7 +185,28 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
           ) : null}
         </View>
 
-        <View className="gap-3">
+        {isWorkplaceProgram && nextWorkplaceMission ? (
+          <View className="gap-4 rounded-[24px] border border-border-subtle bg-surface p-5">
+            <Text className="text-xs font-semibold uppercase tracking-wider text-muted">
+              {recommendationCopy.workHeading}
+            </Text>
+            <Text className="text-xl font-semibold leading-7 text-ink">{nextWorkplaceMission.title}</Text>
+            <Text className="text-sm text-body">{nextWorkplaceMission.setting}</Text>
+            <Text className="text-sm font-semibold text-ink">{recommendationCopy.workGoal}</Text>
+            <Text className="text-sm leading-5 text-body">{nextWorkplaceMission.learnerGoal}</Text>
+            {!canExecute ? (
+              <Text className="text-sm leading-5 text-muted">{recommendationCopy.workPreview}</Text>
+            ) : null}
+            <Button
+              label={recommendationCopy.workStart}
+              disabled={!canExecute}
+              onPress={() => onStartMission(nextWorkplaceMission)}
+              size="lg"
+            />
+          </View>
+        ) : null}
+
+        {!isWorkplaceProgram ? <View className="gap-3">
           <SectionLabel>{t.missions.tabRoute}</SectionLabel>
 
           {plan.length === 0 ? (
@@ -234,7 +275,7 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
               })}
             </View>
           )}
-        </View>
+        </View> : null}
 
         {program.finalSimulation ? (
           <View className="gap-3 rounded-[24px] bg-surface-soft p-5">
