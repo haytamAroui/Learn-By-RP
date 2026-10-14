@@ -11,6 +11,8 @@ export const NL_BE_WORK_MISSIONS: MissionDefinition[] = [
     version: 1,
     language: 'nl',
     sceneId: 'scene.nl-be.work.damaged-delivery',
+    workplaceContextId: 'logistics-warehouse',
+    workplaceTaskId: 'work.logistics.report-damaged-delivery',
     scenarioFamilyId: 'workplace-incident-handover',
     levelRange: 'A2',
     title: 'Magazijn: Beschadigde levering melden',
