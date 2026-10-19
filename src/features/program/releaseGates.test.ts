@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { ROLEPLAY_PROGRAM_CATALOG, SPANISH_DAILY_SERVICES_PILOT } from '../../data/programs';
 import { MISSION_CATALOG } from '../../data/missions';
+import { getScene } from '../../content/scenes';
 import {
   validateMissionForProgramRelease,
   validateProgramForActivation,
@@ -13,7 +14,7 @@ describe('program release gates', () => {
     expect(result.errors.some(error => /not released/.test(error))).toBe(true);
   });
 
-  it('accepts every pinned launch mission mechanic as content-ready', () => {
+  it('accepts released scenes while blocking unreviewed workplace pilot scenes', () => {
     const refs = ROLEPLAY_PROGRAM_CATALOG.flatMap(program => program.missionPlan);
     const seen = new Set<string>();
 
@@ -25,10 +26,13 @@ describe('program release gates', () => {
       const mission = MISSION_CATALOG.find(
         item => item.id === ref.missionId && item.version === ref.missionVersion
       )!;
-      expect(validateMissionForProgramRelease(mission), key).toEqual({
-        ready: true,
-        errors: [],
-      });
+      const outcome = validateMissionForProgramRelease(mission);
+      if (mission.sceneId && getScene(mission.sceneId)?.reviewStatus !== 'released') {
+        expect(outcome.ready, key).toBe(false);
+        expect(outcome.errors.some(error => error.includes('not released')), key).toBe(true);
+      } else {
+        expect(outcome, key).toEqual({ ready: true, errors: [] });
+      }
     }
   });
 

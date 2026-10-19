@@ -3,6 +3,7 @@ import type { RoleplayProgram } from '../../contracts/program';
 import {
   FLEMISH_EVERYDAY_PILOT,
   FLEMISH_TRAVEL_PILOT,
+  FLEMISH_WORK_LOGISTICS_PILOT,
   SPANISH_DAILY_SERVICES_PILOT,
   SPANISH_TRAVEL_PILOT,
 } from '../../data/programs';
@@ -46,6 +47,9 @@ export function resolveProgramCandidate(input: {
     input.learningLocale?.trim() || defaultLearningLocale(input.learningLanguage);
 
   if (input.learningLanguage === 'nl' && targetLocale === 'nl-BE') {
+    if (input.primaryGoal === 'work') {
+      return candidate(targetLocale, 'exact', FLEMISH_WORK_LOGISTICS_PILOT);
+    }
     if (input.primaryGoal === 'travel') {
       return candidate(targetLocale, 'exact', FLEMISH_TRAVEL_PILOT);
     }

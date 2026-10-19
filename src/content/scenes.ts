@@ -6,6 +6,7 @@ import { DINING_SCENE } from './scenes/dining';
 import { HOTEL_SCENE } from './scenes/hotel';
 import { BIKE_RENTAL_SCENE } from './scenes/rental';
 import { NL_BE_SCENES } from './scenes/nlBelgium';
+import { NL_BE_WORK_DAMAGED_DELIVERY_SCENE } from './scenes/work.nlBE';
 
 /**
  * The breakfast café, worked example from §9.3.
@@ -622,6 +623,7 @@ export const SCENES: Record<string, SceneDefinition> = {
   [HOTEL_SCENE.id]: HOTEL_SCENE,
   [BIKE_RENTAL_SCENE.id]: BIKE_RENTAL_SCENE,
   ...Object.fromEntries(NL_BE_SCENES.map(scene => [scene.id, scene])),
+  [NL_BE_WORK_DAMAGED_DELIVERY_SCENE.id]: NL_BE_WORK_DAMAGED_DELIVERY_SCENE,
 };
 
 export function getScene(sceneId: string): SceneDefinition | undefined {

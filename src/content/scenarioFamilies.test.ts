@@ -31,6 +31,7 @@ describe('canonical scenario family catalog', () => {
       'pharmacy-consultation',
       'public-transit',
       'social-dining',
+      'workplace-incident-handover',
     ]);
 
     for (const family of SCENARIO_FAMILY_CATALOG) {
