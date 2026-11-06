@@ -1,7 +1,28 @@
 import React, { useMemo, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Text } from './AppText';
-import { ChevronRight, Clock3, MessageCircle, NotebookPen, Target } from 'lucide-react-native';
+import {
+  AlertCircle,
+  BookOpen,
+  CalendarCheck,
+  CheckCircle2,
+  ChevronRight,
+  Clock3,
+  Compass,
+  HelpCircle,
+  LifeBuoy,
+  MessageCircle,
+  MessageSquare,
+  MessageSquareQuote,
+  NotebookPen,
+  RotateCcw,
+  Scale,
+  Search,
+  ShoppingBag,
+  Target,
+  Users,
+  Volume2,
+} from 'lucide-react-native';
 import {
   LanguageCode,
   LearningObservation,
@@ -25,7 +46,6 @@ import { FLEMISH_SKILL_PATTERNS } from '../content/skills';
 import { Button, EmptyState, SectionLabel } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
-import { ReferenceArtwork } from './ReferenceArtwork';
 import { summarizeActivity } from '../features/learning/activitySummary';
 import { ELEVATION } from '../design/tokens';
 
@@ -43,6 +63,7 @@ interface ProgressScreenProps {
 }
 
 type ProgressTab = 'skills' | 'phrases' | 'history';
+type SkillCategoryFilter = 'all' | 'daily' | 'repair' | 'discussion';
 
 const PATTERN_INDEX: Record<LanguageCode, number> = {
   es: 0,
@@ -61,6 +82,45 @@ const STATUS_SURFACE = {
   review: { container: 'bg-warning-soft', text: 'text-warning' },
 } as const;
 
+const SKILL_ICONS: Record<
+  string,
+  { Icon: typeof ShoppingBag; tint: string; color: string }
+> = {
+  'skill-request-substitution': { Icon: ShoppingBag, tint: 'bg-card-warm', color: 'brand' },
+  'skill-propose-alternative': { Icon: CalendarCheck, tint: 'bg-card-sky', color: 'info' },
+  'skill-inquire-specifications': { Icon: Search, tint: 'bg-language-soft', color: 'language' },
+  'skill-wayfinding-transit': { Icon: Compass, tint: 'bg-warning-soft', color: 'warning' },
+  'skill-communicative-repair': { Icon: LifeBuoy, tint: 'bg-card-sage', color: 'success' },
+  'skill-request-repetition': { Icon: RotateCcw, tint: 'bg-card-sage', color: 'success' },
+  'skill-request-slower-speech': { Icon: Volume2, tint: 'bg-card-sage', color: 'success' },
+  'skill-ask-clarification': { Icon: HelpCircle, tint: 'bg-card-sage', color: 'success' },
+  'skill-check-understanding': { Icon: CheckCircle2, tint: 'bg-card-sage', color: 'success' },
+  'skill-clarify-misunderstanding': { Icon: AlertCircle, tint: 'bg-card-sage', color: 'success' },
+  'skill-paraphrase-when-stuck': { Icon: MessageSquare, tint: 'bg-card-sage', color: 'success' },
+  'skill-give-opinion-with-reason': { Icon: MessageSquareQuote, tint: 'bg-lilac-soft', color: 'lilac' },
+  'skill-compare-options': { Icon: Scale, tint: 'bg-lilac-soft', color: 'lilac' },
+  'skill-make-arrangement': { Icon: Users, tint: 'bg-card-sky', color: 'info' },
+  'skill-narrate-past-event': { Icon: BookOpen, tint: 'bg-lilac-soft', color: 'lilac' },
+};
+
+const SKILL_CATEGORIES_MAP: Record<string, SkillCategoryFilter> = {
+  'skill-request-substitution': 'daily',
+  'skill-inquire-specifications': 'daily',
+  'skill-wayfinding-transit': 'daily',
+  'skill-communicative-repair': 'repair',
+  'skill-request-repetition': 'repair',
+  'skill-request-slower-speech': 'repair',
+  'skill-ask-clarification': 'repair',
+  'skill-check-understanding': 'repair',
+  'skill-clarify-misunderstanding': 'repair',
+  'skill-paraphrase-when-stuck': 'repair',
+  'skill-propose-alternative': 'discussion',
+  'skill-give-opinion-with-reason': 'discussion',
+  'skill-compare-options': 'discussion',
+  'skill-make-arrangement': 'discussion',
+  'skill-narrate-past-event': 'discussion',
+};
+
 export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   phrases,
   sessions,
@@ -73,8 +133,9 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   onDisputeSkillObservation,
   onHideSkillObservation,
 }) => {
-  const { t } = useI18n();
+  const { t, language } = useI18n();
   const [selectedTab, setSelectedTab] = useState<ProgressTab>('skills');
+  const [selectedSkillCategory, setSelectedSkillCategory] = useState<SkillCategoryFilter>('all');
   const [selectedPhrase, setSelectedPhrase] = useState<PhraseItem | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<CommunicativeSkillMeta | null>(null);
   const activity = useMemo(() => summarizeActivity(sessions, learningLanguage), [sessions, learningLanguage]);
@@ -144,6 +205,45 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     return map;
   }, [allSkillEvidence, skillLapses]);
 
+  const demonstratedSkillCount = useMemo(() => {
+    let count = 0;
+    for (const skill of COMMUNICATIVE_SKILLS_CATALOG) {
+      const proj = skillStats.get(skill.id);
+      if (proj && proj.status && proj.status !== 'new') {
+        count++;
+      }
+    }
+    return count;
+  }, [skillStats]);
+
+  const filteredSkills = useMemo(() => {
+    if (selectedSkillCategory === 'all') return COMMUNICATIVE_SKILLS_CATALOG;
+    return COMMUNICATIVE_SKILLS_CATALOG.filter(
+      skill => SKILL_CATEGORIES_MAP[skill.id] === selectedSkillCategory
+    );
+  }, [selectedSkillCategory]);
+
+  const categoryCounts = useMemo(() => {
+    const counts: Record<SkillCategoryFilter, number> = {
+      all: COMMUNICATIVE_SKILLS_CATALOG.length,
+      daily: 0,
+      repair: 0,
+      discussion: 0,
+    };
+    for (const skill of COMMUNICATIVE_SKILLS_CATALOG) {
+      const cat = SKILL_CATEGORIES_MAP[skill.id];
+      if (cat) counts[cat]++;
+    }
+    return counts;
+  }, []);
+
+  const skillCategoryLabels: Record<SkillCategoryFilter, string> = {
+    all: language === 'nl' ? 'Alles' : language === 'fr' ? 'Tous' : language === 'es' ? 'Todos' : 'All',
+    daily: language === 'nl' ? 'Diensten & Vervoer' : language === 'fr' ? 'Services & Transit' : language === 'es' ? 'Servicios y Tránsito' : 'Services & Transit',
+    repair: language === 'nl' ? 'Gespreksherstel' : language === 'fr' ? 'Réparation' : language === 'es' ? 'Reparación' : 'Repair & Help',
+    discussion: language === 'nl' ? 'Sociaal & Mening' : language === 'fr' ? 'Social & Discussion' : language === 'es' ? 'Social y Discusión' : 'Social & Discussion',
+  };
+
   const localizeSkill = (skill: CommunicativeSkillMeta) => {
     switch (skill.id) {
       case 'skill-request-substitution':
@@ -156,12 +256,23 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
         return t.skills.wayfindingTransit;
       case 'skill-communicative-repair':
         return t.skills.communicativeRepair;
-      default:
+      case 'skill-request-repetition':
+        return t.skills.requestRepetition;
+      case 'skill-ask-clarification':
+        return t.skills.askClarification;
+      case 'skill-check-understanding':
+        return t.skills.checkUnderstanding;
+      default: {
+        const canDoText =
+          (skill.canDo && language in skill.canDo
+            ? skill.canDo[language as keyof typeof skill.canDo]
+            : undefined) || skill.description;
         return {
           name: skill.name,
           category: skill.category,
-          description: skill.description,
+          description: canDoText,
         };
+      }
     }
   };
 
@@ -171,7 +282,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     { id: 'history', label: t.progress.tabHistory, short: t.progress.tabHistoryShort },
   ];
 
-  const statusLabel = (projection?: SkillProjectionV2) => {
+  const statusLabel = (projection?: SkillProjectionV2): string | null => {
     if (projection?.revisit) return t.progress.statusWorthRevisiting;
     if (projection?.reviewDue) return t.progress.reviewDue;
     switch (projection?.status) {
@@ -182,7 +293,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
       case 'supported':
         return t.progress.statusSupported;
       default:
-        return t.progress.statusNew;
+        return null;
     }
   };
 
@@ -242,7 +353,6 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
           gap: 24,
         }}
       >
-        <View className="relative h-[120px] overflow-hidden rounded-[28px]"><ReferenceArtwork kind="landscape" /></View>
         <View className="flex-row gap-2">
           {[
             { label: t.progress.tabHistoryShort, value: activity.sessions, Icon: MessageCircle, tint: 'bg-card-warm', color: 'brand' },
@@ -311,47 +421,145 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
         </View>
 
         {selectedTab === 'skills' ? (
-          <View>
-            {COMMUNICATIVE_SKILLS_CATALOG.map(skill => {
-              const projection = skillStats.get(skill.id);
-              const localized = localizeSkill(skill);
-              return (
-                <React.Fragment key={skill.id}>
+          <View className="gap-4">
+            {/* Skills Repertoire Header */}
+            <View className="p-4 rounded-[24px] bg-surface border border-border-subtle/50 gap-2.5">
+              <View className="flex-row items-center justify-between">
+                <View className="gap-0.5">
+                  <Text className="text-base font-bold text-ink">
+                    {demonstratedSkillCount} / {COMMUNICATIVE_SKILLS_CATALOG.length} {t.progress.tabSkills.toLowerCase()}
+                  </Text>
+                  <Text className="text-xs text-muted">
+                    {t.recap.validatedEvidence}
+                  </Text>
+                </View>
+                <View className="px-2.5 py-1 rounded-full bg-surface-soft border border-border-subtle/40">
+                  <Text className="text-xs font-bold text-language">
+                    {Math.round((demonstratedSkillCount / COMMUNICATIVE_SKILLS_CATALOG.length) * 100)}%
+                  </Text>
+                </View>
+              </View>
+              <View className="h-2 w-full rounded-full bg-surface-sunken overflow-hidden">
+                <View
+                  className="h-full rounded-full bg-action"
+                  style={{
+                    width: `${Math.max(
+                      demonstratedSkillCount > 0 ? 8 : 0,
+                      (demonstratedSkillCount / COMMUNICATIVE_SKILLS_CATALOG.length) * 100
+                    )}%`,
+                  }}
+                />
+              </View>
+            </View>
+
+            {/* Category Filter Pills */}
+            <View className="flex-row gap-2 flex-wrap">
+              {(['all', 'daily', 'repair', 'discussion'] as SkillCategoryFilter[]).map(catId => {
+                const isSelected = selectedSkillCategory === catId;
+                const count = categoryCounts[catId];
+                return (
                   <Pressable
+                    key={catId}
+                    onPress={() => setSelectedSkillCategory(catId)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isSelected }}
+                    className={`min-h-12 px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 border transition-all ${
+                      isSelected
+                        ? 'bg-action border-action'
+                        : 'bg-surface border-border-subtle/50 hover:bg-surface-hover'
+                    }`}
+                  >
+                    <Text
+                      className={`text-xs font-bold ${
+                        isSelected ? 'text-action-text' : 'text-body'
+                      }`}
+                    >
+                      {skillCategoryLabels[catId]} ({count})
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Filtered Skills List */}
+            <View className="gap-2">
+              {filteredSkills.map(skill => {
+                const projection = skillStats.get(skill.id);
+                const localized = localizeSkill(skill);
+                const iconInfo = SKILL_ICONS[skill.id] || {
+                  Icon: MessageCircle,
+                  tint: 'bg-language-soft',
+                  color: 'language',
+                };
+                const status = statusLabel(projection);
+
+                return (
+                  <Pressable
+                    key={skill.id}
                     onPress={() => setSelectedSkill(skill)}
                     accessibilityRole="button"
-                    className="my-1.5 min-h-[82px] flex-row items-center gap-3 rounded-[20px] border border-border-subtle/50 bg-surface p-4 hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
+                    accessibilityLabel={`${localized.name}. ${localized.description}`}
+                    className="min-h-[76px] flex-row items-center gap-3.5 rounded-2xl border border-border-subtle/50 bg-surface p-3.5 hover:bg-surface-hover active:scale-[0.99] transition-all"
                   >
-                    <View className="h-10 w-10 items-center justify-center rounded-[15px] bg-language-soft"><MessageCircle size={20} color={iconColor('language')} /></View>
-                    <View className="flex-1">
-                      <Text className="text-[16px] font-semibold leading-[21px] text-ink">
-                        {localized.name}
-                      </Text>
-                      <Text className="mt-1 text-[13px] leading-[18px] text-muted" numberOfLines={2}>
+                    <View
+                      className={`h-11 w-11 items-center justify-center rounded-xl ${iconInfo.tint}`}
+                    >
+                      <iconInfo.Icon size={20} color={iconColor(iconInfo.color)} />
+                    </View>
+
+                    <View className="flex-1 min-w-0 gap-0.5">
+                      <View className="flex-row items-center gap-2">
+                        <Text
+                          className="text-[15px] font-bold text-ink truncate"
+                          numberOfLines={1}
+                        >
+                          {localized.name}
+                        </Text>
+                        {skill.parentSkillId ? (
+                          <View className="px-1.5 py-0.5 rounded bg-surface-soft border border-border-subtle/30">
+                            <Text className="text-xs font-medium text-muted">
+                              Repair
+                            </Text>
+                          </View>
+                        ) : null}
+                      </View>
+                      <Text
+                        className="text-xs leading-4 text-muted"
+                        numberOfLines={2}
+                      >
                         {localized.description}
                       </Text>
                       {projection?.lastIndependentUseAt ? (
-                        <Text className="mt-1 text-xs text-muted">
-                          {t.progress.lastIndependentUse}: {new Date(projection.lastIndependentUseAt).toLocaleDateString()}
+                        <Text className="text-xs text-language font-medium mt-0.5">
+                          {t.progress.lastIndependentUse}:{' '}
+                          {new Date(projection.lastIndependentUseAt).toLocaleDateString()}
                         </Text>
                       ) : null}
                     </View>
 
-                    <View className="items-end gap-2">
-                      <View className={`rounded-full px-2.5 py-1 ${statusTone(projection).container}`}>
-                        <Text
-                          className={`text-xs font-semibold ${statusTone(projection).text}`}
-                          numberOfLines={1}
+                    <View className="items-end gap-1.5 shrink-0">
+                      {status ? (
+                        <View
+                          className={`rounded-full px-2.5 py-0.5 ${
+                            statusTone(projection).container
+                          }`}
                         >
-                          {statusLabel(projection)}
-                        </Text>
-                      </View>
+                          <Text
+                            className={`text-xs font-semibold ${
+                              statusTone(projection).text
+                            }`}
+                            numberOfLines={1}
+                          >
+                            {status}
+                          </Text>
+                        </View>
+                      ) : null}
                       <ChevronRight size={18} color={iconColor('muted')} />
                     </View>
                   </Pressable>
-                </React.Fragment>
-              );
-            })}
+                );
+              })}
+            </View>
           </View>
         ) : null}
 
