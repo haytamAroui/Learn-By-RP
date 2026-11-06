@@ -5,7 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useArchive } from '../features/archive/ArchiveProvider';
 import { Button, Card, SectionLabel } from '../components/ui';
-import { I18nProvider } from '../features/i18n';
+import { getTranslations, I18nProvider } from '../features/i18n';
 import { MISSION_CATALOG } from '../data/missions';
 
 /**
@@ -17,6 +17,7 @@ import { MISSION_CATALOG } from '../data/missions';
 export default function RecoveryScreen() {
   const router = useRouter();
   const archive = useArchive();
+  const t = getTranslations(archive.preferences.explanationLanguage);
 
   const interrupted = archive.interruptedSessions;
 
@@ -24,10 +25,10 @@ export default function RecoveryScreen() {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-canvas p-6" edges={['top', 'bottom']}>
         <Text className="text-center text-sm text-muted">
-          Nothing was left unfinished.
+          {t.common.allDueReviewed || 'Nothing was left unfinished.'}
         </Text>
         <View className="mt-4">
-          <Button label="Back" onPress={() => router.back()} variant="secondary" size="sm" />
+          <Button label={t.common.back} onPress={() => router.back()} variant="secondary" size="sm" />
         </View>
       </SafeAreaView>
     );
@@ -86,20 +87,20 @@ export default function RecoveryScreen() {
 
                 <View className="flex-row gap-2">
                   <View className="flex-1">
-                    <Button label="Resume" size="sm" onPress={() => router.push({
+                    <Button label={t.common.resumeScene} size="sm" onPress={() => router.push({
                       pathname: '/session/[sessionId]', params: { sessionId: item.id },
                     })} />
                   </View>
                   <View className="flex-1">
                     <Button
-                      label="Review"
+                      label={t.recap.title}
                       onPress={() => router.push({ pathname: '/recap/[sessionId]', params: { sessionId: item.id } })}
                       size="sm"
                     />
                   </View>
                   <View className="flex-1">
                     <Button
-                      label="Discard"
+                      label={t.common.delete}
                       onPress={() => void archive.deleteSession(item.id)}
                       variant="secondary"
                       size="sm"
@@ -111,7 +112,7 @@ export default function RecoveryScreen() {
           })}
 
           <Button
-            label="Continue to the app"
+            label={t.common.continue}
             onPress={() => router.replace('/(tabs)')}
             variant="ghost"
             size="sm"

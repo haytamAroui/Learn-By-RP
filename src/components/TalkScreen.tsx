@@ -75,9 +75,9 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
       </View>
       <View className="gap-3">
         <Text className="font-display text-[20px] font-bold text-ink">{t.talk.quickPractice}</Text>
-        <View className="flex-row gap-2">{actions.map(action => <Pressable key={action.title} onPress={action.onPress} disabled={action.disabled}
+        <View className="flex-row flex-wrap gap-2">{actions.map(action => <Pressable key={action.title} onPress={action.onPress} disabled={action.disabled}
           accessibilityRole="button" accessibilityState={{ disabled: !!action.disabled }} accessibilityLabel={`${action.title}. ${action.description}`}
-          className={`min-h-[112px] min-w-0 flex-1 items-center gap-2 rounded-[22px] border border-transparent px-1 py-3 hover:opacity-85 active:opacity-75 focus:border-2 focus:border-focus ${action.tint}`}
+          className={`min-h-[104px] flex-1 min-w-[130px] items-center gap-2 rounded-[22px] border border-transparent px-2 py-3 hover:opacity-85 active:opacity-75 focus:border-2 focus:border-focus ${action.tint}`}
           style={{ boxShadow: ELEVATION.card }}>
           <View className="h-12 w-12 items-center justify-center rounded-[16px] bg-surface/70"><action.Icon size={24} color={iconColor(action.color)} /></View>
           <Text className="text-center text-xs font-bold leading-[17px] text-ink">{action.title}</Text>

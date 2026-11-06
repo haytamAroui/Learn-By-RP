@@ -3,8 +3,8 @@ import { pickEdgeVoice } from './edgeVoices';
 
 describe('edge voice selection', () => {
   it('picks the exact regional voice for the requested gender', () => {
-    expect(pickEdgeVoice('nl-BE', 'female').shortName).toBe('nl-BE-LotteNeural');
-    expect(pickEdgeVoice('nl-BE', 'male').shortName).toBe('nl-BE-GerritNeural');
+    expect(pickEdgeVoice('nl-BE', 'female').shortName).toBe('nl-BE-DenaNeural');
+    expect(pickEdgeVoice('nl-BE', 'male').shortName).toBe('nl-BE-ArnaudNeural');
   });
 
   it('accepts an underscore locale', () => {

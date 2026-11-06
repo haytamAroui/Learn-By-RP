@@ -106,7 +106,7 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
 
     const normalizedLocale = locale.replace('_', '-').toLowerCase();
     const localeDirection = normalizedLocale === 'nl-be'
-      ? 'Speak in natural Belgian Dutch (Flemish as used in Flanders), with local Belgian pronunciation and cadence. Do not use a Netherlands Dutch accent. The text is the exact transcript; do not translate or paraphrase it.'
+      ? 'Speak in natural Belgian Dutch (Flemish as used in Flanders) with authentic Flemish pronunciation, soft "g" (/ɣ/), bilabial "w" ([β̞]), pure monophthongs, and natural Belgian Dutch cadence. Do not use a Netherlands Dutch accent. The text is the exact transcript; do not translate or paraphrase it.'
       : request.locale
         ? `Use natural pronunciation and accent appropriate for ${request.locale}. The text is the exact transcript; do not translate or paraphrase it.`
         : `Speak naturally in language ${request.language}. The text is the exact transcript; do not translate or paraphrase it.`;

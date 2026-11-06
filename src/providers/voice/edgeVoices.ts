@@ -6,15 +6,15 @@
  * provider, so the choice can be inspected and tested without a network call.
  */
 export interface EdgeVoice {
-  /** The provider's short name, for example `nl-BE-LotteNeural`. */
+  /** The provider's short name, for example `nl-BE-DenaNeural`. */
   shortName: string;
   locale: string;
   gender: 'female' | 'male';
 }
 
 const VOICES: readonly EdgeVoice[] = [
-  { shortName: 'nl-BE-LotteNeural', locale: 'nl-BE', gender: 'female' },
-  { shortName: 'nl-BE-GerritNeural', locale: 'nl-BE', gender: 'male' },
+  { shortName: 'nl-BE-DenaNeural', locale: 'nl-BE', gender: 'female' },
+  { shortName: 'nl-BE-ArnaudNeural', locale: 'nl-BE', gender: 'male' },
   { shortName: 'nl-NL-ColetteNeural', locale: 'nl-NL', gender: 'female' },
   { shortName: 'nl-NL-MaartenNeural', locale: 'nl-NL', gender: 'male' },
   { shortName: 'fr-FR-DeniseNeural', locale: 'fr-FR', gender: 'female' },

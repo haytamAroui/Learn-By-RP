@@ -13,6 +13,7 @@ import {
 } from 'lucide-react-native';
 import { PhraseItem, Modality } from '../types';
 import { createVoiceTransport, VoiceEvent, VoiceTransport } from '../providers/voice';
+import { speakWithBestAvailable } from '../providers/voice/speechOutput';
 import { useArchive } from '../features/archive/ArchiveProvider';
 import { useI18n } from '../features/i18n';
 import { Button, Field, SectionLabel } from './ui';
@@ -163,9 +164,13 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
     if (!learnerAttemptCaptured) {
       setModelAudioPlayedBeforeAttempt(true);
     }
-    voiceTransportRef.current?.playSpeech(currentPhrase.form, {
-      lang: currentPhrase.language,
-    });
+    const transport = voiceTransportRef.current;
+    if (transport) {
+      void speakWithBestAvailable(transport, currentPhrase.form, {
+        language: currentPhrase.language,
+        speed: 1,
+      });
+    }
   };
 
   const handleRevealAnswer = () => {
@@ -365,27 +370,25 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
                 </View>
               )}
 
-              <View className="flex-row flex-wrap items-center justify-center gap-3 pt-1">
+              <View className="flex-row flex-wrap items-center justify-center gap-2 pt-1">
                 <Pressable
                   onPress={() => setShowTypedInput(prev => !prev)}
                   accessibilityRole="button"
-                  className="flex-row items-center gap-1.5"
+                  className="min-h-12 flex-row items-center gap-1.5 rounded-xl px-3 py-2 hover:bg-surface-hover focus:border-2 focus:border-focus"
                 >
-                  <Keyboard size={14} color={iconColor('muted')} />
-                  <Text className="text-xs text-muted">
+                  <Keyboard size={15} color={iconColor('muted')} />
+                  <Text className="text-xs font-medium text-body">
                     {showTypedInput ? t.common.switchSpeech : t.common.typeInstead}
                   </Text>
                 </Pressable>
 
-                <Text className="text-xs text-muted">·</Text>
-
                 <Pressable
                   onPress={handleRevealAnswer}
                   accessibilityRole="button"
-                  className="flex-row items-center gap-1.5"
+                  className="min-h-12 flex-row items-center gap-1.5 rounded-xl px-3 py-2 hover:bg-surface-hover focus:border-2 focus:border-focus"
                 >
-                  <Eye size={14} color={iconColor('muted')} />
-                  <Text className="text-xs text-muted">{t.common.showAnswer}</Text>
+                  <Eye size={15} color={iconColor('muted')} />
+                  <Text className="text-xs font-medium text-body">{t.common.showAnswer}</Text>
                 </Pressable>
               </View>
             </View>

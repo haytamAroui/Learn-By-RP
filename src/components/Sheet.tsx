@@ -1,7 +1,9 @@
 import React from 'react';
-import { Modal, ScrollView, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, ScrollView, useWindowDimensions, View } from 'react-native';
 import { Text } from './AppText';
+import { X } from 'lucide-react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { iconColor } from '../design/iconColor';
 import { BREAKPOINTS } from '../design/tokens';
 import { Button, EmptyState, Pill, SectionLabel } from './ui';
 
@@ -55,6 +57,12 @@ export const Sheet: React.FC<SheetProps> = ({
           isPhone ? 'justify-end' : 'items-center justify-center px-6 py-8'
         }`}
       >
+        <Pressable
+          className="absolute inset-0"
+          onPress={onClose}
+          accessibilityRole="button"
+          accessibilityLabel="Dismiss overlay"
+        />
         <View
           className={`w-full overflow-hidden border-border-subtle bg-surface ${
             isPhone ? 'rounded-t-[32px] border-t' : 'rounded-[32px] border'
@@ -72,13 +80,14 @@ export const Sheet: React.FC<SheetProps> = ({
             ) : (
               <View className="flex-1" />
             )}
-            <Button
-              label="✕"
+            <Pressable
               onPress={onClose}
-              variant="ghost"
-              size="sm"
+              accessibilityRole="button"
               accessibilityLabel="Close"
-            />
+              className="h-12 w-12 items-center justify-center rounded-full border border-transparent bg-surface-soft hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
+            >
+              <X size={20} color={iconColor('ink')} />
+            </Pressable>
           </View>
 
           {scrollable ? (

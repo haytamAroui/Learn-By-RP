@@ -56,7 +56,7 @@ export function ConversationStage(props: Props) {
             borderBottomLeftRadius: learner ? 28 : 10, borderBottomRightRadius: learner ? 10 : 28,
             boxShadow: ELEVATION.card }}>
           <Text className={`text-xs font-semibold ${learner ? 'text-action-text/80' : 'text-muted'}`}>{learner ? t.common.you : props.mission.character.name}</Text>
-          <Text className={`text-[18px] leading-[27px] ${learner ? 'text-action-text' : 'text-ink'}`}>{passage.text}</Text>
+          <Text className={`${latest && !learner ? 'text-[20px] leading-[28px] font-medium' : 'text-[17px] leading-[25px]'} ${learner ? 'text-action-text' : 'text-ink'}`}>{passage.text}</Text>
           {learner && passage.meaning ? <Text className="text-sm text-action-text/80">{passage.meaning}</Text> : null}
           {!learner ? <View className="flex-row flex-wrap items-center justify-end gap-1">
             {latest && passage.meaning ? <Pressable accessibilityRole="button"

@@ -4,7 +4,7 @@ import { Text } from '../../components/AppText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
-import { I18nProvider } from '../../features/i18n';
+import { getTranslations, I18nProvider } from '../../features/i18n';
 import { Button, EmptyState, SectionLabel } from '../../components/ui';
 
 export default function PhraseScreen() {
@@ -14,6 +14,7 @@ export default function PhraseScreen() {
   const [notice, setNotice] = useState<string | null>(null);
 
   const phrase = archive.phrases.find(p => p.id === phraseId);
+  const t = getTranslations(archive.preferences.explanationLanguage);
   const evidence = archive.observations.filter(
     o => o.itemId === phraseId || o.candidateForm.toLowerCase() === phrase?.form.toLowerCase()
   );
@@ -26,9 +27,9 @@ export default function PhraseScreen() {
   if (!phrase) {
     return (
       <SafeAreaView className="flex-1 items-center justify-center bg-canvas p-6" edges={['top', 'bottom']}>
-        <EmptyState message="That phrase is not in your archive." />
+        <EmptyState message={t.common.noEvidenceYet} />
         <View className="mt-4">
-          <Button label="Close" onPress={() => router.back()} variant="secondary" />
+          <Button label={t.common.close} onPress={() => router.back()} variant="secondary" />
         </View>
       </SafeAreaView>
     );
@@ -43,8 +44,8 @@ export default function PhraseScreen() {
     >
       <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
         <View className="w-full self-center flex-row items-center justify-between px-4 py-2" style={{ maxWidth: 1200 }}>
-          <Text className="text-lg font-semibold text-ink">Target phrase</Text>
-          <Button label="Close" onPress={() => router.back()} variant="ghost" size="sm" />
+          <Text className="text-lg font-semibold text-ink">{t.common.targetPhrase}</Text>
+          <Button label={t.common.close} onPress={() => router.back()} variant="ghost" size="sm" />
         </View>
 
         <ScrollView
@@ -70,15 +71,15 @@ export default function PhraseScreen() {
           ) : null}
 
           <View className="gap-1.5 rounded-2xl bg-surface-soft p-4">
-            <Detail label="Recall state" value={phrase.recallStatus} capitalize />
-            <Detail label="Next review interval" value={`${phrase.scheduling.intervalDays} days`} />
-            <Detail label="Due now" value={phrase.scheduling.due ? 'Yes' : 'No'} />
-            <Detail label="Independent uses" value={String(phrase.stats.unassistedCount)} />
-            <Detail label="Uses with help" value={String(phrase.stats.assistedCount)} />
+            <Detail label={t.progress.tabSkills} value={phrase.recallStatus} capitalize />
+            <Detail label={t.progress.statusWorthRevisiting} value={`${phrase.scheduling.intervalDays} ${t.common.daysLower || 'days'}`} />
+            <Detail label={t.progress.reviewDue} value={phrase.scheduling.due ? 'Yes' : 'No'} />
+            <Detail label={t.recap.unassisted} value={String(phrase.stats.unassistedCount)} />
+            <Detail label={t.recap.assisted} value={String(phrase.stats.assistedCount)} />
           </View>
 
           <Button
-            label="Practise this now"
+            label={t.progress.readyToPractise}
             onPress={async () => {
               await archive.resetPhrase(phrase.id);
               flash('Reset. It is due again now.');
@@ -88,10 +89,10 @@ export default function PhraseScreen() {
           />
 
           <View className="gap-2.5">
-            <SectionLabel>Evidence ({evidence.length})</SectionLabel>
+            <SectionLabel>{t.common.evidence} ({evidence.length})</SectionLabel>
 
             {evidence.length === 0 ? (
-              <EmptyState message="No evidence recorded for this phrase yet." className="py-6" />
+              <EmptyState message={t.common.noEvidenceYet} className="py-6" />
             ) : (
               evidence.map(obs => (
                 <View key={obs.observationId} className="gap-2 rounded-2xl bg-surface-soft p-4">
@@ -102,7 +103,7 @@ export default function PhraseScreen() {
                         obs.retrieval === 'unassisted' ? 'text-accent-sage' : 'text-primary'
                       }`}
                     >
-                      {obs.retrieval === 'unassisted' ? 'used independently' : obs.retrieval} (
+                      {obs.retrieval === 'unassisted' ? t.recap.unassisted : t.recap.assisted} (
                       {obs.modality})
                     </Text>
                     <Text className="text-xs text-muted">
@@ -111,7 +112,7 @@ export default function PhraseScreen() {
                   </View>
                   <View className="flex-row flex-wrap gap-2">
                     <Button
-                      label="Hide"
+                      label={t.progress.hideEvidence}
                       onPress={() => {
                         void archive.hideObservation(obs.observationId);
                         flash('Hidden. It no longer counts toward progress.');
@@ -120,7 +121,7 @@ export default function PhraseScreen() {
                       size="sm"
                     />
                     <Button
-                      label="That's not right"
+                      label={t.progress.disputeEvidence}
                       onPress={() => {
                         void archive.disputeObservation(obs.observationId);
                         flash('Disputed and removed from your progress.');
@@ -146,7 +147,7 @@ const Detail: React.FC<{ label: string; value: string; capitalize?: boolean }> =
   value,
   capitalize,
 }) => (
-  <View className="min-h-10 flex-row items-center justify-between gap-3">
+  <View className="min-h-12 flex-row items-center justify-between gap-3">
     <Text className="text-sm text-muted">{label}</Text>
     <Text className={`text-sm font-medium text-ink ${capitalize ? 'capitalize' : ''}`}>
       {value}

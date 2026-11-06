@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { ScrollView, View } from 'react-native';
+import { Pressable, ScrollView, View } from 'react-native';
 import { Text } from '../../components/AppText';
 import { useRouter } from 'expo-router';
 import { SafeAreaView } from 'react-native-safe-area-context';
@@ -455,29 +455,30 @@ export default function OnboardingScreen() {
         </View>
 
         <Card className="gap-3 bg-surface-sunken">
-          <SectionLabel>Before you start</SectionLabel>
+          <SectionLabel>{t.settings.sectionPrivacy}</SectionLabel>
           <Text className="text-xs leading-relaxed text-body">
-            When you speak, your voice is processed by an AI provider to produce the
-            character&apos;s reply. Your conversation is stored on this device. Only the
-            turns needed for review are sent for assessment, and nothing is used to train a
-            model. You can change or withdraw this at any time in Settings.
+            {t.settings.privacyDisclosure}
           </Text>
 
           <ConsentRow
-            label="Live voice processing"
-            description="Required for speaking to a character. Without it you can still type your turns."
+            label={t.settings.liveVoiceLabel}
+            description={t.settings.liveVoiceDesc}
             value={voiceConsent}
             onChange={setVoiceConsent}
+            grantedLabel={t.settings.grantedLabel}
+            withdrawLabel={t.settings.withdrawLabel}
           />
 
           <ConsentRow
-            label="Conversation analysis"
-            description="Lets the app check your transcript for phrases you produced, which is how progress is measured. Without it, sessions are still saved but no evidence is recorded."
+            label={t.settings.savedAnalysisLabel}
+            description={t.settings.savedAnalysisDesc}
             value={analysisConsent}
             onChange={setAnalysisConsent}
+            grantedLabel={t.settings.grantedLabel}
+            withdrawLabel={t.settings.withdrawLabel}
           />
 
-          <Text className="text-xs text-muted">Consent version {CONSENT_VERSION}</Text>
+          <Text className="text-xs text-muted">{t.settings.consentVersionLabel} {CONSENT_VERSION}</Text>
         </Card>
 
         {goalUnavailable ? (
@@ -506,23 +507,34 @@ interface ConsentRowProps {
   description: string;
   value: boolean;
   onChange: (next: boolean) => void;
+  grantedLabel?: string;
+  withdrawLabel?: string;
 }
 
-const ConsentRow: React.FC<ConsentRowProps> = ({ label, description, value, onChange }) => {
+const ConsentRow: React.FC<ConsentRowProps> = ({
+  label,
+  description,
+  value,
+  onChange,
+  grantedLabel = 'Agreed',
+  withdrawLabel = 'Not agreed',
+}) => {
   const [open, setOpen] = useState(false);
 
   return (
     <View className="gap-2 rounded-xl border border-border-subtle bg-surface p-3">
-      <Text
-        className="text-xs font-semibold text-ink"
+      <Pressable
         onPress={() => setOpen(prev => !prev)}
         accessibilityRole="button"
+        accessibilityLabel={`${label}. ${open ? 'Collapse description' : 'Expand description'}`}
+        className="min-h-12 flex-row items-center justify-between rounded-lg py-1 focus:border-2 focus:border-focus"
       >
-        {label} {open ? '▾' : '▸'}
-      </Text>
+        <Text className="text-sm font-semibold text-ink">{label}</Text>
+        <Text className="text-xs text-muted">{open ? '▾' : '▸'}</Text>
+      </Pressable>
       {open ? <Text className="text-xs leading-relaxed text-body">{description}</Text> : null}
       <Button
-        label={value ? 'Agreed' : 'Not agreed'}
+        label={value ? grantedLabel : withdrawLabel}
         onPress={() => onChange(!value)}
         variant={value ? 'primary' : 'secondary'}
         size="sm"

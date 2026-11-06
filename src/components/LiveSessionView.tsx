@@ -2399,9 +2399,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       />
 
           <View className="min-w-0 flex-1 items-start px-1 py-1">
-            <Text className="font-display text-[18px] font-bold leading-6 text-ink" numberOfLines={1}>
-              {mission.character.name}
-            </Text>
+            <View className="flex-row items-center gap-2">
+              <Text className="font-display text-[18px] font-bold leading-6 text-ink" numberOfLines={1}>
+                {mission.character.name}
+              </Text>
+              <View className="rounded-full bg-language-soft px-2 py-0.5">
+                <Text className="text-xs font-bold text-language">{mission.levelRange}</Text>
+              </View>
+            </View>
             <Text className="mt-0.5 text-sm text-muted" numberOfLines={1}>
               {mission.title}
             </Text>
@@ -2431,12 +2436,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           <Text className="text-xs font-semibold text-muted">{checkpointProgress.completed} / {checkpointProgress.total}</Text>
         </View> : null}
       </SafeAreaView>
-      <View className="mx-4 mb-2 flex-row items-center gap-4 self-center rounded-[28px] bg-warning-soft px-4 py-3" style={{ width: '92%', maxWidth: 680 }}>
-        <View className="relative h-14 w-[68px]"><ReferenceArtwork kind="shop" /></View>
-        <View className="min-w-0 flex-1 gap-1"><Text className="font-display text-[17px] font-bold leading-6 text-ink">{mission.title}</Text>
-          <Text className="text-sm text-body">{mission.character.name} · {mission.character.role}</Text></View>
-        <View className="h-11 min-w-11 items-center justify-center rounded-full bg-surface px-2"><Text className="text-sm font-bold text-language">{mission.levelRange}</Text></View>
-      </View>
 
       <View accessibilityLiveRegion="polite" accessible={false}>
         {inactivityCountdown !== null ? (
@@ -2547,7 +2546,6 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         keyboardVerticalOffset={insets.top}
       >
-        <ScrollView style={{ maxHeight: windowHeight * 0.6 }} keyboardShouldPersistTaps="handled">
         {showTypedInput ? (
           <View className="border-t border-border-subtle bg-surface px-4 py-3">
             <View className="w-full self-center gap-2" style={{ maxWidth: 720 }}>
@@ -2653,12 +2651,11 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               </Pressable>
             </View>
             <Pressable onPress={() => void handleFinishConversation()} accessibilityRole="button" accessibilityLabel={t.common.endConversation}
-              className="min-h-[58px] flex-row items-center justify-center gap-3 rounded-full border border-danger/30 bg-danger-soft px-4 py-3 hover:opacity-90 focus:border-2 focus:border-focus">
-              <X size={19} color={iconColor('danger')} /><Text className="text-sm font-semibold text-danger">{t.common.endConversation}</Text>
+              className="min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-danger/30 bg-danger-soft px-4 py-2 hover:opacity-90 active:opacity-75 focus:border-2 focus:border-focus">
+              <X size={17} color={iconColor('danger')} /><Text className="text-sm font-semibold text-danger">{t.common.endConversation}</Text>
             </Pressable>
           </View>
         </View>
-        </ScrollView>
       </KeyboardAvoidingView>
 
       <Sheet
