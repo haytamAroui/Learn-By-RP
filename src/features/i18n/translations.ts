@@ -372,6 +372,10 @@ export interface Translations {
     speedSlower: string;
     speedNatural: string;
     speedBrisk: string;
+    speedPacingTherapeutic: string;
+    speedPacingPatient: string;
+    speedPacingNatural: string;
+    speedPacingBrisk: string;
     autoPlayLabel: string;
     regionalProfileLabel: string;
     regionalProfileDesc: string;
@@ -831,6 +835,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedSlower: "0.8x (Patient & Slower for learners)",
       speedNatural: "1.0x (Natural Conversational Speed)",
       speedBrisk: "1.2x (Brisk Native Cadence)",
+      speedPacingTherapeutic: "0.85x (Zorgvuldig / Traag — beginners)",
+      speedPacingPatient: "0.92x (Rustig — rollenspel A2)",
+      speedPacingNatural: "1.00x (Natuurlijk — conversatietempo)",
+      speedPacingBrisk: "1.15x (Vlot — moedertaalsprekers)",
       autoPlayLabel: "Auto-play character speech",
       regionalProfileLabel: "Belgian Dutch Regional Profile & Accent",
       regionalProfileDesc:
@@ -1298,6 +1306,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedSlower: "0.8x (Patient & Lent pour apprenants)",
       speedNatural: "1.0x (Débit naturel conversationnel)",
       speedBrisk: "1.2x (Cadence native dynamique)",
+      speedPacingTherapeutic: "0.85x (Posé & Délibéré — débutants)",
+      speedPacingPatient: "0.92x (Patient — jeu de rôle A2)",
+      speedPacingNatural: "1.00x (Naturel — conversationnel B1)",
+      speedPacingBrisk: "1.15x (Fluide — débit natif)",
       autoPlayLabel: "Lecture audio automatique des répliques",
       regionalProfileLabel: "Profil régional flamand (Accent & Cadence)",
       regionalProfileDesc:
@@ -1763,6 +1775,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedSlower: "0.8x (Pausado para aprender)",
       speedNatural: "1.0x (Velocidad conversacional natural)",
       speedBrisk: "1.2x (Cadencia nativa ágil)",
+      speedPacingTherapeutic: "0.85x (Pausado & Claro — principiantes)",
+      speedPacingPatient: "0.92x (Paciente — juego de rol A2)",
+      speedPacingNatural: "1.00x (Natural — conversación B1)",
+      speedPacingBrisk: "1.15x (Ágil — ritmo nativo)",
       autoPlayLabel: "Reproducir automáticamente el audio del personaje",
       regionalProfileLabel: "Perfil regional flamenco (Acento y Cadencia)",
       regionalProfileDesc:
@@ -2229,6 +2245,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedSlower: "0.8x (Rustig & geduldig voor lerenden)",
       speedNatural: "1.0x (Natuurlijk spreektempo)",
       speedBrisk: "1.2x (Vlot moedertaaltempo)",
+      speedPacingTherapeutic: "0.85x (Zorgvuldig / Traag — beginners)",
+      speedPacingPatient: "0.92x (Rustig — rollenspel A2)",
+      speedPacingNatural: "1.00x (Natuurlijk — conversatietempo)",
+      speedPacingBrisk: "1.15x (Vlot — moedertaalsprekers)",
       autoPlayLabel: "Stem van personage automatisch afspelen",
       regionalProfileLabel: "Vlaams Regioprofiel (Accent & Klankkleur)",
       regionalProfileDesc:

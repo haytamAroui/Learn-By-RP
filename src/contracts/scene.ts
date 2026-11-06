@@ -251,6 +251,7 @@ export interface SceneDefinition {
     role: string;
     voiceStyle: string;
     voiceGender?: VoiceGender;
+    voiceName?: string;
     knowledgeBoundary: string[];
     /** What this character may know about scenes the learner has not reached. */
     mayKnowAboutPriorScenes: string[];

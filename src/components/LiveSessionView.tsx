@@ -489,7 +489,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const slowerSpeechDefault = accommodations.enabled.includes('slower_speech_default');
   const hapticTurnCues = accommodations.enabled.includes('haptic_turn_cues');
   const effectiveSpeechRate = slowerSpeechDefault
-    ? Math.min(preferredSpeechRate, 0.8)
+    ? Math.min(preferredSpeechRate, 0.85)
     : preferredSpeechRate;
 
   const cueLearnerTurn = useCallback(() => {
@@ -1043,6 +1043,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 language: target.language,
                 speed: slowerSpeechDefault ? effectiveSpeechRate : preferredSpeechRate,
                 style: resolveCharacterStyle(target.character.voiceStyle, target.language),
+                voice: target.character.voiceName,
                 voiceGender: target.character.voiceGender,
               });
             }
@@ -1478,6 +1479,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed: effectiveSpeechRate,
         style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
+        voice: mission.character.voiceName,
         voiceGender: mission.character.voiceGender,
       });
       cueLearnerTurn();
@@ -2234,11 +2236,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed,
         style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
+        voice: mission.character.voiceName,
         voiceGender: mission.character.voiceGender,
         canPlay: () => !isEndingRef.current && replayAttempt === attemptIdRef.current && consentRef.current.voice,
       });
     },
-    [mission.character.voiceStyle, mission.character.voiceGender, mission.language, recordAssistantAudioExposure, resolveCharacterStyle]
+    [mission.character.voiceStyle, mission.character.voiceGender, mission.character.voiceName, mission.language, recordAssistantAudioExposure, resolveCharacterStyle]
   );
 
   const playCoachModelPhrase = useCallback(async () => {
@@ -2254,6 +2257,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed: effectiveSpeechRate,
         style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
+        voice: mission.character.voiceName,
         voiceGender: mission.character.voiceGender,
       }
     );
@@ -2375,7 +2379,9 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       if (!(await saveSuggestedSupport([phrase], 'model_phrase_audio')) || !consentRef.current.voice) return;
       await speakWithBestAvailable(transport, phrase.form, {
         language: mission.language, speed: effectiveSpeechRate,
-        style: resolveCharacterStyle(mission.character.voiceStyle, mission.language), voiceGender: mission.character.voiceGender,
+        style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
+        voice: mission.character.voiceName,
+        voiceGender: mission.character.voiceGender,
         canPlay: () => !isEndingRef.current && phraseAttempt === attemptIdRef.current && consentRef.current.voice,
       });
     });

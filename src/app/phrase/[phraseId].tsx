@@ -6,6 +6,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
 import { Button, EmptyState, SectionLabel } from '../../components/ui';
+import { Sparkles } from 'lucide-react-native';
+import { iconColor } from '../../design/iconColor';
+import { detectBelgianDutchPhonetics } from '../../content/phoneticGuidance';
 
 export default function PhraseScreen() {
   const router = useRouter();
@@ -69,6 +72,27 @@ export default function PhraseScreen() {
           {phrase.usageNote ? (
             <Text className="text-sm leading-6 text-body">{phrase.usageNote}</Text>
           ) : null}
+
+          {phrase.language === 'nl' && (() => {
+            const tip = detectBelgianDutchPhonetics(phrase.form);
+            if (!tip) return null;
+            return (
+              <View className="rounded-2xl border border-accent-sage/30 bg-card-sage/60 p-4 gap-1.5">
+                <View className="flex-row items-center gap-2">
+                  <Sparkles size={16} color={iconColor('brandText')} />
+                  <Text className="text-sm font-bold text-ink">
+                    {tip.feature} ({tip.ipa})
+                  </Text>
+                </View>
+                <Text className="text-xs text-muted leading-5">
+                  {tip.tip}
+                </Text>
+                <Text className="text-xs text-ink/80 italic">
+                  Voorbeelden: {tip.example}
+                </Text>
+              </View>
+            );
+          })()}
 
           <View className="gap-1.5 rounded-2xl bg-surface-soft p-4">
             <Detail label={t.progress.tabSkills} value={phrase.recallStatus} capitalize />

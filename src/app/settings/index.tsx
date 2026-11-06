@@ -203,12 +203,19 @@ export default function SettingsScreen() {
           <View className="gap-2">
             <Text className="text-sm font-semibold text-ink">{t.settings.speechSpeedLabel}</Text>
             <ChipRow
-              value={String(archive.preferences.speechRate ?? 1)}
+              value={String(
+                archive.preferences.speechRate === 0.8
+                  ? 0.85
+                  : archive.preferences.speechRate === 1.2
+                    ? 1.15
+                    : archive.preferences.speechRate ?? 1
+              )}
               onChange={id => patch({ speechRate: Number(id) })}
               options={[
-                { id: '0.8', label: t.settings.speedSlower },
-                { id: '1', label: t.settings.speedNatural },
-                { id: '1.2', label: t.settings.speedBrisk },
+                { id: '0.85', label: t.settings.speedPacingTherapeutic },
+                { id: '0.92', label: t.settings.speedPacingPatient },
+                { id: '1', label: t.settings.speedPacingNatural },
+                { id: '1.15', label: t.settings.speedPacingBrisk },
               ]}
             />
           </View>

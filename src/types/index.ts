@@ -79,6 +79,8 @@ export interface CharacterDefinition {
   voiceStyle: string;
   /** Authored voice presentation, independent of character name or pronouns. */
   voiceGender?: VoiceGender;
+  /** Specific voice model name (e.g. Aoede, Puck, Fenrir, nl-BE-DenaNeural). */
+  voiceName?: string;
   /** The face this character wears, from the avatar catalog. */
   avatarId?: string;
   personality: string;

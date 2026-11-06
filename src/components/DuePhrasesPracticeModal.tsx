@@ -9,12 +9,14 @@ import {
   Keyboard,
   Mic,
   MicOff,
+  Sparkles,
   Volume2,
 } from 'lucide-react-native';
 import { PhraseItem, Modality } from '../types';
 import { createVoiceTransport, VoiceEvent, VoiceTransport } from '../providers/voice';
 import { speakWithBestAvailable } from '../providers/voice/speechOutput';
 import { buildFlemishSpeechStyle } from '../content/regionalProfiles';
+import { detectBelgianDutchPhonetics } from '../content/phoneticGuidance';
 import { useArchive } from '../features/archive/ArchiveProvider';
 import { useI18n } from '../features/i18n';
 import { Button, Field, SectionLabel } from './ui';
@@ -418,6 +420,24 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
                 <Text className="font-display text-2xl font-bold text-ink">
                   "{currentPhrase.form}"
                 </Text>
+
+                {currentPhrase.language === 'nl' && (() => {
+                  const tip = detectBelgianDutchPhonetics(currentPhrase.form);
+                  if (!tip) return null;
+                  return (
+                    <View className="rounded-xl border border-accent-sage/30 bg-card-sage/60 p-3 gap-1">
+                      <View className="flex-row items-center gap-1.5">
+                        <Sparkles size={14} color={iconColor('brandText')} />
+                        <Text className="text-xs font-bold text-ink">
+                          {tip.feature} ({tip.ipa})
+                        </Text>
+                      </View>
+                      <Text className="text-xs text-muted leading-4">
+                        {tip.tip}
+                      </Text>
+                    </View>
+                  );
+                })()}
 
                 {userTranscript ? (
                   <View className="rounded-xl border border-border-subtle bg-surface p-3">
