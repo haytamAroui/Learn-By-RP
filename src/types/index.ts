@@ -845,6 +845,13 @@ export interface StartingPointProfile {
   recordedAt: string;
 }
 
+export type DutchRegionalProfileId =
+  | 'vrt_standard'
+  | 'antwerps'
+  | 'gents'
+  | 'west_vlaams'
+  | 'brussels';
+
 export interface UserPreferences {
   learningLanguage: LanguageCode;
   /** BCP-47 learning locale. Optional for archives created before Learner Journey V1. */
@@ -865,6 +872,8 @@ export interface UserPreferences {
   audioPlaybackEnabled: boolean;
   autoPlaySpeech: boolean;
   speechRate?: number;
+  /** Preferred Dutch / Flemish regional voice & accent profile. */
+  dutchRegionalProfile?: DutchRegionalProfileId;
   /**
    * Accessibility preferences are not pedagogical help and never enter the
    * support-exposure ledger.

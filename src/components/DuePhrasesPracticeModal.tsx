@@ -14,6 +14,7 @@ import {
 import { PhraseItem, Modality } from '../types';
 import { createVoiceTransport, VoiceEvent, VoiceTransport } from '../providers/voice';
 import { speakWithBestAvailable } from '../providers/voice/speechOutput';
+import { buildFlemishSpeechStyle } from '../content/regionalProfiles';
 import { useArchive } from '../features/archive/ArchiveProvider';
 import { useI18n } from '../features/i18n';
 import { Button, Field, SectionLabel } from './ui';
@@ -52,7 +53,7 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
   onRecordReview,
 }) => {
   const { t } = useI18n();
-  const { consent } = useArchive();
+  const { consent, preferences } = useArchive();
   const voiceGranted = consent.voice?.granted === true && !consent.voice.withdrawnAt;
   const analysisGranted = consent.savedAnalysis?.granted === true && !consent.savedAnalysis.withdrawnAt;
   const voiceGrantedRef = useRef(voiceGranted);
@@ -169,6 +170,10 @@ export const DuePhrasesPracticeModal: React.FC<DuePhrasesPracticeModalProps> = (
       void speakWithBestAvailable(transport, currentPhrase.form, {
         language: currentPhrase.language,
         speed: 1,
+        style:
+          currentPhrase.language === 'nl'
+            ? buildFlemishSpeechStyle(preferences?.dutchRegionalProfile)
+            : undefined,
       });
     }
   };

@@ -53,6 +53,7 @@ import type {
   ConversationProviderEvent,
 } from '../providers/conversation/types';
 import { speakWithBestAvailable, speakStreamedWithBestAvailable } from '../providers/voice/speechOutput';
+import { buildFlemishSpeechStyle } from '../content/regionalProfiles';
 import { useI18n } from '../features/i18n';
 import { useArchive } from '../features/archive/ArchiveProvider';
 import { archiveRepository } from '../features/archive/archiveRepository';
@@ -495,6 +496,17 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     if (!hapticTurnCues || Platform.OS === 'web') return;
     void Haptics.selectionAsync();
   }, [hapticTurnCues]);
+
+  const resolveCharacterStyle = useCallback(
+    (baseStyle?: string, lang?: string) => {
+      const targetLang = lang || mission?.language;
+      if (targetLang === 'nl') {
+        return buildFlemishSpeechStyle(preferences.dutchRegionalProfile, baseStyle);
+      }
+      return baseStyle;
+    },
+    [preferences.dutchRegionalProfile, mission?.language]
+  );
 
   const [showTypedInput, setShowTypedInput] = useState(typedPreferred);
   const [typedMessage, setTypedMessage] = useState('');
@@ -1030,7 +1042,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
               await speakStreamedWithBestAvailable(transport, response.replyText, {
                 language: target.language,
                 speed: slowerSpeechDefault ? effectiveSpeechRate : preferredSpeechRate,
-                style: target.character.voiceStyle,
+                style: resolveCharacterStyle(target.character.voiceStyle, target.language),
                 voiceGender: target.character.voiceGender,
               });
             }
@@ -1465,7 +1477,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       await speakStreamedWithBestAvailable(transport, greeting, {
         language: mission.language,
         speed: effectiveSpeechRate,
-        style: mission.character.voiceStyle,
+        style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
         voiceGender: mission.character.voiceGender,
       });
       cueLearnerTurn();
@@ -2221,12 +2233,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       await speakWithBestAvailable(transport, passage.text, {
         language: mission.language,
         speed,
-        style: mission.character.voiceStyle,
+        style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
         voiceGender: mission.character.voiceGender,
         canPlay: () => !isEndingRef.current && replayAttempt === attemptIdRef.current && consentRef.current.voice,
       });
     },
-    [mission.character.voiceStyle, mission.character.voiceGender, mission.language, recordAssistantAudioExposure]
+    [mission.character.voiceStyle, mission.character.voiceGender, mission.language, recordAssistantAudioExposure, resolveCharacterStyle]
   );
 
   const playCoachModelPhrase = useCallback(async () => {
@@ -2241,7 +2253,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       {
         language: mission.language,
         speed: effectiveSpeechRate,
-        style: mission.character.voiceStyle,
+        style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
         voiceGender: mission.character.voiceGender,
       }
     );
@@ -2363,7 +2375,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       if (!(await saveSuggestedSupport([phrase], 'model_phrase_audio')) || !consentRef.current.voice) return;
       await speakWithBestAvailable(transport, phrase.form, {
         language: mission.language, speed: effectiveSpeechRate,
-        style: mission.character.voiceStyle, voiceGender: mission.character.voiceGender,
+        style: resolveCharacterStyle(mission.character.voiceStyle, mission.language), voiceGender: mission.character.voiceGender,
         canPlay: () => !isEndingRef.current && phraseAttempt === attemptIdRef.current && consentRef.current.voice,
       });
     });

@@ -373,6 +373,10 @@ export interface Translations {
     speedNatural: string;
     speedBrisk: string;
     autoPlayLabel: string;
+    regionalProfileLabel: string;
+    regionalProfileDesc: string;
+    auditionButtonLabel: string;
+    auditioningLabel: string;
     accommodationsLabel: string;
     captionsAlwaysLabel: string;
     slowerSpeechDefaultLabel: string;
@@ -828,6 +832,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedNatural: "1.0x (Natural Conversational Speed)",
       speedBrisk: "1.2x (Brisk Native Cadence)",
       autoPlayLabel: "Auto-play character speech",
+      regionalProfileLabel: "Belgian Dutch Regional Profile & Accent",
+      regionalProfileDesc:
+        "Choose your primary regional listening focus across Flanders and Brussels.",
+      auditionButtonLabel: "Audition sample",
+      auditioningLabel: "Playing...",
       accommodationsLabel: "Accessibility accommodations",
       captionsAlwaysLabel: "Keep captions visible",
       slowerSpeechDefaultLabel: "Use slower character speech by default",
@@ -1290,6 +1299,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedNatural: "1.0x (Débit naturel conversationnel)",
       speedBrisk: "1.2x (Cadence native dynamique)",
       autoPlayLabel: "Lecture audio automatique des répliques",
+      regionalProfileLabel: "Profil régional flamand (Accent & Cadence)",
+      regionalProfileDesc:
+        "Choisissez votre orientation d'écoute régionale en Flandre et à Bruxelles.",
+      auditionButtonLabel: "Écouter l'extrait",
+      auditioningLabel: "Lecture...",
       accommodationsLabel: "Aménagements d’accessibilité",
       captionsAlwaysLabel: "Toujours afficher les sous-titres",
       slowerSpeechDefaultLabel: "Utiliser un débit plus lent par défaut",
@@ -1750,6 +1764,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedNatural: "1.0x (Velocidad conversacional natural)",
       speedBrisk: "1.2x (Cadencia nativa ágil)",
       autoPlayLabel: "Reproducir automáticamente el audio del personaje",
+      regionalProfileLabel: "Perfil regional flamenco (Acento y Cadencia)",
+      regionalProfileDesc:
+        "Elige tu enfoque de escucha regional en Flandes y Bruselas.",
+      auditionButtonLabel: "Escuchar muestra",
+      auditioningLabel: "Reproduciendo...",
       accommodationsLabel: "Adaptaciones de accesibilidad",
       captionsAlwaysLabel: "Mantener los subtítulos visibles",
       slowerSpeechDefaultLabel: "Usar voz más lenta del personaje por defecto",
@@ -2211,6 +2230,11 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       speedNatural: "1.0x (Natuurlijk spreektempo)",
       speedBrisk: "1.2x (Vlot moedertaaltempo)",
       autoPlayLabel: "Stem van personage automatisch afspelen",
+      regionalProfileLabel: "Vlaams Regioprofiel (Accent & Klankkleur)",
+      regionalProfileDesc:
+        "Kies je gewenste regionale spreekstijl in Vlaanderen en Brussel.",
+      auditionButtonLabel: "Beluister voorbeeld",
+      auditioningLabel: "Afspelen...",
       accommodationsLabel: "Toegankelijkheidsaanpassingen",
       captionsAlwaysLabel: "Ondertitels altijd zichtbaar houden",
       slowerSpeechDefaultLabel: "Standaard langzamer spreken",

@@ -10,12 +10,19 @@ import {
   Moon,
   Shield,
   Sun,
+  Volume2,
 } from 'lucide-react-native';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { AVATARS } from '../../features/avatar/avatarCatalog';
 import { getTranslations } from '../../features/i18n';
 import { useTheme } from '../../features/theme';
 import { ThemePreference } from '../../lib/themePreference';
+import {
+  DUTCH_REGIONAL_PROFILES,
+  DutchRegionalProfileId,
+} from '../../content/regionalProfiles';
+import { speakWithBestAvailable } from '../../providers/voice/speechOutput';
+import { NativeVoiceTransport } from '../../providers/voice/nativeVoiceTransport';
 import {
   AccommodationKind,
   LanguageCode,
@@ -50,6 +57,28 @@ export default function SettingsScreen() {
   const archive = useArchive();
   const { preference, setPreference } = useTheme();
   const t = getTranslations(archive.preferences.explanationLanguage);
+  const [auditioningProfileId, setAuditioningProfileId] = React.useState<string | null>(null);
+  const voiceTransportRef = React.useRef<NativeVoiceTransport | null>(null);
+
+  const auditionProfile = async (profile: (typeof DUTCH_REGIONAL_PROFILES)[number]) => {
+    try {
+      setAuditioningProfileId(profile.id);
+      if (!voiceTransportRef.current) {
+        voiceTransportRef.current = new NativeVoiceTransport(() => true);
+      }
+      await speakWithBestAvailable(voiceTransportRef.current, profile.sampleText, {
+        language: 'nl',
+        locale: 'nl-BE',
+        speed: archive.preferences.speechRate ?? 1,
+        voiceGender: profile.defaultVoiceGender,
+        style: profile.stylePrompt,
+      });
+    } catch (e) {
+      console.warn('Audition failed:', e);
+    } finally {
+      setAuditioningProfileId(null);
+    }
+  };
 
   const patch = (updates: Partial<UserPreferences>) =>
     void archive.savePreferences({ ...archive.preferences, ...updates });
@@ -197,6 +226,91 @@ export default function SettingsScreen() {
               accessibilityLabel={t.settings.autoPlayLabel}
             />
           </View>
+
+          {archive.preferences.learningLanguage === 'nl' && (
+            <View className="gap-3 pt-3 border-t border-border-subtle/30">
+              <View className="gap-1">
+                <Text className="text-sm font-semibold text-ink">
+                  {t.settings.regionalProfileLabel}
+                </Text>
+                <Text className="text-xs leading-5 text-muted">
+                  {t.settings.regionalProfileDesc}
+                </Text>
+              </View>
+
+              <View className="gap-2.5">
+                {DUTCH_REGIONAL_PROFILES.map(profile => {
+                  const selected =
+                    (archive.preferences.dutchRegionalProfile ?? 'vrt_standard') === profile.id;
+                  const isAuditioning = auditioningProfileId === profile.id;
+
+                  return (
+                    <Pressable
+                      key={profile.id}
+                      onPress={() => patch({ dutchRegionalProfile: profile.id })}
+                      accessibilityRole="radio"
+                      accessibilityState={{ selected }}
+                      accessibilityLabel={`${profile.name}, ${profile.tag}`}
+                      className={`p-3.5 rounded-2xl border transition-all ${
+                        selected
+                          ? 'border-brand-primary bg-surface-soft/80'
+                          : 'border-border-subtle/40 bg-surface hover:bg-surface-soft/40'
+                      }`}
+                    >
+                      <View className="flex-row items-start justify-between gap-3">
+                        <View className="flex-1 gap-1">
+                          <View className="flex-row items-center gap-2 flex-wrap">
+                            <Text className="text-sm font-bold text-ink">
+                              {profile.name}
+                            </Text>
+                            <View className="px-2 py-0.5 rounded-full bg-surface-soft border border-border-subtle/50">
+                              <Text className="text-xs font-semibold text-muted">
+                                {profile.tag}
+                              </Text>
+                            </View>
+                          </View>
+                          <Text className="text-xs text-brand-primary font-medium">
+                            {profile.region}
+                          </Text>
+                          <Text className="text-xs text-muted leading-4 mt-0.5">
+                            {profile.description}
+                          </Text>
+                        </View>
+
+                        <Pressable
+                          onPress={e => {
+                            e.stopPropagation();
+                            void auditionProfile(profile);
+                          }}
+                          accessibilityRole="button"
+                          accessibilityLabel={`${t.settings.auditionButtonLabel}: ${profile.name}`}
+                          className={`min-h-12 px-3 rounded-xl flex-row items-center gap-1.5 self-center active:scale-95 ${
+                            isAuditioning
+                              ? 'bg-brand-primary'
+                              : 'bg-surface-soft hover:bg-surface-hover border border-border-subtle/50'
+                          }`}
+                        >
+                          <Volume2
+                            size={16}
+                            color={iconColor(isAuditioning ? 'brandText' : 'ink')}
+                          />
+                          <Text
+                            className={`text-xs font-semibold ${
+                              isAuditioning ? 'text-brandText' : 'text-ink'
+                            }`}
+                          >
+                            {isAuditioning
+                              ? t.settings.auditioningLabel
+                              : t.settings.auditionButtonLabel}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
         </View>
 
         <View className="gap-3 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
