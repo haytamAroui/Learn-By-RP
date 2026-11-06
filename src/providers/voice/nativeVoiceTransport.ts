@@ -8,6 +8,20 @@ import { createAudioPlayer, setAudioModeAsync, AudioPlayer } from 'expo-audio';
 import { File, Paths, EncodingType } from 'expo-file-system';
 import * as Speech from 'expo-speech';
 import { pickBestNativeVoice, resolveSpeechLocale } from './language';
+import {
+  markListeningEnded,
+  markListeningStarted,
+  markPlaybackEnded,
+  markPlaybackStarted,
+  publishPlaybackProgress,
+} from './playbackClock';
+import {
+  estimateSpeechDurationMs,
+  estimateVisemeTimeline,
+  timelineFromCues,
+  visemeAt,
+  type VisemeTimeline,
+} from './visemes';
 import type {
   TransportCapabilities,
   VoiceEvent,
@@ -49,6 +63,14 @@ export class NativeVoiceTransport implements VoiceTransport {
   private playbackGeneration = 0;
   private playbackActive = false;
   private playbackCancel: (() => void) | null = null;
+  private playbackTimeline: VisemeTimeline | null = null;
+  private progressTimer: ReturnType<typeof setInterval> | null = null;
+  private speechQueue: Array<{
+    text: string;
+    options: VoicePlaybackOptions;
+    resolve: () => void;
+  }> = [];
+  private speechQueueRunning = false;
   private webAudio: any = null;
 
   constructor(private readonly mayCapture: () => boolean | Promise<boolean> = () => false) {
@@ -136,6 +158,20 @@ export class NativeVoiceTransport implements VoiceTransport {
   }
 
   private emit(event: VoiceEvent) {
+    // The shared clock mirrors the transport's own playback events so a
+    // character renderer can follow the voice without session internals.
+    if (event.type === 'playback_start') {
+      markPlaybackStarted();
+    } else if (event.type === 'playback_progress') {
+      publishPlaybackProgress(event.payload);
+    } else if (event.type === 'playback_end') {
+      markPlaybackEnded();
+    } else if (event.type === 'listening_start') {
+      markListeningStarted();
+    } else if (event.type === 'listening_end') {
+      markListeningEnded();
+    }
+
     for (const listener of [...this.listeners]) {
       try {
         listener(event);
@@ -241,8 +277,12 @@ export class NativeVoiceTransport implements VoiceTransport {
     const wasActive = this.playbackActive;
     this.playbackGeneration += 1;
     this.playbackActive = false;
+    this.stopProgressTimer();
     this.playbackCancel?.();
     this.playbackCancel = null;
+    // A queued line that is abandoned must still release its waiters.
+    const abandoned = this.speechQueue.splice(0, this.speechQueue.length);
+    for (const item of abandoned) item.resolve();
     if (this.webAudio) {
       this.webAudio.onended = null;
       this.webAudio.onerror = null;
@@ -270,6 +310,75 @@ export class NativeVoiceTransport implements VoiceTransport {
     }
   }
 
+  /**
+   * Provider audio carries its own mouth timeline. When it does not, the
+   * transport rebuilds one from the text so the mouth still tracks the line.
+   */
+  private resolveTimeline(text: string, options: VoicePlaybackOptions): VisemeTimeline {
+    const provided = timelineFromCues(options.visemes);
+    if (provided.cues.length > 0) return provided;
+
+    const estimated = estimateSpeechDurationMs(text, options.speed || 1);
+    return estimateVisemeTimeline(text, estimated);
+  }
+
+  private stopProgressTimer() {
+    if (!this.progressTimer) return;
+    clearInterval(this.progressTimer);
+    this.progressTimer = null;
+  }
+
+  /**
+   * Emit the playback position while audio runs. The avatar uses it to place
+   * the mouth and to keep speech and visuals in step.
+   */
+  private startProgressTimer(
+    generation: number,
+    read: () => { currentTimeMs: number; durationMs: number },
+    timeline?: VisemeTimeline,
+    chunkOffsetMs = 0
+  ) {
+    this.stopProgressTimer();
+    if (this.disposed) return;
+
+    // The timer is bounded by the line length. A player that never reports
+    // completion must not leave a repeating timer running.
+    const startedAt = Date.now();
+    const lifetimeMs = Math.max(3000, (timeline?.durationMs ?? 0) + 2000);
+
+    this.progressTimer = setInterval(() => {
+      if (this.disposed || generation !== this.playbackGeneration || !this.playbackActive) {
+        this.stopProgressTimer();
+        return;
+      }
+      if (Date.now() - startedAt > lifetimeMs) {
+        this.stopProgressTimer();
+        return;
+      }
+
+      let timing: { currentTimeMs: number; durationMs: number };
+      try {
+        timing = read();
+      } catch {
+        this.stopProgressTimer();
+        return;
+      }
+
+      const clipTimeMs = Math.max(0, Math.round(timing.currentTimeMs));
+      const durationMs = Math.max(0, Math.round(timing.durationMs));
+      this.emit({
+        type: 'playback_progress',
+        payload: {
+          // The position is reported across the whole line, so a queued line
+          // keeps one clock.
+          currentTimeMs: chunkOffsetMs + clipTimeMs,
+          durationMs,
+          viseme: visemeAt(timeline, clipTimeMs),
+        },
+      });
+    }, 50);
+  }
+
   public async playSpeech(
     text: string,
     options: VoicePlaybackOptions = {}
@@ -278,10 +387,70 @@ export class NativeVoiceTransport implements VoiceTransport {
     this.stopPlayback();
     const generation = ++this.playbackGeneration;
     this.playbackActive = true;
+    this.playbackTimeline = this.resolveTimeline(text, options);
     this.emit({ type: 'playback_start' });
+    await this.playClip(text, options, generation, options.chunkOffsetMs ?? 0);
+    this.finishPlayback(generation);
+  }
+
+  /**
+   * Queue a piece of a spoken line.
+   *
+   * Pieces play back to back and the line keeps one start and one end, so the
+   * session sees one continuous utterance and the mouth clock runs across the
+   * whole line.
+   */
+  public enqueueSpeech(text: string, options: VoicePlaybackOptions = {}): Promise<void> {
+    return new Promise<void>(resolve => {
+      this.speechQueue.push({ text, options, resolve });
+      if (!this.speechQueueRunning) void this.drainSpeechQueue();
+    });
+  }
+
+  private async drainSpeechQueue() {
+    this.speechQueueRunning = true;
+    const generation = ++this.playbackGeneration;
+    this.playbackActive = true;
+    this.emit({ type: 'playback_start' });
+
+    try {
+      while (this.speechQueue.length > 0) {
+        const item = this.speechQueue.shift();
+        if (!item) break;
+        if (this.disposed || generation !== this.playbackGeneration) break;
+
+        this.playbackTimeline = this.resolveTimeline(item.text, item.options);
+        try {
+          await this.playClip(
+            item.text,
+            item.options,
+            generation,
+            item.options.chunkOffsetMs ?? 0
+          );
+        } catch {
+          // One failed piece must not end the line.
+        }
+        item.resolve();
+      }
+    } finally {
+      this.speechQueueRunning = false;
+      this.finishPlayback(generation);
+    }
+  }
+
+  /**
+   * Play one clip without announcing a new utterance.
+   */
+  private async playClip(
+    text: string,
+    options: VoicePlaybackOptions,
+    generation: number,
+    chunkOffsetMs: number
+  ): Promise<void> {
     const speed = options.speed || 1.0;
     const lang = options.lang || this.targetLanguage;
     const locale = resolveSpeechLocale(lang, options.locale);
+    const timeline = this.resolveTimeline(text, options);
 
     // Gemini TTS supplies locale-directed Dutch audio for nl-BE. Play that
     // provider audio directly; only fall back to exact-match native speech when
@@ -291,23 +460,27 @@ export class NativeVoiceTransport implements VoiceTransport {
         options.audioBase64,
         speed,
         options.mimeType,
-        generation
+        generation,
+        timeline,
+        chunkOffsetMs
       );
       if (played) return;
     }
 
     if (this.disposed || generation !== this.playbackGeneration) return;
-    return this.fallbackSpeech(text, speed, locale, generation);
+    return this.fallbackSpeech(text, speed, locale, generation, timeline, chunkOffsetMs);
   }
 
   private async playBase64Audio(
     base64: string,
     speed: number,
     mimeType = 'audio/wav',
-    generation: number
+    generation: number,
+    timeline?: VisemeTimeline,
+    chunkOffsetMs = 0
   ): Promise<boolean> {
     if (Platform.OS === 'web') {
-      return this.playViaWebAudio(base64, speed, mimeType, generation);
+      return this.playViaWebAudio(base64, speed, mimeType, generation, timeline, chunkOffsetMs);
     }
 
     try {
@@ -347,11 +520,19 @@ export class NativeVoiceTransport implements VoiceTransport {
             this.player = null;
           }
           this.cleanupTempAudio();
-          this.finishPlayback(generation);
           resolve();
         });
 
         player.play();
+        this.startProgressTimer(
+          generation,
+          () => ({
+            currentTimeMs: (player.currentTime ?? 0) * 1000,
+            durationMs: (player.duration ?? 0) * 1000 || timeline?.durationMs || 0,
+          }),
+          timeline,
+          chunkOffsetMs
+        );
       });
 
       return true;
@@ -366,7 +547,9 @@ export class NativeVoiceTransport implements VoiceTransport {
     base64: string,
     speed: number,
     mimeType: string,
-    generation: number
+    generation: number,
+    timeline?: VisemeTimeline,
+    chunkOffsetMs = 0
   ): Promise<boolean> {
     try {
       const AudioCtor = (globalThis as any).Audio;
@@ -383,7 +566,6 @@ export class NativeVoiceTransport implements VoiceTransport {
           settled = true;
           this.webAudio = null;
           this.playbackCancel = null;
-          this.finishPlayback(generation);
           resolve(true);
         };
         audio.onended = done;
@@ -400,6 +582,15 @@ export class NativeVoiceTransport implements VoiceTransport {
           resolve(false);
         };
         const attempt = audio.play();
+        this.startProgressTimer(
+          generation,
+          () => ({
+            currentTimeMs: (Number(audio.currentTime) || 0) * 1000,
+            durationMs: (Number(audio.duration) || 0) * 1000 || timeline?.durationMs || 0,
+          }),
+          timeline,
+          chunkOffsetMs
+        );
         if (attempt && typeof attempt.catch === 'function') {
           attempt.catch(() => {
             if (!settled) {
@@ -420,6 +611,7 @@ export class NativeVoiceTransport implements VoiceTransport {
   private finishPlayback(generation: number) {
     if (generation !== this.playbackGeneration || !this.playbackActive) return;
     this.playbackActive = false;
+    this.stopProgressTimer();
     this.playbackCancel = null;
     this.emit({ type: 'playback_end' });
   }
@@ -457,7 +649,9 @@ export class NativeVoiceTransport implements VoiceTransport {
     text: string,
     speed: number,
     locale: string,
-    generation: number
+    generation: number,
+    timeline?: VisemeTimeline,
+    chunkOffsetMs = 0
   ): Promise<void> {
     const voice = await this.resolveNativeVoice(locale);
     if (this.disposed || generation !== this.playbackGeneration) return;
@@ -466,7 +660,6 @@ export class NativeVoiceTransport implements VoiceTransport {
     // That produced French audio for Belgian Dutch on hosts without an nl-BE
     // voice. Keep the playback boundary locale-safe and let the UI offer text.
     if (locale.toLowerCase() === 'nl-be' && !voice) {
-      this.finishPlayback(generation);
       this.emit({ type: 'error', payload: 'voice_locale_unavailable' });
       return;
     }
@@ -477,7 +670,6 @@ export class NativeVoiceTransport implements VoiceTransport {
         if (settled) return;
         settled = true;
         if (this.playbackCancel === cancel) this.playbackCancel = null;
-        this.finishPlayback(generation);
         resolve();
       };
       const cancel = () => { if (!settled) { settled = true; resolve(); } };
@@ -493,6 +685,19 @@ export class NativeVoiceTransport implements VoiceTransport {
         onStopped: finish,
         onError: finish,
       });
+
+      // The native speech engine reports no timeline, so the clock runs on
+      // elapsed time against the estimated duration of the line.
+      const startedAt = Date.now();
+      this.startProgressTimer(
+        generation,
+        () => ({
+          currentTimeMs: Date.now() - startedAt,
+          durationMs: timeline?.durationMs ?? 0,
+        }),
+        timeline,
+        chunkOffsetMs
+      );
     });
   }
 

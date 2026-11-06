@@ -946,3 +946,459 @@ shell due to DNS; native system-font fallback is explicit until offline font ass
 are available. This is a visual adaptation, not human content review, native device
 acceptance, a deployment, or an audition of live provider speech. Details and
 verification are in docs/design-2026-10-09/LINGO_REFERENCE.md.
+
+## Original 3 refinement study — 10 October 2026
+
+The user selected Original 3 as the visual foundation and requested the next step.
+`docs/design-2026-10-10/lingo-original3-refined.html` is a standalone, connected
+Home / Speaking / Recap / Progress prototype. It preserves the source's
+illustrated scenes, activity colors and microphone focus, and explores refined
+typography, card geometry, shared spacing, compact layouts and Warm Midnight.
+The inspector compares the proposed Fraunces/DM Sans pairing with the current
+Bricolage/Figtree pairing. Canonical colors/artwork are copied as static snapshots;
+production tokens, screen owners and learning/runtime code are unchanged.
+
+Browser checks cover the four-screen UI flow, opt-in draft help, simulated offline
+draft recovery, pending/first-use states, text wrapping at 320/390/430 px and 200%
+text, and both theme captures. Typecheck and script syntax checks passed. These
+are prototype checks, not a real session, audio/provider test, native acceptance,
+content review or evidence that all 142 Studio screens have been implemented.
+See `docs/design-2026-10-10/ORIGINAL3_REFINEMENT.md` for the reference lock, scope,
+verification limits and integration boundary. Typography/component details remain
+proposed pending benchmark acceptance; existing reliability gates are unchanged.
+
+## Tutor catalog slice — 20 October 2026
+
+The app had 23 characters and one face for all of them, chosen by gender. A
+character is a person, and a person keeps a face.
+
+Implemented:
+
+- `src/features/avatar/avatarCatalog.ts` is the list of faces the app can show,
+  and it decides which one a character wears. The learner's own choice comes
+  first, because choosing a tutor is the learner's decision and not the
+  content's. The face the mission authored comes next, and a character with no
+  authored face still gets a stable one, so the same character always looks the
+  same between sessions.
+- `CharacterDefinition.avatarId` lets a mission name the face of its character.
+  It is optional, so nothing breaks while the content catches up.
+- `UserPreferences.preferredAvatarId` records the learner's choice. It is
+  learner-owned and local, like the other preferences, and it is included in
+  the export and delete scope.
+- The settings screen has a tutor section with the catalog and an automatic
+  option, in every interface language the app ships.
+- The stage loads the model the catalog names, and falls back to the placeholder
+  character if the asset cannot be loaded.
+
+The catalog holds two placeholder faces for now, both with the same morph
+contract, so the choice is real rather than decorative. More faces are assets,
+not code.
+
+Not decided here: whether a character may be given a face that contradicts the
+character, and how a tutor change is presented when it happens mid-session.
+
+Cost: the two models add 7.2 MB to the application bundle. The web build does
+not carry them.
+
+Verification: typecheck passes, 1011 tests pass, the Android bundle builds, the
+web bundle is 4.01 MB and carries no models, and all 40 visual snapshots pass.
+The tutor picker was not inspected on a device.
+
+## Reaction policy slice — 20 October 2026
+
+The character reacted to a finished session. That was the least honest version of
+a reaction, because a session can be completed and still have gone badly. This
+slice ties the reaction to what actually happened in the turn.
+
+Implemented:
+
+- `src/features/avatar/avatarReactionPolicy.ts` decides the reaction, and it
+  uses the same support ledger the evidence uses. A turn that was assisted is
+  acknowledged with concern rather than praise, because help cannot manufacture
+  independent recall. A turn that did nothing notable gets no reaction at all.
+- The support window is the turn itself: support shown before the learner spoke
+  is modelling, support shown after the reply is bookkeeping. This is the rule
+  the evidence already applies, reused rather than reinvented.
+- A turn in which the scene accepted a proposed action moved the world forward,
+  which is a real result and is acknowledged as one.
+- A finished session is praised only when it was completed and carried through
+  without production-form support. A session the learner cut short is not
+  celebrated, and a session carried through with help is acknowledged rather
+  than praised.
+- The scene's acceptance is recorded from the reducer's answer, not from what
+  the model proposed.
+
+Not decided here: whether a reaction should also be driven by the assessment
+result. The assessment is produced when the session ends, by which time the
+character is no longer on screen, so a reaction based on it would be seen in the
+next session rather than in this one. That is a product question about where
+the character lives, not about the policy.
+
+Verification: typecheck passes, 1002 tests pass, the Android bundle builds, the
+web bundle is unchanged at 3.99 MB, and all 40 visual snapshots pass. The policy
+is covered by tests; the reaction on a real session was not inspected on a
+device.
+
+## Avatar reaction slice — 20 October 2026
+
+A character that only opens and closes its mouth is a recording. This slice gives
+it states and reactions, which is the part Praktika has and this app did not.
+
+Implemented:
+
+- `src/features/avatar/avatarExpressions.ts` expresses a state with blendshape
+  weights and a head pose. The weights address the ARKit set a standard rig
+  carries, so a state is a mix of several shapes rather than one switch: listening
+  raises the brows and tilts the head, thinking looks aside and up, a reaction
+  warms the mouth and the eyes.
+- `src/features/avatar/avatarState.ts` owns one state. The session sets the base
+  state, and the voice overrides it while audio is running, because the voice is
+  the most immediate truth about what the character is doing. The state is
+  derived from the clock rather than tracked, so it cannot drift.
+- The voice layer now reports listening as well as speaking, so the character
+  listens while the learner speaks without the session having to say so.
+- The session drives it: it waits while a reply is being written, it greets
+  when the tutor speaks its first line, and it reacts when a session was carried
+  through to the end. A session the learner cut short is not celebrated.
+- The head is posed through its bone, so the skin follows it, and the camera
+  frames the eyes rather than the head mesh, which covers the neck and left the
+  face high in the portrait.
+
+Not decided here: which reaction belongs to which outcome. The praise reaction
+follows a completed session, but a session can be completed and still have gone
+badly, and the assessment result is the honest signal. That mapping belongs with
+the assessment, not with the renderer.
+
+Verification: typecheck passes, 988 tests pass, the Android bundle builds, the
+web bundle is unchanged at 3.99 MB, and all 40 visual snapshots pass. The
+expressions were inspected in a browser preview of the live session: the head
+tilts and the brows lift while listening, and the mouth warms for a reaction. It
+was not inspected on a physical device.
+
+## Edge voice slice — 20 October 2026
+
+The speech provider was the blocker: ten requests a day, on a free tier, for an
+app that speaks on every turn.
+
+Implemented:
+
+- `server/providers/edgeTts.ts` speaks with the Edge read-aloud voice. It needs
+  no account, no key and no quota, it streams, and it reports where every word
+  is spoken. That last part is the real prize: the mouth stops guessing.
+- `pickEdgeVoice` chooses the voice for a locale and a voice gender. The exact
+  regional voice is preferred, and a learner who asked for Belgian Dutch is
+  never answered in Netherlands Dutch when a Belgian voice exists.
+- `visemeTimelineFromWords` builds the mouth timeline from reported word
+  timings. The word carries the timing, and only the shapes inside a word are
+  estimated. This is the first time the mouth is driven by the voice rather
+  than by the text.
+- The speech providers are now a chain. A provider that is blocked, metered out
+  or broken does not take the voice away from a session: the next provider is
+  tried, and the client's own speech remains the last resort.
+- `SPEECH_PROVIDER=edge` puts the Edge voice first. Without it, the cloud voice
+  stays first when a key is present, because it is the voice that has been
+  heard working.
+
+**Not verified against the live service from this environment.** The Edge
+read-aloud endpoint refused every connection here: the older host answers 403,
+and the current host accepts the socket and then closes it without audio. The
+reference Python client fails the same way, so this is the network, not the
+implementation. The provider, the voice choice, the word timing and the mouth
+timeline are covered by tests; the live call is not. The Edge voice must be
+tried from the app's own network before it is relied on.
+
+The chain is what makes that acceptable: if the Edge voice does not answer, the
+session speaks with the cloud voice, and if that is metered out, the client
+falls back to the device's own speech.
+
+Verification: typecheck passes, 975 tests pass, the Android bundle builds, the
+web bundle is unchanged at 3.99 MB, and all 40 visual snapshots pass.
+
+## Streamed speech slice — 20 October 2026
+
+A tutor line was one wait: the learner heard nothing until the whole line had
+been synthesised. This slice hands the line over in pieces.
+
+Implemented:
+
+- `POST /api/speech/synthesize/stream` is a server-sent event stream. Each
+  piece carries its text, its audio, its length, its offset within the line, and
+  its mouth timeline, so the client plays the pieces back to back and runs one
+  mouth clock across the whole line.
+- `splitIntoSpeechChunks` cuts a line at sentence boundaries. Every sentence is
+  its own piece, because a piece is a synthesis call and the first sound cannot
+  be heard before the first piece exists.
+- `VoiceTransport.enqueueSpeech` queues a piece. Pieces play back to back, the
+  line keeps one start and one end, and the returned promise resolves when that
+  piece has finished. The abandoned queue releases its waiters, so a cancelled
+  turn never leaves a caller waiting.
+- `speakStreamedWithBestAvailable` is the session's path for a spoken line. A
+  line that fits in one piece keeps the single-clip path, because the audio
+  cache is worth more there than a stream. A stream that fails is not an error
+  state: the line is spoken through the single-clip path instead.
+- The event stream is read with `XMLHttpRequest`, because a streaming response
+  body is not available in the React Native fetch implementation.
+
+**The provider cost is the constraint.** The configured speech provider allows
+ten requests a day on its free tier, and a metered provider is charged per
+request. A line is therefore synthesised with **one** request and the audio is
+cut into pieces, rather than one request per sentence. Cutting the audio is
+cheaper and keeps the quota; the trade is that the first sound still waits for
+the whole synthesis, and only the transfer is overlapped. Setting
+`SPEECH_STREAM_PER_SENTENCE=1` switches to one request per sentence, which is
+the faster path to a first sound and is meant for a provider that streams or
+has a generous quota.
+
+**The quota is a product problem, not a code problem.** A language app speaks on
+every turn, so ten requests a day cannot carry a session. Before the streaming
+path is exercised in production the speech provider needs a paid tier, or a
+replacement that streams and reports visemes, such as Azure Speech with viseme
+events or AWS Polly with speech marks. Both also remove the estimate from the
+mouth timeline, because they report the phoneme timing with the audio.
+
+Verification: typecheck passes, 961 tests pass, the Android bundle builds, the
+web bundle is unchanged at 3.99 MB, and all 40 visual snapshots pass. The
+stream was exercised against the live provider before the daily quota was
+exhausted: four pieces arrived with correct offsets, lengths and mouth
+timelines. The end-to-end behaviour is now covered by a test with a stub
+provider, because the live provider has no quota left to test with.
+
+## Praktika patterns worth taking — 20 October 2026
+
+A reverse engineering pass over a comparable product (Praktika, a Flutter and
+Unity language app) produced a set of patterns. This records which ones apply
+here, which are already held, and which were taken in this slice.
+
+| Praktika pattern | Evidence | State here |
+|---|---|---|
+| Chunked TTS with a stream session, so the first sound arrives early | `Praktika.Lesson.TTS.TtsProtocol`: `InitSession`, `OpenStream`, `HandleChunk`, `Eos`; responses `SessionInitialized`, `StreamOpened`, `ChunkReady`, `StreamFinished`; errors `BadPayload`, `BadSequence`, `ServerError`, `RateLimitExceeded`, `ProviderError` | **Open.** The speech endpoint returns the whole clip. Streaming would cut the wait before the tutor speaks. |
+| Word timings inside the speech chunk, which are the lip-sync clock | `TtsChunkReady` carries `StreamId`, `Audio`, `Text`, `DurationMs`, `WordStartTimesMs` | **Held in spirit.** The clip length is measured and a viseme timeline is derived. A provider that streams word timings would replace the estimate. |
+| A pre-roll buffer, so speech does not start before the character is on screen | `GenAvatarPreRollBuffer`, `GenAvatarPrefetchService`, and the log line `Scene became ready while TTS was already playing` | **Taken.** `avatarReadiness` reports when the stage is on screen and the session waits up to 1.2 s before the greeting. The session always continues if the wait times out. |
+| A speech queue, and a gate that drops audio once the view is closed | `GenAvatarSpeechQueueService`, `appendAudioData rejected after the view closed`, `[LIPSYNC_GATE] dispose started` | **Held.** The app's transport already cancels playback when the attempt ends, and the session owns the audio. |
+| Load metrics for the avatar, per phase | `GenAvatarLoadMetricsService`, `GenAvatarLoadPhaseTimings` | **Open.** Nothing measures how long the character takes to appear. |
+| The tutor reacts to what the learner said, and the reaction is part of the turn | `NextBotReactionReady`, `UserMessageReactionResponse`, `GenAvatarReactionService` | **Open.** The avatar has a mouth clock but no reaction channel. This is the natural next avatar feature. |
+| The tutor poses a challenge and the learner answers it inside the conversation | `Challenge`, `ChallengeResponse`, `SendChallengeAnswer`, `NextBotChallengeReady` | **Open.** A conversational challenge is a different shape from the current coach hint. |
+| The avatar can change mid-session without ending it | `LessonAvatarSwitchLifecycleService`, `avatarSwitchRecoveryRequired`, `selectedAvatarSlug`, `defaultAvatarId` | **Open.** `mission.character` carries no avatar reference yet. |
+| Blurred artwork while the real character loads | `assets/images/avatars/placeholders/skye_base_mode.webp` | **Partly.** The web build shows the designed artwork; the device build shows an empty frame until the model arrives. A soft placeholder is a small addition. |
+| A human tutor and the AI tutor share one avatar and one lip-sync path | `GenAvatarRemoteAudioService`, `LiveKitLipSyncAudioService` | **Not applicable.** No human tutor in this product. |
+| Course generation with a status the client polls | `post_study_plan_generation_v15`, `get_study_plan_generation_v15`, `CourseGenerationStatus` | **Open.** Matches the living curriculum direction, but the generation contract is a product decision. |
+| The session is the unit of scoring, and the content is verified separately | `create_session_assessment_v15`, `post_session_content_verification_v15`, `post_session_content_lexis_usages_v15` | **Held.** The app keeps scene outcome, communicative evidence and linguistic observations separate. |
+| Lesson content is materialised on every start and replays | `materialize_practice_activity_lesson_v15` | **Open.** Relevant to a replayable lesson. |
+| A pricing surface for the generated avatars | `avatars_four_step_paywall.webp`, `avatars_upsell_new_tutors.webp`, `premium_avatar_required_shown` | **Not applicable.** No premium avatar tier in this product. |
+
+Taken in this slice: the pre-roll behaviour, with the race it prevents documented
+rather than only worked around.
+
+Verification: typecheck passes, 940 tests pass, the Android bundle builds, the web
+bundle is 3.99 MB, and all 40 visual snapshots pass. The readiness gate was
+verified by unit test, not on a device.
+
+## Viseme fidelity slice — 20 October 2026
+
+The mouth drove seven coarse shapes. A mouth needs the canonical viseme set.
+
+Implemented:
+
+- The viseme set is now the canonical Oculus set (`sil`, `PP`, `FF`, `TH`, `DD`, `kk`,
+  `CH`, `SS`, `nn`, `RR`, `aa`, `E`, `I`, `O`, `U`), which is what every glTF
+  avatar rig carries as `viseme_*` morph targets and what the Rhubarb, Azure and
+  Polly converters already emit. A provider that reports real visemes can replace
+  the text estimator without the client changing.
+- `ARKIT_WEIGHTS` expresses each viseme with several ARKit blendshapes at once,
+  following the published Oculus viseme reference and the tuning used by the
+  MIT-licensed `talking-head-studio` project. A standard avatar rig carries the
+  ARKit set, so the mouth reads as a mouth rather than a switch between fifteen
+  binary shapes.
+- The renderer applies both: the `viseme_*` morph target and the ARKit weights
+  are driven from the same clock.
+
+Not adopted, and why:
+
+- `talking-head-studio` (MIT) is a full framework: 238 dist files, its own audio
+  player, its own TTS server contract, `react-native-wgpu`, MediaPipe and a
+  drei dependency. It would replace the app's voice ownership rules, which are
+  stricter than the library's.
+- `avatoon` (MIT) is the cleaner library, but it owns audio playback through
+  `expo-av` while this app plays through `expo-audio` behind a transport with
+  consent and attempt-ownership rules, and it needs drei.
+- `perxona-connect-kit` (Apache-2.0) is a web component, and `privacypuppet` is a
+  web app. Neither is a React Native component.
+
+The upgrade path for real phoneme timing is a provider that reports visemes with
+the audio: Azure viseme events and Polly speech marks both stream, so they add no
+latency. Rhubarb also works, but it analyses the whole clip first, which would
+delay the first sound of every line.
+
+Verification: typecheck passes, 933 tests pass, the Android bundle builds, the
+web bundle is 3.99 MB, and all 40 visual snapshots pass. The mouth was
+inspected in a browser preview of the live session: the mouth now opens, rounds
+and narrows with the viseme set. It was not inspected on a physical device.
+
+## Human avatar asset slice — 20 October 2026
+
+The stage carried a character built from primitives. That proved the pipeline and
+failed the product: a character has to look like a person.
+
+Implemented:
+
+- `src/assets/avatars/tutor.glb` is a rigged human avatar with the full Oculus
+  viseme set and the ARKit blendshapes (72 morph targets). The viseme names this
+  app already computes map straight onto the blendshapes the model carries, so no
+  extra mapping table was needed.
+- `AvatarModelGLTF` loads the asset, frames the camera on the head, and drives
+  the morph influences from the shared playback clock each frame. It also drives
+  the blink from the same clock, and falls back to the procedural character if
+  the asset cannot be loaded.
+- `.glb` is registered as a Metro asset extension, and the asset is read through
+  the file system on a device and over HTTP on the web.
+
+Asset provenance: the model is the Ready Player Me default creator avatar, taken
+from the `met4citizen/TalkingHead` repository because the Ready Player Me model
+host is not reachable from this environment. Ready Player Me avatars are free for
+non-commercial use under CC BY-NC 4.0; a commercial app needs a Ready Player Me
+developer account and its own avatar, which is a drop-in replacement for the
+bundled file. The model is a placeholder for the real tutor art, not the product
+art.
+
+Not decided here: which avatar belongs to which character. The mission character
+carries a voice and a role today; an avatar reference, and the choice of the
+tutor's look per character, is a content decision.
+
+Verification: typecheck passes, 931 tests pass, the Android bundle builds, the web
+bundle is unchanged at 3.99 MB because the renderer stays native-only, and all 40
+visual snapshots pass unchanged. The character was inspected in a browser preview
+of the live session: the head is framed in the portrait and the mouth moves
+through the viseme set. It was not inspected on a physical device.
+
+## Avatar stage slice — 20 October 2026
+
+The timing slice above is now connected to a renderer. The session header carries a
+3D character whose mouth follows the voice.
+
+Implemented:
+
+- `src/providers/voice/playbackClock.ts` is the shared position of the voice. The
+  transport mirrors its own playback events into it, so a renderer can follow the
+  voice without reaching into session internals. A failing subscriber cannot break
+  playback.
+- `src/features/avatar/` is the character module. `visemeTargets.ts` maps a mouth
+  shape to a pose for a procedural character and to Oculus/RPM morph target names
+  for a real asset. `avatarCapabilities.ts` decides whether a stage may be shown.
+  `ProceduralAvatar.native.tsx` is a character built from primitives with a mouth,
+  a breath and a blink. It is a placeholder with the same contract as a GLB with
+  morph targets, so an asset can replace it without touching the stage.
+- The stage is platform split, following the `archiveRepository` pattern:
+  `AvatarStage.native.tsx` is the GL renderer, `AvatarStage.web.tsx` keeps the
+  designed artwork, and `AvatarStage.tsx` is the type-check entry point. The web
+  bundle is 3.99 MB with the stage in place, the same size as before it existed;
+  three.js is not in the web build.
+- `CharacterStageAvatar` in the live session header is the single character
+  surface. The per-message portraits keep the designed artwork, because one GL
+  context per message bubble is not acceptable. A device that cannot create a GL
+  context falls back to the same artwork, so the session never depends on the
+  renderer.
+- `expo-gl`, `three` and `@react-three/fiber` are added. `expo-gl` ships inside
+  Expo Go, so the stage runs without a development build and without changing the
+  app's start flow.
+
+Not decided here: where a larger stage belongs. The header portrait is a living
+portrait, not a stage surface. A full character view needs a layout decision, a
+motion accommodation, and an asset pipeline, none of which this slice claims.
+
+Verification: `npm run typecheck` passes. `npm test` passes (931 tests, 3 skipped).
+The Android bundle builds (8.7 MB Hermes bytecode) and the web bundle is unchanged
+at 3.99 MB. All 40 visual snapshots pass unchanged, so the web rendering of the
+live session is pixel-identical to the baseline. The stage itself was not exercised
+on a physical device: no device was attached, and the render was not inspected on
+hardware.
+
+Pre-existing, unrelated to this work: 16 Playwright tests in this checkout fail
+because the learner turn never reaches the actor endpoint
+(`e2e/transcript-survival.spec.ts` and the specs that depend on the same flow).
+The same failures reproduce on a clean HEAD build with the avatar work removed.
+
+## Avatar speech timing slice — 20 October 2026
+
+The speaking surface needs a mouth clock before any 3D or illustrated character can
+be attached. The slice below establishes that clock without choosing a renderer, so
+the decision about a 3D stage stays open and reversible.
+
+Implemented:
+
+- `src/providers/voice/visemes.ts` derives a mouth timeline from the spoken text and
+  the measured length of the clip. It is an estimate, not a phonetic alignment, and it
+  is deterministic: the same text and duration always produce the same cues. Cues are
+  contiguous and cover the whole duration, so a playback position maps to a shape
+  without gaps. Scripts without latin letters keep the mouth moving with one neutral
+  movement instead of freezing it.
+- `src/providers/voice/audioTiming.ts` measures the real length of a base64 WAV
+  payload. It parses the RIFF container directly and reports `null` when the payload
+  is not a readable WAV, so an unreadable clip degrades to an estimate rather than a
+  wrong number.
+- `POST /api/speech/synthesize` now returns `durationMs` and `visemes` beside the
+  audio. The server and the client share one estimator, so both sides read the same
+  contract. A client that ignores both fields is unaffected.
+- `VoiceEvent` gained `playback_progress` (`currentTimeMs`, `durationMs`, `viseme`).
+  The native transport emits it every 50 ms while provider audio plays, using the
+  real player position. The native-speech fallback has no measurable duration, so its
+  clock runs on elapsed time against the estimated length of the line.
+- `speakWithBestAvailable` forwards the timeline to playback and caches it with the
+  audio, so a replayed line keeps the same mouth movement.
+
+Not decided here: the renderer (3D stage, illustrated character, or none), the avatar
+asset pipeline, emotion and idle channels, and any claim that a mouth shape is
+evidence of the learner's own production.
+
+Verification: `npm run typecheck` passes. `npm test` passes (909 tests, 3 skipped).
+`npm run validate:scenes` passes with its existing cycle warnings. The real provider
+acceptance test passes against Gemini TTS for French and Belgian Dutch. The live
+`/api/speech/synthesize` endpoint returned `durationMs=2120` and 21 viseme cues for
+"Goeiedag! Welkom in Brussel." with a 143 840 byte WAV body. This verifies the timing
+contract only: no avatar renders this yet, and native device playback was not
+exercised.
+
+One unrelated pre-existing design-scale violation was fixed so the suite could be
+trusted: `src/components/LiveSessionView.tsx` used `text-[19px]`, an invented size
+outside the allowed scale. It now uses `text-[18px]`.
+
+## Refined Original 3 applied to all 142 Studio screens — 10 October 2026
+
+The user then requested application across the complete Lingo UX Experience
+Studio. `docs/design-2026-10-10/lingo-ux-studio-v5.html` now preserves all 142 source
+routes and nine families under the selected shared visual system. Home, live
+speaking, scene recap and Progress use the benchmark layouts; other families
+retain their tasks with shared typography, cards, fields, choices, activity colors,
+reading surfaces and controls. Both themes, screen board, filtering, keyboard
+navigation and a static Original 3 comparison remain available.
+
+The retained Studio controller owns its in-page demo behavior. Stacked experimental
+scripts and real browser audio calls are removed; audio is explicitly a visual
+simulation. The generated Studio keeps source French fixtures and does not
+translate/review content, change an assessment band or write application evidence.
+Production UI/runtime modules and canonical tokens are unchanged.
+
+Verification: 568 actual rendered-route checks cover all 142 routes in light/320
+and dark/430, each with 100% and 200% text. Twenty-two representative checks cover
+390 px in both themes. Checked surfaces had no horizontal overflow. Exercise
+negative cases, optional draft help, explicit send, recording-state preview,
+independent switches, selected appearance, search/reset and the 142-card board were
+exercised. Build, script parsing/syntax, typecheck and diff checks passed.
+This verifies the standalone Studio, not native acceptance, a live provider,
+production deployment or complete accessibility. See
+`docs/design-2026-10-10/STUDIO_REFINEMENT.md` and its saved audit/captures.
+<!-- Studio color preferences: prototype-only, 2026-10-10. -->
+
+The standalone 142-screen Studio now includes a Warm / Warm Midnight color bar
+with five paired canvas choices (cream, sage, rose, lavender and sand), retained
+in its URL across navigation/reload. Ten combinations, header synchronization and
+320 px control usability were checked in the browser. Details and capture are in
+`docs/design-2026-10-10/STUDIO_REFINEMENT.md`. Canonical production colors and the
+learning/runtime boundaries remain unchanged.
+
+The Studio palette bar was corrected after its first implementation changed only
+the canvas. Presets now coordinate neutral surfaces, text, borders, primary
+actions and navigation, including retained dark-mode chrome. Ten combinations
+passed targeted card/button/badge contrast checks on `study-time`; all 142 routes
+rendered correctly with dark lavender and no page overflow. Evidence is recorded
+in `docs/design-2026-10-10/STUDIO_PALETTE_AUDIT.json`. These remain prototype-only
+overrides of the canonical palette.

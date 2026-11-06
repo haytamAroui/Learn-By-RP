@@ -378,6 +378,9 @@ export interface Translations {
     slowerSpeechDefaultLabel: string;
     typedPreferredLabel: string;
     hapticTurnCuesLabel: string;
+    tutorLabel: string;
+    tutorAutoLabel: string;
+    tutorDesc: string;
     sectionPrivacy: string;
     privacyDisclosure: string;
     liveVoiceLabel: string;
@@ -830,6 +833,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       slowerSpeechDefaultLabel: "Use slower character speech by default",
       typedPreferredLabel: "Prefer typing when a response starts",
       hapticTurnCuesLabel: "Use haptic turn cues",
+      tutorLabel: "Your tutor",
+      tutorAutoLabel: "Automatic",
+      tutorDesc:
+        "The character you practise with. Automatic lets each mission choose the tutor it was written for.",
       sectionPrivacy: "AI Processing & Consent Disclosures",
       privacyDisclosure:
         "Your voice audio is converted to speech to enable natural character dialogue. Transcripts and observations are stored locally on your device in your private ledger.",
@@ -1288,6 +1295,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       slowerSpeechDefaultLabel: "Utiliser un débit plus lent par défaut",
       typedPreferredLabel: "Préférer la saisie au clavier au début d’une réponse",
       hapticTurnCuesLabel: "Utiliser des repères haptiques pour les tours",
+      tutorLabel: "Votre tuteur",
+      tutorAutoLabel: "Automatique",
+      tutorDesc:
+        "Le personnage avec qui vous vous entraînez. Automatique laisse chaque mission choisir le tuteur pour lequel elle a été écrite.",
       sectionPrivacy: "Confidentialité & Traitement IA",
       privacyDisclosure:
         "Votre audio vocal est traité pour permettre un dialogue réaliste avec les personnages. Les transcriptions et observations restent stockées localement sur votre appareil.",
@@ -1744,6 +1755,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       slowerSpeechDefaultLabel: "Usar voz más lenta del personaje por defecto",
       typedPreferredLabel: "Preferir escribir al iniciar una respuesta",
       hapticTurnCuesLabel: "Usar señales hápticas de turno",
+      tutorLabel: "Tu tutor",
+      tutorAutoLabel: "Automático",
+      tutorDesc:
+        "El personaje con el que practicas. Automático deja que cada misión elija el tutor para el que fue escrita.",
       sectionPrivacy: "Privacidad y Procesamiento con IA",
       privacyDisclosure:
         "Tu voz se procesa para permitir diálogos naturales con los personajes. Las transcripciones y evidencias se guardan localmente en tu dispositivo en tu registro privado.",
@@ -2201,6 +2216,10 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       slowerSpeechDefaultLabel: "Standaard langzamer spreken",
       typedPreferredLabel: "Typen verkiezen bij het starten van een antwoord",
       hapticTurnCuesLabel: "Haptische beurtseinen gebruiken",
+      tutorLabel: "Jouw tutor",
+      tutorAutoLabel: "Automatisch",
+      tutorDesc:
+        "Het personage waarmee je oefent. Automatisch laat elke missie de tutor kiezen waarvoor ze geschreven is.",
       sectionPrivacy: "Privacy & AI-verwerking",
       privacyDisclosure:
         "Je spraakaudio wordt verwerkt om natuurlijke dialogen met personages mogelijk te maken. Transcripties en observaties worden lokaal op je apparaat opgeslagen in je privé-register.",

@@ -1,0 +1,9 @@
+{
+  "source": "scripts/lingo-studio/atelier-source.html",
+  "sourceSha256": "1c460b313939a6b9607299f0ad5d5018bfdc3687e6e773e683d983d4d78005e7",
+  "output": "docs/design-2026-10-10/lingo-ux-studio-v5.html",
+  "outputBytes": 293470,
+  "expectedScreens": 142,
+  "canonicalColors": "src/design/tokens.ts",
+  "canonicalArtwork": "src/design/lingoArtwork.ts"
+}

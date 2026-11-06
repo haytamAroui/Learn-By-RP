@@ -12,6 +12,7 @@ import {
   Sun,
 } from 'lucide-react-native';
 import { useArchive } from '../../features/archive/ArchiveProvider';
+import { AVATARS } from '../../features/avatar/avatarCatalog';
 import { getTranslations } from '../../features/i18n';
 import { useTheme } from '../../features/theme';
 import { ThemePreference } from '../../lib/themePreference';
@@ -196,6 +197,19 @@ export default function SettingsScreen() {
               accessibilityLabel={t.settings.autoPlayLabel}
             />
           </View>
+        </View>
+
+        <View className="gap-3 rounded-[26px] border border-border-subtle/40 bg-surface p-4">
+          <SectionLabel>{t.settings.tutorLabel}</SectionLabel>
+          <Text className="text-sm leading-6 text-muted">{t.settings.tutorDesc}</Text>
+          <ChipRow
+            options={[
+              { id: '', label: t.settings.tutorAutoLabel },
+              ...AVATARS.map(avatar => ({ id: avatar.id, label: avatar.label })),
+            ]}
+            value={archive.preferences.preferredAvatarId ?? ''}
+            onChange={id => patch({ preferredAvatarId: id || undefined })}
+          />
         </View>
 
         <View className="gap-4 rounded-[26px] border border-border-subtle/40 bg-surface p-4">

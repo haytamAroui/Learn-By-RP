@@ -28,12 +28,16 @@ describe('provider runtime architecture', () => {
     expect(runtime).toContain('Belgian Dutch (Flemish as used in Flanders)');
   });
 
-  it('defaults safely to deterministic reasoning and native speech', () => {
+  it('defaults safely to deterministic reasoning and a speech provider', () => {
     const runtime = createProviderRuntime({} as NodeJS.ProcessEnv);
     const descriptor = runtime.descriptor();
 
     expect(descriptor.conversation.id).toBe('deterministic');
-    expect(descriptor.speech.id).toBe('native');
+    // The Edge voice needs no account and no key, so it is the safe default.
+    // The client's own speech remains the last resort when the server has
+    // nothing to offer.
+    expect(descriptor.speech.id).toBe('edge');
+    expect(descriptor.speech.available).toBe(true);
     expect(descriptor.realtime?.available).toBe(false);
   });
 
@@ -57,5 +61,21 @@ describe('provider runtime architecture', () => {
     const descriptor = runtime.descriptor();
     expect(descriptor.realtime?.id).toBe('openai-realtime');
     expect(descriptor.realtime?.available).toBe(true);
+  });
+
+  it('prefers the cloud voice when a key is present and the edge voice when it is asked for', () => {
+    const withKey = createProviderRuntime({ GEMINI_API_KEY: 'test-key' } as NodeJS.ProcessEnv);
+    expect(withKey.descriptor().speech.id).toBe('gemini');
+
+    const edgeFirst = createProviderRuntime({
+      GEMINI_API_KEY: 'test-key',
+      SPEECH_PROVIDER: 'edge',
+    } as NodeJS.ProcessEnv);
+    expect(edgeFirst.descriptor().speech.id).toBe('edge');
+  });
+
+  it('keeps a speech provider available even without a cloud key', () => {
+    const runtime = createProviderRuntime({} as NodeJS.ProcessEnv);
+    expect(runtime.speech).not.toBeNull();
   });
 });

@@ -79,6 +79,8 @@ export interface CharacterDefinition {
   voiceStyle: string;
   /** Authored voice presentation, independent of character name or pronouns. */
   voiceGender?: VoiceGender;
+  /** The face this character wears, from the avatar catalog. */
+  avatarId?: string;
   personality: string;
   knowledgeBoundary: string[];
 }
@@ -874,4 +876,6 @@ export interface UserPreferences {
   /** Goal-onboarding starting point; local learner-owned data only. */
   startingPoint?: StartingPointProfile;
   continuityProfile?: LearnerContinuityProfile;
+  /** The tutor the learner chose, from the avatar catalog. Local and learner-owned. */
+  preferredAvatarId?: string;
 }

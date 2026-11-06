@@ -12,6 +12,7 @@ import {
   localeVoiceEnvironmentKey,
   pickGeminiVoiceForLocale,
 } from './geminiVoice';
+import { EdgeTtsProvider } from './edgeTts';
 
 export interface StructuredJsonRequest {
   task: 'actor' | 'coach' | 'assessment';
@@ -29,6 +30,8 @@ interface StructuredJsonProvider {
 interface SpeechProvider {
   id: string;
   speechModel: string;
+  /** The provider can stream, so a line may be spoken one piece at a time. */
+  streaming?: boolean;
   synthesize(request: SpeechSynthesisRequest): Promise<SpeechSynthesisResponse>;
 }
 
@@ -181,6 +184,33 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
   }
 }
 
+class ResilientSpeechProvider implements SpeechProvider {
+  readonly id: string;
+  readonly speechModel: string;
+  readonly streaming: boolean;
+
+  constructor(private readonly providers: SpeechProvider[]) {
+    this.id = providers[0]?.id ?? 'none';
+    this.speechModel = providers[0]?.speechModel ?? 'none';
+    this.streaming = providers.some(provider => provider.streaming === true);
+  }
+
+  async synthesize(request: SpeechSynthesisRequest): Promise<SpeechSynthesisResponse> {
+    let lastError: unknown;
+
+    for (const provider of this.providers) {
+      try {
+        return await provider.synthesize(request);
+      } catch (error) {
+        lastError = error;
+        console.warn(`Speech provider ${provider.id} failed; trying the next one:`, error);
+      }
+    }
+
+    throw lastError instanceof Error ? lastError : new Error('No speech provider is available');
+  }
+}
+
 class OpenAICompatibleProvider implements StructuredJsonProvider {
   readonly id = 'openai-compatible';
   readonly model: string;
@@ -316,6 +346,8 @@ export function createProviderRuntime(
       )
     : null;
 
+  const edge = new EdgeTtsProvider();
+
   const compatible =
     env.OPENAI_COMPATIBLE_BASE_URL && env.OPENAI_COMPATIBLE_MODEL
       ? new OpenAICompatibleProvider(
@@ -336,9 +368,19 @@ export function createProviderRuntime(
         ? gemini
         : null;
 
-  const speechPreference =
-    env.SPEECH_PROVIDER || (gemini ? 'gemini' : 'native');
-  const speech = speechPreference === 'gemini' ? gemini : null;
+  /*
+   * Speech providers in order of preference.
+   *
+   * The Edge voice needs no account and reports where every word is spoken.
+   * The cloud voice is the fallback: it is metered, and a metered provider that
+   * runs out must not take the voice away from a session.
+   */
+  const speechPreference = env.SPEECH_PROVIDER || (gemini ? 'gemini' : 'edge');
+  const speechChain: SpeechProvider[] =
+    speechPreference === 'edge'
+      ? [edge, ...(gemini ? [gemini] : [])]
+      : [...(gemini ? [gemini] : []), edge];
+  const speech = speechChain.length > 0 ? new ResilientSpeechProvider(speechChain) : null;
 
   const realtime = env.OPENAI_API_KEY
     ? new OpenAIRealtimeBroker(

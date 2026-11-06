@@ -10,9 +10,13 @@ import { SKILL_POLICY } from '../src/features/learning/policy';
 import { sanitizeActorAction } from '../src/features/roleplay/actorContract';
 import { buildCoachFallback } from '../src/features/roleplay/coachFallback';
 import { generateDutchActorFallback } from '../src/features/roleplay/dutchActorFallback';
+// Avatar mouth timing: shared with the client so both sides read one contract.
+import { estimateVisemeTimeline } from '../src/providers/voice/visemes';
+import { wavDurationMs } from '../src/providers/voice/audioTiming';
 // Scene director + action reducer, mounted under /v1.
 import { roleplayRouter } from './roleplay/routes';
 import { createProviderRuntime } from './providers/runtime';
+import { streamSynthesizedSpeech } from './providers/speechStream';
 import { resolveActorContext } from './roleplay/actorContext';
 import { createProviderGuard, resolveProviderIdentity } from './security/requestGuard';
 import { runtimeRateLimitStore } from './security/runtimeRateLimitStore';
@@ -642,10 +646,18 @@ const handleSpeechSynthesis = async (req: Request, res: Response) => {
       style,
     });
 
+    // The avatar needs a mouth clock. The provider returns audio only, so the
+    // clip length is measured from the payload and the mouth timeline is
+    // derived from the text. A client without an avatar ignores both fields.
+    const durationMs = result.audio?.base64 ? wavDurationMs(result.audio.base64) : null;
+    const visemes = durationMs ? estimateVisemeTimeline(text, durationMs).cues : [];
+
     res.json({
       ...result,
       audioBase64: result.audio?.base64,
       mimeType: result.audio?.mimeType,
+      ...(durationMs ? { durationMs } : {}),
+      ...(visemes.length > 0 ? { visemes } : {}),
     });
   } catch (err: any) {
     console.error('Error in speech synthesis:', err);
@@ -659,6 +671,71 @@ const handleSpeechSynthesis = async (req: Request, res: Response) => {
 
 app.post('/api/speech/synthesize', handleSpeechSynthesis);
 app.post('/api/tts', handleSpeechSynthesis);
+
+/**
+ * Speech synthesis as a stream of pieces.
+ *
+ * The whole clip is one wait today: the learner hears nothing until the line
+ * has been synthesised in full. This endpoint hands each piece on as it is
+ * ready, so the first sound can be played while the rest is still being
+ * prepared. The pieces carry their offset within the line, so the client plays
+ * them back to back and runs one mouth clock across the whole line.
+ */
+const handleSpeechStream = async (req: Request, res: Response) => {
+  if (!guardProviderRequest(req, res, 'speech')) return;
+  if (!providers.speech) {
+    res.status(503).json({ error: 'Cloud TTS is not configured', fallback: 'native' });
+    return;
+  }
+
+  const {
+    text,
+    language = 'es',
+    locale,
+    voice,
+    voiceGender,
+    voiceName,
+    speed = 1.0,
+    style,
+  } = req.body ?? {};
+
+  if (!text || typeof text !== 'string') {
+    res.status(400).json({ error: 'text is required' });
+    return;
+  }
+
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache, no-transform');
+  res.setHeader('Connection', 'keep-alive');
+  res.setHeader('X-Accel-Buffering', 'no');
+  res.flushHeaders?.();
+
+  const send = (event: unknown) => {
+    res.write(`data: ${JSON.stringify(event)}\n\n`);
+  };
+
+  try {
+    await streamSynthesizedSpeech(
+      providers.speech,
+      { text, language, locale, voice: voice || voiceName, voiceGender, speed, style },
+      chunk => send({ type: 'chunk', chunk }),
+      {
+        // One provider request per sentence is the fastest path to a first
+        // sound, but a metered provider is charged per request. The default
+        // keeps the cost of a line at one request and cuts the audio instead.
+        perSentence: process.env.SPEECH_STREAM_PER_SENTENCE === '1',
+      }
+    );
+    send({ type: 'end' });
+  } catch (err: any) {
+    console.error('Error in streamed speech synthesis:', err);
+    send({ type: 'error', error: err?.message || 'Speech generation failed' });
+  } finally {
+    res.end();
+  }
+};
+
+app.post('/api/speech/synthesize/stream', handleSpeechStream);
 
 function generateFallbackActorReply(
   characterName: string = 'Mateo',

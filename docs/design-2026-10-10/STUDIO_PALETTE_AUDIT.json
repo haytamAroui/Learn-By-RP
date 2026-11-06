@@ -1,0 +1,1120 @@
+{
+  "combinations": [
+    {
+      "badge": "rgb(221, 241, 234)",
+      "badgeTextContrast": 4.91,
+      "canvas": "rgb(248, 243, 232)",
+      "card": "rgb(255, 255, 255)",
+      "cardTextContrast": 14.99,
+      "overflow": false,
+      "palette": "warm",
+      "primary": "rgb(7, 69, 75)",
+      "primaryTextContrast": 10.7,
+      "theme": "light"
+    },
+    {
+      "badge": "rgb(213, 224, 212)",
+      "badgeTextContrast": 5.56,
+      "canvas": "rgb(238, 243, 234)",
+      "card": "rgb(250, 252, 249)",
+      "cardTextContrast": 17.01,
+      "overflow": false,
+      "palette": "sage",
+      "primary": "rgb(49, 93, 67)",
+      "primaryTextContrast": 7.56,
+      "theme": "light"
+    },
+    {
+      "badge": "rgb(240, 217, 213)",
+      "badgeTextContrast": 5.13,
+      "canvas": "rgb(255, 240, 233)",
+      "card": "rgb(255, 251, 249)",
+      "cardTextContrast": 16.79,
+      "overflow": false,
+      "palette": "rose",
+      "primary": "rgb(143, 65, 79)",
+      "primaryTextContrast": 6.91,
+      "theme": "light"
+    },
+    {
+      "badge": "rgb(225, 218, 237)",
+      "badgeTextContrast": 5.09,
+      "canvas": "rgb(243, 239, 250)",
+      "card": "rgb(252, 251, 254)",
+      "cardTextContrast": 16.73,
+      "overflow": false,
+      "palette": "lavender",
+      "primary": "rgb(103, 76, 148)",
+      "primaryTextContrast": 6.91,
+      "theme": "light"
+    },
+    {
+      "badge": "rgb(228, 215, 193)",
+      "badgeTextContrast": 4.78,
+      "canvas": "rgb(244, 234, 217)",
+      "card": "rgb(252, 249, 244)",
+      "cardTextContrast": 16.4,
+      "overflow": false,
+      "palette": "sand",
+      "primary": "rgb(120, 84, 35)",
+      "primaryTextContrast": 6.79,
+      "theme": "light"
+    },
+    {
+      "badge": "rgb(24, 69, 63)",
+      "badgeTextContrast": 6.42,
+      "canvas": "rgb(18, 35, 34)",
+      "card": "rgb(29, 50, 49)",
+      "cardTextContrast": 12.62,
+      "overflow": false,
+      "palette": "warm",
+      "primary": "rgb(7, 69, 75)",
+      "primaryTextContrast": 10.7,
+      "theme": "dark"
+    },
+    {
+      "badge": "rgb(47, 71, 60)",
+      "badgeTextContrast": 6.25,
+      "canvas": "rgb(23, 44, 37)",
+      "card": "rgb(36, 56, 49)",
+      "cardTextContrast": 11.81,
+      "overflow": false,
+      "palette": "sage",
+      "primary": "rgb(49, 93, 67)",
+      "primaryTextContrast": 7.56,
+      "theme": "dark"
+    },
+    {
+      "badge": "rgb(75, 57, 56)",
+      "badgeTextContrast": 6.18,
+      "canvas": "rgb(43, 33, 31)",
+      "card": "rgb(55, 45, 43)",
+      "cardTextContrast": 12.6,
+      "overflow": false,
+      "palette": "rose",
+      "primary": "rgb(143, 65, 79)",
+      "primaryTextContrast": 6.91,
+      "theme": "dark"
+    },
+    {
+      "badge": "rgb(64, 58, 81)",
+      "badgeTextContrast": 6.22,
+      "canvas": "rgb(37, 34, 50)",
+      "card": "rgb(49, 46, 61)",
+      "cardTextContrast": 12.45,
+      "overflow": false,
+      "palette": "lavender",
+      "primary": "rgb(103, 76, 148)",
+      "primaryTextContrast": 6.91,
+      "theme": "dark"
+    },
+    {
+      "badge": "rgb(73, 64, 48)",
+      "badgeTextContrast": 6.21,
+      "canvas": "rgb(43, 39, 30)",
+      "card": "rgb(55, 51, 42)",
+      "cardTextContrast": 11.94,
+      "overflow": false,
+      "palette": "sand",
+      "primary": "rgb(120, 84, 35)",
+      "primaryTextContrast": 6.79,
+      "theme": "dark"
+    }
+  ],
+  "routes": [
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 307,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "welcome"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 212,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "intro"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 288,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "story"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 200,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "sign-in"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 191,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "create-account"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 255,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "social-signin"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 136,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "verify-email"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 106,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "forgot-password"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 127,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "new-password"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 316,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "legal"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 235,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "choose-language"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 274,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "choose-goal"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 218,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "study-days"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 227,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "study-time"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 243,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "your-level"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 169,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "placement-start"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 136,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "placement-words"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 179,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "placement-listen"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 102,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "placement-sentence"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 261,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "placement-result"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 311,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "personalized-plan"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 206,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "first-lesson"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 357,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "home"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 540,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "study-plan"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 312,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "week-plan"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 269,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "calendar"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 236,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "current-module"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 269,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "module-lessons"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 340,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "lesson-preview"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 225,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "change-goal"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 177,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "change-schedule"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 198,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "lesson-reminder"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 310,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "notifications"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 153,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "notification-message"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 135,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "no-notifications"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 258,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "achievements"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 235,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "badge-detail"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 371,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "lesson-overview"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 370,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "theory"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 334,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "theory-video"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 346,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "theory-notes"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 245,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "exercise-choice"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 138,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "choice-feedback"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 200,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "exercise-gap"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 138,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "gap-feedback"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 200,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "exercise-listening"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 152,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "listening-feedback"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 266,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "exercise-video"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 139,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "video-feedback"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 347,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "exercise-monologue"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 378,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "monologue-review"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 227,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "exercise-dialogue"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 292,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "dialogue-feedback"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 295,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "lesson-complete"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 239,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "lesson-mistakes"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 387,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenarios"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 191,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenarios-filter"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 200,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-market"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 251,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-cafe"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 244,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-travel"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 312,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-detail"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 324,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-objectives"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 351,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-prepare"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 278,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-live"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 192,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-hint"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 394,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-conversation-result"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 358,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-debrief"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 240,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-retry"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 237,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "scenario-transfer"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 374,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "training"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 257,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "vocabulary"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 330,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "vocabulary-category"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 205,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "vocab-card"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 139,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "vocab-reveal"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 137,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "vocab-quiz"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 166,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "vocab-result"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 271,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "saved-words"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 296,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "word-detail"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 274,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "conjugation"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 252,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "word-search"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 302,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "grammar"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 194,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "grammar-topic"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 221,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "grammar-rule"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 121,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "grammar-practice"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 160,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "grammar-feedback"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 279,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "review-queue"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 420,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "library"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 278,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "films"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 270,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "books"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 270,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "podcasts"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 288,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "culture"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 270,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "film-detail"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 317,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "video-watch"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 193,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "video-subtitles"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 168,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "video-word"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 186,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "clip-quiz"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 210,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "book-detail"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 397,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "reader"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 162,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "reader-lookup"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 147,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "reader-settings"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 212,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "saved-excerpts"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 244,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "downloads"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 184,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "watchlist"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 180,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "recently-read"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 441,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "progress"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 268,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "skill-detail"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 351,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "speaking-progress"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 352,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "listening-progress"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 354,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "vocab-progress"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 348,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "grammar-progress"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 303,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "activity-calendar"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 247,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "activity-day"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 223,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "all-achievements"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 319,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "progress-report"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 458,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "profile"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 130,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "edit-profile"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 258,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "preferences"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 137,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "language-settings"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 226,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "reminders"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 175,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "appearance"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 361,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "accessibility"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 368,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "account-settings"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 384,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "privacy"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 327,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "help-center"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 187,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "support-chat"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 245,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 333,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium-benefits"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 322,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium-plans"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 326,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium-trial"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 230,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium-confirm"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 157,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium-success"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 319,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium-manage"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 244,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium-cancel"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 218,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "premium-restore"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 281,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "permission-mic"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 161,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "permission-notifications"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 154,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "offline"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 158,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "retry-error"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 82,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "loading-state"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 134,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "empty-state"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 195,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "session-resume"
+    },
+    {
+      "canvas": "rgb(37, 34, 50)",
+      "content": 126,
+      "overflow": false,
+      "palette": "lavender",
+      "route": "task-complete"
+    }
+  ]
+}

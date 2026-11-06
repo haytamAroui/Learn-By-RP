@@ -2,13 +2,16 @@ import type {
   ProviderRuntimeDescriptor,
   RealtimeSessionDescriptor,
   RealtimeSessionRequest,
+  SpeechSynthesisChunk,
   SpeechSynthesisRequest,
   SpeechSynthesisResponse,
+  SpeechSynthesisStreamEvent,
 } from '../providers/runtime/contracts';
 import Constants, { ExecutionEnvironment } from 'expo-constants';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
+import { openSpeechStream } from './speechStream';
 
 function resolveBaseUrl(): string {
   const fromExtra = Constants.expoConfig?.extra?.apiBaseUrl;
@@ -179,11 +182,16 @@ async function request<T>(path: string, body: unknown, timeoutMs = 30000, extern
   }
 }
 
+/**
+ * Read a server-sent event stream.
+ *
+ * The pieces of a spoken line arrive while the rest is still being
+ * synthesised, so each one is handed on as soon as it is read.
+ */
 export interface ActorAction {
   name: string;
   payload?: Record<string, any>;
 }
-
 export interface ActorResponse {
   replyText: string;
   meaning: string;
@@ -262,6 +270,27 @@ export const api = {
 
   synthesizeSpeech: (body: SpeechSynthesisRequest) =>
     request<SpeechSynthesisResponse>('/api/speech/synthesize', body, 12000),
+
+  /**
+   * Synthesise a line in pieces, handing each piece on as it is ready.
+   *
+   * The first piece can be played while the rest is still being synthesised,
+   * which is what makes a reply feel immediate.
+   */
+  synthesizeSpeechStream: async (
+    body: SpeechSynthesisRequest,
+    onChunk: (chunk: SpeechSynthesisChunk) => void,
+    signal?: AbortSignal
+  ): Promise<void> => {
+    const token = await guestIdentityToken();
+    await openSpeechStream({
+      url: `${API_BASE_URL}/api/speech/synthesize/stream`,
+      headers: providerHeaders(token),
+      body,
+      onChunk,
+      signal,
+    });
+  },
 
   createRealtimeSession: (body: RealtimeSessionRequest) =>
     request<RealtimeSessionDescriptor>('/api/realtime/session', body, 15000),

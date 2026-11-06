@@ -52,7 +52,7 @@ import type {
   ConversationProvider,
   ConversationProviderEvent,
 } from '../providers/conversation/types';
-import { speakWithBestAvailable } from '../providers/voice/speechOutput';
+import { speakWithBestAvailable, speakStreamedWithBestAvailable } from '../providers/voice/speechOutput';
 import { useI18n } from '../features/i18n';
 import { useArchive } from '../features/archive/ArchiveProvider';
 import { archiveRepository } from '../features/archive/archiveRepository';
@@ -114,7 +114,20 @@ import { Button, Field } from './ui';
 import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
 import { ELEVATION } from '../design/tokens';
-import { CharacterAvatar, ConversationStage, SuggestedReplies } from './ConversationStage';
+import { ConversationStage, SuggestedReplies } from './ConversationStage';
+import { CharacterStageAvatar } from './CharacterStageAvatar';
+import { waitForAvatarReady } from '../features/avatar/avatarReadiness';
+import {
+  connectAvatarActivity,
+  pushAvatarReaction,
+  setAvatarBaseState,
+} from '../features/avatar/avatarState';
+import {
+  reactionForSession,
+  reactionForTurn,
+  turnWasAssisted,
+} from '../features/avatar/avatarReactionPolicy';
+import { isProductionFormExposure } from '../features/learning/supportScope';
 import { ReferenceArtwork } from './ReferenceArtwork';
 import { sceneCheckpointProgress, suggestedPhraseExposure } from '../features/roleplay/sessionPresentation';
 
@@ -197,6 +210,9 @@ const EXPLANATION_LANGUAGE_NAMES: Record<string, string> = {
   fr: 'French',
   nl: 'Dutch',
 };
+
+/** How long the session waits for the character before the first line. */
+const AVATAR_READY_TIMEOUT_MS = 1200;
 
 /**
  * Coerce the hosted assessor's JSON into the proposal shape the validator
@@ -358,7 +374,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   onEndSession,
 }) => {
   const { t, language } = useI18n();
-  const { consent } = useArchive();
+  const { consent, preferences } = useArchive();
   const coordinator = useSessionCoordinator();
   const [saveError, setSaveError] = useState(false);
   const saveErrorRef = useRef(false);
@@ -513,6 +529,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const sceneStateRef = useRef(sceneState);
   const passagesRef = useRef(passages);
   const supportExposuresRef = useRef(supportExposures);
+  /** Whether the scene accepted the last proposed action, for the character. */
+  const sceneAcceptedActionRef = useRef(false);
   const priorAttemptPassagesRef = useRef<Passage[]>(initialSession.passages);
   const attemptHistoryRef = useRef<NonNullable<SessionRecord['attemptHistory']>>(initialSession.attemptHistory ?? [{ id: 'attempt-1', rehearsal: false, createdAt: initialSession.startedAt }]);
   const finalizedAttemptEvidenceRef = useRef<FinalizedAttemptEvidence[]>([]);
@@ -843,13 +861,16 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         lastPassage.text.trim().toLowerCase() === trimmed.toLowerCase();
 
       let userPassageId: string;
+      let userPassageStartedAt: string;
       let updatedPassages: Passage[];
 
       if (isRetryOfLastUnansweredTurn) {
         userPassageId = lastPassage.id;
+        userPassageStartedAt = lastPassage.startedAt;
         updatedPassages = passagesRef.current;
       } else {
         userPassageId = `p-${Date.now()}`;
+        userPassageStartedAt = new Date().toISOString();
         const userPassage: Passage = {
           id: userPassageId,
           sessionId,
@@ -860,7 +881,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           status: 'final',
           text: trimmed,
           modality,
-          startedAt: new Date().toISOString(),
+          startedAt: userPassageStartedAt,
           fragments: [
             {
               id: `f-${Date.now()}`,
@@ -889,6 +910,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         }
 
         const targetScene = target.sceneId ? getScene(target.sceneId) : undefined;
+        // The character waits while the reply is being written.
+        setAvatarBaseState('thinking');
         const response = await provider.respond({
           missionId: target.id,
           missionVersion: target.version,
@@ -919,11 +942,15 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         */
         if (!isGenerationCurrent(generation) || isEndingRef.current) return;
 
+        // The reply has arrived, so the character is done waiting.
+        setAvatarBaseState('idle');
+
         if (response.proposedAction) {
           const actionResult = await applyProposedSceneAction(
             response.proposedAction,
             [userPassageId]
           );
+          sceneAcceptedActionRef.current = actionResult?.accepted === true;
 
           // The actor may not confirm a consequential world change until the
           // authoritative reducer accepts it. A missing mirror, network failure,
@@ -932,6 +959,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             setVoiceState('idle');
             return;
           }
+        } else {
+          sceneAcceptedActionRef.current = false;
         }
 
         const characterPassage: Passage = {
@@ -966,6 +995,26 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           turnId: characterPassage.id,
         });
 
+        /*
+          The character reacts to what actually happened in the turn, using the
+          same support ledger the evidence uses. A turn that was assisted is
+          acknowledged with concern, not praise, and a turn that did nothing
+          notable gets no reaction at all.
+        */
+        const turnReaction = reactionForTurn({
+          sceneAcceptedAction: response.proposedAction
+            ? sceneAcceptedActionRef.current === true
+            : false,
+          turnWasAssisted: turnWasAssisted({
+            exposures: supportExposuresRef.current,
+            turnStartedAt: userPassageStartedAt,
+            replyEndedAt: characterPassage.startedAt,
+          }),
+        });
+        if (turnReaction) {
+          pushAvatarReaction(turnReaction);
+        }
+
         if (audioPlaybackEnabled && consentRef.current.voice && !isSceneFrozenRef.current) {
           setVoiceState('speaking');
           const transport = voiceTransportRef.current;
@@ -978,7 +1027,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 lang: target.language,
               });
             } else {
-              await speakWithBestAvailable(transport, response.replyText, {
+              await speakStreamedWithBestAvailable(transport, response.replyText, {
                 language: target.language,
                 speed: slowerSpeechDefault ? effectiveSpeechRate : preferredSpeechRate,
                 style: target.character.voiceStyle,
@@ -1253,6 +1302,10 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     transport.setLanguage(mission.language);
     voiceTransportRef.current = transport;
 
+    // The character follows the voice: it speaks when the tutor speaks and
+    // listens when the learner does.
+    const disconnectAvatarActivity = connectAvatarActivity();
+
     const negotiatedCapabilities = negotiateRoleplayCapabilities(
       transport.capabilities,
       {
@@ -1402,7 +1455,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       }
       setVoiceState('speaking');
 
-      await speakWithBestAvailable(transport, greeting, {
+      // The tutor greets once it is on screen. A slow device must not spend the
+      // first line on a character the learner cannot see yet, and the wait is
+      // bounded so the session always continues.
+      await waitForAvatarReady(AVATAR_READY_TIMEOUT_MS);
+      if (!active) return;
+
+      pushAvatarReaction('greet');
+      await speakStreamedWithBestAvailable(transport, greeting, {
         language: mission.language,
         speed: effectiveSpeechRate,
         style: mission.character.voiceStyle,
@@ -1419,6 +1479,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       mountedRef.current = false;
       unsubscribe();
       unsubscribeConversation();
+      disconnectAvatarActivity();
+      setAvatarBaseState('idle');
       transport.dispose();
       voiceTransportRef.current = null;
       conversationProvider.dispose();
@@ -1782,6 +1844,20 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     voiceTransportRef.current?.stopPlayback();
     voiceTransportRef.current?.stopListening();
     setVoiceState('ending');
+    /*
+      The character reacts to a finished session by what it actually was. A
+      session the learner cut short is not celebrated, and a session carried
+      through with help is acknowledged rather than praised.
+    */
+    const sessionReaction = reactionForSession({
+      completed: endReason === 'completed',
+      assisted: supportExposuresRef.current.some(exposure =>
+        isProductionFormExposure(exposure)
+      ),
+    });
+    if (sessionReaction) {
+      pushAvatarReaction(sessionReaction);
+    }
 
     try {
     await persistProgress({ state: 'ending', endReason });
@@ -2316,10 +2392,14 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             <X size={21} color={iconColor('ink')} />
           </Pressable>
 
-          <CharacterAvatar mission={mission} size={56} />
+          <CharacterStageAvatar
+        mission={mission}
+        size={56}
+        preferredAvatarId={preferences?.preferredAvatarId}
+      />
 
           <View className="min-w-0 flex-1 items-start px-1 py-1">
-            <Text className="font-display text-[19px] font-bold leading-6 text-ink" numberOfLines={1}>
+            <Text className="font-display text-[18px] font-bold leading-6 text-ink" numberOfLines={1}>
               {mission.character.name}
             </Text>
             <Text className="mt-0.5 text-sm text-muted" numberOfLines={1}>
