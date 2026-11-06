@@ -379,6 +379,8 @@ export interface Translations {
     autoPlayLabel: string;
     regionalProfileLabel: string;
     regionalProfileDesc: string;
+    geminiVoiceLabel: string;
+    geminiVoiceDesc: string;
     auditionButtonLabel: string;
     auditioningLabel: string;
     accommodationsLabel: string;
@@ -843,6 +845,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       regionalProfileLabel: "Belgian Dutch Regional Profile & Accent",
       regionalProfileDesc:
         "Choose your primary regional listening focus across Flanders and Brussels.",
+      geminiVoiceLabel: "Gemini 3.8 Voice Design Persona",
+      geminiVoiceDesc:
+        "Choose the vocal timbre and personality for roleplay interlocutors.",
       auditionButtonLabel: "Audition sample",
       auditioningLabel: "Playing...",
       accommodationsLabel: "Accessibility accommodations",
@@ -1314,6 +1319,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       regionalProfileLabel: "Profil régional flamand (Accent & Cadence)",
       regionalProfileDesc:
         "Choisissez votre orientation d'écoute régionale en Flandre et à Bruxelles.",
+      geminiVoiceLabel: "Profil vocal Gemini 3.8 (Persona)",
+      geminiVoiceDesc:
+        "Choisissez le timbre vocal et la personnalité de vos interlocuteurs.",
       auditionButtonLabel: "Écouter l'extrait",
       auditioningLabel: "Lecture...",
       accommodationsLabel: "Aménagements d’accessibilité",
@@ -1783,6 +1791,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       regionalProfileLabel: "Perfil regional flamenco (Acento y Cadencia)",
       regionalProfileDesc:
         "Elige tu enfoque de escucha regional en Flandes y Bruselas.",
+      geminiVoiceLabel: "Perfil de voz Gemini 3.8 (Persona)",
+      geminiVoiceDesc:
+        "Elige el timbre vocal y la personalidad para los interlocutores.",
       auditionButtonLabel: "Escuchar muestra",
       auditioningLabel: "Reproduciendo...",
       accommodationsLabel: "Adaptaciones de accesibilidad",
@@ -2253,6 +2264,9 @@ export const TRANSLATIONS: Record<UiLanguage, Translations> = {
       regionalProfileLabel: "Vlaams Regioprofiel (Accent & Klankkleur)",
       regionalProfileDesc:
         "Kies je gewenste regionale spreekstijl in Vlaanderen en Brussel.",
+      geminiVoiceLabel: "Gemini 3.8 Stemprofiel & Karakter",
+      geminiVoiceDesc:
+        "Kies het stemtimbre en de spreekstijl voor je Vlaamse gesprekspartners.",
       auditionButtonLabel: "Beluister voorbeeld",
       auditioningLabel: "Afspelen...",
       accommodationsLabel: "Toegankelijkheidsaanpassingen",

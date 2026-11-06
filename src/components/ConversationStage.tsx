@@ -49,30 +49,105 @@ export function ConversationStage(props: Props) {
     {turns.map(passage => {
       const learner = passage.speaker === 'user';
       const latest = passage.id === props.latest?.id;
-      return <View key={passage.id} className={`w-full flex-row items-end gap-3 ${learner ? 'justify-end' : ''}`}>
-        {!learner ? <CharacterAvatar mission={props.mission} size={56} /> : null}
-        <View className={`min-w-0 gap-1 border px-5 py-4 ${learner ? 'border-transparent bg-action' : 'border-transparent bg-surface'}`}
-          style={{ flexShrink: 1, maxWidth: learner ? '90%' : undefined, borderRadius: 28,
-            borderBottomLeftRadius: learner ? 28 : 10, borderBottomRightRadius: learner ? 10 : 28,
-            boxShadow: ELEVATION.card }}>
-          <Text className={`text-xs font-semibold ${learner ? 'text-action-text/80' : 'text-muted'}`}>{learner ? t.common.you : props.mission.character.name}</Text>
-          <Text className={`${latest && !learner ? 'text-[20px] leading-[28px] font-medium' : 'text-[17px] leading-[25px]'} ${learner ? 'text-action-text' : 'text-ink'}`}>{passage.text}</Text>
-          {learner && passage.meaning ? <Text className="text-sm text-action-text/80">{passage.meaning}</Text> : null}
-          {!learner ? <View className="flex-row flex-wrap items-center justify-end gap-1">
-            {latest && passage.meaning ? <Pressable accessibilityRole="button"
-              accessibilityLabel={props.meaningVisible ? t.common.hideTranslation : t.common.showTranslation}
-              accessibilityState={{ expanded: props.meaningVisible }} aria-expanded={props.meaningVisible}
-              onPress={props.onToggleMeaning} className="min-h-12 min-w-0 flex-1 justify-center rounded-xl border border-transparent px-1 hover:bg-surface-hover focus:border-2 focus:border-focus">
-              <Text className={props.meaningVisible ? 'text-sm leading-5 text-muted' : 'text-xs font-semibold text-language'}>{props.meaningVisible ? passage.meaning : t.common.showTranslation}</Text>
-            </Pressable> : null}
-            <Pressable accessibilityRole="button" accessibilityLabel={latest ? t.common.listen : `${t.common.listen}: ${passage.text}`}
-              accessibilityState={{ disabled: props.audioDisabled, busy: props.playingId === passage.id }} disabled={props.audioDisabled}
-              onPress={() => props.onReplay(passage)} className={`h-12 w-12 items-center justify-center rounded-full border border-transparent hover:bg-language-soft active:opacity-70 focus:border-2 focus:border-focus ${props.audioDisabled ? 'opacity-40' : ''}`}>
-              <Volume2 size={19} color={iconColor('language')} />
-            </Pressable>
-          </View> : null}
+      return (
+        <View
+          key={passage.id}
+          className={`w-full flex-row items-end gap-3 ${
+            learner ? 'justify-end' : 'justify-start'
+          }`}
+        >
+          {!learner ? (
+            <CharacterAvatar mission={props.mission} size={48} />
+          ) : null}
+          <View
+            className={`min-w-0 gap-1.5 border px-4 py-3.5 ${
+              learner
+                ? 'border-transparent bg-action'
+                : 'border-border-subtle/40 bg-surface'
+            }`}
+            style={{
+              maxWidth: '85%',
+              borderRadius: 22,
+              borderBottomLeftRadius: learner ? 22 : 6,
+              borderBottomRightRadius: learner ? 6 : 22,
+              boxShadow: ELEVATION.card,
+            }}
+          >
+            <Text
+              className={`text-xs font-semibold ${
+                learner ? 'text-action-text/80' : 'text-muted'
+              }`}
+            >
+              {learner ? t.common.you : props.mission.character.name}
+            </Text>
+            <Text
+              className={`${
+                latest && !learner
+                  ? 'text-[18px] leading-[26px] font-medium'
+                  : 'text-[16px] leading-[24px]'
+              } ${learner ? 'text-action-text' : 'text-ink'}`}
+            >
+              {passage.text}
+            </Text>
+            {learner && passage.meaning ? (
+              <Text className="text-xs text-action-text/80 mt-0.5">
+                {passage.meaning}
+              </Text>
+            ) : null}
+            {!learner ? (
+              <View className="flex-row items-center justify-between gap-2 pt-1 border-t border-border-subtle/20 mt-1">
+                {latest && passage.meaning ? (
+                  <Pressable
+                    accessibilityRole="button"
+                    accessibilityLabel={
+                      props.meaningVisible
+                        ? t.common.hideTranslation
+                        : t.common.showTranslation
+                    }
+                    accessibilityState={{ expanded: props.meaningVisible }}
+                    aria-expanded={props.meaningVisible}
+                    onPress={props.onToggleMeaning}
+                    className="min-h-12 min-w-0 flex-1 justify-center rounded-xl px-1 hover:opacity-80 active:opacity-70 focus:border-2 focus:border-focus"
+                  >
+                    <Text
+                      className={
+                        props.meaningVisible
+                          ? 'text-xs leading-5 text-muted'
+                          : 'text-xs font-semibold text-language'
+                      }
+                    >
+                      {props.meaningVisible
+                        ? passage.meaning
+                        : `🌐 ${t.common.showTranslation}`}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <View className="flex-1" />
+                )}
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={
+                    latest
+                      ? t.common.listen
+                      : `${t.common.listen}: ${passage.text}`
+                  }
+                  accessibilityState={{
+                    disabled: props.audioDisabled,
+                    busy: props.playingId === passage.id,
+                  }}
+                  disabled={props.audioDisabled}
+                  onPress={() => props.onReplay(passage)}
+                  className={`h-12 w-12 items-center justify-center rounded-full hover:bg-language-soft active:opacity-70 focus:border-2 focus:border-focus ${
+                    props.audioDisabled ? 'opacity-40' : ''
+                  }`}
+                >
+                  <Volume2 size={18} color={iconColor('language')} />
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
         </View>
-      </View>;
+      );
     })}
   </View>;
 }

@@ -876,6 +876,8 @@ export interface UserPreferences {
   speechRate?: number;
   /** Preferred Dutch / Flemish regional voice & accent profile. */
   dutchRegionalProfile?: DutchRegionalProfileId;
+  /** Preferred Gemini voice design persona (e.g. Kore, Aoede, Charon). */
+  geminiVoicePersona?: string;
   /**
    * Accessibility preferences are not pedagogical help and never enter the
    * support-exposure ledger.

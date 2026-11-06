@@ -1043,7 +1043,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 language: target.language,
                 speed: slowerSpeechDefault ? effectiveSpeechRate : preferredSpeechRate,
                 style: resolveCharacterStyle(target.character.voiceStyle, target.language),
-                voice: target.character.voiceName,
+                voice: preferences?.geminiVoicePersona || target.character.voiceName,
                 voiceGender: target.character.voiceGender,
               });
             }
@@ -1479,7 +1479,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed: effectiveSpeechRate,
         style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
-        voice: mission.character.voiceName,
+        voice: preferences?.geminiVoicePersona || mission.character.voiceName,
         voiceGender: mission.character.voiceGender,
       });
       cueLearnerTurn();
@@ -2236,7 +2236,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed,
         style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
-        voice: mission.character.voiceName,
+        voice: preferences?.geminiVoicePersona || mission.character.voiceName,
         voiceGender: mission.character.voiceGender,
         canPlay: () => !isEndingRef.current && replayAttempt === attemptIdRef.current && consentRef.current.voice,
       });
@@ -2257,7 +2257,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         language: mission.language,
         speed: effectiveSpeechRate,
         style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
-        voice: mission.character.voiceName,
+        voice: preferences?.geminiVoicePersona || mission.character.voiceName,
         voiceGender: mission.character.voiceGender,
       }
     );
@@ -2380,7 +2380,7 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
       await speakWithBestAvailable(transport, phrase.form, {
         language: mission.language, speed: effectiveSpeechRate,
         style: resolveCharacterStyle(mission.character.voiceStyle, mission.language),
-        voice: mission.character.voiceName,
+        voice: preferences?.geminiVoicePersona || mission.character.voiceName,
         voiceGender: mission.character.voiceGender,
         canPlay: () => !isEndingRef.current && phraseAttempt === attemptIdRef.current && consentRef.current.voice,
       });
@@ -2622,56 +2622,132 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         ) : null}
 
         <View
-          className="mx-3 mb-2 rounded-[32px] border border-border-subtle/30 bg-surface px-3 pt-3"
+          className="mx-3 mb-2 rounded-[32px] border border-border-subtle/30 bg-surface px-4 pt-3 pb-3"
           style={{ paddingBottom: Math.max(insets.bottom, 12), boxShadow: ELEVATION.floating }}
         >
-          <View className="w-full self-center gap-3" style={{ maxWidth: 720 }}>
-            {!voiceGranted ? <Text className="text-xs text-muted">{t.settings.voiceDisabledNotice}</Text> : null}
-            {!analysisGranted ? <Text className="text-xs text-muted">{t.settings.analysisDisabledNotice}</Text> : null}
-            {saveError ? <View className="gap-2 rounded-xl bg-warning-soft p-3">
-              <Text className="text-sm text-ink">{t.settings.sessionSaveFailed}</Text>
-              <Button label={t.settings.retrySave} onPress={() => void persistProgress().catch(() => undefined)} size="sm" />
-            </View> : null}
+          <View className="w-full self-center gap-3" style={{ maxWidth: 640 }}>
+            {!voiceGranted || !analysisGranted || saveError ? (
+              <View className="gap-1 px-1">
+                {!voiceGranted ? (
+                  <Text className="text-xs text-muted text-center">
+                    {t.settings.voiceDisabledNotice}
+                  </Text>
+                ) : null}
+                {!analysisGranted ? (
+                  <Text className="text-xs text-muted text-center">
+                    {t.settings.analysisDisabledNotice}
+                  </Text>
+                ) : null}
+                {saveError ? (
+                  <View className="gap-2 rounded-xl bg-warning-soft p-3">
+                    <Text className="text-sm text-ink">{t.settings.sessionSaveFailed}</Text>
+                    <Button
+                      label={t.settings.retrySave}
+                      onPress={() => void persistProgress().catch(() => undefined)}
+                      size="sm"
+                    />
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
             <SuggestedReplies {...conversationProps} />
-            <View className="flex-row items-start justify-between gap-2 px-2 py-1">
-              <Pressable onPress={() => setShowTypedInput(value => !value)} accessibilityRole="button"
-                accessibilityState={{ selected: showTypedInput }} accessibilityLabel={t.live.typeInstead}
-                className="min-h-[72px] w-[72px] items-center justify-start gap-1 rounded-2xl border border-transparent p-1 hover:bg-language-soft focus:border-2 focus:border-focus">
-                <View className="h-12 w-12 items-center justify-center rounded-full border border-border-subtle/70 bg-surface">
-                  <Keyboard size={21} color={iconColor('language')} />
-                </View>
-                <Text className="text-xs font-medium leading-4 text-body" numberOfLines={1}>{t.live.typeButtonLabel}</Text>
+
+            <View className="flex-row items-center justify-between px-2 py-1">
+              {/* Type mode toggle */}
+              <Pressable
+                onPress={() => setShowTypedInput(value => !value)}
+                accessibilityRole="button"
+                accessibilityState={{ selected: showTypedInput }}
+                accessibilityLabel={t.live.typeInstead}
+                className="h-12 w-12 items-center justify-center rounded-full bg-surface-soft border border-border-subtle/50 hover:bg-surface-hover active:scale-95"
+              >
+                <Keyboard
+                  size={20}
+                  color={iconColor(showTypedInput ? 'brand' : 'muted')}
+                />
               </Pressable>
-              <View className="w-[116px] items-center justify-center">
-                <View className="h-[108px] w-[108px] items-center justify-center rounded-full bg-language-soft">
-                <Pressable onPress={() => {
-                  if (VOICE_BLOCKED.has(voiceState) || !voiceGranted || isSceneFrozen || playingId !== null) return;
-                  if (voiceState === 'listening') voiceTransportRef.current?.stopListening();
-                  else voiceTransportRef.current?.startListening();
-                }} disabled={VOICE_BLOCKED.has(voiceState) || !voiceGranted || isSceneFrozen || playingId !== null}
-                  accessibilityRole="button" accessibilityState={{ disabled: VOICE_BLOCKED.has(voiceState) || !voiceGranted || isSceneFrozen || playingId !== null }}
-                  accessibilityLabel={voiceState === 'listening' ? t.live.listening : voiceState === 'error' ? t.live.voiceFailed : t.live.tapToSpeak}
-                  className={`h-[76px] w-[76px] items-center justify-center rounded-full border-4 border-surface bg-action active:opacity-75 focus:border-focus ${VOICE_BLOCKED.has(voiceState) || !voiceGranted || isSceneFrozen || playingId !== null ? 'opacity-40' : ''}`}>
-                  {voiceState === 'error' ? <MicOff size={30} color={iconColor('brandText')} /> : <Mic size={32} color={iconColor('brandText')} />}
+
+              {/* Centered Primary Mic Action */}
+              <View className="items-center justify-center gap-1.5">
+                <Pressable
+                  onPress={() => {
+                    if (
+                      VOICE_BLOCKED.has(voiceState) ||
+                      !voiceGranted ||
+                      isSceneFrozen ||
+                      playingId !== null
+                    )
+                      return;
+                    if (voiceState === 'listening')
+                      voiceTransportRef.current?.stopListening();
+                    else voiceTransportRef.current?.startListening();
+                  }}
+                  disabled={
+                    VOICE_BLOCKED.has(voiceState) ||
+                    !voiceGranted ||
+                    isSceneFrozen ||
+                    playingId !== null
+                  }
+                  accessibilityRole="button"
+                  accessibilityState={{
+                    disabled:
+                      VOICE_BLOCKED.has(voiceState) ||
+                      !voiceGranted ||
+                      isSceneFrozen ||
+                      playingId !== null,
+                  }}
+                  accessibilityLabel={
+                    voiceState === 'listening'
+                      ? t.live.listening
+                      : voiceState === 'error'
+                      ? t.live.voiceFailed
+                      : t.live.tapToSpeak
+                  }
+                  className={`h-[72px] w-[72px] items-center justify-center rounded-full active:scale-95 transition-all ${
+                    voiceState === 'listening'
+                      ? 'bg-action shadow-lg ring-4 ring-action/25'
+                      : voiceState === 'speaking'
+                      ? 'bg-accent-sage ring-4 ring-accent-sage/25'
+                      : 'bg-action'
+                  } ${
+                    VOICE_BLOCKED.has(voiceState) ||
+                    !voiceGranted ||
+                    isSceneFrozen ||
+                    playingId !== null
+                      ? 'opacity-40'
+                      : ''
+                  }`}
+                  style={{ boxShadow: ELEVATION.floating }}
+                >
+                  {voiceState === 'error' ? (
+                    <MicOff size={28} color={iconColor('brandText')} />
+                  ) : (
+                    <Mic size={30} color={iconColor('brandText')} />
+                  )}
                 </Pressable>
-                </View>
-                <View className="mt-1 flex-row items-center gap-1">
+
+                <View className="flex-row items-center gap-1.5">
                   <View className={`h-2 w-2 rounded-full ${VOICE_DOT[voiceState]}`} />
-                  <Text className="text-xs font-semibold text-muted" numberOfLines={1}>{voiceLabel}</Text>
+                  <Text
+                    className="text-xs font-semibold text-muted"
+                    numberOfLines={1}
+                  >
+                    {voiceLabel}
+                  </Text>
                 </View>
               </View>
-              <Pressable onPress={() => setShowHelpSheet(true)} accessibilityRole="button" accessibilityLabel={t.common.help}
-                className="min-h-[72px] w-[72px] items-center justify-start gap-1 rounded-2xl border border-transparent p-1 hover:bg-language-soft focus:border-2 focus:border-focus">
-                <View className="h-12 w-12 items-center justify-center rounded-full border border-border-subtle/70 bg-surface">
-                  <HelpCircle size={23} color={iconColor('ink')} />
-                </View>
-                <Text className="text-xs font-semibold text-muted">{t.common.help}</Text>
+
+              {/* Help & Coach drawer toggle */}
+              <Pressable
+                onPress={() => setShowHelpSheet(true)}
+                accessibilityRole="button"
+                accessibilityLabel={t.common.help}
+                className="h-12 w-12 items-center justify-center rounded-full bg-surface-soft border border-border-subtle/50 hover:bg-surface-hover active:scale-95"
+              >
+                <HelpCircle size={20} color={iconColor('muted')} />
               </Pressable>
             </View>
-            <Pressable onPress={() => void handleFinishConversation()} accessibilityRole="button" accessibilityLabel={t.common.endConversation}
-              className="min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-danger/30 bg-danger-soft px-4 py-2 hover:opacity-90 active:opacity-75 focus:border-2 focus:border-focus">
-              <X size={17} color={iconColor('danger')} /><Text className="text-sm font-semibold text-danger">{t.common.endConversation}</Text>
-            </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>
