@@ -179,6 +179,79 @@ export const FLEMISH_TRAVEL_PILOT: RoleplayProgram = {
   ],
 };
 
+export const FLEMISH_WORK_PILOT: RoleplayProgram = {
+  id: 'program.nl-be.work.pilot',
+  version: 1,
+  targetLanguage: 'nl',
+  targetLocale: 'nl-BE',
+  policyVersion: LEARNING_POLICY_VERSION,
+  title: 'Nederlands op de Werkvloer — Werkdutch',
+  reviewStatus: 'draft',
+  missionPlan: [
+    {
+      missionId: 'mission-nl-be-eerste-werkdag',
+      missionVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-werkinstructie',
+      missionVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-probleem-melden',
+      missionVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-ziekte-melden',
+      missionVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-werf-controle',
+      missionVersion: 1,
+    },
+  ],
+};
+
+export const FLEMISH_TUSSENTAAL_PILOT: RoleplayProgram = {
+  id: 'program.nl-be.tussentaal.pilot',
+  version: 1,
+  targetLanguage: 'nl',
+  targetLocale: 'nl-BE',
+  policyVersion: LEARNING_POLICY_VERSION,
+  title: 'Vlaamse Tussentaal — Vlot & Informeel',
+  reviewStatus: 'draft',
+  missionPlan: [
+    {
+      missionId: 'mission-nl-be-buur-sleutel',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.neighbor.key',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-tussentaal-buur',
+      missionVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-tussentaal-weekend',
+      missionVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-terras',
+      missionVersion: 1,
+      sceneId: 'scene.nl-be.dining.terrace',
+      sceneVersion: 1,
+    },
+    {
+      missionId: 'mission-nl-be-tussentaal-uitdrukkingen',
+      missionVersion: 1,
+    },
+  ],
+};
+
+export const TAALBAD_PROGRAMS: RoleplayProgram[] = [
+  FLEMISH_WORK_PILOT,
+  FLEMISH_TUSSENTAAL_PILOT,
+];
+
 export const ROLEPLAY_PROGRAM_CATALOG: RoleplayProgram[] = [
   SPANISH_DAILY_SERVICES_PILOT,
   SPANISH_TRAVEL_PILOT,
