@@ -12,6 +12,7 @@ export interface DutchRegionalProfile {
   sampleText: string;
   defaultVoiceGender: 'female' | 'male';
   edgeVoice: string;
+  geminiVoice: string;
 }
 
 export const DUTCH_REGIONAL_PROFILES: readonly DutchRegionalProfile[] = [
@@ -25,6 +26,7 @@ export const DUTCH_REGIONAL_PROFILES: readonly DutchRegionalProfile[] = [
     sampleText: 'Goedenavond. Het Agentschap Wegen en Verkeer meldt dat de vernieuwingswerken aan de Ring vlot vooruitgaan. Vanaf volgende week maandag wordt er evenwel ernstige verkeershinder verwacht.',
     defaultVoiceGender: 'female',
     edgeVoice: 'nl-BE-DenaNeural',
+    geminiVoice: 'Kore',
   },
   {
     id: 'antwerps',
@@ -36,6 +38,7 @@ export const DUTCH_REGIONAL_PROFILES: readonly DutchRegionalProfile[] = [
     sampleText: 'Amai zeg, ge moet eens kijken naar de Scheldekaaien vandaag! Heel de stad is buiten en het zonnetje schijnt op het MAS. Wat een heerlijke sfeer in Antwerpen.',
     defaultVoiceGender: 'male',
     edgeVoice: 'nl-BE-ArnaudNeural',
+    geminiVoice: 'Puck',
   },
   {
     id: 'gents',
@@ -47,6 +50,7 @@ export const DUTCH_REGIONAL_PROFILES: readonly DutchRegionalProfile[] = [
     sampleText: 'Welkom aan de Graslei in Gent. Kijk eens hoe het water van de Leie glinstert tegen de middeleeuwse gevels van het Gravensteen. Hier ademt elke steen geschiedenis.',
     defaultVoiceGender: 'female',
     edgeVoice: 'nl-BE-DenaNeural',
+    geminiVoice: 'Aoede',
   },
   {
     id: 'west_vlaams',
@@ -58,6 +62,7 @@ export const DUTCH_REGIONAL_PROFILES: readonly DutchRegionalProfile[] = [
     sampleText: 'In het hart van het historische Brugge bereiden we onze ambachtelijke chocoladepralines volgens een aloud familierecept. De geur van verse cacao vult de hele straat.',
     defaultVoiceGender: 'male',
     edgeVoice: 'nl-BE-ArnaudNeural',
+    geminiVoice: 'Charon',
   },
   {
     id: 'brussels',
@@ -69,6 +74,7 @@ export const DUTCH_REGIONAL_PROFILES: readonly DutchRegionalProfile[] = [
     sampleText: 'Goedemorgen aan alle deelnemers. Vandaag lanceren we ons nieuwe technologische initiatief voor Vlaamse en Europese start-ups hier in het hart van Brussel.',
     defaultVoiceGender: 'male',
     edgeVoice: 'nl-BE-ArnaudNeural',
+    geminiVoice: 'Fenrir',
   },
 ];
 

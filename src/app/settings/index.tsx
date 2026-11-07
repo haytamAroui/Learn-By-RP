@@ -73,6 +73,7 @@ export default function SettingsScreen() {
         locale: 'nl-BE',
         speed: archive.preferences.speechRate ?? 1,
         voiceGender: profile.defaultVoiceGender,
+        voice: profile.geminiVoice || profile.edgeVoice,
         style: profile.stylePrompt,
       });
     } catch (e) {

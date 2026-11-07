@@ -81,10 +81,12 @@ export const MissionBriefingScreen: React.FC<MissionBriefingScreenProps> = ({
         voiceTransportRef.current = new NativeVoiceTransport(() => true);
       }
       await speakWithBestAvailable(voiceTransportRef.current, text, {
-        language: 'nl',
-        locale: 'nl-BE',
+        language: mission.language,
+        locale: mission.language === 'nl' ? 'nl-BE' : undefined,
         speed: 1,
-        voice: 'despina',
+        voice: mission.character.voiceName,
+        voiceGender: mission.character.voiceGender,
+        style: mission.character.voiceStyle,
       });
     } catch (e) {
       console.warn('Pronunciation audition failed:', e);

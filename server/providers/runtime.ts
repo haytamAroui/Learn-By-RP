@@ -49,6 +49,15 @@ function parseJsonObject<T>(text: string): T {
   }
 }
 
+const EDGE_TO_GEMINI_VOICE_MAP: Record<string, string> = {
+  'nl-BE-DenaNeural': 'Kore',
+  'nl-BE-ArnaudNeural': 'Puck',
+  'fr-FR-DeniseNeural': 'Aoede',
+  'fr-FR-HenriNeural': 'Charon',
+  'es-ES-ElviraNeural': 'Kore',
+  'es-ES-AlvaroNeural': 'Charon',
+};
+
 class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
   readonly id = 'gemini';
   readonly model: string;
@@ -87,8 +96,10 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
 
   async synthesize(request: SpeechSynthesisRequest): Promise<SpeechSynthesisResponse> {
     const locale = request.locale || request.language;
+    const rawVoice = request.voice;
+    const requestedVoice = rawVoice && EDGE_TO_GEMINI_VOICE_MAP[rawVoice] ? EDGE_TO_GEMINI_VOICE_MAP[rawVoice] : rawVoice;
     const configuredVoice =
-      request.voice ||
+      requestedVoice ||
       (request.voiceGender
         ? process.env[localeVoiceEnvironmentKey(locale, request.voiceGender)]
         : process.env[localeVoiceEnvironmentKey(locale)]);

@@ -8,6 +8,18 @@ import type {
 
 const TICKS_PER_MS = 10000;
 
+const GEMINI_TO_EDGE_VOICE_MAP: Record<string, string> = {
+  Kore: 'nl-BE-DenaNeural',
+  Aoede: 'nl-BE-DenaNeural',
+  Despina: 'nl-BE-DenaNeural',
+  Autonoe: 'nl-BE-DenaNeural',
+  Leda: 'nl-BE-DenaNeural',
+  Zephyr: 'nl-BE-DenaNeural',
+  Puck: 'nl-BE-ArnaudNeural',
+  Charon: 'nl-BE-ArnaudNeural',
+  Fenrir: 'nl-BE-ArnaudNeural',
+};
+
 /**
  * The Edge read-aloud voice.
  *
@@ -25,7 +37,12 @@ export class EdgeTtsProvider {
   private voice = '';
 
   async synthesize(request: SpeechSynthesisRequest): Promise<SpeechSynthesisResponse> {
-    const voice = pickEdgeVoice(request.locale || request.language, request.voiceGender);
+    const rawVoice = request.voice;
+    const mappedVoice = rawVoice && GEMINI_TO_EDGE_VOICE_MAP[rawVoice] ? GEMINI_TO_EDGE_VOICE_MAP[rawVoice] : rawVoice;
+    const isDirectEdgeVoice = typeof mappedVoice === 'string' && mappedVoice.includes('-');
+    const voice = isDirectEdgeVoice
+      ? { shortName: mappedVoice, locale: request.locale || request.language, gender: (request.voiceGender === 'male' ? 'male' : 'female') as 'male' | 'female' }
+      : pickEdgeVoice(request.locale || request.language, request.voiceGender);
     const tts = await this.ensureVoice(voice.shortName);
 
     const { audioStream, metadataStream } = tts.toStream(request.text, {
@@ -34,12 +51,13 @@ export class EdgeTtsProvider {
       volume: '0%',
     });
 
-    const audio = await collect(audioStream);
+    const [audio, words] = await Promise.all([
+      collect(audioStream),
+      metadataStream ? collectWords(metadataStream) : Promise.resolve([]),
+    ]);
     if (audio.length === 0) {
       throw new Error('Edge TTS returned no audio');
     }
-
-    const words = metadataStream ? await collectWords(metadataStream) : [];
 
     return {
       audio: {
@@ -101,33 +119,37 @@ async function collect(stream: NodeJS.ReadableStream): Promise<Buffer> {
 async function collectWords(stream: NodeJS.ReadableStream): Promise<SpeechWordTiming[]> {
   const words: SpeechWordTiming[] = [];
 
-  for await (const chunk of stream) {
-    const text = Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk);
-    const marker = 'X-Metadata:';
-    const start = text.indexOf(marker);
-    if (start === -1) continue;
+  try {
+    for await (const chunk of stream) {
+      const text = Buffer.isBuffer(chunk) ? chunk.toString('utf8') : String(chunk);
+      const marker = 'X-Metadata:';
+      const start = text.indexOf(marker);
+      if (start === -1) continue;
 
-    const afterMarker = text.slice(start + marker.length);
-    const lineEnd = afterMarker.search(/\r\n|\n/);
-    const json = lineEnd === -1 ? afterMarker : afterMarker.slice(0, lineEnd);
+      const afterMarker = text.slice(start + marker.length);
+      const lineEnd = afterMarker.search(/\r\n|\n/);
+      const json = lineEnd === -1 ? afterMarker : afterMarker.slice(0, lineEnd);
 
-    try {
-      const parsed = JSON.parse(json) as {
-        Metadata?: Array<{ Type?: string; Data?: { Text?: string; Length?: number; Offset?: number } }>;
-      };
-      for (const entry of parsed.Metadata ?? []) {
-        if (entry.Type !== 'WordBoundary') continue;
-        const data = entry.Data;
-        if (!data?.Text) continue;
-        words.push({
-          text: data.Text,
-          offsetMs: Math.round((data.Offset ?? 0) / TICKS_PER_MS),
-          durationMs: Math.round((data.Length ?? 0) / TICKS_PER_MS),
-        });
+      try {
+        const parsed = JSON.parse(json) as {
+          Metadata?: Array<{ Type?: string; Data?: { Text?: string; Length?: number; Offset?: number } }>;
+        };
+        for (const entry of parsed.Metadata ?? []) {
+          if (entry.Type !== 'WordBoundary') continue;
+          const data = entry.Data;
+          if (!data?.Text) continue;
+          words.push({
+            text: data.Text,
+            offsetMs: Math.round((data.Offset ?? 0) / TICKS_PER_MS),
+            durationMs: Math.round((data.Length ?? 0) / TICKS_PER_MS),
+          });
+        }
+      } catch {
+        // A frame that is not metadata is not a word.
       }
-    } catch {
-      // A frame that is not metadata is not a word.
     }
+  } catch {
+    // Non-fatal stream closure
   }
 
   return words;
