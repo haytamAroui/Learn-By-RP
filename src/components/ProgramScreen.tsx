@@ -489,124 +489,129 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
                             ) : null}
                           </View>
 
-                          {/* Mission Card */}
-                          <Pressable
-                            disabled={!unlocked}
-                            onPress={() =>
-                              onStartMission(mission, { standalone: !canExecute })
-                            }
-                            accessibilityRole="button"
-                            accessibilityState={{ disabled: !unlocked }}
-                            accessibilityLabel={`${mission.title}. ${mission.learnerGoal}`}
-                            className={`mb-3 min-h-[96px] flex-1 rounded-[22px] border p-4 transition-all focus:border-2 focus:border-focus ${
+                          {/* Mission Card Container */}
+                          <View
+                            className={`mb-3 min-h-[96px] flex-1 rounded-[22px] border p-4 transition-all ${
                               current
                                 ? 'border-primary/30 bg-[#FFFBF0] shadow-sm'
                                 : 'border-border-subtle/60 bg-surface'
-                            } ${unlocked ? 'hover:bg-surface-hover active:scale-[0.99]' : 'opacity-65'}`}
+                            } ${unlocked ? '' : 'opacity-65'}`}
                             style={{ boxShadow: ELEVATION.card }}
                           >
-                            <View className="flex-row items-start gap-3">
-                              <View
-                                className={`h-10 w-10 items-center justify-center rounded-xl ${
-                                  MISSION_TONES[mission.category]?.container ?? 'bg-surface-soft'
-                                }`}
-                              >
-                                <Compass
-                                  size={19}
-                                  color={iconColor(MISSION_TONES[mission.category]?.color ?? 'brand')}
-                                />
-                              </View>
+                            <Pressable
+                              disabled={!unlocked}
+                              onPress={() =>
+                                onStartMission(mission, { standalone: !canExecute })
+                              }
+                              accessibilityRole="button"
+                              accessibilityState={{ disabled: !unlocked }}
+                              accessibilityLabel={`${mission.title}. ${mission.learnerGoal}`}
+                              className="hover:opacity-95 active:scale-[0.99]"
+                            >
+                              <View className="flex-row items-start gap-3">
+                                <View
+                                  className={`h-10 w-10 items-center justify-center rounded-xl ${
+                                    MISSION_TONES[mission.category]?.container ?? 'bg-surface-soft'
+                                  }`}
+                                >
+                                  <Compass
+                                    size={19}
+                                    color={iconColor(MISSION_TONES[mission.category]?.color ?? 'brand')}
+                                  />
+                                </View>
 
-                              <View className="flex-1 min-w-0 gap-1">
-                                <View className="flex-row items-center gap-2">
+                                <View className="flex-1 min-w-0 gap-1">
+                                  <View className="flex-row items-center gap-2">
+                                    <Text
+                                      className="text-15 font-bold text-ink truncate"
+                                      numberOfLines={1}
+                                    >
+                                      {mission.title}
+                                    </Text>
+                                    <View className="rounded-full bg-lime px-2 py-0.5">
+                                      <Text className="text-xs font-extrabold text-[#17310F]">
+                                        {mission.levelRange ?? 'A1'}
+                                      </Text>
+                                    </View>
+                                    {done ? (
+                                      <View className="flex-row items-center gap-1 rounded-full bg-card-sage px-2 py-0.5">
+                                        <CheckCircle2 size={12} color="#2A6B47" />
+                                        <Text className="text-xs font-bold text-accent-sage">
+                                          Done
+                                        </Text>
+                                      </View>
+                                    ) : current ? (
+                                      <View className="rounded-full bg-language-soft px-2 py-0.5">
+                                        <Text className="text-xs font-bold text-language">
+                                          Next
+                                        </Text>
+                                      </View>
+                                    ) : null}
+                                  </View>
+
                                   <Text
-                                    className="text-15 font-bold text-ink truncate"
-                                    numberOfLines={1}
+                                    className="text-13 leading-4 text-body"
+                                    numberOfLines={2}
                                   >
-                                    {mission.title}
+                                    {mission.learnerGoal}
                                   </Text>
-                                  <View className="rounded-full bg-lime px-2 py-0.5">
-                                    <Text className="text-xs font-extrabold text-[#17310F]">
-                                      {mission.levelRange ?? 'A1'}
+
+                                  <View className="flex-row items-center gap-2 pt-0.5">
+                                    <Text className="text-xs text-muted" numberOfLines={1}>
+                                      📍 {mission.neighborhood || mission.setting || 'Vlaanderen'} · {mission.character.name} ({mission.character.role})
                                     </Text>
                                   </View>
-                                  {done ? (
-                                    <View className="flex-row items-center gap-1 rounded-full bg-card-sage px-2 py-0.5">
-                                      <CheckCircle2 size={12} color="#2A6B47" />
-                                      <Text className="text-xs font-bold text-accent-sage">
-                                        Done
-                                      </Text>
-                                    </View>
-                                  ) : current ? (
-                                    <View className="rounded-full bg-language-soft px-2 py-0.5">
-                                      <Text className="text-xs font-bold text-language">
-                                        Next
-                                      </Text>
-                                    </View>
-                                  ) : null}
-                                </View>
-
-                                <Text
-                                  className="text-13 leading-4 text-body"
-                                  numberOfLines={2}
-                                >
-                                  {mission.learnerGoal}
-                                </Text>
-
-                                <View className="flex-row items-center gap-2 pt-0.5">
-                                  <Text className="text-xs text-muted" numberOfLines={1}>
-                                    📍 {mission.neighborhood || mission.setting || 'Vlaanderen'} · {mission.character.name} ({mission.character.role})
-                                  </Text>
-                                </View>
-
-                                <View className="flex-row items-center justify-between pt-2 gap-2 flex-wrap">
-                                  <Pressable
-                                    onPress={e => {
-                                      e.stopPropagation();
-                                      void handleAuditionMission(mission);
-                                    }}
-                                    accessibilityRole="button"
-                                    accessibilityLabel={`Beluister stem van ${mission.character.name} (${mission.character.voiceName || 'Stem'})`}
-                                    className={`min-h-12 px-3 rounded-full flex-row items-center gap-1.5 border transition-all active:scale-95 ${
-                                      auditioningMissionId === mission.id
-                                        ? 'bg-action border-action'
-                                        : 'bg-surface-soft border-border-interactive/40 hover:bg-surface-hover'
-                                    }`}
-                                  >
-                                    <Volume2
-                                      size={14}
-                                      color={iconColor(
-                                        auditioningMissionId === mission.id ? 'white' : 'brand'
-                                      )}
-                                    />
-                                    <Text
-                                      className={`text-xs font-bold ${
-                                        auditioningMissionId === mission.id
-                                          ? 'text-white'
-                                          : 'text-ink'
-                                      }`}
-                                    >
-                                      {auditioningMissionId === mission.id
-                                        ? 'Aan het spreken…'
-                                        : `Stem: ${mission.character.voiceName || 'Beluister'}`}
-                                    </Text>
-                                  </Pressable>
-
-                                  {unlocked ? (
-                                    <View className="flex-row items-center gap-1">
-                                      <Text
-                                        className={`text-xs font-bold ${
-                                          current ? 'text-primary' : 'text-language'
-                                        }`}
-                                      >
-                                        {current ? 'Start stap ▶' : done ? 'Herhaal ↺' : 'Bekijk stap'}
-                                      </Text>
-                                    </View>
-                                  ) : null}
                                 </View>
                               </View>
+                            </Pressable>
+
+                            {/* Sibling Bottom Action Row */}
+                            <View className="flex-row items-center justify-between pt-2.5 mt-2 border-t border-border-subtle/30 gap-2 flex-wrap">
+                              <Pressable
+                                onPress={() => void handleAuditionMission(mission)}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Beluister stem van ${mission.character.name} (${mission.character.voiceName || 'Stem'})`}
+                                className={`min-h-12 px-3 rounded-full flex-row items-center gap-1.5 border transition-all active:scale-95 ${
+                                  auditioningMissionId === mission.id
+                                    ? 'bg-action border-action'
+                                    : 'bg-surface-soft border-border-interactive/40 hover:bg-surface-hover'
+                                }`}
+                              >
+                                <Volume2
+                                  size={14}
+                                  color={iconColor(
+                                    auditioningMissionId === mission.id ? 'white' : 'brand'
+                                  )}
+                                />
+                                <Text
+                                  className={`text-xs font-bold ${
+                                    auditioningMissionId === mission.id
+                                      ? 'text-white'
+                                      : 'text-ink'
+                                  }`}
+                                >
+                                  {auditioningMissionId === mission.id
+                                    ? 'Aan het spreken…'
+                                    : `Stem: ${mission.character.voiceName || 'Beluister'}`}
+                                </Text>
+                              </Pressable>
+
+                              {unlocked ? (
+                                <Pressable
+                                  onPress={() =>
+                                    onStartMission(mission, { standalone: !canExecute })
+                                  }
+                                  accessibilityRole="button"
+                                  accessibilityLabel={`${current ? 'Start stap' : done ? 'Herhaal' : 'Bekijk stap'}: ${mission.title}`}
+                                  className="min-h-12 px-3.5 rounded-full bg-lime flex-row items-center gap-1 active:scale-95"
+                                >
+                                  <Text className="text-xs font-extrabold text-[#17310F]">
+                                    {current ? 'Start stap ▶' : done ? 'Herhaal ↺' : 'Bekijk stap ▶'}
+                                  </Text>
+                                </Pressable>
+                              ) : null}
                             </View>
-                          </Pressable>
+                          </View>
                         </View>
                       );
                     })}

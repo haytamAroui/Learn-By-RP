@@ -15,8 +15,8 @@ export function ReferenceArtwork({ kind, shaded = false }: {
       .replaceAll(`url(#${original})`, `url(#${id}${original})`);
     return svg;
   }, [kind, id]);
-  return <View style={StyleSheet.absoluteFill} pointerEvents="none" accessible={false}>
-    <SvgXml xml={xml} width="100%" height="100%" style={StyleSheet.absoluteFill} accessible={false} />
+  return <View style={StyleSheet.absoluteFill} pointerEvents="none" aria-hidden={true}>
+    <SvgXml xml={xml} width="100%" height="100%" style={StyleSheet.absoluteFill} aria-hidden={true} />
     {shaded ? <View className="absolute inset-0 bg-black/55" /> : null}
   </View>;
 }
