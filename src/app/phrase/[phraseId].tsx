@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
 import { Button, EmptyState, SectionLabel } from '../../components/ui';
+import { safeBack } from '../../lib/safeBack';
 import { Sparkles } from 'lucide-react-native';
 import { iconColor } from '../../design/iconColor';
 import { detectBelgianDutchPhonetics } from '../../content/phoneticGuidance';
@@ -32,7 +33,7 @@ export default function PhraseScreen() {
       <SafeAreaView className="flex-1 items-center justify-center bg-canvas p-6" edges={['top', 'bottom']}>
         <EmptyState message={t.common.noEvidenceYet} />
         <View className="mt-4">
-          <Button label={t.common.close} onPress={() => router.back()} variant="secondary" />
+          <Button label={t.common.close} onPress={() => safeBack(router)} variant="secondary" />
         </View>
       </SafeAreaView>
     );
@@ -48,7 +49,7 @@ export default function PhraseScreen() {
       <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
         <View className="w-full self-center flex-row items-center justify-between px-4 py-2" style={{ maxWidth: 1200 }}>
           <Text className="text-lg font-semibold text-ink">{t.common.targetPhrase}</Text>
-          <Button label={t.common.close} onPress={() => router.back()} variant="ghost" size="sm" />
+          <Button label={t.common.close} onPress={() => safeBack(router)} variant="ghost" size="sm" />
         </View>
 
         <ScrollView

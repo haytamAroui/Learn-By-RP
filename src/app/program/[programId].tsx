@@ -7,6 +7,7 @@ import { I18nProvider, getTranslations } from '../../features/i18n';
 import { ROLEPLAY_PROGRAM_CATALOG } from '../../data/programs';
 import { ProgramScreen } from '../../components/ProgramScreen';
 import { Button } from '../../components/ui';
+import { safeBack } from '../../lib/safeBack';
 import { ACTIVE_LEARNING_LANGUAGE } from '../../features/i18n/languagePolicy';
 
 export default function ProgramRoute() {
@@ -25,7 +26,7 @@ export default function ProgramRoute() {
     return (
       <View className="flex-1 items-center justify-center gap-4 bg-canvas p-6">
         <Text className="text-center text-sm text-muted">{t.missions.programNotFound}</Text>
-        <Button label={t.common.back} onPress={() => router.back()} variant="secondary" />
+        <Button label={t.common.back} onPress={() => safeBack(router, '/(tabs)/missions')} variant="secondary" />
       </View>
     );
   }
@@ -52,7 +53,7 @@ export default function ProgramRoute() {
             : undefined
         }
         onBack={() =>
-          recommended === '1' ? router.replace('/(tabs)') : router.back()
+          recommended === '1' ? router.replace('/(tabs)') : safeBack(router, '/(tabs)/missions')
         }
         onStartMission={(mission, options) =>
           router.push({

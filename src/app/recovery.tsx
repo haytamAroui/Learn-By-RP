@@ -5,6 +5,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useRouter } from 'expo-router';
 import { useArchive } from '../features/archive/ArchiveProvider';
 import { Button, Card, SectionLabel } from '../components/ui';
+import { safeBack } from '../lib/safeBack';
 import { getTranslations, I18nProvider } from '../features/i18n';
 import { MISSION_CATALOG } from '../data/missions';
 
@@ -28,7 +29,7 @@ export default function RecoveryScreen() {
           {t.common.allDueReviewed || 'Nothing was left unfinished.'}
         </Text>
         <View className="mt-4">
-          <Button label={t.common.back} onPress={() => router.back()} variant="secondary" size="sm" />
+          <Button label={t.common.back} onPress={() => safeBack(router)} variant="secondary" size="sm" />
         </View>
       </SafeAreaView>
     );

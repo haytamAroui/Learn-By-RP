@@ -6,6 +6,7 @@ import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
 import { MissionBriefingScreen } from '../../components/MissionBriefingScreen';
 import { Button } from '../../components/ui';
+import { safeBack } from '../../lib/safeBack';
 import { MISSION_CATALOG } from '../../data/missions';
 import { MissionDefinition, Mode, SessionRecord, SupportExposure } from '../../types';
 import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
@@ -66,7 +67,7 @@ export default function MissionBriefingRoute() {
         </Text>
         <Button
           label={t.settings.goBack}
-          onPress={() => router.back()}
+          onPress={() => safeBack(router)}
           variant="secondary"
         />
       </View>
@@ -176,7 +177,7 @@ export default function MissionBriefingRoute() {
         initialMode={archive.preferences.modeDefault}
         minimalSupport={finalSimulationAllowed}
         finalSimulation={finalSimulationAllowed}
-        onBack={() => router.back()}
+        onBack={() => safeBack(router)}
         onStartSession={handleStartSession}
       />
     </I18nProvider>

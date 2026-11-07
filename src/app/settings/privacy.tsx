@@ -6,6 +6,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
 import { Button, Field, SectionLabel } from '../../components/ui';
+import { safeBack } from '../../lib/safeBack';
 import type { CarryForwardFact } from '../../types';
 import { CONSENT_VERSION } from '../../features/archive/schema';
 import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
@@ -63,7 +64,7 @@ export default function SettingsPrivacyScreen() {
           <Text className="text-xl font-semibold text-ink">
             {t.settings.privacyTitle}
           </Text>
-          <Button label={t.settings.doneLabel} onPress={() => router.back()} variant="ghost" size="sm" />
+          <Button label={t.settings.doneLabel} onPress={() => safeBack(router, '/settings')} variant="ghost" size="sm" />
         </View>
 
         <ScrollView

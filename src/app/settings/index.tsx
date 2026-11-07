@@ -33,6 +33,7 @@ import {
 } from '../../types';
 import { Button, ChipRow, SectionLabel } from '../../components/ui';
 import { iconColor } from '../../design/iconColor';
+import { safeBack } from '../../lib/safeBack';
 
 const TARGET_LANGUAGE_FLAGS: Partial<Record<LanguageCode, string>> = {
   nl: '🇧🇪',
@@ -95,7 +96,7 @@ export default function SettingsScreen() {
     <SafeAreaView className="flex-1 bg-canvas" edges={['top', 'bottom']}>
       <View className="w-full self-center flex-row items-center gap-3 px-4 py-2" style={{ maxWidth: 1200 }}>
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => safeBack(router)}
           accessibilityRole="button"
           accessibilityLabel={t.common.back}
           className="h-12 w-12 items-center justify-center rounded-full bg-surface-soft hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
@@ -399,7 +400,7 @@ export default function SettingsScreen() {
 
         <Button
           label={t.common.back}
-          onPress={() => router.back()}
+          onPress={() => safeBack(router)}
           variant="ghost"
           className="self-start"
         />

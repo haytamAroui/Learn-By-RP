@@ -6,6 +6,7 @@ import { useArchive } from '../../features/archive/ArchiveProvider';
 import { I18nProvider } from '../../features/i18n';
 import { RecapScreen as RecapContent } from '../../components/RecapScreen';
 import { SessionRecord } from '../../types';
+import { safeBack } from '../../lib/safeBack';
 
 export default function RecapScreen() {
   const router = useRouter();
@@ -44,7 +45,7 @@ export default function RecapScreen() {
         <Text className="text-center text-sm text-muted">
           This session is not in your archive. It may have been deleted.
         </Text>
-        <Text className="mt-3 text-xs text-primary" onPress={() => router.back()}>
+        <Text className="mt-3 text-xs text-primary" onPress={() => safeBack(router)}>
           Go back
         </Text>
       </View>
@@ -67,7 +68,7 @@ export default function RecapScreen() {
               params: { programId: session.programContext.programId },
             });
           } else {
-            router.back();
+            safeBack(router);
           }
         }}
         onRetryMission={mission =>

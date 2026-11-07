@@ -6,6 +6,7 @@ import { useArchive } from '../../features/archive/ArchiveProvider';
 import { getTranslations, I18nProvider } from '../../features/i18n';
 import { LiveSessionView } from '../../components/LiveSessionView';
 import { Button } from '../../components/ui';
+import { safeBack } from '../../lib/safeBack';
 import { MISSION_CATALOG } from '../../data/missions';
 import { SessionRecord } from '../../types';
 import { useSessionCoordinator } from '../../features/session/SessionProvider';
@@ -71,7 +72,7 @@ export default function SessionScreen() {
         <Text className="text-center text-sm text-muted">{t.settings.missionUnavailable}</Text>
         <Button
           label={t.settings.goBack}
-          onPress={() => router.back()}
+          onPress={() => safeBack(router)}
           variant="secondary"
         />
       </View>
