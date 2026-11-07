@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Text } from './AppText';
 import {
@@ -49,6 +49,17 @@ import { iconColor } from '../design/iconColor';
 import { summarizeActivity } from '../features/learning/activitySummary';
 import { ELEVATION } from '../design/tokens';
 import { ReferenceArtwork } from './ReferenceArtwork';
+import {
+  FlashcardModal,
+  RecallBars,
+  getPhraseRecallBars,
+  getRecallStatusLabel,
+  getRecallExplanation,
+} from './FlashcardModal';
+import { speakWithBestAvailable } from '../providers/voice/speechOutput';
+import { NativeVoiceTransport } from '../providers/voice/nativeVoiceTransport';
+import type { VoiceTransport } from '../providers/voice/types';
+import { buildFlemishSpeechStyle } from '../content/regionalProfiles';
 
 interface ProgressScreenProps {
   phrases: PhraseItem[];
@@ -160,6 +171,9 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   const [selectedSkillCategory, setSelectedSkillCategory] = useState<SkillCategoryFilter>('all');
   const [selectedPhrase, setSelectedPhrase] = useState<PhraseItem | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<CommunicativeSkillMeta | null>(null);
+  const [isFlashcardsOpen, setIsFlashcardsOpen] = useState(false);
+  const [isPlayingSelectedAudio, setIsPlayingSelectedAudio] = useState(false);
+  const voiceTransportRef = useRef<VoiceTransport>(new NativeVoiceTransport());
   const activity = useMemo(() => summarizeActivity(sessions, learningLanguage), [sessions, learningLanguage]);
 
   const duePhrases = useMemo(
@@ -758,36 +772,78 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
 
         {selectedTab === 'phrases' ? (
           <View>
+            <View className="mb-4 flex-row items-center justify-between rounded-2xl bg-card-warm p-4">
+              <View className="flex-1 pr-3">
+                <Text className="text-xs font-semibold uppercase tracking-wider text-muted">
+                  {learningLanguage === 'nl' ? 'Mural Geheugen · 3 Balkjes' : 'Mural Spaced Repetition'}
+                </Text>
+                <Text className="mt-0.5 text-base font-bold text-ink">
+                  {learningLanguage === 'nl' ? 'Belgisch-Nederlandse Woorden' : 'Target Vocabulary'}
+                </Text>
+                <Text className="mt-1 text-xs text-muted">
+                  {learningLanguage === 'nl'
+                    ? 'Spraakkracht groeit van Fragiel (1d) naar Groeiend (4d) en Stabiel (14d).'
+                    : 'Memory strength grows from Fragile (1d) to Growing (4d) and Steady (14d).'}
+                </Text>
+              </View>
+              <Pressable
+                onPress={() => setIsFlashcardsOpen(true)}
+                disabled={phrases.length === 0}
+                accessibilityRole="button"
+                accessibilityLabel={learningLanguage === 'nl' ? 'Oefen woordkaarten' : 'Practice flashcards'}
+                className="min-h-12 flex-row items-center gap-2 rounded-full bg-white px-4 py-2.5 shadow-xs active:opacity-75"
+              >
+                <BookOpen size={18} color={iconColor('brand')} />
+                <Text className="text-sm font-semibold text-primary">
+                  {learningLanguage === 'nl' ? 'Woordkaarten' : 'Flashcards'}
+                </Text>
+              </Pressable>
+            </View>
+
             {phrases.length === 0 ? (
               <EmptyState message={t.common.noEvidenceYet} />
             ) : (
-              phrases.map((phrase, index) => (
-                <React.Fragment key={phrase.id}>
-                  <Pressable
-                    onPress={() => setSelectedPhrase(phrase)}
-                    accessibilityRole="button"
-                    className="min-h-[76px] flex-row items-center gap-3 rounded-2xl border border-transparent py-3 hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
-                  >
-                    <View className="flex-1">
-                      <Text className="text-[15px] font-semibold leading-[21px] text-ink">
-                        “{phrase.form}”
-                      </Text>
-                      <Text className="mt-1 text-[13px] leading-[18px] text-muted" numberOfLines={1}>
-                        {phrase.meaning}
-                      </Text>
-                    </View>
+              phrases.map((phrase, index) => {
+                const bars = getPhraseRecallBars(phrase);
+                return (
+                  <React.Fragment key={phrase.id}>
+                    <Pressable
+                      onPress={() => setSelectedPhrase(phrase)}
+                      accessibilityRole="button"
+                      className="min-h-[76px] flex-row items-center gap-3 rounded-2xl border border-transparent py-3 hover:bg-surface-hover active:opacity-75 focus:border-2 focus:border-focus"
+                    >
+                      <View className="flex-1">
+                        <Text className="text-[15px] font-semibold leading-[21px] text-ink">
+                          “{phrase.form}”
+                        </Text>
+                        <Text className="mt-1 text-[13px] leading-[18px] text-muted" numberOfLines={1}>
+                          {phrase.meaning}
+                        </Text>
+                      </View>
 
-                    <View className="items-end gap-1">
-                      <Text className="text-xs font-semibold capitalize text-primary">
-                        {phraseStatusLabel(phrase)}
-                      </Text>
+                      <View className="items-end gap-1.5">
+                        <RecallBars count={bars} />
+                        <Text className="text-xs font-semibold text-primary">
+                          {phrase.scheduling.due
+                            ? (learningLanguage === 'nl' ? 'Nu herhalen' : 'Due for review')
+                            : getRecallStatusLabel(bars, learningLanguage === 'nl')}
+                        </Text>
+                      </View>
                       <ChevronRight size={18} color={iconColor('muted')} />
-                    </View>
-                  </Pressable>
-                  {index < phrases.length - 1 ? <View className="h-px bg-border-subtle" /> : null}
-                </React.Fragment>
-              ))
+                    </Pressable>
+                    {index < phrases.length - 1 ? <View className="h-px bg-border-subtle" /> : null}
+                  </React.Fragment>
+                );
+              })
             )}
+
+            <View className="mt-6 rounded-2xl bg-surface-soft p-4">
+              <Text className="text-center text-xs leading-5 text-muted">
+                {learningLanguage === 'nl'
+                  ? '💡 De 3 balkjes schatten je spontane spraakherinnering, geen permanente theorie. Woorden die met vertaling of hulp zijn gezegd tellen als ondersteunde oefening.'
+                  : '💡 The 3 bars estimate spoken recall, not permanent mastery. Using a word with visible translations counts as supported practice.'}
+              </Text>
+            </View>
           </View>
         ) : null}
 
@@ -837,9 +893,59 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
       >
         {selectedPhrase ? (
           <View className="gap-5">
-            <View className="gap-1">
+            <View className="gap-2">
+              <View className="flex-row items-center justify-between">
+                <View className="flex-row items-center gap-2">
+                  <RecallBars count={getPhraseRecallBars(selectedPhrase)} />
+                  <Text className="text-xs font-semibold text-primary">
+                    {getRecallStatusLabel(getPhraseRecallBars(selectedPhrase), learningLanguage === 'nl')}
+                  </Text>
+                </View>
+
+                <Pressable
+                  onPress={async () => {
+                    if (isPlayingSelectedAudio) return;
+                    try {
+                      setIsPlayingSelectedAudio(true);
+                      await speakWithBestAvailable(voiceTransportRef.current, selectedPhrase.form, {
+                        language: learningLanguage,
+                        locale: learningLanguage === 'nl' ? 'nl-BE' : undefined,
+                        style: learningLanguage === 'nl' ? buildFlemishSpeechStyle('gent') : undefined,
+                      });
+                    } finally {
+                      setIsPlayingSelectedAudio(false);
+                    }
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Beluister uitspraak"
+                  className="min-h-12 flex-row items-center gap-1.5 rounded-full bg-surface-soft px-3.5 py-1.5 active:opacity-75"
+                >
+                  <Volume2 size={16} color={iconColor('primary')} />
+                  <Text className="text-xs font-semibold text-primary">
+                    {isPlayingSelectedAudio ? 'Speelt...' : 'Uitspraak'}
+                  </Text>
+                </Pressable>
+              </View>
+
               <Text className="text-2xl font-semibold text-ink">“{selectedPhrase.form}”</Text>
               <Text className="text-sm leading-5 text-body">{selectedPhrase.meaning}</Text>
+            </View>
+
+            <View className="rounded-2xl bg-card-warm p-4">
+              <Text className="text-xs font-semibold uppercase tracking-wider text-primary">
+                {learningLanguage === 'nl' ? 'Spraakgeheugen Status' : 'Memory Retention'}
+              </Text>
+              <Text className="mt-1 text-xs leading-5 text-muted">
+                {getRecallExplanation(getPhraseRecallBars(selectedPhrase), learningLanguage === 'nl')}
+              </Text>
+              {selectedPhrase.stats.unassistedCount > 0 ? (
+                <Text className="mt-2 text-xs font-medium text-muted">
+                  {selectedPhrase.stats.unassistedCount}{' '}
+                  {learningLanguage === 'nl'
+                    ? 'keer zelfstandig gebruikt in gesprek'
+                    : 'independent conversational uses'}
+                </Text>
+              ) : null}
             </View>
 
             {selectedPhrase.usageNote ? (
@@ -964,6 +1070,13 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
           </View>
         ) : null}
       </Sheet>
+
+      <FlashcardModal
+        visible={isFlashcardsOpen}
+        phrases={phrases}
+        learningLanguage={learningLanguage}
+        onClose={() => setIsFlashcardsOpen(false)}
+      />
     </View>
   );
 };
