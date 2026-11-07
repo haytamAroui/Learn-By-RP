@@ -136,7 +136,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
 }) => {
   const { t, language } = useI18n();
   const [selectedTab, setSelectedTab] = useState<ProgressTab>('skills');
-  const [selectedSkillCategory, setSelectedSkillCategory] = useState<SkillCategoryFilter>('all');
+  const [selectedSkillCategory, setSelectedSkillCategory] = useState<SkillCategoryFilter>('daily');
   const [selectedPhrase, setSelectedPhrase] = useState<PhraseItem | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<CommunicativeSkillMeta | null>(null);
   const activity = useMemo(() => summarizeActivity(sessions, learningLanguage), [sessions, learningLanguage]);
@@ -436,15 +436,57 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
 
         {selectedTab === 'skills' ? (
           <View className="gap-4">
-            {/* Skills Repertoire Header */}
+            {/* LINGO ATELIER: 4 Core Language Skills Mastery Bars */}
+            <View className="p-4 rounded-[24px] bg-surface border border-border-subtle/50 gap-3.5 shadow-sm" style={{ boxShadow: ELEVATION.card }}>
+              <View className="flex-row items-center justify-between">
+                <Text className="font-display text-18 font-bold text-ink">
+                  Language skill practice
+                </Text>
+                <Text className="text-xs font-semibold text-muted">
+                  Illustrative activity
+                </Text>
+              </View>
+
+              <View className="gap-2.5">
+                {[
+                  { name: 'Speaking', desc: 'Try short exchanges & pronunciation', pct: 72, color: '#ED6A56', icon: '🎙' },
+                  { name: 'Listening', desc: 'Comprehend natural dialogue', pct: 58, color: '#F8B74C', icon: '🎧' },
+                  { name: 'Vocabulary', desc: 'Spaced repetition phrase recall', pct: 68, color: '#159A98', icon: '📖' },
+                  { name: 'Grammar', desc: 'Understand sentence patterns', pct: 50, color: '#A787DB', icon: '📝' },
+                ].map(skill => (
+                  <View key={skill.name} className="gap-1.5 rounded-2xl bg-surface-soft p-3">
+                    <View className="flex-row items-center justify-between">
+                      <View className="flex-row items-center gap-2">
+                        <Text className="text-16">{skill.icon}</Text>
+                        <Text className="text-14 font-bold text-ink">{skill.name}</Text>
+                      </View>
+                      <Text className="text-xs font-extrabold" style={{ color: skill.color }}>
+                        {skill.pct}%
+                      </Text>
+                    </View>
+                    <View className="h-2 w-full rounded-full bg-surface-sunken overflow-hidden">
+                      <View
+                        className="h-full rounded-full"
+                        style={{ width: `${skill.pct}%`, backgroundColor: skill.color }}
+                      />
+                    </View>
+                    <Text className="text-xs text-muted leading-4">
+                      {skill.desc}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            </View>
+
+            {/* Communicative Repertoire Section Header */}
             <View className="p-4 rounded-[24px] bg-surface border border-border-subtle/50 gap-2.5">
               <View className="flex-row items-center justify-between">
                 <View className="gap-0.5">
-                  <Text className="text-base font-bold text-ink">
-                    {demonstratedSkillCount} / {COMMUNICATIVE_SKILLS_CATALOG.length} {t.progress.tabSkills.toLowerCase()}
+                  <Text className="font-display text-18 font-bold text-ink">
+                    Communicative repertoire
                   </Text>
                   <Text className="text-xs text-muted">
-                    {t.recap.validatedEvidence}
+                    {demonstratedSkillCount} of {COMMUNICATIVE_SKILLS_CATALOG.length} skills active
                   </Text>
                 </View>
                 <View className="px-2.5 py-1 rounded-full bg-surface-soft border border-border-subtle/40">
@@ -466,7 +508,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               </View>
             </View>
 
-            {/* Category Filter Pills */}
+            {/* Category Filter Pills (Defaults to Daily: 3 skills, keeping it concise) */}
             <View className="flex-row gap-2 flex-wrap">
               {(['all', 'daily', 'repair', 'discussion'] as SkillCategoryFilter[]).map(catId => {
                 const isSelected = selectedSkillCategory === catId;
@@ -513,18 +555,18 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                     onPress={() => setSelectedSkill(skill)}
                     accessibilityRole="button"
                     accessibilityLabel={`${localized.name}. ${localized.description}`}
-                    className="min-h-[76px] flex-row items-center gap-3.5 rounded-2xl border border-border-subtle/50 bg-surface p-3.5 hover:bg-surface-hover active:scale-[0.99] transition-all"
+                    className="min-h-14 flex-row items-center gap-3 rounded-2xl border border-border-subtle/50 bg-surface p-3 hover:bg-surface-hover active:scale-[0.99] transition-all"
                   >
                     <View
-                      className={`h-11 w-11 items-center justify-center rounded-xl ${iconInfo.tint}`}
+                      className={`h-10 w-10 items-center justify-center rounded-xl ${iconInfo.tint}`}
                     >
-                      <iconInfo.Icon size={20} color={iconColor(iconInfo.color)} />
+                      <iconInfo.Icon size={18} color={iconColor(iconInfo.color)} />
                     </View>
 
-                    <View className="flex-1 min-w-0 gap-0.5">
+                    <View className="flex-1 min-w-0">
                       <View className="flex-row items-center gap-2">
                         <Text
-                          className="text-[15px] font-bold text-ink truncate"
+                          className="text-15 font-bold text-ink truncate"
                           numberOfLines={1}
                         >
                           {localized.name}
@@ -538,20 +580,14 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                         ) : null}
                       </View>
                       <Text
-                        className="text-xs leading-4 text-muted"
-                        numberOfLines={2}
+                        className="text-xs text-muted truncate mt-0.5"
+                        numberOfLines={1}
                       >
                         {localized.description}
                       </Text>
-                      {projection?.lastIndependentUseAt ? (
-                        <Text className="text-xs text-language font-medium mt-0.5">
-                          {t.progress.lastIndependentUse}:{' '}
-                          {new Date(projection.lastIndependentUseAt).toLocaleDateString()}
-                        </Text>
-                      ) : null}
                     </View>
 
-                    <View className="items-end gap-1.5 shrink-0">
+                    <View className="flex-row items-center gap-2 shrink-0">
                       {status ? (
                         <View
                           className={`rounded-full px-2.5 py-0.5 ${
@@ -559,7 +595,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                           }`}
                         >
                           <Text
-                            className={`text-xs font-semibold ${
+                            className={`text-xs font-bold ${
                               statusTone(projection).text
                             }`}
                             numberOfLines={1}
@@ -568,7 +604,7 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                           </Text>
                         </View>
                       ) : null}
-                      <ChevronRight size={18} color={iconColor('muted')} />
+                      <ChevronRight size={16} color={iconColor('muted')} />
                     </View>
                   </Pressable>
                 );

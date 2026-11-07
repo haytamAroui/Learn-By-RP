@@ -8,12 +8,18 @@ import {
 import { Text } from './AppText';
 import {
   BookOpen,
+  ChevronDown,
   ChevronRight,
+  ChevronUp,
+  Coffee,
   Compass,
   MapPin,
   Route,
   Search,
+  ShoppingBag,
   Sparkles,
+  Train,
+  Users,
   X,
 } from 'lucide-react-native';
 import { MissionDefinition, SessionRecord } from '../types';
@@ -23,14 +29,15 @@ import { useI18n } from '../features/i18n';
 import { iconColor } from '../design/iconColor';
 import { ELEVATION } from '../design/tokens';
 import { NeighborhoodArtwork } from './NeighborhoodArtwork';
+import { Button } from './ui';
 
 const MISSION_TONES: Record<MissionDefinition['category'], { container: string; color: string }> = {
-  cafes: { container: 'bg-card-warm', color: 'brand' },
-  services: { container: 'bg-card-sky', color: 'info' },
-  transit: { container: 'bg-language-soft', color: 'language' },
-  lodging: { container: 'bg-warning-soft', color: 'warning' },
-  social: { container: 'bg-card-sage', color: 'success' },
-  problems: { container: 'bg-card-warm', color: 'brand' },
+  cafes: { container: 'bg-[#DFF2EA]', color: 'brand' },
+  services: { container: 'bg-[#FFE6DD]', color: 'info' },
+  transit: { container: 'bg-[#FFF0CF]', color: 'language' },
+  lodging: { container: 'bg-[#FFF0CF]', color: 'warning' },
+  social: { container: 'bg-[#ECE6FF]', color: 'success' },
+  problems: { container: 'bg-[#ECE6FF]', color: 'brand' },
 };
 
 interface MissionsScreenProps {
@@ -80,22 +87,6 @@ const NEIGHBORHOOD_LOOP_TITLES: Record<string, Record<string, string>> = {
   },
 };
 
-/**
- * The mission card's accessible name.
- *
- * `accessibilityLabel` replaces the card's inner text for assistive technology, so
- * naming the card after its title alone hides both the communicative job and the
- * interlocutor from anyone not looking at the screen.
- *
- * The goal has to be in the name rather than in `accessibilityHint`, because
- * react-native-web discards `accessibilityHint` entirely: on the rendered page the
- * card carries `aria-label` and nothing else - no `aria-describedby`, no
- * `aria-description`, no `title`. A hint that is silently dropped is worse than no
- * hint, because the source reads as though the task is exposed and it is not.
- *
- * Order is deliberate: the title first because it is what makes the name unique across
- * a 32-entry list, then who the learner is speaking to, then the task itself.
- */
 function missionAccessibleName(mission: MissionDefinition): string {
   return `${mission.title}. ${mission.character.name}, ${mission.character.role}. ${mission.learnerGoal}`;
 }
@@ -111,6 +102,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<TextInput>(null);
   const [selectedCategory, setSelectedCategory] = useState('all');
+  const [showAllScenarios, setShowAllScenarios] = useState(false);
   const [activeView, setActiveView] = useState<'catalog' | 'programs' | 'route'>('catalog');
 
   const categories = [
@@ -135,11 +127,55 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
     return matchesSearch && matchesCategory;
   });
 
-  const activeLanguage = missions[0]?.language || 'es';
+  const activeLanguage = missions[0]?.language || 'nl';
   const currentLoopTitle =
     NEIGHBORHOOD_LOOP_TITLES[activeLanguage]?.[uiLang] ||
     NEIGHBORHOOD_LOOP_TITLES[activeLanguage]?.en ||
     t.common.connectedLoop;
+
+  // Curated Setting Hubs matching Lingo Atelier
+  const settingHubs = [
+    {
+      id: 'cafes',
+      name: 'Coffee & Bakeries',
+      tagline: 'Order breakfast, pastries, and drinks politely',
+      count: missions.filter(m => m.category === 'cafes').length,
+      tint: 'bg-[#DFF2EA]',
+      iconColor: '#0E8F7E',
+      Icon: Coffee,
+    },
+    {
+      id: 'services',
+      name: 'Shops & Markets',
+      tagline: 'Pharmacies, parcel pick-up, and everyday services',
+      count: missions.filter(m => m.category === 'services').length,
+      tint: 'bg-[#FFE6DD]',
+      iconColor: '#E4533C',
+      Icon: ShoppingBag,
+    },
+    {
+      id: 'transit',
+      name: 'Out & About · Travel',
+      tagline: 'Metro platforms, hotel check-in, and directions',
+      count: missions.filter(m => m.category === 'transit' || m.category === 'lodging').length,
+      tint: 'bg-[#FFF0CF]',
+      iconColor: '#B7791F',
+      Icon: Train,
+    },
+    {
+      id: 'social',
+      name: 'Neighbours & Social Life',
+      tagline: 'Meet neighbours, terrace small talk, and repair',
+      count: missions.filter(m => m.category === 'social' || m.category === 'problems').length,
+      tint: 'bg-[#ECE6FF]',
+      iconColor: '#7A63E0',
+      Icon: Users,
+    },
+  ];
+
+  const featuredMission = filteredMissions[0] ?? missions[0];
+  const isDefaultHubView = !query && selectedCategory === 'all' && !showAllScenarios;
+  const displayedMissions = isDefaultHubView ? filteredMissions.slice(0, 3) : filteredMissions;
 
   return (
     <ScrollView
@@ -150,16 +186,13 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
         width: '100%',
         maxWidth: 760,
         alignSelf: 'center',
-        paddingHorizontal: 20,
-        paddingTop: 6,
-        paddingBottom: 36,
-        gap: 22,
+        paddingHorizontal: 16,
+        paddingTop: 8,
+        paddingBottom: 40,
+        gap: 20,
       }}
     >
-      <Text className="max-w-[620px] text-[15px] leading-[22px] text-body">
-        {t.missions.subheading}
-      </Text>
-
+      {/* View Switcher: Catalog / Programs / Route */}
       <View className="flex-row gap-2">
         {[
           { id: 'catalog' as const, label: t.missions.tabCatalog, Icon: Compass },
@@ -175,7 +208,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
               onPress={() => setActiveView(item.id)}
               accessibilityRole="tab"
               accessibilityState={{ selected }}
-              className={`min-h-12 flex-1 flex-row items-center justify-center gap-1 rounded-full border px-2 hover:bg-surface-hover focus:border-2 focus:border-focus ${
+              className={`min-h-12 flex-1 flex-row items-center justify-center gap-1.5 rounded-full border px-2 hover:bg-surface-hover focus:border-2 focus:border-focus ${
                 selected ? 'border-language/20 bg-language-soft' : 'border-transparent bg-surface'
               }`}
             >
@@ -198,7 +231,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
       {activeView === 'catalog' ? (
         <View className="gap-5">
           {/* Lingo Atelier Featured Conversation Card */}
-          {!query && selectedCategory === 'all' && filteredMissions[0] ? (
+          {featuredMission ? (
             <View className="overflow-hidden rounded-[26px] border border-border-interactive/40 bg-surface shadow-sm" style={{ boxShadow: ELEVATION.card }}>
               <View className="relative h-[148px] w-full overflow-hidden bg-[#E2F1E7]">
                 <NeighborhoodArtwork />
@@ -210,12 +243,12 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                 </View>
                 <View className="absolute right-4 top-3 px-2.5 py-1 rounded-xl bg-lime">
                   <Text className="text-xs font-extrabold text-[#17310F]">
-                    {filteredMissions[0].levelRange ?? 'A1'}
+                    {featuredMission.levelRange ?? 'A1'}
                   </Text>
                 </View>
                 <View className="absolute left-4 bottom-3 right-4">
                   <Text className="font-display text-20 font-bold text-white leading-tight">
-                    {filteredMissions[0].title}
+                    {featuredMission.title}
                   </Text>
                 </View>
               </View>
@@ -225,16 +258,16 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                     5-MINUTE ROLE-PLAY
                   </Text>
                   <Text className="text-xs font-semibold text-muted">
-                    {filteredMissions[0].estimatedMinutes} min
+                    {featuredMission.estimatedMinutes} min
                   </Text>
                 </View>
                 <Text className="text-14 leading-5 text-body">
-                  {filteredMissions[0].learnerGoal}
+                  {featuredMission.learnerGoal}
                 </Text>
                 <Pressable
-                  onPress={() => onSelectMission(filteredMissions[0])}
+                  onPress={() => onSelectMission(featuredMission)}
                   accessibilityRole="button"
-                  accessibilityLabel={`Step inside ${filteredMissions[0].title}`}
+                  accessibilityLabel={`Step inside ${featuredMission.title}`}
                   className="min-h-12 flex-row items-center justify-center gap-2 rounded-full bg-lime px-4 py-2 hover:opacity-95 active:scale-[0.98] transition-all"
                 >
                   <Text className="text-14 font-extrabold text-[#17310F]">
@@ -246,6 +279,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
             </View>
           ) : null}
 
+          {/* Quick Search Bar */}
           <View className="h-14 flex-row items-center gap-3 rounded-[20px] border border-border-interactive bg-surface px-4">
             <Search size={19} color={iconColor('muted')} />
             <TextInput
@@ -260,123 +294,184 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
               className="h-full flex-1 text-[15px] text-ink"
             />
             {searchQuery ? (
-              <Pressable onPress={() => { setSearchQuery(''); searchRef.current?.focus(); }}
-                accessibilityRole="button" accessibilityLabel={t.common.clear}
-                className="h-12 w-12 items-center justify-center rounded-full focus:border-2 focus:border-focus">
+              <Pressable
+                onPress={() => { setSearchQuery(''); searchRef.current?.focus(); }}
+                accessibilityRole="button"
+                accessibilityLabel={t.common.clear}
+                className="h-12 w-12 items-center justify-center rounded-full focus:border-2 focus:border-focus"
+              >
                 <X size={18} color={iconColor('muted')} />
               </Pressable>
             ) : null}
           </View>
 
+          {/* LINGO ATELIER: 4 Curated Setting Hubs */}
+          {!query && selectedCategory === 'all' && (
+            <View className="gap-3">
+              <View className="flex-row items-center justify-between">
+                <Text className="font-display text-18 font-bold text-ink">
+                  Choose a setting
+                </Text>
+                <Text className="text-xs font-semibold text-muted">
+                  4 authentic Flemish environments
+                </Text>
+              </View>
+
+              <View className="gap-2.5">
+                {settingHubs.map(hub => {
+                  const Icon = hub.Icon;
+                  return (
+                    <Pressable
+                      key={hub.id}
+                      onPress={() => setSelectedCategory(hub.id)}
+                      accessibilityRole="button"
+                      accessibilityLabel={`${hub.name}. ${hub.tagline}`}
+                      className="min-h-14 flex-row items-center gap-3.5 rounded-[22px] border border-border-subtle/50 bg-surface p-3.5 shadow-sm hover:bg-surface-hover active:scale-[0.99] transition-all"
+                    >
+                      <View
+                        className="h-11 w-11 items-center justify-center rounded-2xl"
+                        style={{ backgroundColor: hub.tint ? undefined : '#F0F7F4' }}
+                      >
+                        <View className={`h-11 w-11 items-center justify-center rounded-2xl ${hub.tint}`}>
+                          <Icon size={20} color={hub.iconColor} />
+                        </View>
+                      </View>
+
+                      <View className="flex-1 min-w-0">
+                        <View className="flex-row items-center gap-2">
+                          <Text className="text-15 font-bold text-ink truncate">
+                            {hub.name}
+                          </Text>
+                          <View className="rounded-full bg-surface-soft px-2 py-0.5 border border-border-subtle/30">
+                            <Text className="text-xs font-semibold text-muted">
+                              {hub.count}
+                            </Text>
+                          </View>
+                        </View>
+                        <Text className="text-xs text-muted truncate mt-0.5">
+                          {hub.tagline}
+                        </Text>
+                      </View>
+
+                      <ChevronRight size={18} color={iconColor('muted')} />
+                    </Pressable>
+                  );
+                })}
+              </View>
+            </View>
+          )}
+
+          {/* Active Filter or Search State Notice */}
+          {(selectedCategory !== 'all' || query) && (
+            <View className="flex-row items-center justify-between rounded-2xl bg-surface-soft px-3.5 py-2.5 border border-border-subtle/40">
+              <View className="flex-row items-center gap-2">
+                <Text className="text-xs font-bold text-primary uppercase">Filtered by:</Text>
+                <Text className="text-13 font-semibold text-ink">
+                  {categories.find(c => c.id === selectedCategory)?.label || 'All'}
+                  {query ? ` · "${query}"` : ''}
+                </Text>
+                <Text className="text-xs text-muted">({filteredMissions.length})</Text>
+              </View>
+              <Pressable
+                onPress={() => {
+                  setSelectedCategory('all');
+                  setSearchQuery('');
+                }}
+                accessibilityRole="button"
+                accessibilityLabel="Clear filter"
+                className="min-h-12 items-center justify-center px-2"
+              >
+                <Text className="text-xs font-bold text-language">Clear filter</Text>
+              </Pressable>
+            </View>
+          )}
+
+          {/* Scenarios Section Header */}
           <View className="flex-row items-center justify-between pt-1">
             <Text className="font-display text-18 font-bold text-ink">
-              Choose a setting
+              {isDefaultHubView ? 'Up next for you' : 'Roleplay scenarios'}
             </Text>
             <Text className="text-xs font-semibold text-muted">
-              {filteredMissions.length} {filteredMissions.length === 1 ? 'scenario' : 'scenarios'}
+              {displayedMissions.length} of {filteredMissions.length}
             </Text>
           </View>
 
-          {/*
-            Category filters wrap instead of scrolling horizontally.
+          {/* Curated, Bite-Sized Mission Cards */}
+          <View className="gap-2.5">
+            {displayedMissions.map(mission => (
+              <Pressable
+                key={mission.id}
+                onPress={() => onSelectMission(mission)}
+                accessibilityRole="button"
+                accessibilityLabel={missionAccessibleName(mission)}
+                className="min-h-[76px] flex-row items-center gap-3.5 rounded-[22px] border border-border-subtle/60 bg-surface p-3.5 shadow-sm hover:bg-surface-hover active:scale-[0.99] transition-all"
+                style={{ boxShadow: ELEVATION.card }}
+              >
+                <View className={`h-11 w-11 items-center justify-center rounded-2xl ${MISSION_TONES[mission.category].container}`}>
+                  <Compass size={20} color={iconColor(MISSION_TONES[mission.category].color)} />
+                </View>
 
-            This was a horizontal ScrollView with its indicator hidden, so the last chip
-            was cut mid-word at the right edge in both themes with nothing to indicate it
-            could be scrolled. On a phone that is a defensible pattern; at 840 and 1440 it
-            hid filters while leaving a wide empty margin beside them, so a learner had to
-            discover a scroll to reach "Social & Neighborhood".
-
-            Six chips wrapping to two or three lines is a small cost, and it makes every
-            filter visible and reachable without a gesture. Both blueprints rule this out
-            anyway: "avoid horizontal scrolling for ordinary screens" and "keep family
-            filters accessible in a sheet or short segmented control".
-          */}
-          <View className="flex-row flex-wrap gap-2">
-            {categories.map(category => {
-              const selected = selectedCategory === category.id;
-
-              return (
-                <Pressable
-                  key={category.id}
-                  onPress={() => setSelectedCategory(category.id)}
-                  accessibilityRole="button"
-                  accessibilityState={{ selected }}
-                  className={`min-h-12 justify-center rounded-full border px-4 hover:bg-surface-hover focus:border-2 focus:border-focus ${
-                    selected ? 'border-action bg-action' : 'border-transparent bg-surface-soft'
-                  }`}
-                >
-                  <Text
-                    className={`text-sm font-semibold ${
-                      selected ? 'text-action-text' : 'text-body'
-                    }`}
-                  >
-                    {category.label}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-
-          <View className="gap-3">
-            {filteredMissions.map(mission => (
-              <React.Fragment key={mission.id}>
-                <Pressable
-                  onPress={() => onSelectMission(mission)}
-                  accessibilityRole="button"
-                  accessibilityLabel={missionAccessibleName(mission)}
-                  className="min-h-[104px] flex-row items-center gap-3 rounded-[20px] border border-border-subtle/60 bg-surface px-4 py-4 hover:bg-surface-hover active:opacity-70 focus:border-2 focus:border-focus"
-                  style={{ boxShadow: ELEVATION.card }}
-                >
-                  <View className={`h-12 w-12 items-center justify-center rounded-[15px] ${MISSION_TONES[mission.category].container}`}>
-                    <Compass size={21} color={iconColor(MISSION_TONES[mission.category].color)} />
-                  </View>
-
-                  {/*
-                    The row answers what situation this is, what the learner has to
-                    accomplish, and who they will be speaking with.
-
-                    It used to show `mission.setting` instead, which is a description of
-                    the place rather than of the task: "A bustling neighbourhood cafe
-                    with morning commuters" tells a learner nothing about what they are
-                    meant to do there, and it was truncated to one line, so even the
-                    context it did give was usually cut mid-sentence. `learnerGoal` and
-                    the character are the decision-relevant fields, and both blueprints
-                    require them in mission discovery.
-
-                    Neighbourhood and setting are not lost - the briefing renders both -
-                    so this row stays a summary rather than a second briefing.
-                  */}
-                  <View className="flex-1">
-                    <Text className="text-[17px] font-semibold leading-[22px] text-ink">
+                <View className="flex-1 min-w-0">
+                  <View className="flex-row items-center gap-2">
+                    <Text className="text-15 font-bold text-ink truncate" numberOfLines={1}>
                       {mission.title}
                     </Text>
-                    {/*
-                      No `numberOfLines` here on purpose. Goals run 61-113 characters
-                      across the 32 authored missions, and truncating one hides the task
-                      the learner is being asked to judge. Wrapping keeps the whole
-                      communicative job readable, including at large text sizes.
-                    */}
-                    <Text className="mt-1 text-[14px] leading-5 text-body">
-                      {mission.learnerGoal}
-                    </Text>
-                    <Text className="mt-1 text-[13px] leading-[18px] text-muted">
-                      {mission.character.name} · {mission.character.role} ·{' '}
-                      {mission.levelRange} · {mission.estimatedMinutes} {t.common.minutes}
-                    </Text>
+                    <View className="rounded-full bg-lime px-2 py-0.5">
+                      <Text className="text-xs font-extrabold text-[#17310F]">
+                        {mission.levelRange ?? 'A1'}
+                      </Text>
+                    </View>
                   </View>
 
-                  <ChevronRight size={21} color={iconColor('muted')} />
-                </Pressable>
-              </React.Fragment>
+                  <Text className="text-13 leading-4 text-body truncate mt-0.5" numberOfLines={1}>
+                    {mission.learnerGoal}
+                  </Text>
+
+                  <Text className="text-xs text-muted mt-0.5" numberOfLines={1}>
+                    {mission.character.name} ({mission.character.role}) · {mission.estimatedMinutes} min
+                  </Text>
+                </View>
+
+                <ChevronRight size={18} color={iconColor('muted')} />
+              </Pressable>
             ))}
 
             {filteredMissions.length === 0 ? (
-              <View className="items-center px-6 py-14">
-                <Text className="text-center text-sm leading-5 text-muted">
+              <View className="items-center px-6 py-12">
+                <Text className="text-center text-14 leading-5 text-muted">
                   {t.missions.noMissionsFound}
                 </Text>
               </View>
             ) : null}
+
+            {/* Toggle to show all scenarios when on default view */}
+            {isDefaultHubView && filteredMissions.length > 3 && (
+              <Pressable
+                onPress={() => setShowAllScenarios(true)}
+                accessibilityRole="button"
+                accessibilityLabel={`Browse all ${filteredMissions.length} scenarios`}
+                className="min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-border-interactive/40 bg-surface px-4 py-2 hover:bg-surface-hover active:scale-95 transition-all mt-1"
+              >
+                <Text className="text-13 font-bold text-primary">
+                  Browse all {filteredMissions.length} scenarios
+                </Text>
+                <ChevronDown size={16} color={iconColor('brand')} />
+              </Pressable>
+            )}
+
+            {!isDefaultHubView && showAllScenarios && selectedCategory === 'all' && (
+              <Pressable
+                onPress={() => setShowAllScenarios(false)}
+                accessibilityRole="button"
+                accessibilityLabel="Show fewer scenarios"
+                className="min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-border-interactive/40 bg-surface px-4 py-2 hover:bg-surface-hover active:scale-95 transition-all mt-1"
+              >
+                <Text className="text-13 font-bold text-muted">
+                  Show fewer
+                </Text>
+                <ChevronUp size={16} color={iconColor('muted')} />
+              </Pressable>
+            )}
           </View>
         </View>
       ) : activeView === 'programs' ? (
