@@ -20,6 +20,26 @@ const GEMINI_TO_EDGE_VOICE_MAP: Record<string, string> = {
   Fenrir: 'nl-BE-ArnaudNeural',
 };
 
+interface VoiceAcoustics {
+  pitch: string;
+  rateOffset: number;
+}
+
+const VOICE_ACOUSTIC_PROFILES: Record<string, VoiceAcoustics> = {
+  // Female Belgian Dutch personalities
+  Kore: { pitch: '+0%', rateOffset: 2 }, // Crisp, authoritative VRT newscaster
+  Aoede: { pitch: '-3%', rateOffset: -4 }, // Warm, melodic, friendly Ghent barista
+  Leda: { pitch: '+9%', rateOffset: 5 }, // Young, bright, modern
+  Zephyr: { pitch: '-5%', rateOffset: -8 }, // Soft, calming, peaceful
+  Autonoe: { pitch: '+5%', rateOffset: 0 }, // Friendly neighbour in Leuven
+  Despina: { pitch: '-1%', rateOffset: -2 }, // Attentive pharmacist in Hasselt
+
+  // Male Belgian Dutch personalities
+  Puck: { pitch: '+6%', rateOffset: 4 }, // Energetic Antwerp courier / bike rental
+  Charon: { pitch: '-14%', rateOffset: -5 }, // Deep, mature, warm Bruges waiter
+  Fenrir: { pitch: '-6%', rateOffset: 2 }, // Resonant, authoritative Brussels officer
+};
+
 /**
  * The Edge read-aloud voice.
  *
@@ -45,9 +65,10 @@ export class EdgeTtsProvider {
       : pickEdgeVoice(request.locale || request.language, request.voiceGender);
     const tts = await this.ensureVoice(voice.shortName);
 
+    const acoustics = (rawVoice && VOICE_ACOUSTIC_PROFILES[rawVoice]) ? VOICE_ACOUSTIC_PROFILES[rawVoice] : { pitch: '0%', rateOffset: 0 };
     const { audioStream, metadataStream } = tts.toStream(request.text, {
-      rate: rateFor(request.speed),
-      pitch: '0%',
+      rate: rateFor(request.speed, acoustics.rateOffset),
+      pitch: acoustics.pitch,
       volume: '0%',
     });
 
@@ -93,11 +114,13 @@ export class EdgeTtsProvider {
   }
 }
 
-/** A speed multiplier becomes a percentage change in the speaking rate. */
-function rateFor(speed: number | undefined): string {
+/** A speed multiplier and character offset become a percentage change in speaking rate. */
+function rateFor(speed: number | undefined, offsetPercent = 0): string {
   const value = speed ?? 1;
-  if (!Number.isFinite(value) || value <= 0) return '+0%';
-  const percent = Math.round((value - 1) * 100);
+  if (!Number.isFinite(value) || value <= 0) {
+    return `${offsetPercent >= 0 ? '+' : ''}${offsetPercent}%`;
+  }
+  const percent = Math.round((value - 1) * 100) + offsetPercent;
   const clamped = Math.max(-50, Math.min(100, percent));
   return `${clamped >= 0 ? '+' : ''}${clamped}%`;
 }

@@ -15,6 +15,7 @@ import {
   Route,
   Search,
   Sparkles,
+  Volume2,
   X,
 } from 'lucide-react-native';
 import { MissionDefinition, SessionRecord } from '../types';
@@ -24,6 +25,8 @@ import { useI18n } from '../features/i18n';
 import { iconColor } from '../design/iconColor';
 import { ELEVATION } from '../design/tokens';
 import { NeighborhoodArtwork } from './NeighborhoodArtwork';
+import { speakWithBestAvailable } from '../providers/voice/speechOutput';
+import { NativeVoiceTransport } from '../providers/voice/nativeVoiceTransport';
 
 const MISSION_TONES: Record<MissionDefinition['category'], { container: string; color: string }> = {
   cafes: { container: 'bg-[#DFF2EA]', color: 'brand' },
@@ -138,6 +141,34 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
   const [selectedLevel, setSelectedLevel] = useState<string>('all');
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeView, setActiveView] = useState<'catalog' | 'programs' | 'route'>('catalog');
+  const [auditioningMissionId, setAuditioningMissionId] = useState<string | null>(null);
+  const voiceTransportRef = useRef<NativeVoiceTransport | null>(null);
+
+  const handleAuditionMission = async (mission: MissionDefinition) => {
+    try {
+      setAuditioningMissionId(mission.id);
+      if (!voiceTransportRef.current) {
+        voiceTransportRef.current = new NativeVoiceTransport(() => true);
+      }
+      const samplePhrase =
+        mission.sampleConversation?.find(turn => turn.speaker === 'character')?.nl ||
+        mission.usefulPhrases?.[0]?.form ||
+        'Goeiemorgen! Welkom bij ons.';
+
+      await speakWithBestAvailable(voiceTransportRef.current, samplePhrase, {
+        language: mission.language,
+        locale: mission.language === 'nl' ? 'nl-BE' : undefined,
+        speed: 1,
+        voice: mission.character.voiceName,
+        voiceGender: mission.character.voiceGender,
+        style: mission.character.voiceStyle,
+      });
+    } catch (e) {
+      console.warn('Catalog voice audition failed:', e);
+    } finally {
+      setAuditioningMissionId(null);
+    }
+  };
 
   const availableLevels = useMemo(() => {
     const set = new Set<string>();
@@ -558,8 +589,40 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                             </Text>
 
                             <Text className="text-xs text-muted mt-0.5" numberOfLines={1}>
-                              {mission.character.name} ({mission.character.role}) · {mission.estimatedMinutes} min
+                              📍 {mission.neighborhood || mission.setting} · {mission.character.name} ({mission.character.role}) · {mission.estimatedMinutes} min
                             </Text>
+
+                            <View className="flex-row items-center gap-2 mt-2">
+                              <Pressable
+                                onPress={e => {
+                                  e.stopPropagation();
+                                  void handleAuditionMission(mission);
+                                }}
+                                accessibilityRole="button"
+                                accessibilityLabel={`Beluister stem van ${mission.character.name} (${mission.character.voiceName || 'Stem'})`}
+                                className={`min-h-12 px-3 rounded-full flex-row items-center gap-1.5 border transition-all active:scale-95 ${
+                                  auditioningMissionId === mission.id
+                                    ? 'bg-action border-action'
+                                    : 'bg-surface-soft border-border-interactive/40 hover:bg-surface-hover'
+                                }`}
+                              >
+                                <Volume2
+                                  size={13}
+                                  color={iconColor(
+                                    auditioningMissionId === mission.id ? 'white' : 'brand'
+                                  )}
+                                />
+                                <Text
+                                  className={`text-xs font-bold ${
+                                    auditioningMissionId === mission.id ? 'text-white' : 'text-ink'
+                                  }`}
+                                >
+                                  {auditioningMissionId === mission.id
+                                    ? 'Aan het spreken…'
+                                    : `Stem: ${mission.character.voiceName || 'Beluister'}`}
+                                </Text>
+                              </Pressable>
+                            </View>
                           </View>
 
                           <ChevronRight size={18} color={iconColor('muted')} />

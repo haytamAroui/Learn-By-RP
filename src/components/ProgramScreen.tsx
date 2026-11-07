@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Text } from './AppText';
 import {
@@ -13,6 +13,7 @@ import {
   RotateCcw,
   Route,
   Sparkles,
+  Volume2,
 } from 'lucide-react-native';
 import type { RoleplayProgram } from '../contracts/program';
 import type { MissionDefinition, SessionRecord } from '../types';
@@ -27,6 +28,8 @@ import { Button, EmptyState, Pill, SectionLabel } from './ui';
 import { iconColor } from '../design/iconColor';
 import { NeighborhoodArtwork } from './NeighborhoodArtwork';
 import { ELEVATION } from '../design/tokens';
+import { speakWithBestAvailable } from '../providers/voice/speechOutput';
+import { NativeVoiceTransport } from '../providers/voice/nativeVoiceTransport';
 
 const MISSION_TONES: Record<MissionDefinition['category'], { container: string; color: string }> = {
   cafes: { container: 'bg-[#DFF2EA]', color: 'brand' },
@@ -109,6 +112,35 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
 }) => {
   const { t, language } = useI18n();
   const [selectedStage, setSelectedStage] = useState<string>('all');
+  const [auditioningMissionId, setAuditioningMissionId] = useState<string | null>(null);
+  const voiceTransportRef = useRef<NativeVoiceTransport | null>(null);
+
+  const handleAuditionMission = async (mission: MissionDefinition) => {
+    try {
+      setAuditioningMissionId(mission.id);
+      if (!voiceTransportRef.current) {
+        voiceTransportRef.current = new NativeVoiceTransport(() => true);
+      }
+      const samplePhrase =
+        mission.sampleConversation?.find(turn => turn.speaker === 'character')?.nl ||
+        mission.usefulPhrases?.[0]?.form ||
+        'Goeiemorgen! Welkom bij ons. Kan ik u ergens mee helpen?';
+
+      await speakWithBestAvailable(voiceTransportRef.current, samplePhrase, {
+        language: mission.language,
+        locale: mission.language === 'nl' ? 'nl-BE' : undefined,
+        speed: 1,
+        voice: mission.character.voiceName,
+        voiceGender: mission.character.voiceGender,
+        style: mission.character.voiceStyle,
+      });
+    } catch (e) {
+      console.warn('Mission voice audition failed:', e);
+    } finally {
+      setAuditioningMissionId(null);
+    }
+  };
+
   const recommendationCopy = PROGRAM_RECOMMENDATION_COPY[language];
   const projection = useMemo(
     () => buildProgramProjection(program, sessions),
@@ -515,16 +547,50 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
                                 </View>
 
                                 <Text
-                                  className="text-13 leading-4 text-body truncate"
+                                  className="text-13 leading-4 text-body"
                                   numberOfLines={2}
                                 >
                                   {mission.learnerGoal}
                                 </Text>
 
-                                <View className="flex-row items-center justify-between pt-1">
+                                <View className="flex-row items-center gap-2 pt-0.5">
                                   <Text className="text-xs text-muted" numberOfLines={1}>
-                                    {mission.character.name} ({mission.character.role}) · {mission.estimatedMinutes} min
+                                    📍 {mission.neighborhood || mission.setting || 'Vlaanderen'} · {mission.character.name} ({mission.character.role})
                                   </Text>
+                                </View>
+
+                                <View className="flex-row items-center justify-between pt-2 gap-2 flex-wrap">
+                                  <Pressable
+                                    onPress={e => {
+                                      e.stopPropagation();
+                                      void handleAuditionMission(mission);
+                                    }}
+                                    accessibilityRole="button"
+                                    accessibilityLabel={`Beluister stem van ${mission.character.name} (${mission.character.voiceName || 'Stem'})`}
+                                    className={`min-h-12 px-3 rounded-full flex-row items-center gap-1.5 border transition-all active:scale-95 ${
+                                      auditioningMissionId === mission.id
+                                        ? 'bg-action border-action'
+                                        : 'bg-surface-soft border-border-interactive/40 hover:bg-surface-hover'
+                                    }`}
+                                  >
+                                    <Volume2
+                                      size={14}
+                                      color={iconColor(
+                                        auditioningMissionId === mission.id ? 'white' : 'brand'
+                                      )}
+                                    />
+                                    <Text
+                                      className={`text-xs font-bold ${
+                                        auditioningMissionId === mission.id
+                                          ? 'text-white'
+                                          : 'text-ink'
+                                      }`}
+                                    >
+                                      {auditioningMissionId === mission.id
+                                        ? 'Aan het spreken…'
+                                        : `Stem: ${mission.character.voiceName || 'Beluister'}`}
+                                    </Text>
+                                  </Pressable>
 
                                   {unlocked ? (
                                     <View className="flex-row items-center gap-1">
@@ -533,7 +599,7 @@ export const ProgramScreen: React.FC<ProgramScreenProps> = ({
                                           current ? 'text-primary' : 'text-language'
                                         }`}
                                       >
-                                        {current ? 'Start step ▶' : done ? 'Replay ↺' : 'Enter'}
+                                        {current ? 'Start stap ▶' : done ? 'Herhaal ↺' : 'Bekijk stap'}
                                       </Text>
                                     </View>
                                   ) : null}

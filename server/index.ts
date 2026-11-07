@@ -266,7 +266,8 @@ RULES:
 4. Ordinary bounded disagreement or social pressure is allowed only when it follows the authored scene. Never direct discriminatory harassment, sexualized content, threats, humiliation, or simulated abuse at the learner.
 5. In health/pharmacy contexts, never diagnose, prescribe, recommend dosage, or select a treatment for the learner. Stay within authored non-diagnostic service/product facts and direct clinical questions to a qualified professional or product label.
 6. Never claim that a skill was demonstrated, failed, mastered, scored, or assessed.
-7. Output valid JSON only:
+7. Keep turns short (1 to 2 sentences max) with at most one natural question. For Belgian Dutch, use authentic Flemish conversational rhythm and natural separable verb usage.
+8. Output valid JSON only:
 {
   "replyText": "spoken line in ${targetLanguage}",
   "meaning": "${explanationLanguage} translation",
@@ -498,6 +499,14 @@ Rules:
 14. Your classification is only a proposal. The deterministic client validates the opportunity, passage, revision, support state and mission/scene authorship before persisting anything.
 15. Do not report skill failures. A failed cold opportunity is derived deterministically from validated runtime OpportunityInstance records, never from taskOutcome alone.
 16. Propose at most ${SKILL_POLICY.maxSkillsCreditedPerPassage} distinct skillIds for any one learner passage. A passage may contain more than one communicative act, but do not turn one rich answer into broad multi-skill credit. The deterministic validator enforces this cap again.
+17. DUTCH LEMMA GUIDANCE:
+   - Provide nouns in singular with their dictionary article (de/het) and verbs in the infinitive (e.g. 'de koffie', 'het pakje', 'afhalen', 'bestellen').
+   - Group inflected and separated forms under their base lemma: e.g. 'haalde af' under 'afhalen', 'belt op' under 'opbellen', 'fietste' under 'fietsen'.
+   - Preserve reflexive verbs ('zich herinneren') and authentic Belgian Dutch fixed phrases ('alstublieft', 'graag gedaan', 'dat smaakt').
+18. 6-STAGE TEACHING FOCUS (align actionable feedback with developmental milestones):
+   - Stage 1-2 (A1): Greetings, introductions, de/het, present tense, basic word order.
+   - Stage 3-4 (A2): Separable verbs, perfect tense (voltooid verleden tijd), use of 'er', and subordinate clause word order (bijzinsvolgorde).
+   - Stage 5-6 (B1): Hypothetical constructions ('zou graag willen'), polite vs informal register (ge/u/je), and nuanced discourse connectors.
 
 Return JSON matching:
 {
