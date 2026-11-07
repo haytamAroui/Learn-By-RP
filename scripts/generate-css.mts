@@ -206,6 +206,12 @@ const colors: Record<string, ColorSpec> = {
   coral: { DEFAULT: alias('coralControl'), text: alias('brandText') },
   lilac: { DEFAULT: alias('lilac'), soft: alias('lilacSoft') },
 
+  // Canonical Lingo 4-skill practice aliases
+  speaking: { DEFAULT: alias('coralControl'), soft: alias('brandSoft') },
+  listening: { DEFAULT: alias('warning'), soft: alias('warningSoft') },
+  vocabulary: { DEFAULT: alias('language'), soft: alias('languageSoft') },
+  grammar: { DEFAULT: alias('lilac'), soft: alias('lilacSoft') },
+
   // Legacy names, now pointed at the semantic tokens they were approximating.
   // `accent-sage` was evidence status, `card-warm` was brand selection.
   accent: {

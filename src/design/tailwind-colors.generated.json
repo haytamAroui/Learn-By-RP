@@ -73,6 +73,22 @@
       "DEFAULT": "rgb(var(--color-lilac) / <alpha-value>)",
       "soft": "rgb(var(--color-lilac-soft) / <alpha-value>)"
     },
+    "speaking": {
+      "DEFAULT": "rgb(var(--color-coral-control) / <alpha-value>)",
+      "soft": "rgb(var(--color-brand-soft) / <alpha-value>)"
+    },
+    "listening": {
+      "DEFAULT": "rgb(var(--color-warning) / <alpha-value>)",
+      "soft": "rgb(var(--color-warning-soft) / <alpha-value>)"
+    },
+    "vocabulary": {
+      "DEFAULT": "rgb(var(--color-language) / <alpha-value>)",
+      "soft": "rgb(var(--color-language-soft) / <alpha-value>)"
+    },
+    "grammar": {
+      "DEFAULT": "rgb(var(--color-lilac) / <alpha-value>)",
+      "soft": "rgb(var(--color-lilac-soft) / <alpha-value>)"
+    },
     "accent": {
       "sage": "rgb(var(--color-success) / <alpha-value>)",
       "sky": "rgb(var(--color-info) / <alpha-value>)"
