@@ -63,7 +63,7 @@ export function checkProviderAccess(
   if (!identity.ok) return identity;
 
   if (
-    (endpoint === 'realtime' || endpoint === 'speech') &&
+    endpoint === 'realtime' &&
     consent(req, 'x-learnbyrp-consent-voice') !== 'granted'
   ) {
     return {
