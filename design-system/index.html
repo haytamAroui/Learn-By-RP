@@ -1,0 +1,94 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Lingo — Design foundation</title>
+  <link rel="stylesheet" href="../assets/fonts/fonts.css">
+  <link rel="stylesheet" href="tokens.css">
+  <link rel="stylesheet" href="components.css">
+  <script defer src="tokens-data.js"></script>
+  <script defer src="preview.js"></script>
+</head>
+<body>
+<svg aria-hidden="true" style="position:absolute;width:0;height:0;overflow:hidden" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="mic" viewBox="0 0 24 24"><rect x="9" y="2" width="6" height="13" rx="3"/><path d="M5 10v2a7 7 0 0 0 14 0v-2M12 19v3M8 22h8"/></symbol>
+  <symbol id="book" viewBox="0 0 24 24"><path d="M12 5C8 2 4 3 2 4v16c4-2 7-1 10 1 3-2 6-3 10-1V4c-3-1-6-2-10 1ZM12 5v16"/></symbol>
+  <symbol id="headphones" viewBox="0 0 24 24"><path d="M3 14v-3a9 9 0 0 1 18 0v3M6 12H3v9h3a2 2 0 0 0 2-2v-5a2 2 0 0 0-2-2ZM18 12h3v9h-3a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2Z"/></symbol>
+  <symbol id="pattern" viewBox="0 0 24 24"><rect x="4" y="2" width="16" height="20" rx="3"/><path d="M8 7h8M8 12h8M8 17h5"/></symbol>
+  <symbol id="arrow" viewBox="0 0 24 24"><path d="M5 12h14m-6-6 6 6-6 6"/></symbol>
+  <symbol id="compass" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m16 8-3 5-5 3 3-5Z"/></symbol>
+  <symbol id="chat" viewBox="0 0 24 24"><path d="M21 11a9 9 0 0 1-9 9H3l1-5a9 9 0 1 1 17-4Z"/><path d="M8 9h8M8 13h5"/></symbol>
+  <symbol id="bars" viewBox="0 0 24 24"><path d="M3 21h18M6 17v-5M12 17V3M18 17V8"/></symbol>
+  <symbol id="keyboard" viewBox="0 0 24 24"><rect x="2" y="5" width="20" height="14" rx="3"/><path d="M6 9h1m4 0h1m4 0h1M6 12h1m4 0h1m4 0h1M7 16h10"/></symbol>
+  <symbol id="bulb" viewBox="0 0 24 24"><path d="M9 18v-2a7 7 0 1 1 6 0v2ZM9 21h6M10 18h4"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24"><path d="m5 12 4 4L19 6"/></symbol>
+  <symbol id="info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="M12 11v6M12 7h.01"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24"><path d="M10 3 2 18a2 2 0 0 0 2 3h16a2 2 0 0 0 2-3L14 3a2 2 0 0 0-4 0ZM12 9v5M12 17h.01"/></symbol>
+  <symbol id="close" viewBox="0 0 24 24"><path d="m6 6 12 12M6 18 18 6"/></symbol>
+  <symbol id="moon" viewBox="0 0 24 24"><path d="M20 14A9 9 0 0 1 10 3a9 9 0 1 0 10 11Z"/></symbol>
+</svg>
+<header class="page-header">
+  <div class="header-inner">
+    <a class="brand" href="../index.html" aria-label="Return to Lingo Studio"><span class="brand-mark">L</span><strong>lingo</strong><span class="header-label">Design foundation · v1</span></a>
+    <div class="toolbar" aria-label="Preview settings">
+      <button class="button secondary" id="text-toggle" aria-pressed="false">Aa · Token text</button>
+      <button class="button secondary" id="theme-toggle" aria-pressed="false"><svg class="icon" aria-hidden="true"><use href="#moon"/></svg><span>Dark preview</span></button>
+    </div>
+  </div>
+</header>
+<main class="main">
+  <section class="intro" aria-labelledby="page-title">
+    <div><p class="eyebrow">Tokens extracted from the original</p><h1 id="page-title">Original 3.<br>The source of truth.</h1><p>The original Home, Speaking and Progress screens define the design. The tokens capture their existing character and composition.</p><nav class="intro-links" aria-label="On this page"><a href="#screens">In context</a><a href="#palette">Color &amp; craft</a><a href="#tokens">Token library</a><a href="#rules">Layout principles</a></nav></div>
+    <aside class="reference-note"><strong>Preserve the screens. Extract the system.</strong>The reference below uses the original source markup and styling. Dark mode is an extension. Exercise components are a separate exploration further down.</aside>
+  </section>
+  <section id="screens" class="original-reference" aria-label="Original Home, Speaking Practice and Progress">
+    <div class="reference-heading"><h2>Home · Speaking · Progress</h2><p>The actual Original 3 layouts, artwork, type, glass, gradients and proportions. Static design samples; numbers and controls are illustrative.</p></div>
+    <iframe id="original-reference" src="originals.html" title="Original 3: Home, Speaking Practice and Progress visual reference" loading="eager"></iframe>
+  </section>
+  <section id="palette" aria-labelledby="palette-title">
+    <div class="section-head"><div><p class="eyebrow">Color &amp; craft</p><h2 id="palette-title">Every color has a job.</h2><p>Activity color identifies the kind of practice. A darker ink tone handles labels and icons; the brighter tone handles accents.</p></div><span class="caption muted" id="theme-caption">Light semantic values</span></div>
+    <div class="palette" id="activity-palette"></div>
+    <div class="section-head"><div><h2>The rhythm underneath.</h2><p>The original’s rounded sans-serif hierarchy, four-pixel spacing rhythm and selective elevation.</p></div></div>
+    <div class="foundation-grid">
+      <div class="panel"><h3>Typography</h3><p class="type-display">Hi, Mia.</p><p class="type-body">A little practice. A little more confidence.</p><p class="token-note">Bricolage Grotesque / Figtree<br>32 · 24 · 18 · 16 · 14 · 12 px at default size</p></div>
+      <div class="panel"><h3>Spacing</h3><div class="spacing-bars"><span><i style="--measure:var(--space-1)"></i>4</span><span><i style="--measure:var(--space-2)"></i>8</span><span><i style="--measure:var(--space-3)"></i>12</span><span><i style="--measure:var(--space-4)"></i>16</span><span><i style="--measure:var(--space-6)"></i>24</span><span><i style="--measure:var(--space-8)"></i>32</span><span><i style="--measure:var(--space-12)"></i>48</span></div><p class="token-note">18px phone gutters · 16px card padding</p></div>
+      <div class="panel"><h3>Depth &amp; shape</h3><div class="elevations"><span>Base</span><span>Card</span><span>Raised</span></div><p class="token-note">12px small · 16px control · 20px card<br>Glass is reserved for art overlays.</p></div>
+    </div>
+    <div class="section-head"><div><h2>Feedback has its own voice.</h2><p>Always pair color with an icon and explicit text. Speaking coral never carries an error message on its own.</p></div></div>
+    <div class="status-grid"><div class="feedback"><svg class="icon" aria-hidden="true"><use href="#check"/></svg><div><strong>Correct</strong>You made a polite request.</div></div><div class="feedback warning"><svg class="icon" aria-hidden="true"><use href="#alert"/></svg><div><strong>Microphone off</strong>Allow access to speak.</div></div><div class="feedback danger"><svg class="icon" aria-hidden="true"><use href="#close"/></svg><div><strong>Couldn’t save</strong>Try saving again.</div></div><div class="feedback info"><svg class="icon" aria-hidden="true"><use href="#info"/></svg><div><strong>Try another word</strong>Think “I would like”.</div></div></div>
+  </section>
+  <section id="tokens" aria-labelledby="tokens-title">
+    <div class="section-head"><div><p class="eyebrow">Ready to reuse</p><h2 id="tokens-title">One source, traceable decisions.</h2><p>Foundation → semantic roles → components. Theme changes remap meaning, while spacing and component geometry stay consistent.</p></div><a class="button secondary" href="tokens.json" download>Download tokens.json<svg class="icon" aria-hidden="true"><use href="#arrow"/></svg></a></div>
+    <div class="token-tools"><label for="token-search">Find a token</label><input type="search" id="token-search" placeholder="Try speaking, radius, shadow…"><span id="token-count" class="caption muted" role="status"></span></div>
+    <div class="token-list" id="token-list"></div>
+    <p class="token-note" id="token-error" role="status"></p>
+  </section>
+  <details class="exercise-extension"><summary>Exercise extension · separate from Original 3</summary>    <article id="exercise">
+      <div class="specimen-label"><h2>Exercise</h2><span>Try selecting an answer</span></div>
+      <form class="screen" id="exercise-form">
+        <div class="screen-body">
+          <div class="task-header"><div class="task-title"><h3>At the café</h3><span class="caption muted">2 of 6</span></div><div class="meter" role="progressbar" aria-label="Exercise steps" aria-valuenow="2" aria-valuemin="0" aria-valuemax="6" style="--exercise-step:33%"></div></div>
+          <div class="exercise-content"><span class="chip activity grammar"><svg class="icon" aria-hidden="true"><use href="#pattern"/></svg>Grammar · making a request</span><h3>Make a polite request.</h3><p>Choose the word that completes the sentence.</p><div class="sentence" lang="fr">Je <strong>_______</strong> un café,<br>s’il vous plaît.</div>
+            <fieldset><legend>Choose one answer</legend><div class="options">
+              <label class="option"><input type="radio" name="answer" value="voudrais"><span class="option-letter">A</span><span lang="fr">voudrais</span></label>
+              <label class="option"><input type="radio" name="answer" value="suis"><span class="option-letter">B</span><span lang="fr">suis</span></label>
+              <label class="option"><input type="radio" name="answer" value="ai"><span class="option-letter">C</span><span lang="fr">ai</span></label>
+            </div></fieldset>
+            <div class="feedback" id="answer-feedback" role="status" aria-live="polite" hidden></div>
+          </div>
+        </div>
+        <div class="exercise-dock"><button class="button" id="check-answer" type="submit" disabled>Check answer</button></div>
+      </form>
+      <p class="specimen-description">Lettered answers, an unmistakable selection and a pinned Check button. Feedback explains the language pattern.</p>
+    </article>
+</details>
+  <section id="rules" aria-labelledby="rules-title">
+    <div class="section-head"><div><h2 id="rules-title">Share the system. Compose the screen.</h2></div></div>
+    <div class="rules"><div><h3>Keep the overview useful.</h3><p>Home brings the goal, current lesson and practice categories together. Larger text can scroll; labels never shrink to force a fit.</p></div><div><h3>Build around the activity.</h3><p>Speaking needs dialogue and a microphone. Listening needs a player. Word-building needs movable words. Their layouts should differ.</p></div><div><h3>Let depth explain layers.</h3><p>Float the goal over illustration. Raise the speaking dock. Keep ordinary lists quiet, and place art outside the reading area.</p></div></div>
+  </section>
+  <footer class="footer"><span>Lingo · Original 3 design foundation · v1</span><span><a href="tokens.css" download>CSS tokens</a> · <a href="../DESIGN.md">Design decisions</a> · <a href="../index.html">Back to Studio</a></span></footer>
+</main>
+</body>
+</html>

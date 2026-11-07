@@ -2,17 +2,18 @@ import React from 'react';
 import { Pressable, ScrollView, View } from 'react-native';
 import { Text } from './AppText';
 import {
-  ArrowRight,
-  Clock3,
+  BookOpen,
+  ChevronRight,
   Compass,
-  MessageCircle,
+  Headphones,
   Mic,
+  Play,
   Sparkles,
 } from 'lucide-react-native';
 import { MissionDefinition, PhraseItem } from '../types';
 import { useI18n } from '../features/i18n';
 import { iconColor } from '../design/iconColor';
-import { ELEVATION } from '../design/tokens';
+import { ReferenceArtwork } from './ReferenceArtwork';
 
 interface TalkScreenProps {
   currentLanguageName: string;
@@ -25,8 +26,12 @@ interface TalkScreenProps {
 }
 
 /**
- * Modern, clean, hero-focused Home screen for everyday Belgian Dutch practice.
- * Eliminates visual noise and provides one clear primary action.
+ * Faithfully implements the Lingo Original 1 (Home) screen:
+ * - Friendly greeting with streak chip (🔥 12) + profile portrait
+ * - City skyline hero with floating goal ring card
+ * - Current Lesson card with café coffee/croissant artwork, A1 pill & continue CTA
+ * - The 4 iconic practice tiles (Vocabulary, Listening, Speaking, Skills)
+ * - Explore Topics card
  */
 export const TalkScreen: React.FC<TalkScreenProps> = ({
   currentLanguageName,
@@ -46,162 +51,228 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
       <ScrollView
         contentContainerStyle={{
           width: '100%',
-          maxWidth: 640,
+          maxWidth: 600,
           alignSelf: 'center',
-          paddingHorizontal: 20,
-          paddingTop: 16,
+          paddingHorizontal: 16,
+          paddingTop: 12,
           paddingBottom: 40,
-          gap: 20,
+          gap: 18,
         }}
         showsVerticalScrollIndicator={false}
       >
-        {/* Friendly Top Welcome */}
-        <View className="gap-1.5">
-          <View className="self-start flex-row items-center gap-1.5 px-3 py-1 rounded-full bg-surface-soft border border-border-subtle/50">
-            <Text className="text-xs font-semibold text-brand-primary">
-              🇧🇪 {currentLanguageName}
+        {/* Lingo Original 1 Greeting Header */}
+        <View className="flex-row items-center justify-between gap-3 pt-1">
+          <View className="flex-1">
+            <Text className="font-display text-[26px] font-bold tracking-tight text-ink">
+              Hi, Haytam 👋
             </Text>
-            <Text className="text-xs text-muted">·</Text>
-            <Text className="text-xs text-muted font-medium">
-              {t.talk.tagPractice}
+            <Text className="text-xs text-muted">
+              {t.talk.subheading || 'Glad you are learning today!'}
             </Text>
           </View>
-          <Text className="font-display text-[26px] font-bold tracking-tight text-ink mt-1">
-            {t.talk.heading}
-          </Text>
-          <Text className="text-sm leading-5 text-muted">
-            {t.talk.subheading}
-          </Text>
+
+          <View className="flex-row items-center gap-2.5">
+            {/* Streak Chip */}
+            <View className="min-h-12 px-3 rounded-full bg-surface border border-border-interactive/70 flex-row items-center gap-1.5 shadow-sm">
+              <Text className="text-xs font-extrabold text-ink">🔥 12</Text>
+            </View>
+
+            {/* Profile Avatar Portrait */}
+            <Pressable
+              onPress={onViewProgress}
+              accessibilityRole="button"
+              accessibilityLabel="View learner profile"
+              className="h-12 w-12 rounded-full overflow-hidden border-2 border-surface shadow-sm bg-[#FFE5B9] active:scale-95 transition-all"
+            >
+              <ReferenceArtwork kind="girl" />
+            </Pressable>
+          </View>
         </View>
 
-        {/* Primary Hero Mission Card */}
-        <View
-          className="rounded-[28px] border border-border-subtle/60 bg-surface p-6 gap-4"
-          style={{ boxShadow: ELEVATION.card }}
+        {/* Lingo City Hero Banner with Floating Goal Card */}
+        <View className="relative h-[172px] w-full overflow-hidden rounded-[28px] border border-border-interactive/40 shadow-sm bg-[#E2F1E7]">
+          <ReferenceArtwork kind="city" />
+
+          {/* Floating Glass Goal Card */}
+          <View className="absolute left-3.5 bottom-3 w-[240px] rounded-[20px] bg-surface/90 border border-surface p-3 shadow-lg backdrop-blur-md">
+            <Text className="font-display text-sm font-bold text-ink">
+              Today's Goal
+            </Text>
+            <View className="flex-row items-center gap-2.5 mt-1">
+              <View className="h-10 w-10 rounded-full border-4 border-language-soft items-center justify-center border-t-language">
+                <Text className="text-xs font-bold text-language">
+                  {dueCount > 0 ? `${dueCount}` : '3m'}
+                </Text>
+              </View>
+              <View className="flex-1">
+                <Text className="text-base font-extrabold text-ink">
+                  {dueCount > 0 ? `${dueCount} phrases` : '3 / 20'}
+                </Text>
+                <Text className="text-xs text-muted">
+                  {dueCount > 0 ? 'ready for review' : 'minutes learned'}
+                </Text>
+              </View>
+              <Pressable
+                onPress={dueCount > 0 ? onPracticeDue : onViewProgress}
+                accessibilityRole="button"
+                accessibilityLabel="View today's learning goal"
+                className="min-h-12 min-w-12 items-center justify-center rounded-full hover:bg-surface-hover active:scale-90"
+              >
+                <ChevronRight size={18} color={iconColor('muted')} />
+              </Pressable>
+            </View>
+          </View>
+        </View>
+
+        {/* Lingo Current Lesson Card (Café artwork + croissant + lime CTA) */}
+        <View className="gap-2">
+          <View className="flex-row items-center justify-between">
+            <Text className="font-display text-lg font-bold text-ink">
+              Current Lesson
+            </Text>
+            <Pressable
+              onPress={() => onStartMission(featuredMission)}
+              accessibilityRole="button"
+              accessibilityLabel="Open current lesson"
+              className="min-h-12 min-w-12 items-center justify-center"
+            >
+              <ChevronRight size={18} color={iconColor('muted')} />
+            </Pressable>
+          </View>
+
+          <View className="relative h-[175px] w-full overflow-hidden rounded-[24px] bg-[#503C30] shadow-md border border-border-interactive/30">
+            <ReferenceArtwork kind="coffee" />
+            <View className="absolute inset-0 bg-black/45" />
+
+            {/* Level Pill */}
+            <View className="absolute right-4 top-3.5 px-2.5 py-1 rounded-xl bg-lime border border-lime">
+              <Text className="text-xs font-extrabold text-[#17310F]">
+                {featuredMission.levelRange ?? 'A1'}
+              </Text>
+            </View>
+
+            {/* Lesson Content Overlay */}
+            <View className="absolute left-4 right-4 bottom-3.5 gap-1">
+              <Text className="text-xs font-medium text-white/80">
+                {currentLanguageName} · {featuredMission.neighborhood}
+              </Text>
+              <Text className="font-display text-xl font-bold text-white leading-tight truncate">
+                {featuredMission.title}
+              </Text>
+
+              <View className="flex-row items-center justify-between pt-1.5">
+                <Pressable
+                  onPress={() => onStartMission(featuredMission)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`${t.talk.startConversation} with ${featuredMission.character.name}`}
+                  className="min-h-12 flex-row items-center gap-2 rounded-full bg-lime px-4 py-2 hover:opacity-95 active:scale-[0.98] transition-all"
+                >
+                  <Play size={16} color="#17310F" fill="#17310F" />
+                  <Text className="text-xs font-extrabold text-[#17310F]">
+                    {t.talk.startConversation}
+                  </Text>
+                </Pressable>
+
+                <View className="px-2.5 py-1 rounded-xl bg-white/20 backdrop-blur-sm">
+                  <Text className="text-xs font-bold text-white">
+                    {featuredMission.estimatedMinutes} min
+                  </Text>
+                </View>
+              </View>
+            </View>
+          </View>
+        </View>
+
+        {/* Lingo 4 Iconic Practice Cards Grid */}
+        <View className="gap-2.5">
+          <Text className="font-display text-lg font-bold text-ink">
+            Quick Practice
+          </Text>
+          <View className="flex-row gap-2.5">
+            {/* Vocabulary Tile */}
+            <Pressable
+              onPress={onPracticeDue}
+              accessibilityRole="button"
+              accessibilityLabel="Vocabulary: new words"
+              className="min-h-[104px] flex-1 items-center justify-center gap-1 rounded-[22px] bg-[#E8F2EE] p-2 border border-[#DEF3EC] active:scale-95 transition-all"
+            >
+              <View className="h-10 w-10 rounded-2xl bg-white/90 items-center justify-center shadow-xs">
+                <BookOpen size={20} color="#0E8F7E" />
+              </View>
+              <Text className="text-xs font-bold text-[#1F3437]">
+                Vocabulary
+              </Text>
+              <Text className="text-xs text-[#55646A]">
+                {dueCount > 0 ? `${dueCount} due` : 'New words'}
+              </Text>
+            </Pressable>
+
+            {/* Listening Tile */}
+            <Pressable
+              onPress={() => onStartMission(featuredMission)}
+              accessibilityRole="button"
+              accessibilityLabel="Listening: dialogs"
+              className="min-h-[104px] flex-1 items-center justify-center gap-1 rounded-[22px] bg-[#E8F4F1] p-2 border border-[#C9E7F2] active:scale-95 transition-all"
+            >
+              <View className="h-10 w-10 rounded-2xl bg-white/90 items-center justify-center shadow-xs">
+                <Headphones size={20} color="#0E7FA3" />
+              </View>
+              <Text className="text-xs font-bold text-[#1F3437]">
+                Listening
+              </Text>
+              <Text className="text-xs text-[#55646A]">Dialogs</Text>
+            </Pressable>
+
+            {/* Speaking Tile */}
+            <Pressable
+              onPress={() => onStartMission(featuredMission)}
+              accessibilityRole="button"
+              accessibilityLabel="Speaking: Flemish conversation"
+              className="min-h-[104px] flex-1 items-center justify-center gap-1 rounded-[22px] bg-[#FFF2EA] p-2 border border-[#FFD8CB] active:scale-95 transition-all"
+            >
+              <View className="h-10 w-10 rounded-2xl bg-white/90 items-center justify-center shadow-xs">
+                <Mic size={20} color="#E4533C" />
+              </View>
+              <Text className="text-xs font-bold text-[#1F3437]">Speaking</Text>
+              <Text className="text-xs text-[#55646A]">Flemish</Text>
+            </Pressable>
+
+            {/* Skills / Grammar Tile */}
+            <Pressable
+              onPress={onViewProgress}
+              accessibilityRole="button"
+              accessibilityLabel="Skills: short exercises"
+              className="min-h-[104px] flex-1 items-center justify-center gap-1 rounded-[22px] bg-[#F5EEFA] p-2 border border-[#E0D8FF] active:scale-95 transition-all"
+            >
+              <View className="h-10 w-10 rounded-2xl bg-white/90 items-center justify-center shadow-xs">
+                <Sparkles size={20} color="#7A63E0" />
+              </View>
+              <Text className="text-xs font-bold text-[#1F3437]">Skills</Text>
+              <Text className="text-xs text-[#55646A]">Grammar</Text>
+            </Pressable>
+          </View>
+        </View>
+
+        {/* Lingo Explore Topics Card */}
+        <Pressable
+          onPress={onExploreMissions}
+          accessibilityRole="button"
+          accessibilityLabel={t.talk.browseAllButton}
+          className="min-h-[72px] w-full flex-row items-center gap-3.5 rounded-[22px] bg-gradient-to-r from-[#FFF1DC] to-[#FFE4C2] px-4 py-3 border border-[#F2DEB8] active:scale-[0.99] transition-all"
         >
-          {/* Character and Context Header */}
-          <View className="flex-row items-center justify-between gap-3">
-            <View className="flex-row items-center gap-3">
-              <View className="h-12 w-12 rounded-2xl bg-brand-primary/10 items-center justify-center border border-brand-primary/20">
-                <MessageCircle size={24} color={iconColor('brandText')} />
-              </View>
-              <View className="gap-0.5">
-                <Text className="text-sm font-bold text-ink">
-                  {featuredMission.character.name}
-                </Text>
-                <Text className="text-xs text-muted">
-                  {featuredMission.character.role} · {featuredMission.neighborhood}
-                </Text>
-              </View>
-            </View>
-
-            <View className="flex-row items-center gap-1.5">
-              <View className="px-2.5 py-0.5 rounded-full bg-accent-sage/20 border border-accent-sage/30">
-                <Text className="text-xs font-bold text-accent-sage">
-                  {featuredMission.levelRange}
-                </Text>
-              </View>
-              <Text className="text-xs font-medium text-muted">
-                {featuredMission.estimatedMinutes} min
-              </Text>
-            </View>
+          <View className="h-11 w-11 rounded-2xl bg-gradient-to-br from-[#18C2B2] to-[#0B8F86] items-center justify-center shadow-sm">
+            <Compass size={22} color="#FFFFFF" />
           </View>
-
-          {/* Mission Job & Title */}
-          <View className="gap-1.5 py-1">
-            <Text className="font-display text-xl font-bold text-ink leading-tight">
-              {featuredMission.title}
+          <View className="flex-1">
+            <Text className="font-display text-sm font-bold text-ink">
+              {t.talk.exploreTopics}
             </Text>
-            <Text className="text-sm leading-relaxed text-body">
-              {featuredMission.learnerGoal}
+            <Text className="text-xs text-[#687579]">
+              Travel, work, daily life, and Flemish culture
             </Text>
           </View>
-
-          {/* Big, Inviting Primary Action */}
-          <Pressable
-            onPress={() => onStartMission(featuredMission)}
-            accessibilityRole="button"
-            accessibilityLabel={`${t.talk.startConversation} with ${featuredMission.character.name}`}
-            className="min-h-[52px] w-full flex-row items-center justify-center gap-2 rounded-2xl bg-action px-5 hover:opacity-95 active:scale-[0.98] transition-all focus:border-2 focus:border-focus"
-          >
-            <Mic size={20} color={iconColor('brandText')} />
-            <Text className="text-base font-bold text-brandText">
-              {t.talk.startConversation}
-            </Text>
-            <ArrowRight size={18} color={iconColor('brandText')} />
-          </Pressable>
-        </View>
-
-        {/* Due Phrases Review Bar (Only shown when phrases are due) */}
-        {dueCount > 0 ? (
-          <Pressable
-            onPress={onPracticeDue}
-            accessibilityRole="button"
-            accessibilityLabel={`${dueCount} phrases due for review`}
-            className="min-h-12 flex-row items-center justify-between rounded-2xl border border-accent-sage/30 bg-card-sage/60 px-4 py-3 hover:opacity-90 active:scale-[0.99] transition-all"
-          >
-            <View className="flex-row items-center gap-3">
-              <View className="h-9 w-9 rounded-xl bg-accent-sage/20 items-center justify-center">
-                <Clock3 size={18} color={iconColor('success')} />
-              </View>
-              <View className="gap-0.5">
-                <Text className="text-sm font-bold text-ink">
-                  {t.progress.readyToPractise} ({dueCount})
-                </Text>
-                <Text className="text-xs text-muted">
-                  Spaced repetition retrieval
-                </Text>
-              </View>
-            </View>
-            <View className="flex-row items-center gap-1">
-              <Text className="text-xs font-bold text-accent-sage">
-                {t.common.start}
-              </Text>
-              <ArrowRight size={14} color={iconColor('success')} />
-            </View>
-          </Pressable>
-        ) : null}
-
-        {/* Situations & Progress Links */}
-        <View className="flex-row gap-3">
-          <Pressable
-            onPress={onExploreMissions}
-            accessibilityRole="button"
-            accessibilityLabel={t.talk.browseAllButton}
-            className="min-h-[56px] flex-1 flex-row items-center gap-3 rounded-2xl border border-border-subtle/50 bg-surface px-4 py-3 hover:bg-surface-hover active:scale-[0.98] transition-all"
-          >
-            <View className="h-9 w-9 rounded-xl bg-surface-soft items-center justify-center">
-              <Compass size={18} color={iconColor('ink')} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xs font-semibold text-muted">
-                {t.nav.missions}
-              </Text>
-              <Text className="text-sm font-bold text-ink truncate">
-                {t.talk.exploreTopics}
-              </Text>
-            </View>
-          </Pressable>
-
-          <Pressable
-            onPress={onViewProgress}
-            accessibilityRole="button"
-            accessibilityLabel={t.nav.progress}
-            className="min-h-[56px] flex-1 flex-row items-center gap-3 rounded-2xl border border-border-subtle/50 bg-surface px-4 py-3 hover:bg-surface-hover active:scale-[0.98] transition-all"
-          >
-            <View className="h-9 w-9 rounded-xl bg-surface-soft items-center justify-center">
-              <Sparkles size={18} color={iconColor('brandText')} />
-            </View>
-            <View className="flex-1">
-              <Text className="text-xs font-semibold text-muted">
-                {t.nav.progress}
-              </Text>
-              <Text className="text-sm font-bold text-ink truncate">
-                {t.progress.tabHistory}
-              </Text>
-            </View>
-          </Pressable>
-        </View>
+          <ChevronRight size={18} color="#687579" />
+        </Pressable>
       </ScrollView>
     </View>
   );

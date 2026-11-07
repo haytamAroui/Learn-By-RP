@@ -21,10 +21,7 @@ import {
   DUTCH_REGIONAL_PROFILES,
   DutchRegionalProfileId,
 } from '../../content/regionalProfiles';
-import {
-  GEMINI_VOICE_PERSONAS,
-  GeminiVoicePersona,
-} from '../../content/geminiVoices';
+import { GeminiVoiceSelector } from '../../components/GeminiVoiceSelector';
 import { speakWithBestAvailable } from '../../providers/voice/speechOutput';
 import { NativeVoiceTransport } from '../../providers/voice/nativeVoiceTransport';
 import {
@@ -62,28 +59,7 @@ export default function SettingsScreen() {
   const { preference, setPreference } = useTheme();
   const t = getTranslations(archive.preferences.explanationLanguage);
   const [auditioningProfileId, setAuditioningProfileId] = React.useState<string | null>(null);
-  const [auditioningVoiceId, setAuditioningVoiceId] = React.useState<string | null>(null);
   const voiceTransportRef = React.useRef<NativeVoiceTransport | null>(null);
-
-  const auditionGeminiVoice = async (persona: GeminiVoicePersona) => {
-    try {
-      setAuditioningVoiceId(persona.id);
-      if (!voiceTransportRef.current) {
-        voiceTransportRef.current = new NativeVoiceTransport(() => true);
-      }
-      await speakWithBestAvailable(voiceTransportRef.current, persona.sampleText, {
-        language: 'nl',
-        locale: 'nl-BE',
-        speed: archive.preferences.speechRate ?? 1,
-        voiceGender: persona.gender,
-        voice: persona.id,
-      });
-    } catch (e) {
-      console.warn('Audition failed:', e);
-    } finally {
-      setAuditioningVoiceId(null);
-    }
-  };
 
   const auditionProfile = async (profile: (typeof DUTCH_REGIONAL_PROFILES)[number]) => {
     try {
@@ -355,77 +331,11 @@ export default function SettingsScreen() {
                 </Text>
               </View>
 
-              <View className="gap-2">
-                {GEMINI_VOICE_PERSONAS.map(persona => {
-                  const selected =
-                    (archive.preferences.geminiVoicePersona ?? 'Charon') === persona.id;
-                  const isAuditioning = auditioningVoiceId === persona.id;
-
-                  return (
-                    <Pressable
-                      key={persona.id}
-                      onPress={() => patch({ geminiVoicePersona: persona.id })}
-                      accessibilityRole="radio"
-                      accessibilityState={{ selected }}
-                      accessibilityLabel={`${persona.name}, ${persona.title}`}
-                      className={`p-3 rounded-2xl border transition-all ${
-                        selected
-                          ? 'border-brand-primary bg-surface-soft/80'
-                          : 'border-border-subtle/40 bg-surface hover:bg-surface-soft/40'
-                      }`}
-                    >
-                      <View className="flex-row items-center justify-between gap-3">
-                        <View className="flex-1 gap-0.5">
-                          <View className="flex-row items-center gap-2 flex-wrap">
-                            <Text className="text-base">
-                              {persona.gender === 'female' ? '👩' : '👨'}
-                            </Text>
-                            <Text className="text-sm font-bold text-ink">
-                              {persona.name}
-                            </Text>
-                            <View className="px-2 py-0.5 rounded-full bg-surface-soft border border-border-subtle/50">
-                              <Text className="text-xs font-semibold text-muted">
-                                {persona.title}
-                              </Text>
-                            </View>
-                          </View>
-                          <Text className="text-xs text-muted leading-4 mt-0.5" numberOfLines={2}>
-                            {persona.description}
-                          </Text>
-                        </View>
-
-                        <Pressable
-                          onPress={e => {
-                            e.stopPropagation();
-                            void auditionGeminiVoice(persona);
-                          }}
-                          accessibilityRole="button"
-                          accessibilityLabel={`${t.settings.auditionButtonLabel}: ${persona.name}`}
-                          className={`min-h-12 px-3 rounded-xl flex-row items-center gap-1.5 active:scale-95 ${
-                            isAuditioning
-                              ? 'bg-brand-primary'
-                              : 'bg-surface-soft hover:bg-surface-hover border border-border-subtle/50'
-                          }`}
-                        >
-                          <Volume2
-                            size={16}
-                            color={iconColor(isAuditioning ? 'brandText' : 'ink')}
-                          />
-                          <Text
-                            className={`text-xs font-semibold ${
-                              isAuditioning ? 'text-brandText' : 'text-ink'
-                            }`}
-                          >
-                            {isAuditioning
-                              ? t.settings.auditioningLabel
-                              : t.settings.auditionButtonLabel}
-                          </Text>
-                        </Pressable>
-                      </View>
-                    </Pressable>
-                  );
-                })}
-              </View>
+              <GeminiVoiceSelector
+                selectedVoiceId={archive.preferences.geminiVoicePersona ?? 'Charon'}
+                onSelectVoice={voiceId => patch({ geminiVoicePersona: voiceId })}
+                speechRate={archive.preferences.speechRate ?? 1}
+              />
             </View>
           )}
         </View>

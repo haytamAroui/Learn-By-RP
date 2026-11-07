@@ -48,6 +48,7 @@ import { Sheet } from './Sheet';
 import { iconColor } from '../design/iconColor';
 import { summarizeActivity } from '../features/learning/activitySummary';
 import { ELEVATION } from '../design/tokens';
+import { ReferenceArtwork } from './ReferenceArtwork';
 
 interface ProgressScreenProps {
   phrases: PhraseItem[];
@@ -353,6 +354,19 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
           gap: 24,
         }}
       >
+        {/* Lingo Landscape Vector Header */}
+        <View className="relative h-[148px] w-full overflow-hidden rounded-[26px] bg-[#FFEED7] border border-border-interactive/30 shadow-sm">
+          <ReferenceArtwork kind="landscape" />
+          <View className="absolute left-4 top-3.5 gap-0.5">
+            <Text className="font-display text-[26px] font-bold tracking-tight text-ink">
+              {t.nav.progress}
+            </Text>
+            <Text className="text-xs font-medium text-muted">
+              {t.talk.subheading || "You're doing great!"}
+            </Text>
+          </View>
+        </View>
+
         <View className="flex-row gap-2">
           {[
             { label: t.progress.tabHistoryShort, value: activity.sessions, Icon: MessageCircle, tint: 'bg-card-warm', color: 'brand' },

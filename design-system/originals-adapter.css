@@ -1,0 +1,59 @@
+/* Source layouts keep their own namespace inside the reference iframe. */
+:root {
+  --display: var(--font-heading);
+  --ui: var(--font-body);
+  --ink: var(--color-ink-950);
+  --muted: #55646A;
+  --deep-teal: var(--color-teal-800);
+  --teal: var(--color-teal-500);
+  --coral: var(--color-coral-500);
+  --lime: var(--color-lime-300);
+  font-family: var(--ui);
+}
+body { background: transparent !important; min-height: 0; }
+.gallery { min-height: 0; padding-top: 20px; padding-bottom: 30px; }
+/* Freeze sample animations for reproducible comparisons; preserve the drawn halo. */
+*, *:before, *:after { animation: none !important; transition: none !important; }
+.progress-ring { --p: 15; }
+@media(max-width:739px) {
+  .gallery { padding: 12px 12px 24px; display: grid; justify-content: center; gap: 28px; overflow-x: visible; }
+  .phone, .phone.offset { width: min(384px, calc(100vw - 24px)); height: 850px; margin: 0; }
+}
+/* Dark is an extension; light mode above remains the literal Original 3 reference. */
+:root[data-theme=dark] { --ink:#F9F7F0; --muted:#B2C6BD; --deep-teal:#9BE0D2; --paper:#122322; }
+[data-theme=dark] .screen { background:linear-gradient(180deg,var(--canvas),var(--canvas-end)); }
+[data-theme=dark] .goal-float,
+[data-theme=dark] .bottom-nav,
+[data-theme=dark] .dock,
+[data-theme=dark] .period-tabs { background:var(--glass); border-color:var(--line); }
+[data-theme=dark] .goal-title,
+[data-theme=dark] .goal-numbers,
+[data-theme=dark] .panel-heading,
+[data-theme=dark] .skill-name { color:var(--ink); }
+[data-theme=dark] .streak-chip,
+[data-theme=dark] .stat-card,
+[data-theme=dark] .level-panel,
+[data-theme=dark] .skill-list,
+[data-theme=dark] .skill-row,
+[data-theme=dark] .back-btn,
+[data-theme=dark] .step-count,
+[data-theme=dark] .control-round,
+[data-theme=dark] .choices .choice,
+[data-theme=dark] .bubble { background:var(--surface); color:var(--ink); border-color:var(--line); }
+[data-theme=dark] .bubble-row.mine .bubble { background:#07454B; color:#FFFFFF; }
+[data-theme=dark] .progress-ring:before { background:var(--surface); }
+[data-theme=dark] .nav-btn,
+[data-theme=dark] .stat-card small,
+[data-theme=dark] .goal-numbers small,
+[data-theme=dark] .tap-label { color:var(--text-secondary); }
+[data-theme=dark] .nav-btn.active { color:var(--action); background:var(--action-soft); }
+[data-theme=dark] .period-tab { color:var(--text-secondary); }
+[data-theme=dark] .period-tab.active { background:var(--action); color:var(--on-action); }
+[data-theme=dark] .skill-row { border-color:var(--line); }
+[data-theme=dark] .progress-heading { color:#0C2B2E; }
+[data-theme=dark] .scene p,
+[data-theme=dark] .scene h2,
+[data-theme=dark] .coach strong,
+[data-theme=dark] .coach em,
+[data-theme=dark] .explore-card strong,
+[data-theme=dark] .explore-card small { color:#0C2B2E; }
