@@ -40,21 +40,24 @@ const MISSION_TONES: Record<MissionDefinition['category'], { container: string; 
   problems: { container: 'bg-[#ECE6FF]', color: 'brand' },
 };
 
-const PROGRAM_STAGE_METAS: Record<string, { title: string; subtitle: string; description: string }> = {
+const PROGRAM_STAGE_METAS: Record<string, { title: string; subtitle: string; description: string; focus: string }> = {
   A1: {
-    title: 'Stage 1 · Level A1 Foundation & Morning Routine',
+    title: 'Fase 1–2 · Level A1 Basis & Eerste Gesprekken',
     subtitle: 'Basis & Eerste Gesprekken',
-    description: 'Essential morning coffee ordering, requesting ingredient substitutes, and polite Flemish greetings.',
+    description: 'Groeten, de/het lidwoorden, tegenwoordige tijd (o.t.t.), basiswoordvolgorde en beleefde Vlaamse aanspreking.',
+    focus: 'Groeten · de/het · tegenwoordige tijd · basisvolgorde',
   },
   A2: {
-    title: 'Stage 2 · Level A2 Everyday Independence & Services',
-    subtitle: 'Dagelijkse Zelfstandigheid & Diensten',
-    description: 'Handling parcel rescheduling, neighbour coordination, medication leaflets, and dining on the terrace.',
+    title: 'Fase 3–4 · Level A2 Dagelijkse Zelfstandigheid & Diensten',
+    subtitle: 'Diensten & Buurtcontact',
+    description: 'Scheidbare werkwoorden (opbellen, afhalen), voltooid verleden tijd (v.t.t.), gebruik van "er", en bijzinsvolgorde.',
+    focus: 'Scheidbare werkwoorden · v.t.t. · gebruik van "er" · bijzinsvolgorde',
   },
   B1: {
-    title: 'Stage 3 · Level B1 Spontaneous Discussion & Opinions',
-    subtitle: 'Vloeiende Gesprekken',
-    description: 'Complex choices, defending opinions, and spontaneous repair across diverse interactions.',
+    title: 'Fase 5–6 · Level B1 Vloeiende Gesprekken & Meningsuiting',
+    subtitle: 'Complexe Situaties & Meningsverschil',
+    description: 'Hypothetische constructies ("zou graag willen"), pragmatisch register (ge/u/je in Vlaanderen), en connectoren.',
+    focus: 'Hypothetische zinnen · register ge/u/je · genuanceerde connectoren',
   },
 };
 

@@ -57,23 +57,23 @@ const LEVEL_METAS: Record<string, LevelMeta> = {
   A1: {
     code: 'A1',
     badge: 'A1',
-    title: 'Breakthrough & Foundation',
-    tagline: 'Basis & Eerste Gesprekken',
-    description: 'Essential first conversations, ordering food and drinks, polite everyday greetings.',
+    title: 'Fase 1–2 · Basis & Eerste Gesprekken',
+    tagline: 'Groeten, de/het, o.t.t. en basiswoordvolgorde',
+    description: 'Eerste gesprekken, koffie en broodjes bestellen, de/het lidwoorden en beleefde Vlaamse groeten.',
   },
   A2: {
     code: 'A2',
     badge: 'A2',
-    title: 'Everyday Independence',
-    tagline: 'Dagelijkse Zelfstandigheid',
-    description: 'Practical services, public transit, scheduling, parcel pickups, and neighborhood life.',
+    title: 'Fase 3–4 · Dagelijkse Zelfstandigheid & Diensten',
+    tagline: 'Scheidbare werkwoorden, v.t.t. en bijzinsvolgorde',
+    description: 'Pakjespunt, sleuteloverdracht met buren, apotheek, scheidbare werkwoorden (opbellen) en voltooid verleden tijd.',
   },
   B1: {
     code: 'B1',
     badge: 'B1',
-    title: 'Confident Conversation',
-    tagline: 'Vloeiende Gesprekken',
-    description: 'Expressing viewpoints, comparing options, making complex arrangements, and social dining.',
+    title: 'Fase 5–6 · Vloeiende Gesprekken & Mening',
+    tagline: 'Hypothetische zinnen, register en connectoren',
+    description: 'Meningsverschillen op het terras, keuzes motiveren, hypothetische constructies ("zou willen") en register (ge/u/je).',
   },
 };
 

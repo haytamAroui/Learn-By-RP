@@ -14,6 +14,41 @@ import {
 } from './geminiVoice';
 import { EdgeTtsProvider } from './edgeTts';
 
+/**
+ * Dutch Lemma Guidance:
+ * Adapted from the Mural vocabulary assessment formula for Dutch:
+ * - Group inflected and separable verb forms under their base infinitive lemma
+ *   (e.g., 'fietste' -> 'fietsen', 'belt op' / 'opgebeld' -> 'opbellen', 'haalde af' -> 'afhalen').
+ * - Nouns with definite dictionary article (de/het).
+ * - Preserve reflexive verbs ('zich herinneren') and authentic Belgian Dutch fixed phrases.
+ */
+export const DUTCH_LEMMA_GUIDANCE = `DUTCH LEMMA GUIDANCE:
+- Nouns: provide in singular with their dictionary article (de/het) (e.g. 'de koffie', 'het station', 'het brood').
+- Verbs: provide in the infinitive base lemma (e.g. 'bestellen', 'betalen', 'afhalen', 'opbellen', 'fietsen').
+- Separable verbs: group inflected and separated forms under their base compound infinitive (e.g. 'fietste onder fietsen', 'belt op onder opbellen', 'haalde af onder afhalen').
+- Reflexive verbs: preserve reflexive pronouns (e.g. 'zich herinneren', 'zich vergissen').
+- Authentic Belgian Dutch fixed phrases: preserve high-frequency pragmatic tokens ('alstublieft', 'graag gedaan', 'dat smaakt', 'tot ziens').`;
+
+/**
+ * 6-Stage Language Growth Progression (Teaching Focus):
+ * Adapted from the Mural developmental framework, aligned 1-to-1 with CEFR milestones:
+ * - Fase 1–2 (A1 Foundation): Groeten, de/het lidwoorden, tegenwoordige tijd (o.t.t.), basiswoordvolgorde (SVO).
+ * - Fase 3–4 (A2 Everyday Independence): Scheidbare werkwoorden (opbellen, meebrengen), voltooid verleden tijd (v.t.t.), gebruik van 'er', en bijzinsvolgorde (inversie/bijzin met werkwoord achteraan).
+ * - Fase 5–6 (B1 Confident Conversation): Hypothetische constructies ('zou graag willen', 'mocht het kunnen'), pragmatisch register (ge/u/je in Vlaanderen), en genuanceerde connectoren (hoewel, daarentegen, tenzij).
+ */
+export const DUTCH_TEACHING_FOCUS_STAGES = `6-STAGE TEACHING FOCUS (CEFR PROGRESSION):
+- Stage 1-2 (A1 Breakthrough & Foundation): Greetings, introductions, de/het gender, present tense, basic subject-verb-object sentence structure.
+- Stage 3-4 (A2 Everyday Independence): Separable verbs (opbellen, afhalen), present perfect (voltooid verleden tijd), prepositional 'er' usage, and subordinate clause word order (bijzinsvolgorde: verb at end).
+- Stage 5-6 (B1 Confident Conversation): Hypothetical & conditional constructions ('zou graag willen', 'als het zou kunnen'), polite vs everyday register (ge/u/je distinctions in Flanders), and nuanced discourse connectors.`;
+
+export function enrichDutchPrompts(instruction?: string, task?: string): string | undefined {
+  if (!instruction) return instruction;
+  if (task === 'assessment' && !instruction.includes('DUTCH LEMMA GUIDANCE')) {
+    return `${instruction}\n\n${DUTCH_LEMMA_GUIDANCE}\n\n${DUTCH_TEACHING_FOCUS_STAGES}`;
+  }
+  return instruction;
+}
+
 export interface StructuredJsonRequest {
   task: 'actor' | 'coach' | 'assessment';
   systemInstruction?: string;
@@ -81,11 +116,12 @@ class GeminiProvider implements StructuredJsonProvider, SpeechProvider {
   }
 
   async generateJson<T>(request: StructuredJsonRequest): Promise<T> {
+    const enrichedInstruction = enrichDutchPrompts(request.systemInstruction, request.task);
     const response = await this.client.models.generateContent({
       model: this.model,
       contents: request.input,
       config: {
-        systemInstruction: request.systemInstruction,
+        systemInstruction: enrichedInstruction,
         responseMimeType: 'application/json',
         temperature: request.temperature ?? 0.4,
       },
@@ -235,6 +271,7 @@ class OpenAICompatibleProvider implements StructuredJsonProvider {
   }
 
   async generateJson<T>(request: StructuredJsonRequest): Promise<T> {
+    const enrichedInstruction = enrichDutchPrompts(request.systemInstruction, request.task);
     const response = await fetch(
       `${this.baseUrl.replace(/\/+$/, '')}/chat/completions`,
       {
@@ -246,8 +283,8 @@ class OpenAICompatibleProvider implements StructuredJsonProvider {
         body: JSON.stringify({
           model: this.model,
           messages: [
-            ...(request.systemInstruction
-              ? [{ role: 'system', content: request.systemInstruction }]
+            ...(enrichedInstruction
+              ? [{ role: 'system', content: enrichedInstruction }]
               : []),
             { role: 'user', content: request.input },
           ],
