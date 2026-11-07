@@ -13,6 +13,7 @@ import {
   MapPin,
   Route,
   Search,
+  Sparkles,
   X,
 } from 'lucide-react-native';
 import { MissionDefinition, SessionRecord } from '../types';
@@ -21,6 +22,7 @@ import { buildProgramProjection } from '../features/program/projection';
 import { useI18n } from '../features/i18n';
 import { iconColor } from '../design/iconColor';
 import { ELEVATION } from '../design/tokens';
+import { NeighborhoodArtwork } from './NeighborhoodArtwork';
 
 const MISSION_TONES: Record<MissionDefinition['category'], { container: string; color: string }> = {
   cafes: { container: 'bg-card-warm', color: 'brand' },
@@ -195,6 +197,55 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
 
       {activeView === 'catalog' ? (
         <View className="gap-5">
+          {/* Lingo Atelier Featured Conversation Card */}
+          {!query && selectedCategory === 'all' && filteredMissions[0] ? (
+            <View className="overflow-hidden rounded-[26px] border border-border-interactive/40 bg-surface shadow-sm" style={{ boxShadow: ELEVATION.card }}>
+              <View className="relative h-[148px] w-full overflow-hidden bg-[#E2F1E7]">
+                <NeighborhoodArtwork />
+                <View className="absolute inset-0 bg-black/25" />
+                <View className="absolute left-4 top-3 px-2.5 py-1 rounded-xl bg-black/50 backdrop-blur-md">
+                  <Text className="text-xs font-bold uppercase tracking-wider text-white">
+                    YOUR NEXT CONVERSATION
+                  </Text>
+                </View>
+                <View className="absolute right-4 top-3 px-2.5 py-1 rounded-xl bg-lime">
+                  <Text className="text-xs font-extrabold text-[#17310F]">
+                    {filteredMissions[0].levelRange ?? 'A1'}
+                  </Text>
+                </View>
+                <View className="absolute left-4 bottom-3 right-4">
+                  <Text className="font-display text-20 font-bold text-white leading-tight">
+                    {filteredMissions[0].title}
+                  </Text>
+                </View>
+              </View>
+              <View className="p-4 gap-3 bg-[#FFFBF0]">
+                <View className="flex-row items-center justify-between">
+                  <Text className="text-xs font-extrabold uppercase tracking-wider text-primary">
+                    5-MINUTE ROLE-PLAY
+                  </Text>
+                  <Text className="text-xs font-semibold text-muted">
+                    {filteredMissions[0].estimatedMinutes} min
+                  </Text>
+                </View>
+                <Text className="text-14 leading-5 text-body">
+                  {filteredMissions[0].learnerGoal}
+                </Text>
+                <Pressable
+                  onPress={() => onSelectMission(filteredMissions[0])}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Step inside ${filteredMissions[0].title}`}
+                  className="min-h-12 flex-row items-center justify-center gap-2 rounded-full bg-lime px-4 py-2 hover:opacity-95 active:scale-[0.98] transition-all"
+                >
+                  <Text className="text-14 font-extrabold text-[#17310F]">
+                    Step inside
+                  </Text>
+                  <ChevronRight size={16} color="#17310F" />
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
           <View className="h-14 flex-row items-center gap-3 rounded-[20px] border border-border-interactive bg-surface px-4">
             <Search size={19} color={iconColor('muted')} />
             <TextInput
@@ -215,6 +266,15 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
                 <X size={18} color={iconColor('muted')} />
               </Pressable>
             ) : null}
+          </View>
+
+          <View className="flex-row items-center justify-between pt-1">
+            <Text className="font-display text-18 font-bold text-ink">
+              Choose a setting
+            </Text>
+            <Text className="text-xs font-semibold text-muted">
+              {filteredMissions.length} {filteredMissions.length === 1 ? 'scenario' : 'scenarios'}
+            </Text>
           </View>
 
           {/*

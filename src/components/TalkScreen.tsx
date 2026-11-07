@@ -225,9 +225,9 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
 
             {/* Speaking Tile */}
             <Pressable
-              onPress={() => onStartMission(featuredMission)}
+              onPress={onExploreMissions}
               accessibilityRole="button"
-              accessibilityLabel="Speaking: Flemish conversation"
+              accessibilityLabel="Speaking: Flemish roleplay scenarios"
               className="min-h-[104px] flex-1 items-center justify-center gap-1 rounded-[22px] bg-[#FFF2EA] p-2 border border-[#FFD8CB] active:scale-95 transition-all"
             >
               <View className="h-10 w-10 rounded-2xl bg-white/90 items-center justify-center shadow-xs">

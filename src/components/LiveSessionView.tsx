@@ -2485,6 +2485,34 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
         }}
         keyboardShouldPersistTaps="handled"
       >
+        {/* Lingo Atelier Storefront Scene Room Card */}
+        <View className="rounded-[24px] border border-border-subtle/50 bg-surface p-4 shadow-sm gap-2" style={{ boxShadow: ELEVATION.card }}>
+          <View className="flex-row items-center justify-between">
+            <Text className="text-xs font-extrabold uppercase tracking-widest text-primary">
+              YOUR SCENE IS READY
+            </Text>
+            <View className="rounded-full bg-lime px-2.5 py-0.5">
+              <Text className="text-xs font-extrabold text-[#17310F]">
+                {mission.levelRange ?? 'A1'}
+              </Text>
+            </View>
+          </View>
+          <Text className="font-display text-20 font-bold leading-tight text-ink">
+            {mission.title}
+          </Text>
+          <Text className="text-14 leading-5 text-muted">
+            {mission.learnerGoal}
+          </Text>
+          <View className="flex-row items-center gap-2 pt-1">
+            <View className="rounded-full bg-language-soft px-3 py-1">
+              <Text className="text-xs font-bold text-language">Belgian Dutch</Text>
+            </View>
+            <View className="rounded-full bg-[#FFF1E4] px-3 py-1">
+              <Text className="text-xs font-bold text-[#9A654C]">Relaxed pace · No timer</Text>
+            </View>
+          </View>
+        </View>
+
         <ConversationStage {...conversationProps} />
 
         {interimUserText ? (
@@ -2748,6 +2776,18 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                 <HelpCircle size={20} color={iconColor('muted')} />
               </Pressable>
             </View>
+
+            {/* Lingo Atelier Finish Scene Ghost Action */}
+            <Pressable
+              onPress={() => void handleFinishConversation('user_ended')}
+              accessibilityRole="button"
+              accessibilityLabel="Finish this scene"
+              className="min-h-12 items-center justify-center py-1 active:opacity-70"
+            >
+              <Text className="text-xs font-semibold text-muted hover:text-ink">
+                Finish this scene →
+              </Text>
+            </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>
