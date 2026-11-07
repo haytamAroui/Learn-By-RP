@@ -86,3 +86,37 @@ export function detectBelgianDutchPhonetics(phrase: string): PhoneticGuidance | 
 
   return null;
 }
+
+/**
+ * SoundSteps 4 Truths Model for Belgian Dutch Speech & Logopedics:
+ * 1. Linguistic Truth (Taalkundige Norm): Contemporary Belgian Standard Dutch (nl-BE-standard),
+ *    soft /ɣ/ & /x/, bilabial [β̞], pure monophthongs, no northern diphthongization.
+ * 2. Rendering Truth (Synthese-uitvoering): Generative Voice Design (Gemini 3.8 Flash TTS with phonetic steering)
+ *    or Edge/Azure nl-BE-DenaNeural / nl-BE-ArnaudNeural, with therapeutic pacing (-12% to -15%).
+ * 3. Review Truth (Klinische Beoordeling): Logopedic evaluation for target phoneme accuracy,
+ *    consonant realization, absence of synthetic artifacts, auditory contrast.
+ * 4. Usability Truth (Kind- & Lerende-Validatie): Spontaneous learner imitation, guided practice,
+ *    clear comprehension without repetitive explanations.
+ */
+export type SoundStepsTruth = 'linguistic' | 'rendering' | 'review' | 'usability';
+
+/**
+ * SoundSteps Clinical Roles in Articulation & Speech Therapy:
+ * - target_reference: Target phoneme at word level (e.g. "goeiemorgen")
+ * - contrast_reference: Minimal pairs for acoustic contrast (e.g. kip/tip, goed/hoed)
+ * - target_bearing: Sentence context (in a communicative phrase)
+ * - instructional: Pedagogical coaching & guidance
+ */
+export type SoundStepsClinicalRole =
+  | 'target_reference'
+  | 'contrast_reference'
+  | 'target_bearing'
+  | 'instructional';
+
+export interface SoundStepsTargetContext {
+  role: SoundStepsClinicalRole;
+  targetPhoneme: PhoneticGuidance['id'];
+  word: string;
+  phraseContext?: string;
+  contrastPair?: string;
+}

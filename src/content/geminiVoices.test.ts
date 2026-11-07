@@ -44,4 +44,11 @@ describe('GEMINI_VOICE_PERSONAS', () => {
     expect(aoede?.title).toBe('Warm — Warm & Verhalend');
     expect(aoede?.gender).toBe('female');
   });
+
+  it('exposes explicit Google Cloud Chirp 3 HD voices for Belgium (nl-BE)', async () => {
+    const { GOOGLE_CLOUD_CHIRP3_HD_VOICES } = await import('./geminiVoices');
+    expect(GOOGLE_CLOUD_CHIRP3_HD_VOICES).toHaveLength(2);
+    expect(GOOGLE_CLOUD_CHIRP3_HD_VOICES.map(v => v.id)).toContain('nl-BE-Chirp3-HD-Achernar');
+    expect(GOOGLE_CLOUD_CHIRP3_HD_VOICES.map(v => v.id)).toContain('nl-BE-Chirp3-HD-Achird');
+  });
 });

@@ -38,4 +38,17 @@ describe('SoundSteps nl-BE: phonetic guidance', () => {
     expect(detectBelgianDutchPhonetics('')).toBeNull();
     expect(detectBelgianDutchPhonetics(null as any)).toBeNull();
   });
+
+  it('supports SoundSteps clinical role contracts', () => {
+    const target: import('./phoneticGuidance').SoundStepsTargetContext = {
+      role: 'contrast_reference',
+      targetPhoneme: 'soft_g',
+      word: 'goed',
+      contrastPair: 'hoed',
+      phraseContext: 'Dat is heel goed.',
+    };
+    expect(target.role).toBe('contrast_reference');
+    expect(target.targetPhoneme).toBe('soft_g');
+    expect(target.contrastPair).toBe('hoed');
+  });
 });

@@ -86,3 +86,26 @@ export const GEMINI_VOICE_PERSONAS: GeminiVoicePersona[] = [
     sampleText: 'Goedemorgen. Laten we het dossier en de planning voor vandaag overlopen.',
   },
 ];
+
+/**
+ * Google Cloud TTS (Chirp 3 HD) Explicit Belgian Dutch (nl-BE) Voices
+ * Dedicated studio catalog voices for Belgium with standardized pronunciation.
+ */
+export const GOOGLE_CLOUD_CHIRP3_HD_VOICES = [
+  {
+    id: 'nl-BE-Chirp3-HD-Achernar',
+    name: 'Achernar',
+    gender: 'female' as const,
+    provider: 'google-cloud-tts' as const,
+    locale: 'nl-BE',
+    description: 'Vrouwelijke Chirp 3 HD studio stem voor gestandaardiseerde formele Belgisch-Nederlandse uitspraak.',
+  },
+  {
+    id: 'nl-BE-Chirp3-HD-Achird',
+    name: 'Achird',
+    gender: 'male' as const,
+    provider: 'google-cloud-tts' as const,
+    locale: 'nl-BE',
+    description: 'Mannelijke Chirp 3 HD studio stem voor gestandaardiseerde formele Belgisch-Nederlandse uitspraak.',
+  },
+] as const;
