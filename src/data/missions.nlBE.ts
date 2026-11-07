@@ -1,5 +1,7 @@
 import type { MissionDefinition } from '../types';
-
+import { A1_CURRICULUM_MISSIONS } from './missions/a1Curriculum';
+import { A2_CURRICULUM_MISSIONS } from './missions/a2Curriculum';
+import { B1_CURRICULUM_MISSIONS } from './missions/b1Curriculum';
 export const NL_BE_MISSIONS: MissionDefinition[] = [
   {
     id: 'mission-nl-be-koffiebar',
@@ -379,7 +381,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
     language: 'nl',
     sceneId: 'scene.nl-be.dining.terrace',
     scenarioFamilyId: 'social-dining',
-    levelRange: 'A2',
+    levelRange: 'B1',
     title: 'Restaurant: Een tafel op het terras',
     category: 'cafes',
     neighborhood: 'Brussel · stadsrestaurant',
@@ -1386,4 +1388,7 @@ export const NL_BE_MISSIONS: MissionDefinition[] = [
     estimatedMinutes: 5,
     tags: ['tussentaal', 'uitdrukkingen', 'B1', 'café', 'Vlaams', 'nl-BE'],
   },
+  ...A1_CURRICULUM_MISSIONS,
+  ...A2_CURRICULUM_MISSIONS,
+  ...B1_CURRICULUM_MISSIONS,
 ];

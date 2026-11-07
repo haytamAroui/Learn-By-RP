@@ -12,7 +12,7 @@ import { MissionDefinition, Mode, SessionRecord, SupportExposure } from '../../t
 import { LEARNING_POLICY_VERSION } from '../../features/learning/policy';
 import { getScene } from '../../content/scenes';
 import { createInitialScene } from '../../features/roleplay/sceneReducer';
-import { ROLEPLAY_PROGRAM_CATALOG } from '../../data/programs';
+import { ALL_ROLEPLAY_PROGRAMS } from '../../data/programs';
 import { buildProgramProjection, isProgramCoreComplete } from '../../features/program/projection';
 import { isProgramActivatable } from '../../features/program/releaseGates';
 import { ACTIVE_LEARNING_LANGUAGE } from '../../features/i18n/languagePolicy';
@@ -28,7 +28,7 @@ export default function MissionBriefingRoute() {
   }>();
   const mission = MISSION_CATALOG.find(item => item.id === params.missionId);
   const program = params.programId
-    ? ROLEPLAY_PROGRAM_CATALOG.find(item => item.id === params.programId)
+    ? ALL_ROLEPLAY_PROGRAMS.find(item => item.id === params.programId)
     : undefined;
   const requestedFinalSimulation = params.finalSimulation === '1';
 

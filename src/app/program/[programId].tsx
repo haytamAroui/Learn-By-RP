@@ -4,7 +4,7 @@ import { Text } from '../../components/AppText';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { useArchive } from '../../features/archive/ArchiveProvider';
 import { I18nProvider, getTranslations } from '../../features/i18n';
-import { ROLEPLAY_PROGRAM_CATALOG } from '../../data/programs';
+import { ALL_ROLEPLAY_PROGRAMS } from '../../data/programs';
 import { ProgramScreen } from '../../components/ProgramScreen';
 import { Button } from '../../components/ui';
 import { safeBack } from '../../lib/safeBack';
@@ -20,7 +20,7 @@ export default function ProgramRoute() {
     entryMode?: 'observe_first' | 'guided_first' | 'warmup_first';
     match?: 'exact' | 'closest';
   }>();
-  const program = ROLEPLAY_PROGRAM_CATALOG.find(candidate => candidate.id === programId);
+  const program = ALL_ROLEPLAY_PROGRAMS.find(candidate => candidate.id === programId);
 
   if (!program || program.targetLanguage !== ACTIVE_LEARNING_LANGUAGE) {
     return (
