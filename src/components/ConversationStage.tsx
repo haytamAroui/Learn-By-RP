@@ -8,6 +8,7 @@ import { ELEVATION } from '../design/tokens';
 import { iconColor } from '../design/iconColor';
 import { ReferenceArtwork } from './ReferenceArtwork';
 import { phraseTranslation } from '../features/roleplay/sessionPresentation';
+import { segmentCaptionWords } from '../utils/captionWords';
 
 export function CharacterAvatar({ mission, size = 46 }: { mission: MissionDefinition; size?: number }) {
   return <View className="relative overflow-hidden rounded-full bg-warning-soft" style={{ width: size, height: size }}>
@@ -34,6 +35,7 @@ interface Props {
   passages: Passage[];
   historyOpen: boolean;
   onToggleHistory: () => void;
+  onWordLookup?: (target: { word: string; sentence: string }) => void;
 }
 
 export function ConversationStage(props: Props) {
@@ -80,15 +82,60 @@ export function ConversationStage(props: Props) {
             >
               {learner ? t.common.you : props.mission.character.name}
             </Text>
-            <Text
-              className={`${
-                latest && !learner
-                  ? 'text-[18px] leading-[26px] font-medium'
-                  : 'text-[16px] leading-[24px]'
-              } ${learner ? 'text-action-text' : 'text-ink'}`}
-            >
-              {passage.text}
-            </Text>
+            {!learner && props.onWordLookup ? (
+              <View className="flex-row flex-wrap items-center">
+                {segmentCaptionWords(passage.text).map((segment, segIdx) => {
+                  if (segment.lookup) {
+                    return (
+                      <Pressable
+                        key={segIdx}
+                        onPress={() =>
+                          props.onWordLookup?.({
+                            word: segment.lookup!,
+                            sentence: passage.text,
+                          })
+                        }
+                        accessibilityRole="button"
+                        accessibilityLabel={`Woorduitleg: ${segment.lookup}`}
+                        className="min-h-12 items-center justify-center rounded-md px-0.5 hover:bg-language-soft active:opacity-70"
+                      >
+                        <Text
+                          className={`${
+                            latest
+                              ? 'font-display text-20 leading-7 font-bold text-ink underline decoration-language/50 decoration-2'
+                              : 'text-[16px] leading-[24px] text-ink underline decoration-language/30'
+                          }`}
+                        >
+                          {segment.text}
+                        </Text>
+                      </Pressable>
+                    );
+                  }
+                  return (
+                    <Text
+                      key={segIdx}
+                      className={`${
+                        latest
+                          ? 'font-display text-20 leading-7 font-bold text-ink'
+                          : 'text-[16px] leading-[24px] text-ink'
+                      }`}
+                    >
+                      {segment.text}
+                    </Text>
+                  );
+                })}
+              </View>
+            ) : (
+              <Text
+                className={`${
+                  latest && !learner
+                    ? 'font-display text-20 leading-7 font-bold'
+                    : 'text-[16px] leading-[24px]'
+                } ${learner ? 'text-action-text' : 'text-ink'}`}
+              >
+                {passage.text}
+              </Text>
+            )}
             {learner && passage.meaning ? (
               <Text className="text-xs text-action-text/80 mt-0.5">
                 {passage.meaning}

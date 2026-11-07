@@ -19,6 +19,7 @@ import {
 import {
   HelpCircle,
   Keyboard,
+  Layers,
   Mic,
   MicOff,
   MoreHorizontal,
@@ -26,6 +27,8 @@ import {
   Play,
   RotateCcw,
   Send,
+  Sparkles,
+  Subtitles,
   Volume2,
   X,
 } from 'lucide-react-native';
@@ -117,6 +120,8 @@ import { iconColor } from '../design/iconColor';
 import { ELEVATION } from '../design/tokens';
 import { ConversationStage, SuggestedReplies } from './ConversationStage';
 import { CharacterStageAvatar } from './CharacterStageAvatar';
+import { LivingVoiceOrb } from './LivingVoiceOrb';
+import { WordLookupModal, WordLookupTarget } from './WordLookupModal';
 import { waitForAvatarReady } from '../features/avatar/avatarReadiness';
 import {
   connectAvatarActivity,
@@ -418,6 +423,8 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
   const [suggestionsOpen, setSuggestionsOpen] = useState(false);
   const [suggestionsBusy, setSuggestionsBusy] = useState(false);
   const [showOptions, setShowOptions] = useState(false);
+  const [visualMode, setVisualMode] = useState<'orb' | 'avatar'>('orb');
+  const [lookupTarget, setLookupTarget] = useState<WordLookupTarget | null>(null);
   const [historyOpen, setHistoryOpen] = useState(false);
   const [playingId, setPlayingId] = useState<string | null>(null);
   const supportActionPendingRef = useRef(false);
@@ -2395,12 +2402,13 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
     suggestions, suggestionsOpen, suggestionsBusy, onToggleSuggestions: () => void toggleSuggestions(),
     onUsePhrase: phrase => void useSuggestedPhrase(phrase), onPlayPhrase: phrase => void playSuggestedPhrase(phrase),
     audioDisabled: !voiceGranted || playingId !== null || voiceState === 'ending', playingId,
+    onWordLookup: target => setLookupTarget(target),
   };
 
   return (
     <View className="flex-1 bg-canvas">
       <SafeAreaView edges={['top']}>
-        <View className="w-full self-center flex-row items-center gap-3 px-4 py-2" style={{ maxWidth: 900 }}>
+        <View className="w-full self-center flex-row items-center gap-2 px-4 py-2" style={{ maxWidth: 900 }}>
           <Pressable
             onPress={() => void handleFinishConversation('user_ended')}
             accessibilityRole="button"
@@ -2410,25 +2418,32 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
             <X size={21} color={iconColor('ink')} />
           </Pressable>
 
-          <CharacterStageAvatar
-        mission={mission}
-        size={56}
-        preferredAvatarId={preferences?.preferredAvatarId}
-      />
-
-          <View className="min-w-0 flex-1 items-start px-1 py-1">
-            <View className="flex-row items-center gap-2">
-              <Text className="font-display text-[18px] font-bold leading-6 text-ink" numberOfLines={1}>
-                {mission.character.name}
+          {/* Centered Scenario Pill Chip (Mural Style) */}
+          <View className="min-w-0 flex-1 flex-row items-center justify-center">
+            <View className="flex-row items-center gap-2 rounded-full border border-border-interactive/40 bg-surface px-3.5 py-1.5 shadow-sm max-w-full">
+              <Text className="text-xs font-bold text-ink" numberOfLines={1}>
+                {mission.title} · {mission.neighborhood || mission.setting || 'Gent'}
               </Text>
-              <View className="rounded-full bg-language-soft px-2 py-0.5">
-                <Text className="text-xs font-bold text-language">{mission.levelRange}</Text>
+              <View className="rounded-full bg-lime px-2 py-0.5">
+                <Text className="text-xs font-extrabold text-[#17310F]">
+                  {mission.levelRange ?? 'A1'}
+                </Text>
               </View>
             </View>
-            <Text className="mt-0.5 text-sm text-muted" numberOfLines={1}>
-              {mission.title}
-            </Text>
           </View>
+
+          {/* Toggle Orb vs Character Avatar */}
+          <Pressable
+            onPress={() => setVisualMode(m => (m === 'orb' ? 'avatar' : 'orb'))}
+            accessibilityRole="button"
+            accessibilityLabel={`Wissel weergave: nu ${visualMode === 'orb' ? 'Orb' : 'Avatar'}`}
+            className="h-12 px-3 rounded-full border border-border-interactive/40 bg-surface flex-row items-center gap-1.5 shadow-sm hover:bg-surface-hover active:scale-95"
+          >
+            <Layers size={15} color={iconColor('ink')} />
+            <Text className="text-xs font-bold text-ink">
+              {visualMode === 'orb' ? 'Orb 🔮' : 'Avatar 👩'}
+            </Text>
+          </Pressable>
 
           <Pressable
             onPress={() => setShowOptions(true)}
@@ -2479,38 +2494,59 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           maxWidth: 720,
           alignSelf: 'center',
           paddingHorizontal: 18,
-          paddingTop: 22,
+          paddingTop: 14,
           paddingBottom: 36,
-          gap: 30,
+          gap: 20,
         }}
         keyboardShouldPersistTaps="handled"
       >
-        {/* Lingo Atelier Storefront Scene Room Card */}
-        <View className="rounded-[24px] border border-border-subtle/50 bg-surface p-4 shadow-sm gap-2" style={{ boxShadow: ELEVATION.card }}>
-          <View className="flex-row items-center justify-between">
-            <Text className="text-xs font-extrabold uppercase tracking-widest text-primary">
-              YOUR SCENE IS READY
-            </Text>
-            <View className="rounded-full bg-lime px-2.5 py-0.5">
-              <Text className="text-xs font-extrabold text-[#17310F]">
-                {mission.levelRange ?? 'A1'}
+        {/* Center Hero Stage: Living Voice Orb or Lotte Character Avatar (Mural Center Stage) */}
+        <View className="items-center justify-center py-2">
+          {visualMode === 'orb' ? (
+            <LivingVoiceOrb
+              state={
+                voiceState === 'listening'
+                  ? 'listening'
+                  : voiceState === 'speaking'
+                  ? 'speaking'
+                  : voiceState === 'connecting'
+                  ? 'connecting'
+                  : 'idle'
+              }
+              size={160}
+            />
+          ) : (
+            <View className="items-center justify-center">
+              <CharacterStageAvatar
+                mission={mission}
+                size={150}
+                preferredAvatarId={preferences?.preferredAvatarId}
+              />
+              <Text className="mt-2 text-xs font-bold text-muted">
+                {mission.character.name} · {mission.character.role}
               </Text>
             </View>
-          </View>
-          <Text className="font-display text-20 font-bold leading-tight text-ink">
-            {mission.title}
+          )}
+
+          {/* Sub-label under Orb/Avatar */}
+          <Text className="mt-3 text-xs font-medium text-muted">
+            {voiceState === 'speaking'
+              ? `${mission.character.name} spreekt...`
+              : voiceState === 'listening'
+              ? 'Ik luister...'
+              : voiceState === 'connecting'
+              ? 'Verbinding maken...'
+              : voiceState === 'error'
+              ? 'Microfoon uit'
+              : 'Klaar wanneer jij bent'}
           </Text>
-          <Text className="text-14 leading-5 text-muted">
-            {mission.learnerGoal}
+        </View>
+
+        {/* Scene context chip */}
+        <View className="self-center rounded-2xl bg-surface-soft border border-border-subtle/40 px-3.5 py-1.5 max-w-[90%]">
+          <Text className="text-xs text-muted text-center" numberOfLines={1}>
+            🎯 {mission.learnerGoal}
           </Text>
-          <View className="flex-row items-center gap-2 pt-1">
-            <View className="rounded-full bg-language-soft px-3 py-1">
-              <Text className="text-xs font-bold text-language">Belgian Dutch</Text>
-            </View>
-            <View className="rounded-full bg-[#FFF1E4] px-3 py-1">
-              <Text className="text-xs font-bold text-[#9A654C]">Relaxed pace · No timer</Text>
-            </View>
-          </View>
         </View>
 
         <ConversationStage {...conversationProps} />
@@ -2681,23 +2717,32 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
 
             <SuggestedReplies {...conversationProps} />
 
-            <View className="flex-row items-center justify-between px-2 py-1">
-              {/* Type mode toggle */}
-              <Pressable
-                onPress={() => setShowTypedInput(value => !value)}
-                accessibilityRole="button"
-                accessibilityState={{ selected: showTypedInput }}
-                accessibilityLabel={t.live.typeInstead}
-                className="h-12 w-12 items-center justify-center rounded-full bg-surface-soft border border-border-subtle/50 hover:bg-surface-hover active:scale-95"
-              >
-                <Keyboard
-                  size={20}
-                  color={iconColor(showTypedInput ? 'brand' : 'muted')}
-                />
-              </Pressable>
+            {/* Mural 3-Button Bottom Dock */}
+            <View className="flex-row items-center justify-around px-4 pt-1 pb-1">
+              {/* Left: Meaning / Subtitles Button */}
+              <View className="items-center justify-center gap-1">
+                <Pressable
+                  onPress={handleToggleMeaning}
+                  accessibilityRole="button"
+                  accessibilityLabel={showMeaningLine ? 'Verberg betekenis' : 'Toon betekenis'}
+                  className={`h-14 w-14 items-center justify-center rounded-full border ${
+                    showMeaningLine
+                      ? 'border-brand-primary bg-language-soft'
+                      : 'border-border-subtle/50 bg-surface-soft hover:bg-surface-hover'
+                  } active:scale-95`}
+                >
+                  <Subtitles
+                    size={22}
+                    color={iconColor(showMeaningLine ? 'brand' : 'ink')}
+                  />
+                </Pressable>
+                <Text className="text-xs font-medium text-muted">
+                  Betekenis
+                </Text>
+              </View>
 
-              {/* Centered Primary Mic Action */}
-              <View className="items-center justify-center gap-1.5">
+              {/* Center: Large Primary Mic Button (80px) */}
+              <View className="items-center justify-center gap-1">
                 <Pressable
                   onPress={() => {
                     if (
@@ -2732,12 +2777,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                       ? t.live.voiceFailed
                       : t.live.tapToSpeak
                   }
-                  className={`h-[72px] w-[72px] items-center justify-center rounded-full active:scale-95 transition-all ${
+                  className={`h-20 w-20 items-center justify-center rounded-full active:scale-95 transition-all ${
                     voiceState === 'listening'
-                      ? 'bg-action shadow-lg ring-4 ring-action/25'
+                      ? 'bg-action shadow-xl ring-8 ring-action/25'
                       : voiceState === 'speaking'
-                      ? 'bg-accent-sage ring-4 ring-accent-sage/25'
-                      : 'bg-action'
+                      ? 'bg-accent-sage ring-8 ring-accent-sage/25'
+                      : 'bg-action shadow-lg'
                   } ${
                     VOICE_BLOCKED.has(voiceState) ||
                     !voiceGranted ||
@@ -2749,45 +2794,62 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
                   style={{ boxShadow: ELEVATION.floating }}
                 >
                   {voiceState === 'error' ? (
-                    <MicOff size={28} color={iconColor('brandText')} />
+                    <MicOff size={32} color={iconColor('brandText')} />
                   ) : (
-                    <Mic size={30} color={iconColor('brandText')} />
+                    <Mic size={34} color={iconColor('brandText')} />
                   )}
                 </Pressable>
-
-                <View className="flex-row items-center gap-1.5">
-                  <View className={`h-2 w-2 rounded-full ${VOICE_DOT[voiceState]}`} />
-                  <Text
-                    className="text-xs font-semibold text-muted"
-                    numberOfLines={1}
-                  >
-                    {voiceLabel}
-                  </Text>
-                </View>
+                <Text className="text-xs font-medium text-muted">
+                  {voiceState === 'listening'
+                    ? 'Microfoon aan'
+                    : voiceState === 'speaking'
+                    ? 'Spreekt...'
+                    : 'Tik om te spreken'}
+                </Text>
               </View>
 
-              {/* Help & Coach drawer toggle */}
+              {/* Right: End Session Button */}
+              <View className="items-center justify-center gap-1">
+                <Pressable
+                  onPress={() => void handleFinishConversation('user_ended')}
+                  accessibilityRole="button"
+                  accessibilityLabel="Beëindig gesprek en bekijk samenvatting"
+                  className="h-14 w-14 items-center justify-center rounded-full bg-surface-soft border border-border-subtle/50 hover:bg-surface-hover active:scale-95"
+                >
+                  <X size={22} color={iconColor('ink')} />
+                </Pressable>
+                <Text className="text-xs font-medium text-muted">
+                  Einde
+                </Text>
+              </View>
+            </View>
+
+            {/* Sub-action secondary row: Type instead + A little help */}
+            <View className="flex-row items-center justify-center gap-6 pt-1">
+              <Pressable
+                onPress={() => setShowTypedInput(v => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={t.live.typeInstead}
+                className="min-h-12 flex-row items-center gap-1.5 px-3 py-1 rounded-full hover:bg-surface-hover active:scale-95"
+              >
+                <Keyboard size={16} color={iconColor(showTypedInput ? 'brand' : 'muted')} />
+                <Text className={`text-xs font-semibold ${showTypedInput ? 'text-primary' : 'text-muted'}`}>
+                  {showTypedInput ? 'Typen sluiten' : 'Typen in plaats van spreken'}
+                </Text>
+              </Pressable>
+
               <Pressable
                 onPress={() => setShowHelpSheet(true)}
                 accessibilityRole="button"
                 accessibilityLabel={t.common.help}
-                className="h-12 w-12 items-center justify-center rounded-full bg-surface-soft border border-border-subtle/50 hover:bg-surface-hover active:scale-95"
+                className="min-h-12 flex-row items-center gap-1.5 px-3 py-1 rounded-full hover:bg-surface-hover active:scale-95"
               >
-                <HelpCircle size={20} color={iconColor('muted')} />
+                <Sparkles size={16} color={iconColor('brand')} />
+                <Text className="text-xs font-semibold text-muted">
+                  Hulp nodig
+                </Text>
               </Pressable>
             </View>
-
-            {/* Lingo Atelier Finish Scene Ghost Action */}
-            <Pressable
-              onPress={() => void handleFinishConversation('user_ended')}
-              accessibilityRole="button"
-              accessibilityLabel="Finish this scene"
-              className="min-h-12 items-center justify-center py-1 active:opacity-70"
-            >
-              <Text className="text-xs font-semibold text-muted hover:text-ink">
-                Finish this scene →
-              </Text>
-            </Pressable>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -2861,6 +2923,12 @@ export const LiveSessionView: React.FC<LiveSessionViewProps> = ({
           setShowOptions(false); void handleFinishConversation();
         }} variant="danger" />
       </Sheet>
+
+      {/* Word Contextual Lookup Bottom Sheet Modal */}
+      <WordLookupModal
+        target={lookupTarget}
+        onClose={() => setLookupTarget(null)}
+      />
     </View>
   );
 };

@@ -218,53 +218,63 @@ export const TalkScreen: React.FC<TalkScreenProps> = ({
           ) : null}
         </View>
 
-        {/* Primary Mural Action Controls */}
-        <View className="items-center justify-center gap-4 pt-2">
-          {/* Main 76px Glowing Mic Button */}
-          <View className="items-center justify-center gap-2">
-            <Pressable
-              onPress={() => onStartMission(featuredMission)}
-              accessibilityRole="button"
-              accessibilityLabel={`Start gesprek met ${characterName}`}
-              className="h-[76px] w-[76px] items-center justify-center rounded-full bg-brand-primary shadow-xl ring-8 ring-brand-primary/20 active:scale-95 transition-all"
-            >
-              <Mic size={32} color={iconColor('brandText')} />
-            </Pressable>
-            <Text className="text-sm font-bold text-ink">
-              Babbel met {characterName}
-            </Text>
+        {/* Primary Mural Action Controls (3-Button Dock) */}
+        <View className="items-center justify-center gap-2 pt-2">
+          {/* Mural 3-Button Dock */}
+          <View className="w-full flex-row items-center justify-around px-4">
+            {/* Left: Meaning / Translation Toggle */}
+            <View className="items-center justify-center gap-1">
+              <Pressable
+                onPress={() => setShowMeaning(v => !v)}
+                accessibilityRole="button"
+                accessibilityLabel={showMeaning ? 'Verberg vertaling' : 'Toon vertaling'}
+                className={`h-14 w-14 items-center justify-center rounded-full border ${
+                  showMeaning
+                    ? 'border-brand-primary bg-language-soft'
+                    : 'border-border-interactive/40 bg-surface-soft hover:bg-surface-hover'
+                } active:scale-95`}
+              >
+                <Subtitles size={22} color={iconColor(showMeaning ? 'brand' : 'ink')} />
+              </Pressable>
+              <Text className="text-xs font-medium text-muted">
+                Betekenis
+              </Text>
+            </View>
+
+            {/* Center: Large 80px Glowing Mic Button */}
+            <View className="items-center justify-center gap-1.5">
+              <Pressable
+                onPress={() => onStartMission(featuredMission)}
+                accessibilityRole="button"
+                accessibilityLabel={`Start gesprek met ${characterName}`}
+                className="h-20 w-20 items-center justify-center rounded-full bg-action shadow-xl ring-8 ring-action/25 active:scale-95 transition-all"
+              >
+                <Mic size={34} color={iconColor('brandText')} />
+              </Pressable>
+              <Text className="text-xs font-bold text-ink">
+                Babbel met {characterName}
+              </Text>
+            </View>
+
+            {/* Right: Themes & Missions Button */}
+            <View className="items-center justify-center gap-1">
+              <Pressable
+                onPress={onExploreMissions}
+                accessibilityRole="button"
+                accessibilityLabel="Kies een ander Vlaams scenario"
+                className="h-14 w-14 items-center justify-center rounded-full border border-border-interactive/40 bg-surface-soft hover:bg-surface-hover active:scale-95"
+              >
+                <Grid size={22} color={iconColor('ink')} />
+              </Pressable>
+              <Text className="text-xs font-medium text-muted">
+                Thema's
+              </Text>
+            </View>
           </View>
 
-          {/* Subtitle / Meaning & Themes Row */}
-          <View className="w-full flex-row items-center justify-between gap-3 pt-2">
-            <Pressable
-              onPress={() => setShowMeaning(v => !v)}
-              accessibilityRole="button"
-              accessibilityLabel={showMeaning ? 'Verberg vertaling' : 'Toon vertaling'}
-              className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border px-4 ${
-                showMeaning
-                  ? 'border-brand-primary bg-language-soft'
-                  : 'border-border-interactive/50 bg-surface'
-              } active:scale-98`}
-            >
-              <Subtitles size={17} color={iconColor(showMeaning ? 'brand' : 'ink')} />
-              <Text className="text-xs font-bold text-ink">
-                {showMeaning ? 'Vertaling aan' : 'Vertaling uit'}
-              </Text>
-            </Pressable>
-
-            <Pressable
-              onPress={onExploreMissions}
-              accessibilityRole="button"
-              accessibilityLabel="Kies een ander Vlaams scenario"
-              className="min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-full border border-border-interactive/50 bg-surface px-4 active:scale-98"
-            >
-              <Grid size={17} color={iconColor('ink')} />
-              <Text className="text-xs font-bold text-ink">
-                Alle Thema's
-              </Text>
-            </Pressable>
-          </View>
+          <Text className="text-xs text-muted text-center pt-1">
+            Microfoon klaar · Vrijuit spreken of typen
+          </Text>
         </View>
 
         {/* Vocabulary & Progress Cards (Mural 3-Bar Recall Summary) */}

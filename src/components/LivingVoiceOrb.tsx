@@ -82,6 +82,56 @@ export const LivingVoiceOrb: React.FC<LivingVoiceOrbProps> = ({
       }}
       accessibilityLabel={`Gespreksanimatie: ${state}`}
     >
+      {/* Outer Subtle Orbital Ring with Satellite Particle */}
+      <View
+        style={{
+          position: 'absolute',
+          width: size * 1.44,
+          height: size * 1.44,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: 'rgba(234, 105, 87, 0.16)',
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            bottom: size * 0.28,
+            left: size * 0.08,
+            width: 8,
+            height: 8,
+            borderRadius: 4,
+            backgroundColor: '#F8B74C',
+            opacity: 0.85,
+          }}
+        />
+      </View>
+
+      {/* Inner Subtle Orbital Ring with Satellite Particle */}
+      <View
+        style={{
+          position: 'absolute',
+          width: size * 1.24,
+          height: size * 1.24,
+          borderRadius: 999,
+          borderWidth: 1,
+          borderColor: 'rgba(234, 105, 87, 0.24)',
+        }}
+      >
+        <View
+          style={{
+            position: 'absolute',
+            top: size * 0.18,
+            right: size * 0.06,
+            width: 10,
+            height: 10,
+            borderRadius: 5,
+            backgroundColor: '#FF7A63',
+            opacity: 0.9,
+          }}
+        />
+      </View>
+
       {/* Listening Aura Ring 1 */}
       {state === 'listening' ? (
         <Animated.View
@@ -102,12 +152,12 @@ export const LivingVoiceOrb: React.FC<LivingVoiceOrbProps> = ({
       <View
         style={{
           position: 'absolute',
-          bottom: size * 0.1,
-          width: size * 0.65,
+          bottom: size * 0.08,
+          width: size * 0.7,
           height: size * 0.12,
           borderRadius: 999,
           backgroundColor: '#07454B',
-          opacity: 0.08,
+          opacity: 0.07,
           transform: [{ scaleY: 0.5 }],
         }}
       />
@@ -119,68 +169,75 @@ export const LivingVoiceOrb: React.FC<LivingVoiceOrbProps> = ({
           height: size,
           borderRadius: 999,
           transform: [{ scale: pulseAnim }],
-          shadowColor: state === 'listening' ? '#FF7A63' : '#F8B74C',
-          shadowOffset: { width: 0, height: 12 },
-          shadowOpacity: 0.35,
-          shadowRadius: 24,
-          elevation: 12,
+          shadowColor: state === 'listening' ? '#FF7A63' : '#EA6957',
+          shadowOffset: { width: 0, height: 16 },
+          shadowOpacity: 0.32,
+          shadowRadius: 28,
+          elevation: 14,
           overflow: 'hidden',
-          backgroundColor: '#FF6B57',
+          backgroundColor: '#F5835C',
+          ...(Platform.OS === 'web'
+            ? ({
+                backgroundImage:
+                  'radial-gradient(circle at 35% 32%, #FFE5A3 0%, #F5835C 44%, #B595DE 88%)',
+              } as any)
+            : {}),
         }}
       >
-        {/* Soft Radial Gradient / Mesh Illusion Layers */}
-        <View
-          style={{
-            position: 'absolute',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            backgroundColor: '#FF7A63',
-          }}
-        />
-
-        {/* Top-left warm butter highlight */}
-        <View
-          style={{
-            position: 'absolute',
-            top: -size * 0.15,
-            left: -size * 0.15,
-            width: size * 0.85,
-            height: size * 0.85,
-            borderRadius: 999,
-            backgroundColor: '#FFF0CF',
-            opacity: 0.7,
-          }}
-        />
-
-        {/* Bottom-right peach aura */}
-        <View
-          style={{
-            position: 'absolute',
-            bottom: -size * 0.2,
-            right: -size * 0.2,
-            width: size * 0.9,
-            height: size * 0.9,
-            borderRadius: 999,
-            backgroundColor: '#FFB89A',
-            opacity: 0.6,
-          }}
-        />
-
-        {/* Center glowing core */}
-        <View
-          style={{
-            position: 'absolute',
-            top: size * 0.18,
-            left: size * 0.18,
-            width: size * 0.5,
-            height: size * 0.5,
-            borderRadius: 999,
-            backgroundColor: '#FFFFFF',
-            opacity: 0.45,
-          }}
-        />
+        {/* Fallback layered mesh for native platforms */}
+        {Platform.OS !== 'web' ? (
+          <>
+            <View
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+                backgroundColor: '#F5835C',
+              }}
+            />
+            {/* Top-left warm butter highlight */}
+            <View
+              style={{
+                position: 'absolute',
+                top: -size * 0.12,
+                left: -size * 0.12,
+                width: size * 0.8,
+                height: size * 0.8,
+                borderRadius: 999,
+                backgroundColor: '#FFE5A3',
+                opacity: 0.75,
+              }}
+            />
+            {/* Bottom-right lavender/dusk aura */}
+            <View
+              style={{
+                position: 'absolute',
+                bottom: -size * 0.18,
+                right: -size * 0.18,
+                width: size * 0.85,
+                height: size * 0.85,
+                borderRadius: 999,
+                backgroundColor: '#B595DE',
+                opacity: 0.7,
+              }}
+            />
+            {/* Center glowing core */}
+            <View
+              style={{
+                position: 'absolute',
+                top: size * 0.2,
+                left: size * 0.2,
+                width: size * 0.45,
+                height: size * 0.45,
+                borderRadius: 999,
+                backgroundColor: '#FFFFFF',
+                opacity: 0.35,
+              }}
+            />
+          </>
+        ) : null}
       </Animated.View>
     </View>
   );
