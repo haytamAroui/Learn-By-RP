@@ -26,8 +26,6 @@ export function CharacterStageAvatar({
 }) {
   const artwork = <CharacterAvatar mission={mission} size={size} />;
 
-  if (Platform.OS === 'web') return artwork;
-
   // The learner's chosen tutor comes first, then the face the mission
   // authored, then a stable one for the character.
   const avatarId = resolveAvatarId({
