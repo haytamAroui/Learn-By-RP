@@ -122,6 +122,26 @@ const SKILL_CATEGORIES_MAP: Record<string, SkillCategoryFilter> = {
   'skill-narrate-past-event': 'discussion',
 };
 
+const SKILL_LEVEL_MAP: Record<string, 'A1' | 'A2' | 'B1'> = {
+  'skill-request-substitution': 'A1',
+  'skill-inquire-specifications': 'A1',
+  'skill-wayfinding-transit': 'A1',
+  'skill-request-repetition': 'A1',
+  'skill-request-slower-speech': 'A1',
+  'skill-propose-alternative': 'A2',
+  'skill-communicative-repair': 'A2',
+  'skill-ask-clarification': 'A2',
+  'skill-check-understanding': 'A2',
+  'skill-clarify-misunderstanding': 'A2',
+  'skill-make-arrangement': 'A2',
+  'skill-paraphrase-when-stuck': 'B1',
+  'skill-give-opinion-with-reason': 'B1',
+  'skill-compare-options': 'B1',
+  'skill-narrate-past-event': 'B1',
+};
+
+type SkillLevelFilter = 'all' | 'A1' | 'A2' | 'B1';
+
 export const ProgressScreen: React.FC<ProgressScreenProps> = ({
   phrases,
   sessions,
@@ -136,7 +156,8 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
 }) => {
   const { t, language } = useI18n();
   const [selectedTab, setSelectedTab] = useState<ProgressTab>('skills');
-  const [selectedSkillCategory, setSelectedSkillCategory] = useState<SkillCategoryFilter>('daily');
+  const [selectedSkillLevel, setSelectedSkillLevel] = useState<SkillLevelFilter>('all');
+  const [selectedSkillCategory, setSelectedSkillCategory] = useState<SkillCategoryFilter>('all');
   const [selectedPhrase, setSelectedPhrase] = useState<PhraseItem | null>(null);
   const [selectedSkill, setSelectedSkill] = useState<CommunicativeSkillMeta | null>(null);
   const activity = useMemo(() => summarizeActivity(sessions, learningLanguage), [sessions, learningLanguage]);
@@ -217,12 +238,36 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
     return count;
   }, [skillStats]);
 
+  const levelCounts = useMemo(() => {
+    const counts: Record<SkillLevelFilter, number> = {
+      all: COMMUNICATIVE_SKILLS_CATALOG.length,
+      A1: 0,
+      A2: 0,
+      B1: 0,
+    };
+    for (const skill of COMMUNICATIVE_SKILLS_CATALOG) {
+      const lvl = SKILL_LEVEL_MAP[skill.id];
+      if (lvl) counts[lvl]++;
+    }
+    return counts;
+  }, []);
+
+  const levelProgressPct = useMemo(() => {
+    const totalSkills = COMMUNICATIVE_SKILLS_CATALOG.length;
+    const skillFactor = (demonstratedSkillCount / Math.max(1, totalSkills)) * 60;
+    const sessionFactor = Math.min(40, (activity.sessions / 5) * 40);
+    return Math.min(100, Math.max(25, Math.round(skillFactor + sessionFactor)));
+  }, [demonstratedSkillCount, activity.sessions]);
+
   const filteredSkills = useMemo(() => {
-    if (selectedSkillCategory === 'all') return COMMUNICATIVE_SKILLS_CATALOG;
-    return COMMUNICATIVE_SKILLS_CATALOG.filter(
-      skill => SKILL_CATEGORIES_MAP[skill.id] === selectedSkillCategory
-    );
-  }, [selectedSkillCategory]);
+    return COMMUNICATIVE_SKILLS_CATALOG.filter(skill => {
+      const matchesLevel =
+        selectedSkillLevel === 'all' || SKILL_LEVEL_MAP[skill.id] === selectedSkillLevel;
+      const matchesCategory =
+        selectedSkillCategory === 'all' || SKILL_CATEGORIES_MAP[skill.id] === selectedSkillCategory;
+      return matchesLevel && matchesCategory;
+    });
+  }, [selectedSkillLevel, selectedSkillCategory]);
 
   const categoryCounts = useMemo(() => {
     const counts: Record<SkillCategoryFilter, number> = {
@@ -378,6 +423,54 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
             <Text className="text-center text-xs leading-4 text-muted">{stat.label}</Text>
           </View>)}
         </View>
+
+        {/* LINGO ATELIER: Your Language Level Panel */}
+        <View
+          className="rounded-[26px] bg-surface border border-border-subtle/70 p-4 gap-3 shadow-sm"
+          style={{ boxShadow: ELEVATION.card }}
+        >
+          <View className="flex-row items-center justify-between">
+            <View className="flex-row items-center gap-2.5">
+              <View className="h-9 w-9 items-center justify-center rounded-xl bg-lime shadow-sm">
+                <Text className="text-xs font-extrabold text-[#17310F]">A1</Text>
+              </View>
+              <View>
+                <Text className="font-display text-16 font-bold text-ink">
+                  Your Language Level
+                </Text>
+                <Text className="text-xs text-muted">
+                  CEFR proficiency evaluation
+                </Text>
+              </View>
+            </View>
+            <View className="px-2.5 py-1 rounded-full bg-card-sage border border-accent-sage/20">
+              <Text className="text-xs font-bold text-accent-sage">
+                {levelProgressPct >= 80 ? 'Near A2' : 'Active A1'}
+              </Text>
+            </View>
+          </View>
+
+          {/* Level Track: A1 ─── [bar] ─── A2 */}
+          <View className="flex-row items-center gap-3 pt-1">
+            <Text className="text-xs font-extrabold text-ink">A1</Text>
+            <View className="h-3.5 flex-1 rounded-full bg-surface-sunken overflow-hidden p-0.5">
+              <View
+                className="h-full rounded-full bg-action"
+                style={{ width: `${levelProgressPct}%` }}
+              />
+            </View>
+            <Text className="text-xs font-extrabold text-muted">A2</Text>
+          </View>
+
+          <View className="flex-row items-center justify-between pt-0.5">
+            <Text className="text-xs text-muted">
+              You're on the right track to A2! Keep it up!
+            </Text>
+            <Text className="font-display text-18 font-extrabold text-primary">
+              {levelProgressPct}%
+            </Text>
+          </View>
+        </View>
         {duePhrases.length > 0 ? (
           <View className="gap-4 rounded-[28px] bg-card-warm p-5">
             <View className="flex-row items-start gap-3">
@@ -508,7 +601,52 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
               </View>
             </View>
 
-            {/* Category Filter Pills (Defaults to Daily: 3 skills, keeping it concise) */}
+            {/* CEFR Level Filter Pills */}
+            <View className="flex-row gap-2 flex-wrap">
+              {(['all', 'A1', 'A2', 'B1'] as SkillLevelFilter[]).map(lvl => {
+                const isSelected = selectedSkillLevel === lvl;
+                const count = levelCounts[lvl];
+                const label =
+                  lvl === 'all'
+                    ? `All Levels (${count})`
+                    : lvl === 'A1'
+                    ? `A1 Foundation (${count})`
+                    : lvl === 'A2'
+                    ? `A2 Everyday (${count})`
+                    : `B1 Expansion (${count})`;
+
+                return (
+                  <Pressable
+                    key={lvl}
+                    onPress={() => setSelectedSkillLevel(lvl)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isSelected }}
+                    className={`min-h-12 px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 border transition-all ${
+                      isSelected
+                        ? 'bg-action border-action'
+                        : 'bg-surface border-border-subtle/50 hover:bg-surface-hover'
+                    }`}
+                  >
+                    {lvl !== 'all' ? (
+                      <View className="px-1.5 py-0.5 rounded bg-lime">
+                        <Text className="text-xs font-extrabold text-[#17310F]">
+                          {lvl}
+                        </Text>
+                      </View>
+                    ) : null}
+                    <Text
+                      className={`text-xs font-bold ${
+                        isSelected ? 'text-action-text' : 'text-body'
+                      }`}
+                    >
+                      {label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+
+            {/* Category Filter Pills */}
             <View className="flex-row gap-2 flex-wrap">
               {(['all', 'daily', 'repair', 'discussion'] as SkillCategoryFilter[]).map(catId => {
                 const isSelected = selectedSkillCategory === catId;
@@ -521,13 +659,13 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                     accessibilityState={{ selected: isSelected }}
                     className={`min-h-12 px-3.5 py-2 rounded-xl flex-row items-center gap-1.5 border transition-all ${
                       isSelected
-                        ? 'bg-action border-action'
+                        ? 'bg-surface-soft border-border-interactive'
                         : 'bg-surface border-border-subtle/50 hover:bg-surface-hover'
                     }`}
                   >
                     <Text
-                      className={`text-xs font-bold ${
-                        isSelected ? 'text-action-text' : 'text-body'
+                      className={`text-xs ${
+                        isSelected ? 'font-bold text-ink' : 'font-medium text-muted'
                       }`}
                     >
                       {skillCategoryLabels[catId]} ({count})
@@ -571,6 +709,11 @@ export const ProgressScreen: React.FC<ProgressScreenProps> = ({
                         >
                           {localized.name}
                         </Text>
+                        <View className="rounded-full bg-lime px-2 py-0.5">
+                          <Text className="text-xs font-extrabold text-[#17310F]">
+                            {SKILL_LEVEL_MAP[skill.id] || 'A1'}
+                          </Text>
+                        </View>
                         {skill.parentSkillId ? (
                           <View className="px-1.5 py-0.5 rounded bg-surface-soft border border-border-subtle/30">
                             <Text className="text-xs font-medium text-muted">

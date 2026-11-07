@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -8,18 +8,13 @@ import {
 import { Text } from './AppText';
 import {
   BookOpen,
-  ChevronDown,
+  CheckCircle2,
   ChevronRight,
-  ChevronUp,
-  Coffee,
   Compass,
   MapPin,
   Route,
   Search,
-  ShoppingBag,
   Sparkles,
-  Train,
-  Users,
   X,
 } from 'lucide-react-native';
 import { MissionDefinition, SessionRecord } from '../types';
@@ -29,7 +24,6 @@ import { useI18n } from '../features/i18n';
 import { iconColor } from '../design/iconColor';
 import { ELEVATION } from '../design/tokens';
 import { NeighborhoodArtwork } from './NeighborhoodArtwork';
-import { Button } from './ui';
 
 const MISSION_TONES: Record<MissionDefinition['category'], { container: string; color: string }> = {
   cafes: { container: 'bg-[#DFF2EA]', color: 'brand' },
@@ -47,6 +41,46 @@ interface MissionsScreenProps {
   onSelectMission: (mission: MissionDefinition) => void;
   onSelectProgram: (program: RoleplayProgram) => void;
 }
+
+interface LevelMeta {
+  code: string;
+  badge: string;
+  title: string;
+  tagline: string;
+  description: string;
+}
+
+const LEVEL_METAS: Record<string, LevelMeta> = {
+  A1: {
+    code: 'A1',
+    badge: 'A1',
+    title: 'Breakthrough & Foundation',
+    tagline: 'Basis & Eerste Gesprekken',
+    description: 'Essential first conversations, ordering food and drinks, polite everyday greetings.',
+  },
+  A2: {
+    code: 'A2',
+    badge: 'A2',
+    title: 'Everyday Independence',
+    tagline: 'Dagelijkse Zelfstandigheid',
+    description: 'Practical services, public transit, scheduling, parcel pickups, and neighborhood life.',
+  },
+  B1: {
+    code: 'B1',
+    badge: 'B1',
+    title: 'Confident Conversation',
+    tagline: 'Vloeiende Gesprekken',
+    description: 'Expressing viewpoints, comparing options, making complex arrangements, and social dining.',
+  },
+};
+
+const CATEGORY_CHIPS = [
+  { id: 'all', label: 'All Settings' },
+  { id: 'cafes', label: 'Cafés & Food' },
+  { id: 'services', label: 'Shops & Services' },
+  { id: 'transit', label: 'Transit & Travel' },
+  { id: 'social', label: 'Social & Life' },
+];
 
 const NEIGHBORHOOD_LOOP_TITLES: Record<string, Record<string, string>> = {
   es: {
@@ -101,31 +135,60 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
   const { t, language: uiLang } = useI18n();
   const [searchQuery, setSearchQuery] = useState('');
   const searchRef = useRef<TextInput>(null);
-  const [selectedCategory, setSelectedCategory] = useState('all');
-  const [showAllScenarios, setShowAllScenarios] = useState(false);
+  const [selectedLevel, setSelectedLevel] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<string>('all');
   const [activeView, setActiveView] = useState<'catalog' | 'programs' | 'route'>('catalog');
 
-  const categories = [
-    { id: 'all', label: t.missions.filterAll },
-    { id: 'cafes', label: t.missions.filterCafes },
-    { id: 'services', label: t.missions.filterServices },
-    { id: 'transit', label: t.missions.filterTransit },
-    { id: 'problems', label: t.missions.filterProblems },
-    { id: 'social', label: t.missions.filterSocial },
-  ];
+  const availableLevels = useMemo(() => {
+    const set = new Set<string>();
+    for (const m of missions) {
+      if (m.levelRange) set.add(m.levelRange);
+    }
+    if (set.size === 0) set.add('A1');
+    return Array.from(set).sort();
+  }, [missions]);
+
+  const completedMissionIds = useMemo(() => {
+    return new Set(
+      sessions
+        .filter(
+          session =>
+            session.endReason === 'completed' ||
+            session.taskOutcome === 'completed' ||
+            session.sceneState?.outcome === 'achieved' ||
+            session.state === 'recap_ready'
+        )
+        .map(session => session.missionId)
+    );
+  }, [sessions]);
 
   const query = searchQuery.trim().toLowerCase();
-  const filteredMissions = missions.filter(mission => {
-    const matchesSearch =
-      !query ||
-      mission.title.toLowerCase().includes(query) ||
-      mission.setting.toLowerCase().includes(query) ||
-      mission.character.name.toLowerCase().includes(query);
-    const matchesCategory =
-      selectedCategory === 'all' || mission.category === selectedCategory;
+  const filteredMissions = useMemo(() => {
+    return missions.filter(mission => {
+      const level = mission.levelRange ?? 'A1';
+      const matchesLevel = selectedLevel === 'all' || level === selectedLevel;
+      const matchesCategory =
+        selectedCategory === 'all' ||
+        mission.category === selectedCategory ||
+        (selectedCategory === 'transit' && mission.category === 'lodging') ||
+        (selectedCategory === 'social' && mission.category === 'problems');
+      const matchesSearch =
+        !query ||
+        mission.title.toLowerCase().includes(query) ||
+        mission.setting.toLowerCase().includes(query) ||
+        mission.character.name.toLowerCase().includes(query) ||
+        level.toLowerCase().includes(query);
 
-    return matchesSearch && matchesCategory;
-  });
+      return matchesLevel && matchesCategory && matchesSearch;
+    });
+  }, [missions, selectedLevel, selectedCategory, query]);
+
+  const levelsToDisplay = useMemo(() => {
+    if (selectedLevel !== 'all') {
+      return [selectedLevel];
+    }
+    return availableLevels;
+  }, [selectedLevel, availableLevels]);
 
   const activeLanguage = missions[0]?.language || 'nl';
   const currentLoopTitle =
@@ -133,49 +196,10 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
     NEIGHBORHOOD_LOOP_TITLES[activeLanguage]?.en ||
     t.common.connectedLoop;
 
-  // Curated Setting Hubs matching Lingo Atelier
-  const settingHubs = [
-    {
-      id: 'cafes',
-      name: 'Coffee & Bakeries',
-      tagline: 'Order breakfast, pastries, and drinks politely',
-      count: missions.filter(m => m.category === 'cafes').length,
-      tint: 'bg-[#DFF2EA]',
-      iconColor: '#0E8F7E',
-      Icon: Coffee,
-    },
-    {
-      id: 'services',
-      name: 'Shops & Markets',
-      tagline: 'Pharmacies, parcel pick-up, and everyday services',
-      count: missions.filter(m => m.category === 'services').length,
-      tint: 'bg-[#FFE6DD]',
-      iconColor: '#E4533C',
-      Icon: ShoppingBag,
-    },
-    {
-      id: 'transit',
-      name: 'Out & About · Travel',
-      tagline: 'Metro platforms, hotel check-in, and directions',
-      count: missions.filter(m => m.category === 'transit' || m.category === 'lodging').length,
-      tint: 'bg-[#FFF0CF]',
-      iconColor: '#B7791F',
-      Icon: Train,
-    },
-    {
-      id: 'social',
-      name: 'Neighbours & Social Life',
-      tagline: 'Meet neighbours, terrace small talk, and repair',
-      count: missions.filter(m => m.category === 'social' || m.category === 'problems').length,
-      tint: 'bg-[#ECE6FF]',
-      iconColor: '#7A63E0',
-      Icon: Users,
-    },
-  ];
-
-  const featuredMission = filteredMissions[0] ?? missions[0];
-  const isDefaultHubView = !query && selectedCategory === 'all' && !showAllScenarios;
-  const displayedMissions = isDefaultHubView ? filteredMissions.slice(0, 3) : filteredMissions;
+  const featuredMission = useMemo(() => {
+    const candidate = filteredMissions.find(m => !completedMissionIds.has(m.id));
+    return candidate || filteredMissions[0] || missions[0];
+  }, [filteredMissions, completedMissionIds, missions]);
 
   return (
     <ScrollView
@@ -213,7 +237,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
               }`}
             >
               <Icon
-                size={17}
+                size={16}
                 color={selected ? iconColor('language') : iconColor('muted')}
               />
               <Text
@@ -231,7 +255,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
       {activeView === 'catalog' ? (
         <View className="gap-5">
           {/* Lingo Atelier Featured Conversation Card */}
-          {featuredMission ? (
+          {featuredMission && !query ? (
             <View className="overflow-hidden rounded-[26px] border border-border-interactive/40 bg-surface shadow-sm" style={{ boxShadow: ELEVATION.card }}>
               <View className="relative h-[148px] w-full overflow-hidden bg-[#E2F1E7]">
                 <NeighborhoodArtwork />
@@ -281,7 +305,7 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
 
           {/* Quick Search Bar */}
           <View className="h-14 flex-row items-center gap-3 rounded-[20px] border border-border-interactive bg-surface px-4">
-            <Search size={19} color={iconColor('muted')} />
+            <Search size={18} color={iconColor('muted')} />
             <TextInput
               ref={searchRef}
               value={searchQuery}
@@ -305,80 +329,124 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
             ) : null}
           </View>
 
-          {/* LINGO ATELIER: 4 Curated Setting Hubs */}
-          {!query && selectedCategory === 'all' && (
-            <View className="gap-3">
-              <View className="flex-row items-center justify-between">
-                <Text className="font-display text-18 font-bold text-ink">
-                  Choose a setting
-                </Text>
-                <Text className="text-xs font-semibold text-muted">
-                  4 authentic Flemish environments
-                </Text>
-              </View>
-
-              <View className="gap-2.5">
-                {settingHubs.map(hub => {
-                  const Icon = hub.Icon;
-                  return (
-                    <Pressable
-                      key={hub.id}
-                      onPress={() => setSelectedCategory(hub.id)}
-                      accessibilityRole="button"
-                      accessibilityLabel={`${hub.name}. ${hub.tagline}`}
-                      className="min-h-14 flex-row items-center gap-3.5 rounded-[22px] border border-border-subtle/50 bg-surface p-3.5 shadow-sm hover:bg-surface-hover active:scale-[0.99] transition-all"
-                    >
-                      <View
-                        className="h-11 w-11 items-center justify-center rounded-2xl"
-                        style={{ backgroundColor: hub.tint ? undefined : '#F0F7F4' }}
-                      >
-                        <View className={`h-11 w-11 items-center justify-center rounded-2xl ${hub.tint}`}>
-                          <Icon size={20} color={hub.iconColor} />
-                        </View>
-                      </View>
-
-                      <View className="flex-1 min-w-0">
-                        <View className="flex-row items-center gap-2">
-                          <Text className="text-15 font-bold text-ink truncate">
-                            {hub.name}
-                          </Text>
-                          <View className="rounded-full bg-surface-soft px-2 py-0.5 border border-border-subtle/30">
-                            <Text className="text-xs font-semibold text-muted">
-                              {hub.count}
-                            </Text>
-                          </View>
-                        </View>
-                        <Text className="text-xs text-muted truncate mt-0.5">
-                          {hub.tagline}
-                        </Text>
-                      </View>
-
-                      <ChevronRight size={18} color={iconColor('muted')} />
-                    </Pressable>
-                  );
-                })}
-              </View>
+          {/* CEFR Level Segmented Selector Tabs */}
+          <View className="gap-2">
+            <View className="flex-row items-center justify-between">
+              <Text className="font-display text-16 font-bold text-ink">
+                Organized by Level
+              </Text>
+              <Text className="text-xs font-semibold text-muted">
+                {missions.length} roleplay scenarios
+              </Text>
             </View>
-          )}
 
-          {/* Active Filter or Search State Notice */}
-          {(selectedCategory !== 'all' || query) && (
+            <View className="flex-row gap-2 flex-wrap">
+              {/* All Levels Pill */}
+              <Pressable
+                onPress={() => setSelectedLevel('all')}
+                accessibilityRole="tab"
+                accessibilityState={{ selected: selectedLevel === 'all' }}
+                accessibilityLabel={`All Levels, ${missions.length} scenarios`}
+                className={`min-h-12 px-3.5 py-2 rounded-2xl flex-row items-center gap-2 border transition-all ${
+                  selectedLevel === 'all'
+                    ? 'bg-action border-action'
+                    : 'bg-surface border-border-interactive/40 hover:bg-surface-hover'
+                }`}
+              >
+                <Text
+                  className={`text-xs font-bold ${
+                    selectedLevel === 'all' ? 'text-action-text' : 'text-body'
+                  }`}
+                >
+                  All Levels ({missions.length})
+                </Text>
+              </Pressable>
+
+              {/* Dynamic Level Pills: A1, A2, etc. */}
+              {availableLevels.map(lvl => {
+                const isSelected = selectedLevel === lvl;
+                const levelCount = missions.filter(m => (m.levelRange ?? 'A1') === lvl).length;
+                const meta = LEVEL_METAS[lvl];
+
+                return (
+                  <Pressable
+                    key={lvl}
+                    onPress={() => setSelectedLevel(lvl)}
+                    accessibilityRole="tab"
+                    accessibilityState={{ selected: isSelected }}
+                    accessibilityLabel={`Level ${lvl}, ${levelCount} scenarios`}
+                    className={`min-h-12 px-3.5 py-2 rounded-2xl flex-row items-center gap-2 border transition-all ${
+                      isSelected
+                        ? 'bg-action border-action'
+                        : 'bg-surface border-border-interactive/40 hover:bg-surface-hover'
+                    }`}
+                  >
+                    <View className="px-1.5 py-0.5 rounded-lg bg-lime">
+                      <Text className="text-xs font-extrabold text-[#17310F]">
+                        {lvl}
+                      </Text>
+                    </View>
+                    <Text
+                      className={`text-xs font-bold ${
+                        isSelected ? 'text-action-text' : 'text-body'
+                      }`}
+                    >
+                      {meta?.title ? meta.title.split('&')[0].trim() : `Level ${lvl}`} ({levelCount})
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </View>
+
+          {/* Quick Situation / Setting Chips */}
+          <View className="flex-row gap-2 flex-wrap">
+            {CATEGORY_CHIPS.map(chip => {
+              const isSelected = selectedCategory === chip.id;
+              return (
+                <Pressable
+                  key={chip.id}
+                  onPress={() => setSelectedCategory(chip.id)}
+                  accessibilityRole="tab"
+                  accessibilityState={{ selected: isSelected }}
+                  className={`min-h-12 px-3 py-1.5 rounded-xl flex-row items-center border transition-all ${
+                    isSelected
+                      ? 'bg-surface-soft border-border-interactive font-bold'
+                      : 'bg-surface border-border-subtle/50 hover:bg-surface-hover'
+                  }`}
+                >
+                  <Text
+                    className={`text-xs ${
+                      isSelected ? 'font-bold text-ink' : 'font-medium text-muted'
+                    }`}
+                  >
+                    {chip.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          {/* Active Filter Notice */}
+          {(selectedLevel !== 'all' || selectedCategory !== 'all' || query) && (
             <View className="flex-row items-center justify-between rounded-2xl bg-surface-soft px-3.5 py-2.5 border border-border-subtle/40">
-              <View className="flex-row items-center gap-2">
-                <Text className="text-xs font-bold text-primary uppercase">Filtered by:</Text>
-                <Text className="text-13 font-semibold text-ink">
-                  {categories.find(c => c.id === selectedCategory)?.label || 'All'}
+              <View className="flex-row items-center gap-2 flex-1">
+                <Text className="text-xs font-bold text-primary uppercase">Active filter:</Text>
+                <Text className="text-13 font-semibold text-ink truncate">
+                  {selectedLevel !== 'all' ? `Level ${selectedLevel}` : 'All Levels'}
+                  {selectedCategory !== 'all' ? ` · ${CATEGORY_CHIPS.find(c => c.id === selectedCategory)?.label}` : ''}
                   {query ? ` · "${query}"` : ''}
                 </Text>
                 <Text className="text-xs text-muted">({filteredMissions.length})</Text>
               </View>
               <Pressable
                 onPress={() => {
+                  setSelectedLevel('all');
                   setSelectedCategory('all');
                   setSearchQuery('');
                 }}
                 accessibilityRole="button"
-                accessibilityLabel="Clear filter"
+                accessibilityLabel="Clear all filters"
                 className="min-h-12 items-center justify-center px-2"
               >
                 <Text className="text-xs font-bold text-language">Clear filter</Text>
@@ -386,92 +454,142 @@ export const MissionsScreen: React.FC<MissionsScreenProps> = ({
             </View>
           )}
 
-          {/* Scenarios Section Header */}
-          <View className="flex-row items-center justify-between pt-1">
-            <Text className="font-display text-18 font-bold text-ink">
-              {isDefaultHubView ? 'Up next for you' : 'Roleplay scenarios'}
-            </Text>
-            <Text className="text-xs font-semibold text-muted">
-              {displayedMissions.length} of {filteredMissions.length}
-            </Text>
-          </View>
+          {/* Level-Organized Sections */}
+          <View className="gap-6">
+            {levelsToDisplay.map(lvl => {
+              const levelMissions = filteredMissions.filter(m => (m.levelRange ?? 'A1') === lvl);
+              if (levelMissions.length === 0) return null;
 
-          {/* Curated, Bite-Sized Mission Cards */}
-          <View className="gap-2.5">
-            {displayedMissions.map(mission => (
-              <Pressable
-                key={mission.id}
-                onPress={() => onSelectMission(mission)}
-                accessibilityRole="button"
-                accessibilityLabel={missionAccessibleName(mission)}
-                className="min-h-[76px] flex-row items-center gap-3.5 rounded-[22px] border border-border-subtle/60 bg-surface p-3.5 shadow-sm hover:bg-surface-hover active:scale-[0.99] transition-all"
-                style={{ boxShadow: ELEVATION.card }}
-              >
-                <View className={`h-11 w-11 items-center justify-center rounded-2xl ${MISSION_TONES[mission.category].container}`}>
-                  <Compass size={20} color={iconColor(MISSION_TONES[mission.category].color)} />
-                </View>
+              const meta = LEVEL_METAS[lvl] ?? {
+                code: lvl,
+                badge: lvl,
+                title: `Level ${lvl}`,
+                tagline: 'Scenarios',
+                description: 'Curated communicative roleplays.',
+              };
 
-                <View className="flex-1 min-w-0">
-                  <View className="flex-row items-center gap-2">
-                    <Text className="text-15 font-bold text-ink truncate" numberOfLines={1}>
-                      {mission.title}
-                    </Text>
-                    <View className="rounded-full bg-lime px-2 py-0.5">
-                      <Text className="text-xs font-extrabold text-[#17310F]">
-                        {mission.levelRange ?? 'A1'}
-                      </Text>
+              const completedInLevel = levelMissions.filter(m => completedMissionIds.has(m.id)).length;
+              const percent = Math.round((completedInLevel / levelMissions.length) * 100);
+
+              return (
+                <View key={lvl} className="gap-3">
+                  {/* Level Header Banner Card */}
+                  <View
+                    className="rounded-[24px] bg-surface border border-border-subtle/70 p-4 gap-3 shadow-sm"
+                    style={{ boxShadow: ELEVATION.card }}
+                  >
+                    <View className="flex-row items-center justify-between gap-3">
+                      <View className="flex-row items-center gap-2.5 flex-1 min-w-0">
+                        <View className="px-2.5 py-1 rounded-xl bg-lime shadow-sm">
+                          <Text className="text-xs font-extrabold text-[#17310F]">
+                            {meta.badge}
+                          </Text>
+                        </View>
+                        <View className="flex-1 min-w-0">
+                          <Text className="font-display text-16 font-bold text-ink truncate">
+                            {meta.title}
+                          </Text>
+                          <Text className="text-xs text-muted truncate">
+                            {meta.description}
+                          </Text>
+                        </View>
+                      </View>
+
+                      <View className="items-end flex-shrink-0">
+                        <View className="px-2 py-0.5 rounded-full bg-surface-soft border border-border-subtle/50">
+                          <Text className="text-xs font-bold text-primary">
+                            {completedInLevel} / {levelMissions.length}
+                          </Text>
+                        </View>
+                        <Text className="text-12 font-semibold text-muted mt-0.5">
+                          {percent}% done
+                        </Text>
+                      </View>
+                    </View>
+
+                    {/* Progress Bar Track */}
+                    <View className="h-1.5 w-full rounded-full bg-surface-sunken overflow-hidden">
+                      <View
+                        className="h-full rounded-full bg-action"
+                        style={{ width: `${percent}%` }}
+                      />
                     </View>
                   </View>
 
-                  <Text className="text-13 leading-4 text-body truncate mt-0.5" numberOfLines={1}>
-                    {mission.learnerGoal}
-                  </Text>
+                  {/* Curated Mission Cards under this Level */}
+                  <View className="gap-2.5">
+                    {levelMissions.map(mission => {
+                      const isCompleted = completedMissionIds.has(mission.id);
+                      return (
+                        <Pressable
+                          key={mission.id}
+                          onPress={() => onSelectMission(mission)}
+                          accessibilityRole="button"
+                          accessibilityLabel={missionAccessibleName(mission)}
+                          className="min-h-[76px] flex-row items-center gap-3.5 rounded-[22px] border border-border-subtle/60 bg-surface p-3.5 shadow-sm hover:bg-surface-hover active:scale-[0.99] transition-all"
+                          style={{ boxShadow: ELEVATION.card }}
+                        >
+                          <View
+                            className={`h-11 w-11 items-center justify-center rounded-2xl ${MISSION_TONES[mission.category].container}`}
+                          >
+                            <Compass size={20} color={iconColor(MISSION_TONES[mission.category].color)} />
+                          </View>
 
-                  <Text className="text-xs text-muted mt-0.5" numberOfLines={1}>
-                    {mission.character.name} ({mission.character.role}) · {mission.estimatedMinutes} min
-                  </Text>
+                          <View className="flex-1 min-w-0">
+                            <View className="flex-row items-center gap-2">
+                              <Text className="text-15 font-bold text-ink truncate" numberOfLines={1}>
+                                {mission.title}
+                              </Text>
+                              <View className="rounded-full bg-lime px-2 py-0.5">
+                                <Text className="text-xs font-extrabold text-[#17310F]">
+                                  {mission.levelRange ?? 'A1'}
+                                </Text>
+                              </View>
+                              {isCompleted ? (
+                                <View className="flex-row items-center gap-1 rounded-full bg-card-sage px-2 py-0.5">
+                                  <CheckCircle2 size={12} color="#2A6B47" />
+                                  <Text className="text-xs font-bold text-accent-sage">Done</Text>
+                                </View>
+                              ) : null}
+                            </View>
+
+                            <Text className="text-13 leading-4 text-body truncate mt-0.5" numberOfLines={1}>
+                              {mission.learnerGoal}
+                            </Text>
+
+                            <Text className="text-xs text-muted mt-0.5" numberOfLines={1}>
+                              {mission.character.name} ({mission.character.role}) · {mission.estimatedMinutes} min
+                            </Text>
+                          </View>
+
+                          <ChevronRight size={18} color={iconColor('muted')} />
+                        </Pressable>
+                      );
+                    })}
+                  </View>
                 </View>
-
-                <ChevronRight size={18} color={iconColor('muted')} />
-              </Pressable>
-            ))}
+              );
+            })}
 
             {filteredMissions.length === 0 ? (
-              <View className="items-center px-6 py-12">
+              <View className="items-center px-6 py-12 rounded-[24px] bg-surface-soft border border-border-subtle/40 gap-3">
                 <Text className="text-center text-14 leading-5 text-muted">
                   {t.missions.noMissionsFound}
                 </Text>
+                <Pressable
+                  onPress={() => {
+                    setSelectedLevel('all');
+                    setSelectedCategory('all');
+                    setSearchQuery('');
+                  }}
+                  accessibilityRole="button"
+                  accessibilityLabel="Clear all filters"
+                  className="min-h-12 px-4 rounded-full bg-surface border border-border-interactive items-center justify-center"
+                >
+                  <Text className="text-xs font-bold text-ink">Reset filters</Text>
+                </Pressable>
               </View>
             ) : null}
-
-            {/* Toggle to show all scenarios when on default view */}
-            {isDefaultHubView && filteredMissions.length > 3 && (
-              <Pressable
-                onPress={() => setShowAllScenarios(true)}
-                accessibilityRole="button"
-                accessibilityLabel={`Browse all ${filteredMissions.length} scenarios`}
-                className="min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-border-interactive/40 bg-surface px-4 py-2 hover:bg-surface-hover active:scale-95 transition-all mt-1"
-              >
-                <Text className="text-13 font-bold text-primary">
-                  Browse all {filteredMissions.length} scenarios
-                </Text>
-                <ChevronDown size={16} color={iconColor('brand')} />
-              </Pressable>
-            )}
-
-            {!isDefaultHubView && showAllScenarios && selectedCategory === 'all' && (
-              <Pressable
-                onPress={() => setShowAllScenarios(false)}
-                accessibilityRole="button"
-                accessibilityLabel="Show fewer scenarios"
-                className="min-h-12 flex-row items-center justify-center gap-2 rounded-full border border-border-interactive/40 bg-surface px-4 py-2 hover:bg-surface-hover active:scale-95 transition-all mt-1"
-              >
-                <Text className="text-13 font-bold text-muted">
-                  Show fewer
-                </Text>
-                <ChevronUp size={16} color={iconColor('muted')} />
-              </Pressable>
-            )}
           </View>
         </View>
       ) : activeView === 'programs' ? (
